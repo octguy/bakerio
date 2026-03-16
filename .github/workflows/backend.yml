@@ -66,6 +66,7 @@ jobs:
       - name: Run linter
         uses: golangci/golangci-lint-action@v6
         with:
+          version: latest
           working-directory: backend
 
       - name: Build binary
