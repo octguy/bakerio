@@ -47,8 +47,9 @@ jobs:
 
       - name: Run migrations
         run: |
-          go install -tags 'postgres' github.com/migrate/migrate/v4/cmd/migrate@latest
-          migrate -path db/migrations -database "postgres://testuser:testpass@localhost:5432/bakeriodb?sslmode=disable" up
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz | tar xvz
+          chmod +x migrate
+          ./migrate -path db/migrations -database "postgres://testuser:testpass@localhost:5432/bakeriodb?sslmode=disable" up
         env:
           POSTGRES_HOST: localhost
 
