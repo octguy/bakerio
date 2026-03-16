@@ -1,7 +1,7 @@
 # Bakerio — Business Plan
 
 > E-Commerce Platform for Sweet Goods | Modulithic Go | 2-person team | 2.5 months (10 weeks)
-> Last updated: 2026-03-12
+> Last updated: 2026-03-16
 > Capacity: 3h/day × 4 days/week × 2 people = **24 person-hours/week** (~240 hrs total)
 
 ### Design Documents
@@ -22,32 +22,100 @@
 
 ## 1. Project Overview
 
-Bakerio is a multi-branch sweet goods ordering platform modeled on the Domino's/pizza-chain delivery model. Customers browse a branch's catalog, configure products (including custom cakes via structured pizza-style options), place orders, and pay online. Branch staff manage inventory and order fulfillment. Delivery staff pick up and deliver orders. Admins manage the entire system.
+Bakerio is a multi-branch sweet goods ordering platform modeled on the Domino's/pizza-chain delivery model. In v1, customers browse a branch's catalog, configure standard products, place orders, and pay online. Branch staff manage inventory and order preparation, delivery staff handle batch dispatch runs for their assigned branch, and admins manage the entire system.
 
 ### Core Decisions
 
 | Decision | Choice | Rationale |
 |---|---|---|
 | Architecture | Monolith-first, modular | Reduces early complexity; structured for future microservice extraction |
-| Delivery | Internal platform staff | Full control over status tracking and assignment |
+| Delivery | Internal branch-assigned delivery staff + batch dispatch cron | Full control over status tracking with simpler operations than per-order assignment |
 | Custom Orders | Pizza-model (structured options) | Bounded scope; no free-form text, no premium gating |
 | Payment | Mock placeholder → real gateway | Ship faster; swap VNPay/Momo in later sprint without logic changes |
-| Auth | JWT + RBAC (4 roles) | Industry standard; maps cleanly to role-specific dashboards |
+| Auth | JWT + RBAC (4 roles: Customer, Staff, Delivery Staff, Admin) | Industry standard; cleanly separates production prep from batch delivery runs |
 
 ---
 
-## 2. User Roles
+## 2. Business Model & Market Opportunity
+
+### What Bakerio Is
+
+Bakerio is an **internal ordering and operations platform built for a single bakery chain** — one company running 10+ physical branches across a city. It is not a marketplace or SaaS product; it is purpose-built for this chain to replace Zalo/phone-based order management with a unified digital storefront and branch operations tool.
+
+### Market Context
+
+Vietnam's food delivery market grew sharply post-2020, but general platforms (GrabFood, ShopeeFood) are optimized for fast food — not sweet goods. Cakes and pastries are **occasion-driven, high-margin, and require advance scheduling** that generic platforms don't support. The chain currently manages orders through Zalo, Facebook Messenger, or phone — fragmented, error-prone, and unscalable across 10+ branches.
+
+### Target Users
+
+| Segment | Profile | Pain Point |
+|---|---|---|
+| **Chain operations** | 10+ branches with shared admin oversight | No unified order view; each branch manages Zalo DMs independently; no real-time inventory or status tracking |
+| **End customers** | Urban Vietnamese, 18–35, ordering for birthdays/celebrations | Must call or DM to order; no online checkout, no order tracking |
+
+### Revenue Model
+
+Bakerio generates revenue directly for the chain — not via platform commission. The chain owns the platform.
+
+| Stream | Mechanism | Notes |
+|---|---|---|
+| Product sales | Customer pays full order amount online | Replaces cash-on-delivery and manual payment collection |
+| Delivery fee | 20,000₫ flat fee charged to customer | Covers delivery labor cost; net ~5,000₫ contribution after ~15,000₫ fulfillment/delivery payout |
+| Custom order deposit *(v2)* | % of total held at booking; retained on late cancellation | Reduces no-show risk on high-effort custom cakes |
+
+### Unit Economics (Illustrative)
+
+> Assumptions: AOV 150,000₫, fulfillment/delivery payout ~15,000₫, net delivery contribution ~5,000₫. v1 standard orders only.
+
+| Metric | Value |
+|---|---|
+| Average order value (AOV) | 150,000₫ |
+| Delivery fee (gross) | 20,000₫ |
+| Fulfillment/delivery payout | ~15,000₫ |
+| **Net delivery contribution** | **~5,000₫/order** |
+| Digital order vs. Zalo admin time saved | ~8–10 min/order @ 50,000₫/hr = ~7,000–8,000₫ saved |
+
+### Operational Value vs. Status Quo
+
+The chain's current Zalo workflow costs approximately 8–10 minutes of staff time per order for DM handling, design confirmation, payment reconciliation, and delivery coordination. At a staff rate of ~50,000₫/hr, that is ~7,000–8,000₫ of hidden labor per order — not counting errors, missed messages, and the impossibility of centralized reporting across 10+ branches.
+
+Bakerio eliminates this overhead: customers self-serve checkout, payments are captured online, and staff work from a single order dashboard instead of individual chat threads.
+
+### Go-to-Market Strategy
+
+**Phase 1 — Internal rollout**
+Deploy to all branches. Staff training ~2h per branch. The chain's existing customer base (Zalo followers, repeat buyers) is directed to the new online storefront.
+
+**Phase 2 — Customer-led growth**
+Branches promote their Bakerio storefront links via existing social media. Zero B2C ad spend in v1 — leverage the chain's existing audience.
+
+**Phase 3 — Feature expansion (post-assessment)**
+Voucher/promotion system (already designed), custom cake builder (v2), and admin analytics to optimize branch performance.
+
+### Why Not Just Use GrabFood or Zalo?
+
+| Ordering channel | Chain control | Branch ops dashboard | Online payment | Advance scheduling | Order tracking |
+|---|---|---|---|---|---|
+| GrabFood / ShopeeFood | ❌ Platform-owned | ❌ | ✅ | ❌ | ✅ Limited |
+| Facebook / Zalo DMs | ✅ | ❌ Manual per branch | ❌ Cash/transfer | ✅ Informal | ❌ |
+| **Bakerio (v1)** | ✅ Chain-owned | ✅ Unified dashboard | ✅ | ✅ | ✅ Full FSM |
+
+**Why build instead of using existing platforms:** GrabFood takes ~25–30% commission and gives the chain no operational visibility. Zalo is free but doesn't scale across 10+ branches and has no checkout, inventory tracking, or reporting. Bakerio gives the chain full ownership of the customer relationship, order data, and operations tooling — at the cost of building and maintaining it.
+
+---
+
+## 3. User Roles
 
 | Role | Core Responsibility |
 |---|---|
-| **Customer** | Browse catalog, build cart, place & pay for orders, track delivery, write reviews |
-| **Staff (Baker)** | Manage branch product catalog, confirm and update standard & custom orders |
-| **Delivery Staff** | Receive pickup assignments, update delivery status in real-time |
-| **Admin** | Manage branches, staff accounts, promotions, view system-wide reports |
+| **Customer** | Browse catalog, build cart, place & pay for orders, track delivery |
+| **Staff** | Manage branch product catalog, confirm standard orders, and advance fulfillment up to `READY_FOR_PICKUP` |
+| **Delivery Staff** | Receive branch dispatch notifications, pick up all pending `READY_FOR_PICKUP` orders in one run, and advance each order through delivery statuses |
+| **Admin** | Manage branches and staff accounts |
 
 ---
 
-## 3. User Stories
+## 4. User Stories
 
 ### 3.1 Customer
 
@@ -60,7 +128,7 @@ Acceptance Criteria:
 - [ ] Customer can view a list of branches with address and operating hours
 - [ ] Selecting a branch shows its active product catalog (available items only)
 - [ ] Products display name, image, price, and available customization options
-- [ ] Unavailable products are visually marked but still visible
+- [ ] Unavailable products are visually marked(grayed out) but still visible
 
 ---
 
@@ -75,15 +143,16 @@ Acceptance Criteria:
 
 ---
 
-**US-C03 — Configure a custom product (pizza-model)**
+**US-C03 — Configure a custom product (pizza-model) *(Deferred to v2)***
 > As a customer, I want to build a custom cake by choosing from structured options so I can personalize my order without free-form inputs.
 
 Acceptance Criteria:
 - [ ] Custom product has structured option groups: Size, Base Flavor, Frosting, Color Palette, Decoration Theme, Add-on Decorations (multi-select: roses/gold leaf/sprinkles/fruit/macarons/fondant figures/candles), Candle Style, Writing Style, Inscription (max 30 chars)
-- [ ] Full decoration option definitions in [PRD.md §4.4](docs/PRD.md)
+- [ ] Full decoration option definitions in [PRD.md §4.4](docs/PRD.md) (open to changes)
 - [ ] Each selectable option has a name, image, and price delta
 - [ ] Total price is calculated from base price + sum of selected option deltas
 - [ ] Customer sets desired delivery date (minimum 48h in advance)
+- [ ] Should reflect branch's inventory status (grayed out if no stock is available)
 - [ ] Customer sees a summary of all selections before adding to cart
 
 ---
@@ -95,17 +164,17 @@ Acceptance Criteria:
 - [ ] Cart shows all items with selected options, quantity, and line total
 - [ ] Customer can change quantity or remove an item
 - [ ] Cart persists across sessions (stored server-side, linked to account)
-- [ ] Cart locked to a single branch — adding item from different branch prompts clear/merge choice
+- [ ] Cart locked to a single branch — adding item from different branch prompts remove if unavailable/migrate if available choices
 
 ---
 
-**US-C05 — Apply a voucher**
+**US-C05 — Apply a voucher *(Deferred to v2)***
 > As a customer, I want to apply a voucher code at checkout to receive a discount.
 
 Acceptance Criteria:
 - [ ] Voucher code input shown on checkout summary page
 - [ ] System validates: code exists, not expired, not yet used by this customer, minimum order met
-- [ ] Discount (fixed or percentage) applied and shown before payment
+- [ ] Discount (fixed amount or percentage) applied and shown before payment
 - [ ] Invalid code shows specific error (expired / already used / minimum not met)
 - [ ] Only one voucher per order
 
@@ -115,8 +184,9 @@ Acceptance Criteria:
 > As a customer, I want to confirm my order and pay so the branch can start preparing it.
 
 Acceptance Criteria:
-- [ ] Checkout shows: order summary, delivery address, estimated total, voucher discount, final amount
+- [ ] Checkout shows: order summary, delivery address, estimated total, delivery fee, final amount
 - [ ] Customer confirms delivery address (pre-filled from profile, editable)
+- [ ] Customer can note delivery instructions
 - [ ] Payment via mock gateway in Phase 1; VNPay/Momo in Phase 2
 - [ ] On successful payment: Order record created with status `PENDING_CONFIRMATION`
 - [ ] Customer receives order confirmation with order ID
@@ -127,14 +197,14 @@ Acceptance Criteria:
 > As a customer, I want to see my order's current status so I know when it will arrive.
 
 Acceptance Criteria:
-- [ ] Order detail page shows status timeline: Pending → Confirmed → Preparing → Ready → Out for Delivery → Delivered
+- [ ] Order detail page shows status timeline: Pending → Confirmed → Preparing → Ready for Pickup → Out for Delivery → Delivered
 - [ ] Status updates reflected in real-time (polling acceptable for v1)
-- [ ] Delivery staff name shown once order is assigned
+- [ ] Branch contact information shown on the order detail page for delivery-related questions
 - [ ] Customer notified on each status change (in-app notification, v1)
 
 ---
 
-**US-C08 — Write a review**
+**US-C08 — Write a review *(Deferred to v2)***
 > As a customer, I want to rate and review a product or branch after my order is delivered.
 
 Acceptance Criteria:
@@ -156,17 +226,21 @@ Acceptance Criteria:
 
 ---
 
-### 3.2 Staff (Baker)
+### 3.2 Staff
 
 ---
 
 **US-S01 — Manage product catalog**
-> As a branch staff member, I want to add, edit, and toggle product availability so the catalog stays accurate.
+> As a branch staff member, I want to add, edit, and manage product inventory so the catalog stays accurate.
 
 Acceptance Criteria:
 - [ ] Staff can create a product with: name, description, images, base price, category, option groups
 - [ ] Staff can edit any field of an existing product
 - [ ] Staff can toggle a product's availability (available/unavailable) without deleting it
+- [ ] Staff can set a stock quantity (`stock_qty`) per product; setting to 0 auto-marks it unavailable
+- [ ] Staff can set a low-stock threshold (`low_stock_threshold`) per product; a warning badge appears on the dashboard when stock falls at or below this value
+- [ ] Each confirmed order automatically decrements `stock_qty` by the ordered quantity; if stock reaches 0, `is_available` is set to false automatically
+- [ ] Staff receive an in-dashboard notification when any product hits the low-stock threshold
 - [ ] Changes are scoped to the staff's assigned branch only
 - [ ] Option groups can be added/removed per product (e.g., add a new size tier)
 
@@ -184,54 +258,50 @@ Acceptance Criteria:
 
 ---
 
-**US-S03 — Update order preparation status**
-> As a branch staff member, I want to update the order through preparation stages so delivery staff and customers are informed.
+### 3.3 Staff
+
+---
+
+**US-S03 — Update order fulfillment status**
+> As a branch staff member, I want to advance orders through the in-branch preparation stages so they are ready for the next dispatch run.
 
 Acceptance Criteria:
 - [ ] Staff can advance order status: `CONFIRMED` → `PREPARING` → `READY_FOR_PICKUP`
 - [ ] Each transition is logged with timestamp and staff ID
-- [ ] `READY_FOR_PICKUP` triggers notification to assigned delivery staff
-
----
-
-**US-S04 — Handle custom orders**
-> As a branch staff member, I want to review custom order specifications and confirm feasibility before production.
-
-Acceptance Criteria:
-- [ ] Custom orders appear in a separate "Custom" tab on the dashboard
-- [ ] Staff sees full structured configuration (all selected options)
-- [ ] Staff can confirm or reject with a reason
-- [ ] If confirmed: deposit is captured; production begins
-- [ ] Staff can update custom order status through same pipeline as standard orders
-
----
-
-### 3.3 Delivery Staff
-
----
-
-**US-D01 — View assigned pickups**
-> As a delivery staff member, I want to see orders assigned to me so I know what to pick up.
-
-Acceptance Criteria:
-- [ ] Delivery dashboard lists orders with status `READY_FOR_PICKUP` assigned to me
-- [ ] Each entry shows: branch address, customer address, order summary
-- [ ] Staff can accept or decline an assignment (declined orders re-enter the pool)
-
----
-
-**US-D02 — Update delivery status**
-> As a delivery staff member, I want to update the delivery status so customers and staff can track progress.
-
-Acceptance Criteria:
-- [ ] Staff can advance: `ASSIGNED` → `PICKED_UP` → `OUT_FOR_DELIVERY` → `DELIVERED`
-- [ ] Each update is timestamped
-- [ ] `DELIVERED` requires confirmation (button tap + optional photo upload, v2)
 - [ ] Customer notified on each status change
 
 ---
 
-### 3.4 Admin
+**US-S04 — Handle custom orders *(Deferred to v2)***
+> As a branch staff member, I want to review custom order specifications and confirm feasibility before production.
+
+Acceptance Criteria:
+- [ ] Custom orders appear in a separate "Custom" tab on the dashboard
+- [ ] Staff see full structured configuration (all selected options)
+- [ ] Staff can confirm or reject with a reason
+- [ ] If confirmed: deposit is captured; production begins
+- [ ] Staff can update custom order status through the same fulfillment pipeline as standard orders once production begins
+
+---
+
+### 3.4 Delivery Staff
+
+---
+
+**US-D01 — Execute a batch dispatch run**
+> As a delivery staff member, I want to receive a branch dispatch notification and then deliver all pending `READY_FOR_PICKUP` orders in one run.
+
+Acceptance Criteria:
+- [ ] Delivery staff are assigned to a specific branch
+- [ ] A `DISPATCH_READY` notification is sent to delivery staff at that branch when either `READY_FOR_PICKUP` count reaches the branch threshold or the oldest `READY_FOR_PICKUP` order has waited at least the branch timeout
+- [ ] Delivery staff can view all current `READY_FOR_PICKUP` orders for their branch in one dispatch queue
+- [ ] After physically picking up the batch, delivery staff advances each picked-up order from `READY_FOR_PICKUP` → `OUT_FOR_DELIVERY`
+- [ ] Delivery staff marks each order `DELIVERED` individually as drop-offs are completed
+- [ ] Each transition is logged with timestamp and delivery staff ID
+
+---
+
+### 3.5 Admin
 
 ---
 
@@ -240,6 +310,7 @@ Acceptance Criteria:
 
 Acceptance Criteria:
 - [ ] Admin can create a branch with: name, address, coordinates, operating hours, phone
+- [ ] Admin can configure branch dispatch settings: `dispatch_threshold` and `dispatch_timeout_minutes`
 - [ ] Admin can edit or deactivate a branch
 - [ ] Deactivated branches hidden from customer catalog
 - [ ] Each branch has a unique ID referenced by staff and orders
@@ -250,25 +321,26 @@ Acceptance Criteria:
 > As an admin, I want to create and manage staff accounts per branch so access is properly controlled.
 
 Acceptance Criteria:
-- [ ] Admin can create accounts for `STAFF` and `DELIVERY_STAFF` roles
-- [ ] Staff accounts are assigned to a specific branch
+- [ ] Admin can create accounts for the `STAFF` role
+- [ ] Admin can create accounts for the `DELIVERY_STAFF` role
+- [ ] All accounts are assigned to a specific branch
 - [ ] Admin can deactivate accounts without deleting them
 - [ ] Role cannot be changed after creation without explicit admin action
 
 ---
 
-**US-A03 — Manage promotions and vouchers**
+**US-A03 — Manage promotions and vouchers *(Deferred to v2)***
 > As an admin, I want to create voucher codes and promotions so customers are incentivized to order.
 
 Acceptance Criteria:
-- [ ] Admin can create a voucher: code, discount type (fixed/percentage), discount value, min order value, expiry date, usage limit
+- [ ] Admin can create a voucher: code, discount type (fixed/percentage), discount value, min order value, expiry date, usage limit (system-wide count, personal count and/or system-wide budget)
 - [ ] Vouchers can be scoped to a specific branch or system-wide
 - [ ] Admin can deactivate a voucher before expiry
 - [ ] Dashboard shows usage count per voucher
 
 ---
 
-**US-A04 — View reports and analytics**
+**US-A04 — View reports and analytics *(Deferred to v2)***
 > As an admin, I want to see revenue and order metrics so I can monitor performance across branches.
 
 Acceptance Criteria:
@@ -284,14 +356,13 @@ Acceptance Criteria:
 > These features are fully designed and documented but deferred from v1 implementation. They can be picked up after the core flow is stable.
 
 - **Custom Order Flow (§4.8 in PRD):** US-C03, US-S04 — custom cake builder, deposit payment, custom order FSM
-- **Delivery Assignment Pool (§4.9 in PRD):** US-D01, US-D02 — full delivery pool, assignment/decline, race condition handling. Note: v1 simplification — delivery staff manually advance order status; no assignment pool table.
 - **Vouchers & Promotions (§4.10 in PRD):** US-C05, US-A03 — voucher CRUD, validation, race-condition-safe usage
 - **Reviews (§4.11 in PRD):** US-C08, US-A04 — review submission, ratings, average computation
 - **Admin Reports (ADMIN-04, ADMIN-05):** order/revenue analytics, date range filters
 
 ---
 
-## 4. Data Model
+## 5. Data Model
 
 ### Entity-Relationship Summary
 
@@ -305,21 +376,16 @@ User ─────────────────────────
   │
   ├── Order ──── OrderItem ──── (snapshot of Product + options at order time)
   │       │
-  │       ├── OrderPayment
-  │       ├── VoucherUsage ──── Voucher
-  │       └── DeliveryAssignment ──── DeliveryStaff (User)
-  │
-  ├── CustomOrder ──── CustomOrderOption ──── ProductOption
-  │       └── CustomOrderPayment (deposit)
-  │
-  ├── Review ──── (Order, Product)
+  │       └── OrderPayment
   │
   └── Notification
 ```
 
+Branch also stores batch dispatch configuration used by the delivery cron job: `dispatch_threshold` and `dispatch_timeout_minutes`. `BranchStaff` links both `STAFF` and `DELIVERY_STAFF` users to one branch; no `delivery_assignments` table is required because dispatch is branch-level, not order-level.
+
 ### Table Definitions
 
-> **Monetary columns:** All `DECIMAL` columns storing currency values must be declared as `DECIMAL(15, 0)` in `sql/schema.sql` (VNĐ is an integer currency with no subunit). This prevents floating-point rounding errors in percentage discount calculations. The `total_amount` arithmetic CHECK constraint relies on this — all intermediate calculations must be rounded to the nearest VNĐ before insert.
+> **Monetary columns:** All `DECIMAL` columns storing currency values must be declared as `DECIMAL(15, 0)` in `sql/schema.sql` (VNĐ is an integer currency with no subunit). This prevents floating-point rounding errors in order pricing arithmetic. The `total_amount` arithmetic CHECK constraint relies on this — all intermediate calculations must be rounded to the nearest VNĐ before insert.
 
 #### `users`
 | Column | Type | Notes |
@@ -331,6 +397,7 @@ User ─────────────────────────
 | phone | VARCHAR | |
 | address | TEXT | default delivery address |
 | role | ENUM | `CUSTOMER`, `STAFF`, `DELIVERY_STAFF`, `ADMIN` |
+| must_change_password | BOOLEAN | default false; true for pre-seeded branch staff, delivery staff, and admin accounts on first login |
 | is_active | BOOLEAN | default true |
 | token_version | INT | default 0; increment to invalidate all sessions |
 | created_at | TIMESTAMP | |
@@ -346,15 +413,19 @@ User ─────────────────────────
 | lng | DECIMAL | |
 | phone | VARCHAR | |
 | operating_hours | JSONB | `{ mon: "08:00-22:00", ... }` |
+| dispatch_threshold | INT | default 3; batch dispatch fires when `READY_FOR_PICKUP` count reaches this value |
+| dispatch_timeout_minutes | INT | default 60; batch dispatch also fires when oldest `READY_FOR_PICKUP` order reaches this age |
 | is_active | BOOLEAN | |
 | created_at | TIMESTAMP | |
 | updated_at | TIMESTAMP | |
+
+**Constraints:** `CHECK (dispatch_threshold > 0)` and `CHECK (dispatch_timeout_minutes > 0)`.
 
 #### `branch_staff`
 | Column | Type | Notes |
 |---|---|---|
 | id | UUID PK | |
-| user_id | UUID FK → users | |
+| user_id | UUID FK → users | role must be `STAFF` or `DELIVERY_STAFF` |
 | branch_id | UUID FK → branches | |
 | assigned_at | TIMESTAMP | |
 
@@ -366,8 +437,10 @@ User ─────────────────────────
 | name | VARCHAR | |
 | description | TEXT | |
 | base_price | DECIMAL | |
-| category | ENUM | `CAKE`, `COOKIE`, `PASTRY`, `CUSTOM` |
-| is_available | BOOLEAN | |
+| category | ENUM | `CAKE`, `COOKIE`, `PASTRY` |
+| is_available | BOOLEAN | auto-set to false when stock_qty reaches 0 |
+| stock_qty | INT | 0 = out of stock |
+| low_stock_threshold | INT | NULL = no alert; staff alerted when stock_qty ≤ this value |
 | image_url | VARCHAR | |
 | created_at | TIMESTAMP | |
 | updated_at | TIMESTAMP | |
@@ -426,19 +499,18 @@ User ─────────────────────────
 | branch_id | UUID FK → branches | |
 | status | ENUM | see [ARCHITECTURE.md §10](docs/ARCHITECTURE.md) — canonical FSM |
 | delivery_address | TEXT | snapshot at order time |
-| subtotal | DECIMAL | sum of all line_totals before discount |
-| discount_amount | DECIMAL | voucher discount applied |
+| subtotal | DECIMAL | sum of all line_totals before delivery fee |
 | delivery_fee | DECIMAL | default 20000 (₫), configurable via env |
-| total_amount | DECIMAL | subtotal - discount + delivery_fee |
+| total_amount | DECIMAL | subtotal + delivery_fee |
 | estimated_ready_at | TIMESTAMP | set by staff on confirm |
 | rejection_reason | TEXT | nullable; free text set on staff or auto rejection |
 | cancelled_at | TIMESTAMPTZ | nullable; set atomically by auto-cancel job as idempotency key — prevents double-cancel on job restart |
 | created_at | TIMESTAMP | |
 | updated_at | TIMESTAMP | |
 
-**Order Status FSM:** → see canonical definition in [ARCHITECTURE.md §10](docs/ARCHITECTURE.md)
+**Order Status FSM:** `PENDING_CONFIRMATION → CONFIRMED → PREPARING → READY_FOR_PICKUP → OUT_FOR_DELIVERY → DELIVERED` (plus cancellation/rejection paths defined in [ARCHITECTURE.md §10](docs/ARCHITECTURE.md)). `READY_FOR_PICKUP → OUT_FOR_DELIVERY` is performed by `DELIVERY_STAFF` after they pick up the current branch batch.
 
-**Constraint:** `CHECK (total_amount = subtotal - discount_amount + delivery_fee)` — arithmetic consistency enforced at DB level.
+**Constraint:** `CHECK (total_amount = subtotal + delivery_fee)` — arithmetic consistency enforced at DB level.
 
 #### `order_items`
 | Column | Type | Notes |
@@ -467,133 +539,21 @@ User ─────────────────────────
 
 **Constraint:** `UNIQUE(order_id) WHERE status != 'FAILED'` — prevents duplicate active payment rows on client retry. Failed rows are retained for audit.
 
-#### `custom_order_payments`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| custom_order_id | UUID FK → custom_orders | |
-| amount | DECIMAL | deposit amount |
-| method | ENUM | `MOCK`, `VNPAY`, `MOMO` |
-| status | ENUM | `PENDING`, `COMPLETED`, `FAILED`, `REFUNDED` |
-| gateway_reference | VARCHAR | nullable; populated after `gateway.charge()` returns. Same nullability contract as `order_payments`. |
-| paid_at | TIMESTAMP | nullable |
-
-**Constraint:** `UNIQUE(custom_order_id) WHERE status != 'FAILED'` — prevents duplicate active deposit rows on retry.
-
-#### `vouchers`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| code | VARCHAR UNIQUE | |
-| discount_type | ENUM | `FIXED`, `PERCENTAGE` |
-| discount_value | DECIMAL | |
-| max_discount_amount | DECIMAL | nullable; caps percentage discount (e.g. max 50,000₫ off) |
-| min_order_value | DECIMAL | |
-| max_uses | INT | nullable = unlimited |
-| used_count | INT | default 0 |
-| branch_id | UUID FK → branches | nullable = system-wide |
-| expires_at | TIMESTAMP | |
-| is_active | BOOLEAN | |
-| updated_at | TIMESTAMP | |
-
-**Constraints:**
-- `CHECK (discount_type != 'PERCENTAGE' OR (discount_value > 0 AND discount_value <= 100))` — percentage discounts must be in (0, 100].
-- `discount_value` and `min_order_value` are NOT NULL.
-
-#### `voucher_usages`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| voucher_id | UUID FK → vouchers | |
-| user_id | UUID FK → users | |
-| order_id | UUID FK → orders | nullable — set for standard orders |
-| custom_order_id | UUID FK → custom_orders | nullable — set for custom order deposits (if vouchers are enabled for custom orders) |
-| discount_applied | DECIMAL | |
-| used_at | TIMESTAMP | |
-
-**Constraint:** `CHECK (num_nonnulls(order_id, custom_order_id) = 1)` — exactly one must be set.
-**Constraint:** `UNIQUE(order_id)` WHERE `order_id IS NOT NULL` — one voucher per standard order.
-**Constraint:** `UNIQUE(custom_order_id)` WHERE `custom_order_id IS NOT NULL` — one voucher per custom order deposit.
-
-#### `custom_orders`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| user_id | UUID FK → users | |
-| branch_id | UUID FK → branches | |
-| base_product_id | UUID FK → products | the custom product template |
-| status | ENUM | see Custom Order Status FSM |
-| desired_delivery_date | TIMESTAMPTZ | min 48h from exact submission timestamp; TIMESTAMPTZ preserves time-of-day for precise boundary enforcement |
-| inscription | VARCHAR(30) | nullable |
-| deposit_amount | DECIMAL | fixed % of total, set on confirm |
-| deposit_paid_at | TIMESTAMPTZ | nullable; set when deposit payment completes; used to enforce 24h cancellation window |
-| delivery_fee | DECIMAL | default same as DELIVERY_FEE env var |
-| total_amount | DECIMAL | `CHECK (total_amount = subtotal_of_options - 0 + delivery_fee)` — arithmetic enforced at DB level |
-| staff_note | TEXT | nullable, set on reject |
-| rejected_at | TIMESTAMPTZ | nullable; set atomically by auto-reject job as idempotency key — prevents double-rejection on job restart |
-| created_at | TIMESTAMP | |
-| updated_at | TIMESTAMP | |
-
-**Custom Order Status FSM:** → see canonical definition in [ARCHITECTURE.md §10](docs/ARCHITECTURE.md)
-
-**Post-deposit cancellation policy:**
-- While in `DEPOSIT_PAID` state AND `deposit_paid_at` is within the last 24h: customer or staff may cancel → status `CANCELLED_AFTER_DEPOSIT`; full refund issued (`custom_order_payments.status` → `REFUNDED`).
-- After 24h or once `IN_PRODUCTION` starts: only admin force-cancel → status `CANCELLED`; refund at admin's discretion.
-
-#### `custom_order_options`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| custom_order_id | UUID FK → custom_orders | |
-| option_id | UUID FK → product_options | soft reference only |
-| group_name | VARCHAR | snapshot of group name at order time |
-| option_name | VARCHAR | snapshot of option name at order time |
-| price_delta | DECIMAL | snapshot of price delta at order time |
-
-**Snapshot rule:** `group_name`, `option_name`, and `price_delta` are written once at custom order creation and never updated. `option_id` is a soft reference for analytics only — future option deletion must not corrupt the historical record.
-
-#### `delivery_assignments`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| order_id | UUID FK → orders | nullable — set for standard orders |
-| custom_order_id | UUID FK → custom_orders | nullable — set for custom orders |
-| delivery_staff_id | UUID FK → users | |
-| assigned_at | TIMESTAMP | |
-| picked_up_at | TIMESTAMP | |
-| delivered_at | TIMESTAMP | |
-| status | ENUM | `ASSIGNED`, `PICKED_UP`, `OUT_FOR_DELIVERY`, `DELIVERED`, `DECLINED` |
-
-**Constraint:** `CHECK (num_nonnulls(order_id, custom_order_id) = 1)` — exactly one must be set. Partial unique index on `(order_id) WHERE status != 'DECLINED'` and `(custom_order_id) WHERE status != 'DECLINED'` prevents double-assignment.
-
-#### `reviews`
-| Column | Type | Notes |
-|---|---|---|
-| id | UUID PK | |
-| order_id | UUID FK → orders | |
-| user_id | UUID FK → users | |
-| product_id | UUID FK → products | |
-| rating | SMALLINT | 1–5 |
-| comment | TEXT | nullable |
-| created_at | TIMESTAMP | |
-
-**Constraint:** `CHECK (rating BETWEEN 1 AND 5)`.
-
 #### `notifications`
 | Column | Type | Notes |
 |---|---|---|
 | id | UUID PK | |
 | user_id | UUID FK → users | recipient |
-| event_code | VARCHAR | e.g. `ORDER_CONFIRMED` |
+| event_code | VARCHAR | e.g. `ORDER_CONFIRMED`, `DISPATCH_READY` |
 | payload | JSONB | event-specific data (order_id, amount, etc.) |
 | is_read | BOOLEAN | default false |
 | created_at | TIMESTAMP | |
 
-Broadcast events (e.g. `ORDER_READY_FOR_PICKUP`) fan out at write time: one row inserted per recipient via bulk insert. No group-target rows.
+Notification fan-out happens at write time: one row inserted per recipient via bulk insert. No group-target rows. A cron job runs every 5 minutes and, for each active branch, checks whether `READY_FOR_PICKUP` count is at least `dispatch_threshold` or the oldest `READY_FOR_PICKUP` order age is at least `dispatch_timeout_minutes`; if either condition is met, it emits `DISPATCH_READY` notifications to that branch's `DELIVERY_STAFF` users.
 
 ---
 
-## 5. Development Protocol
+## 6. Development Protocol
 
 ### Roles
 
@@ -622,8 +582,8 @@ Before handing anything to AI, ask:
 - **No** → Decompose further. The task is still too broad.
 
 **Examples:**
-- ✅ `computeOrderTotal(subtotal, discountAmount, deliveryFee): number`
-- ✅ go-playground/validator struct tags for `POST /orders/validate-voucher` request body
+- ✅ `computeOrderTotal(subtotal, deliveryFee): number`
+- ✅ go-playground/validator struct tags for `POST /orders` request body
 - ❌ "Implement the checkout service" — decompose first
 - ❌ "Set up the order FSM" — define transitions first, then implement one function at a time
 
@@ -633,7 +593,7 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 
 ---
 
-## 6. Agile Sprint Plan (9 Weeks)
+## 7. Agile Sprint Plan (9 Weeks)
 
 > Team: 2 developers. Each sprint = 1 week.
 > Capacity per sprint: 24 person-hours (3h × 4 days × 2 people).
@@ -646,7 +606,7 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 | 2 | 3 | Mar 27–Apr 2 | Branches + Products | Figma: customer flows + React + Vite basics |
 | 3 | 4 | Apr 3–9 | Cart | Figma: staff + admin flows + React + Vite basics |
 | 4 | 5 | Apr 10–16 | Checkout + payment | Figma DONE + Test plan draft + React:auth |
-| 5 | 6 | Apr 17–23 | Staff orders + auto-cancel | React:product catalog + cart |
+| 5 | 6 | Apr 17–23 | Staff orders + dispatch jobs | React:product catalog + cart |
 | 6 | 7 | Apr 24–30 | Notifications + admin endpoints | React:checkout + order tracking |
 | 7 | 8 | May 1–7 | Bug fixes + API polish | React:staff dashboard + admin UI |
 | 8 | 9 | May 8–14 | Integration tests + demo prep | Test plan final + test report |
@@ -670,7 +630,7 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 |---|---|---|
 | Go module init + Gin setup + basic server | 2h | `go run ./cmd/api` serves on :8080 |
 | pgx connection pool + `pkg/config` (godotenv, panic on missing P0 vars) | 2h | DB connects; missing var causes startup panic |
-| `sql/schema.sql` (all tables, indexes, constraints) + `sqlc.yaml` + `sqlc generate` | 5h | `psql $DATABASE_URL < sql/schema.sql` creates all tables; `/db/` package generated |
+| `sql/schema.sql` (all tables, indexes, constraints, branch dispatch config) + `sqlc.yaml` + `sqlc generate` | 5h | `psql $DATABASE_URL < sql/schema.sql` creates all tables; `/db/` package generated |
 | Docker Compose: Postgres + Go backend + React frontend | 2h | `docker compose up` builds and starts all 3 services |
 | `GET /health` endpoint | 0.5h | Returns `{"status":"ok","db":"connected"}` |
 | RequestID middleware | 0.5h | Injects UUID into context; sets X-Request-Id header |
@@ -702,7 +662,7 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 | `POST /auth/logout-all` | Increments token_version; current session survives |
 | `GET /me`, `PATCH /me` | Returns and updates customer profile |
 | `PATCH /me/password` | Increments token_version; current session survives |
-| Admin + STAFF + DELIVERY_STAFF accounts pre-seeded with `must_change_password = true` | Login redirects to password change; all other endpoints return 403 MUST_CHANGE_PASSWORD until changed |
+| Admin + `STAFF` + `DELIVERY_STAFF` accounts pre-seeded with `must_change_password = true` | Login redirects to password change; all other endpoints return 403 MUST_CHANGE_PASSWORD until changed |
 
 **Person B — Docs (12h)**
 | Task | Done When |
@@ -725,11 +685,14 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 **Person A — Go Backend (12h)**
 | Task | Done When |
 |---|---|
-| Branch CRUD (admin): `GET/POST /branches`, `PATCH/DELETE /branches/:id` | Branch returned in GET response |
+| Branch CRUD (admin): `GET/POST /branches`, `PATCH/DELETE /branches/:id` | Branch returned in GET response with dispatch config fields |
 | Staff branch assignment: `PATCH /admin/staff/:id/assign-branch` | BranchStaff row created |
 | Product CRUD (staff, branch-scoped): `GET/POST /products`, `PATCH/DELETE /products/:id` | Product with options in response |
 | ProductOptionGroup + ProductOption CRUD | Nested structure with min_select/max_select |
 | Toggle product availability: `PATCH /products/:id/availability` | is_available flips |
+| Set stock quantity: `PATCH /products/:id/stock` | stock_qty + low_stock_threshold updated |
+| Auto-decrement stock on order confirm (transactional) | stock_qty decremented; is_available set false if stock_qty = 0 |
+| Low-stock dashboard alert | Badge shown when stock_qty ≤ low_stock_threshold |
 | Customer catalog: `GET /branches`, `GET /branches/:id/products` | Only available products returned |
 
 **Person B — Docs/Design (12h)**
@@ -797,8 +760,8 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 
 ---
 
-### Sprint 5 — Week 6 (Apr 17–23): Staff Order Management + Auto-Cancel
-**Goal:** Staff manage their order queue. Auto-cancel job runs reliably.
+### Sprint 5 — Week 6 (Apr 17–23): Staff Order Management + Dispatch Jobs
+**Goal:** Staff manage preparation, delivery staff manage batch dispatch runs, and background jobs run reliably.
 
 > ⚠️ **Decisions Required (before coding)**
 > - Staff rejection reason: free text or predefined list?
@@ -809,9 +772,10 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 |---|---|---|
 | `GET /staff/orders` (branch-scoped, paginated) | 2h | Returns only this branch's orders |
 | `PATCH /orders/:id/confirm` | 1.5h | Status → CONFIRMED |
-| `PATCH /orders/:id/status` (PREPARING → READY_FOR_PICKUP) | 1.5h | Invalid transitions return 422 |
+| `PATCH /orders/:id/status` (staff: `CONFIRMED` → `PREPARING` → `READY_FOR_PICKUP`; delivery staff: `READY_FOR_PICKUP` → `OUT_FOR_DELIVERY` → `DELIVERED`) | 2h | Invalid transitions return 422; RBAC enforces role-specific transitions |
 | `PATCH /orders/:id/reject` | 1h | Status → CANCELLED, rejection_reason stored |
 | Auto-cancel job (robfig/cron, every 60s) | 4h | Sets status=CANCELLED, cancelled_at atomically. Fires ORDER_CONFIRM_REMINDER at 10min mark. Logs every action. |
+| Dispatch cron job (robfig/cron, every 5 min) | 2h | For each branch, if `READY_FOR_PICKUP` count ≥ threshold OR oldest ready order age ≥ timeout, emit `DISPATCH_READY` to that branch's delivery staff |
 | Order status timeline on `GET /orders/:id` | 2h | History array with timestamps |
 
 **Person B — Frontend (12h)**
@@ -833,15 +797,17 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 | `notify(userID, eventCode, payload)` service (bulk-insert support) | Notification rows created in DB |
 | `GET /notifications` (paginated, unread count) | Returns notifications for authenticated user |
 | `PATCH /notifications/:id/read` | is_read flips |
-| Wire notification events: ORDER_CONFIRMED, ORDER_CANCELLED, ORDER_PREPARING, ORDER_READY_FOR_PICKUP (broadcast to delivery pool), ORDER_OUT_FOR_DELIVERY, ORDER_DELIVERED | Fired on respective status transitions |
-| Admin: `GET /admin/staff`, `POST /admin/staff` (create STAFF/DELIVERY_STAFF) | Accounts created with branch assignment |
+| Wire notification events: ORDER_CONFIRMED, ORDER_CANCELLED, ORDER_PREPARING, ORDER_READY_FOR_PICKUP, DISPATCH_READY, ORDER_OUT_FOR_DELIVERY, ORDER_DELIVERED | Fired on cron or status transitions as applicable |
+| Admin: `GET /admin/staff`, `POST /admin/staff` (create `STAFF` or `DELIVERY_STAFF`) | Accounts created with branch assignment |
 | Admin: `PATCH /admin/staff/:id/deactivate` | is_active=false; next request from that user returns 401 |
-| Delivery staff: `PATCH /orders/:id/status` (READY_FOR_PICKUP → PICKED_UP → OUT_FOR_DELIVERY → DELIVERED) | Delivery staff role can advance these states |
+| Delivery staff dispatch queue: `GET /delivery/orders/ready` | Returns all current `READY_FOR_PICKUP` orders for the delivery staff's branch |
+| Delivery staff: extend `PATCH /orders/:id/status` for `READY_FOR_PICKUP` → `OUT_FOR_DELIVERY` → `DELIVERED` | Delivery staff can advance these states |
 
 **Person B — Frontend (12h)**
 | Task | Done When |
 |---|---|
-| React:Staff order queue (GET /staff/orders, confirm/reject/advance actions) | Full staff workflow functional |
+| React:Staff order queue (GET /staff/orders, confirm/reject/advance-to-ready actions) | Full staff workflow functional |
+| React:Delivery staff dispatch queue (batch-ready list + per-order advance actions) | Delivery staff can act on all pending ready orders after notification |
 | React:Notification bell + dropdown (unread count badge, mark read) | Polls GET /notifications every 60s |
 | React:Admin branch manager (list, create, edit, deactivate) | Full branch CRUD |
 
@@ -862,8 +828,8 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 **Person B — Frontend (12h)**
 | Task | Done When |
 |---|---|
-| React:Admin staff manager (list, create, deactivate, branch assignment) | Staff management functional |
-| React:Delivery staff view (orders in READY_FOR_PICKUP, advance to delivered) | Delivery workflow functional |
+| React:Admin staff manager (list, create, deactivate, branch assignment, role selection for `STAFF`/`DELIVERY_STAFF`) | Branch personnel management functional |
+| React:Split staff dashboard and delivery dashboard actions by role | Preparation and delivery workflows are both functional in the UI |
 | React:Staff product manager (CRUD, toggle availability) | Product management functional |
 | Test plan finalized: test cases for all critical paths (auth, cart, checkout, order FSM) | TEST-PLAN.md complete |
 
@@ -875,8 +841,9 @@ These questions cannot be answered by AI. They must be resolved by the team **be
 **Person A (12h)**
 | Task | Done When |
 |---|---|
-| End-to-end flow test: branch select → order → delivered (all statuses transition correctly) | Test passes with real DB |
+| End-to-end flow test: branch select → order → batch dispatch → delivered (all statuses transition correctly) | Test passes with real DB |
 | Integration test: auto-cancel fires at 15min mark | Cron job confirmed via log |
+| Integration test: dispatch cron fires on threshold and timeout conditions | `DISPATCH_READY` notifications emitted correctly in both cases |
 | Integration test: JWT revocation (logout-all, password change, deactivation) | All three revocation paths return 401 |
 | Demo walkthrough scripted for each role | 5-minute per-role demo script written |
 | `PaymentGateway` Phase 2 swap instructions written | `docs/PAYMENT-GATEWAY.md` stub |
@@ -895,27 +862,28 @@ After sprint 8, there is approximately 1.5 weeks of buffer before the 2.5-month 
 
 ---
 
-## 7. Risk Register
+## 8. Risk Register
 
 | # | Risk | Impact | Likelihood | Mitigation |
 |---|---|---|---|---|
 | R01 | Custom order scope creep (deposit logic, scheduling) | High | High | Strict pizza-model: structured options only, no free-form. Deposit is a fixed % computed by the system, not negotiated. |
 | R02 | Payment integration overrun (VNPay/Momo sandbox issues) | High | Medium | Use mock gateway in Phase 1. `PaymentGateway` interface isolates swap to one adapter file. |
-| R03 | Custom order + standard order pipelines diverge | Medium | Medium | Both share the same delivery assignment and status FSM from READY_FOR_PICKUP onward. |
+| R03 | Custom order + standard order pipelines diverge | Medium | Medium | Both share the same canonical fulfillment FSM from `CONFIRMED` onward: branch staff prepare to `READY_FOR_PICKUP`, then delivery staff execute the batch dispatch and delivery stages. |
 | R04 | Cart branch-lock confusion UX | Medium | Low | Clear 409 response + frontend prompt: "Clear cart and shop from [new branch]?" |
 | R05 | 15-min auto-cancel cron reliability | Medium | Low | Use pg_cron or a background job. Log all auto-cancels. Grace period: notify staff at 10 min. |
 | R06 | Monolith performance under concurrent orders | Medium | Low | Acceptable for assessment scale. DB indexes on `orders.branch_id`, `orders.status`, `orders.created_at`. |
-| R07 | Delivery pool race condition (two staff claim same order) | Medium | Medium | Optimistic lock on `delivery_assignments` insert. First writer wins, second gets 409. |
-| R08 | Snapshot consistency (price changes after order placed) | Medium | Low | `order_items.selected_options_snapshot` and `unit_price` are immutable after checkout. |
-| R09 | Scope overrun from admin analytics | Low | Medium | Analytics API in Sprint 7, UI in Sprint 8. Cut CSV export (Tier 3) if behind. |
-| R10 | Two-person team bus factor | High | Low | All architectural decisions documented here. API-CONVENTION.md is source of truth. |
-| R11 | Go learning curve | High | High | Sprint 0 includes dedicated learning time; estimates are 2–3× slower than an experienced Go developer. |
-| R12 | Frontend-backend integration lag | Medium | Medium | Person B builds frontend against real API; any contract mismatch surfaces in Sprint 5–6 integration window. |
-| R13 | No AI code completion | Medium | Known constraint | Mitigation: extensive official docs (go.dev, react.dev), pair programming sessions. |
+| R07 | Staff skip or misorder manual status transitions | Medium | Medium | Enforce the canonical FSM in the orders service; invalid transitions return 422 and all transitions are logged. |
+| R08 | Dispatch cron misses or duplicates a batch-ready notification | Medium | Low | Run cron every 5 minutes, compute branch-level readiness from current order state, and make notification emission idempotent per branch/time window. |
+| R09 | Snapshot consistency (price changes after order placed) | Medium | Low | `order_items.selected_options_snapshot` and `unit_price` are immutable after checkout. |
+| R10 | Scope overrun from admin analytics | Low | Medium | Analytics API in Sprint 7, UI in Sprint 8. Cut CSV export (Tier 3) if behind. |
+| R11 | Two-person team bus factor | High | Low | All architectural decisions documented here. API-CONVENTION.md is source of truth. |
+| R12 | Go learning curve | High | High | Sprint 0 includes dedicated learning time; estimates are 2–3× slower than an experienced Go developer. |
+| R13 | Frontend-backend integration lag | Medium | Medium | Person B builds frontend against real API; any contract mismatch surfaces in Sprint 5–6 integration window. |
+| R14 | No AI code completion | Medium | Known constraint | Mitigation: extensive official docs (go.dev, react.dev), pair programming sessions. |
 
 ---
 
-## 8. Out of Scope (Tier 3 — Post-Assessment)
+## 9. Out of Scope (Tier 3 — Post-Assessment)
 
 - Live GPS delivery tracking / map view
 - Full deposit scheduling calendar for custom orders
@@ -927,20 +895,20 @@ After sprint 8, there is approximately 1.5 weeks of buffer before the 2.5-month 
 
 ---
 
-## 9. API Convention Reference
+## 10. API Convention Reference
 
 > Defined in `API-CONVENTION.md` (Sprint 0 deliverable). Key decisions pre-agreed here:
 
 - **Base URL:** `/api/v1/`
 - **Auth:** `Authorization: Bearer <jwt>` on all protected routes
-- **Error shape:** `{ "error": { "code": "VOUCHER_EXPIRED", "message": "..." } }`
+- **Error shape:** `{ "error": { "code": "ORDER_INVALID_STATUS", "message": "..." } }`
 - **Pagination:** `?page=1&limit=20` → `{ data: [...], meta: { total, page, limit } }`
 - **Timestamps:** ISO 8601 UTC
 - **IDs:** UUID v4
 
 ---
 
-## 10. Tech Stack
+## 11. Tech Stack
 
 > **Status: DECIDED** — Stack confirmed before Sprint 0.
 
@@ -952,7 +920,7 @@ After sprint 8, there is approximately 1.5 weeks of buffer before the 2.5-month 
 | DB queries | sqlc + pgx v5 | Generates type-safe Go from SQL; teaches real SQL |
 | Schema management | `sql/schema.sql` | Run once on fresh DB: `psql $DATABASE_URL < sql/schema.sql` |
 | Validation | go-playground/validator | Struct tag validation for request bodies |
-| Background jobs | robfig/cron | Cron expression scheduler for auto-cancel job |
+| Background jobs | robfig/cron | Cron expression scheduler for auto-cancel and batch dispatch jobs |
 | Auth | `golang-jwt/jwt` + bcrypt | JWT sign/verify; bcrypt for password hashing |
 | Frontend | React 18 + Vite 5 | SPA with React Router v6 |
 | Frontend language | TypeScript | Type-safe frontend |
