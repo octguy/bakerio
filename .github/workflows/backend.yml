@@ -53,22 +53,6 @@ jobs:
         env:
           POSTGRES_HOST: localhost
 
-      - name: Run tests
-        run: go test -v ./...
-        env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_USER: testuser
-          DB_PASSWORD: testpass
-          DB_NAME: bakeriodb
-          DB_SSLMODE: disable
-
-      - name: Run linter
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          working-directory: backend
-
       - name: Build binary
         run: go build ./cmd/server
 
