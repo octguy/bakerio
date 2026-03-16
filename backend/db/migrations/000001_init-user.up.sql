@@ -43,8 +43,6 @@ CREATE TABLE auth_credentials (
     user_id                 UUID        NOT NULL,
     password_hash           TEXT        NOT NULL,           -- bcrypt / argon2id hash
     password_changed_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    failed_attempts         INT         NOT NULL DEFAULT 0,
-    locked_until            TIMESTAMPTZ NULL,               -- NULL = not locked
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
  
