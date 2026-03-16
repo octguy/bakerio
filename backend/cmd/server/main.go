@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,5 +13,8 @@ func main() {
 			"message": "Hello, World!",
 		})
 	})
-	r.Run() // listen and serve on 0.0.0.0:8080
+
+	if err := r.Run(); err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }
