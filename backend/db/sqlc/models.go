@@ -12,14 +12,12 @@ import (
 )
 
 type AuthCredential struct {
-	ID                uuid.UUID          `json:"id"`
-	UserID            uuid.UUID          `json:"user_id"`
-	PasswordHash      string             `json:"password_hash"`
-	PasswordChangedAt time.Time          `json:"password_changed_at"`
-	FailedAttempts    int32              `json:"failed_attempts"`
-	LockedUntil       pgtype.Timestamptz `json:"locked_until"`
-	CreatedAt         time.Time          `json:"created_at"`
-	UpdatedAt         time.Time          `json:"updated_at"`
+	ID                uuid.UUID `json:"id"`
+	UserID            uuid.UUID `json:"user_id"`
+	PasswordHash      string    `json:"password_hash"`
+	PasswordChangedAt time.Time `json:"password_changed_at"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 type Profile struct {

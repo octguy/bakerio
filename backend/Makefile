@@ -41,13 +41,17 @@ run:
 
 # DOCKER
 docker-up:
-	docker-compose up -d
+	cd deployments && docker-compose --env-file ../.env up -d
 
 docker-down:
-	docker-compose down
+	cd deployments && docker-compose --env-file ../.env down
+
+docker-reset:
+	cd deployments && docker-compose --env-file ../.env down -v
+	cd deployments && docker-compose --env-file ../.env up -d
 
 docker-logs:
-	docker-compose logs -f
+	cd deployments && docker-compose --env-file ../.env logs -f
 
 docker-clean:
 	docker-compose down -v
