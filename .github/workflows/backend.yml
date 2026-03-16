@@ -115,25 +115,25 @@ jobs:
             
             # Pull new image
             echo "📦 Pulling latest image..."
-            docker-compose --env-file ../.env pull
+            docker compose --env-file ../.env pull
             
             # Run migrations
             echo "🗄️ Running migrations..."
-            docker-compose --env-file ../.env run --rm migrate
+            docker compose --env-file ../.env run --rm migrate
             
             # Stop old container
             echo "⏹️ Stopping old services..."
-            docker-compose --env-file ../.env down || true
+            docker compose --env-file ../.env down || true
             
             # Start new container
             echo "🚀 Starting services..."
-            docker-compose --env-file ../.env up -d
+            docker compose --env-file ../.env up -d
             
             # Wait for service to be ready
             sleep 3
             
             # Check logs for errors
             echo "📋 Checking logs..."
-            docker-compose --env-file ../.env logs app | head -30
+            docker compose --env-file ../.env logs app | tail -20
             
             echo "✅ Deployment complete!"
