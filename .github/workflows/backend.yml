@@ -1,0 +1,153 @@
+name: backend pipeline
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  ci: 
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: bakeriodb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.1'
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Verify go.sum
+        run: go mod verify
+
+      - name: Run migrations
+        run: |
+          go install -tags 'postgres' github.com/migrate/migrate/v4/cmd/migrate@latest
+          migrate -path db/migrations -database "postgres://testuser:testpass@localhost:5432/bakeriodb?sslmode=disable" up
+        env:
+          POSTGRES_HOST: localhost
+
+      - name: Run tests
+        run: go test -v ./...
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: testuser
+          DB_PASSWORD: testpass
+          DB_NAME: bakeriodb
+          DB_SSLMODE: disable
+
+      - name: Run linter
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: backend
+
+      - name: Build binary
+        run: go build ./cmd/server
+
+  docker:
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          dockerfile: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/bakerio:latest
+            ${{ secrets.DOCKER_USERNAME }}/bakerio:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e
+            echo "🚀 Starting deployment..."
+            
+            # Go to project directory
+            cd ~/bakerio
+            
+            # Pull latest changes
+            git pull origin main
+            
+            # Navigate to backend + deployments
+            cd backend/deployments
+            
+            # Pull new image
+            echo "📦 Pulling latest image..."
+            docker-compose --env-file ../.env pull
+            
+            # Run migrations
+            echo "🗄️ Running migrations..."
+            docker-compose --env-file ../.env run --rm migrate
+            
+            # Stop old container
+            echo "⏹️ Stopping old services..."
+            docker-compose --env-file ../.env down || true
+            
+            # Start new container
+            echo "🚀 Starting services..."
+            docker-compose --env-file ../.env up -d
+            
+            # Wait for service to be ready
+            sleep 3
+            
+            # Check logs for errors
+            echo "📋 Checking logs..."
+            docker-compose --env-file ../.env logs app | head -30
+            
+            echo "✅ Deployment complete!"
