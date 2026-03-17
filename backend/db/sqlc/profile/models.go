@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.30.0
 
-package sqlc
+package profiledb
 
 import (
 	"time"
@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type AuthCredential struct {
+type AuthAuthCredential struct {
 	ID                uuid.UUID `json:"id"`
 	UserID            uuid.UUID `json:"user_id"`
 	PasswordHash      string    `json:"password_hash"`
@@ -20,16 +20,7 @@ type AuthCredential struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
-type Profile struct {
-	ID          uuid.UUID   `json:"id"`
-	UserID      uuid.UUID   `json:"user_id"`
-	DisplayName pgtype.Text `json:"display_name"`
-	AvatarUrl   pgtype.Text `json:"avatar_url"`
-	Bio         pgtype.Text `json:"bio"`
-	UpdatedAt   time.Time   `json:"updated_at"`
-}
-
-type User struct {
+type AuthUser struct {
 	ID            uuid.UUID          `json:"id"`
 	Email         string             `json:"email"`
 	EmailVerified bool               `json:"email_verified"`
@@ -37,4 +28,13 @@ type User struct {
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
 	CreatedAt     time.Time          `json:"created_at"`
 	UpdatedAt     time.Time          `json:"updated_at"`
+}
+
+type ProfileProfile struct {
+	ID          uuid.UUID   `json:"id"`
+	UserID      uuid.UUID   `json:"user_id"`
+	DisplayName pgtype.Text `json:"display_name"`
+	AvatarUrl   pgtype.Text `json:"avatar_url"`
+	Bio         pgtype.Text `json:"bio"`
+	UpdatedAt   time.Time   `json:"updated_at"`
 }

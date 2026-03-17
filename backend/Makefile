@@ -3,78 +3,40 @@ include .env
 DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)
 MIGRATIONS_PATH=db/migrations
 
-# List of all schemas — add new schemas here to include them in bulk commands
-SCHEMAS=auth profile
-
 # ============================================================
 #  DATABASE MIGRATIONS
-#  Bulk commands run across ALL schemas defined in SCHEMAS.
-#  Schema commands target a single schema via schema=<name>.
 # ============================================================
 
-# Run all pending migrations for every schema
+# Run all pending migrations
 #   make migrate-up
 migrate-up:
-	@for schema in $(SCHEMAS); do \
-		echo ">>> migrating $$schema"; \
-		migrate -path $(MIGRATIONS_PATH)/$$schema -database "$(DB_URL)" up; \
-	done
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" up
 
-# Roll back the last migration for every schema
+# Roll back the last migration
 #   make migrate-down
 migrate-down:
-	@for schema in $(SCHEMAS); do \
-		echo ">>> rolling back $$schema"; \
-		migrate -path $(MIGRATIONS_PATH)/$$schema -database "$(DB_URL)" down 1; \
-	done
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" down 1
 
-# Roll back n migrations for every schema
+# Roll back n migrations
 #   make migrate-down-n n=2
 migrate-down-n:
-	@for schema in $(SCHEMAS); do \
-		echo ">>> rolling back $$schema by $(n)"; \
-		migrate -path $(MIGRATIONS_PATH)/$$schema -database "$(DB_URL)" down $(n); \
-	done
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" down $(n)
 
-# Drop all migrations and reapply for every schema (destructive — wipes data)
+# Drop all migrations and reapply (destructive — wipes data)
 #   make reset-db
 reset-db:
-	@for schema in $(SCHEMAS); do \
-		echo ">>> resetting $$schema"; \
-		migrate -path $(MIGRATIONS_PATH)/$$schema -database "$(DB_URL)" down -all; \
-		migrate -path $(MIGRATIONS_PATH)/$$schema -database "$(DB_URL)" up; \
-	done
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" down -all
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" up
 
-# ============================================================
-#  SINGLE SCHEMA MIGRATION COMMANDS
-#  All commands below require: schema=<name>
-# ============================================================
-
-# Run all pending migrations for a specific schema
-#   make migrate-schema-up schema=auth
-migrate-schema-up:
-	migrate -path $(MIGRATIONS_PATH)/$(schema) -database "$(DB_URL)" up
-
-# Roll back the last migration for a specific schema
-#   make migrate-schema-down schema=auth
-migrate-schema-down:
-	migrate -path $(MIGRATIONS_PATH)/$(schema) -database "$(DB_URL)" down 1
-
-# Roll back n migrations for a specific schema
-#   make migrate-schema-down-n schema=auth n=2
-migrate-schema-down-n:
-	migrate -path $(MIGRATIONS_PATH)/$(schema) -database "$(DB_URL)" down $(n)
-
-# Drop all migrations and reapply for a specific schema (destructive — wipes data)
-#   make migrate-schema-reset schema=auth
-migrate-schema-reset:
-	migrate -path $(MIGRATIONS_PATH)/$(schema) -database "$(DB_URL)" down -all
-	migrate -path $(MIGRATIONS_PATH)/$(schema) -database "$(DB_URL)" up
+# Force set the migration version without running any migrations (fixes dirty state)
+#   make migrate-force v=3
+migrate-force:
+	migrate -path $(MIGRATIONS_PATH) -database "$(DB_URL)" force $(v)
 
 # Create a new sequential migration file pair (.up.sql / .down.sql)
-#   make migrate-create schema=auth name=create_users_table
+#   make migrate-create name=create_orders_table
 migrate-create:
-	migrate create -ext sql -dir $(MIGRATIONS_PATH)/$(schema) -seq $(name)
+	migrate create -ext sql -dir $(MIGRATIONS_PATH) -seq $(name)
 
 # ============================================================
 #  CODE GENERATION
