@@ -56,6 +56,8 @@ myapp/
 │       │   └── postgres.go
 │       ├── cache/
 │       │   └── redis.go
+│       ├── messagequeue/
+│       │   └── rabbitmq.go
 │       ├── logger/
 │       │   └── logger.go
 │       ├── middleware/
@@ -241,6 +243,62 @@ Every new feature you add to the app becomes a new folder under `internal/` foll
 
 ---
 
+#### `internal/platform/messagequeue/rabbitmq.go`
+
+**Purpose:** Opens and manages the RabbitMQ connection using `amqp`.
+
+**What it does:**
+- Connects to RabbitMQ using host/port/credentials from config
+- Declares exchanges, queues, and bindings
+- Provides methods to publish messages to queues
+- Provides methods to consume messages from queues with error handling
+- Handles connection pool and automatic reconnection
+
+**Used by:** Modules that need async processing (e.g. send emails, process payments, log events)
+
+**Example use cases:**
+- Send welcome email on user registration (auth module publishes `user.registered` event)
+- Generate reports asynchronously (product module publishes `report.request` event)
+- Audit logging (any module publishes events to audit queue)
+- Scheduled tasks (one service subscribes and processes)
+
+**Queue naming convention:**
+```
+{module}.{event}
+
+Examples:
+- auth.user.registered
+- auth.user.emailverified
+- order.created
+- order.failed
+- payment.completed
+- product.inventory.low
+- notification.email.send
+```
+
+**Producer pattern (in any module's service):**
+```go
+queue := messagequeue.GetQueue("auth.user.registered")
+queue.Publish(ctx, map[string]interface{}{
+    "user_id": userID,
+    "email": email,
+})
+```
+
+**Consumer pattern (dedicated consumer service or in a separate worker):**
+```go
+queue := messagequeue.GetQueue("auth.user.registered")
+messages, err := queue.Consume(ctx)
+for msg := range messages {
+    userID := msg["user_id"]
+    email := msg["email"]
+    // Send welcome email
+    msg.Ack()
+}
+```
+
+---
+
 #### `internal/platform/logger/logger.go`
 
 **Purpose:** Initialises and exposes the application-wide structured logger using `zap`.
@@ -419,6 +477,7 @@ Local development stack. Runs postgres, Redis, the migrate container, and the ap
 ```
 postgres  →  migrate (runs up)  →  app
 redis     →  (app connects on startup)
+rabbitmq  →  (app connects for async messaging)
 ```
 
 #### `docker-compose.prod.yml`
@@ -500,6 +559,7 @@ Documents every environment variable the app needs. Copy to `.env` and fill in r
 PORT, GIN_MODE, JWT_SECRET, TOKEN_TTL
 DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, DB_SSLMODE
 REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
+RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USER, RABBITMQ_PASSWORD
 ```
 
 ---
@@ -515,6 +575,7 @@ REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
 | Request logging | `internal/platform/middleware/logger.go` |
 | Structured app logging | `internal/platform/logger/logger.go` |
 | Caching (Redis) | `internal/platform/cache/redis.go` |
+| Message queue (RabbitMQ) | `internal/platform/messagequeue/rabbitmq.go` |
 | Config management | `pkg/config/config.go` |
 | Input validation | `pkg/validator/validator.go` |
 | Error types + HTTP mapping | `pkg/errors/errors.go` |
