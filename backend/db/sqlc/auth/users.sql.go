@@ -15,7 +15,7 @@ const createAuthCredential = `-- name: CreateAuthCredential :one
 INSERT INTO auth.auth_credentials (
     user_id, password_hash
 ) VALUES ($1, $2)
-RETURNING id, user_id, password_hash, password_changed_at, created_at, updated_at
+    RETURNING id, user_id, password_hash, password_changed_at, created_at, updated_at
 `
 
 type CreateAuthCredentialParams struct {
@@ -41,7 +41,7 @@ const createUser = `-- name: CreateUser :one
 INSERT INTO auth.users (
     email, email_verified, is_active
 ) VALUES ($1, $2, $3)
-RETURNING id, email, email_verified, is_active, deleted_at, created_at, updated_at
+    RETURNING id, email, email_verified, is_active, deleted_at, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -52,6 +52,48 @@ type CreateUserParams struct {
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (AuthUser, error) {
 	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.EmailVerified, arg.IsActive)
+	var i AuthUser
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.EmailVerified,
+		&i.IsActive,
+		&i.DeletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, email_verified, is_active, deleted_at, created_at, updated_at FROM auth.users
+WHERE email = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (AuthUser, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i AuthUser
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.EmailVerified,
+		&i.IsActive,
+		&i.DeletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, email, email_verified, is_active, deleted_at, created_at, updated_at FROM auth.users
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (AuthUser, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i AuthUser
 	err := row.Scan(
 		&i.ID,

@@ -2,10 +2,20 @@
 INSERT INTO auth.users (
     email, email_verified, is_active
 ) VALUES ($1, $2, $3)
-RETURNING *;
+    RETURNING *;
 
 -- name: CreateAuthCredential :one
 INSERT INTO auth.auth_credentials (
     user_id, password_hash
 ) VALUES ($1, $2)
-RETURNING *;
+    RETURNING *;
+
+-- name: GetUserByEmail :one
+SELECT * FROM auth.users
+WHERE email = $1
+LIMIT 1;
+
+-- name: GetUserByID :one
+SELECT * FROM auth.users
+WHERE id = $1
+LIMIT 1;
