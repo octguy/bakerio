@@ -3,3 +3,5 @@
 .env
 **/node_modules/
 **/.claude/
+**/.idea/
+**/GUIDE.md
