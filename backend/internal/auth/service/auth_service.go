@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 
+	"github.com/bytedance/gopkg/util/logger"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
+	"github.com/octguy/bakerio/backend/internal/profile/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
@@ -22,14 +24,16 @@ type AuthService interface {
 }
 
 type authService struct {
-	repo repository.AuthRepository
-	tx   *txmanager.TxManager
+	repo       repository.AuthRepository
+	profileSvc service.ProfileService
+	tx         *txmanager.TxManager
 }
 
-func NewAuthService(repo repository.AuthRepository, tx *txmanager.TxManager) AuthService {
+func NewAuthService(repo repository.AuthRepository, tx *txmanager.TxManager, profSvc service.ProfileService) AuthService {
 	return &authService{
-		repo: repo,
-		tx:   tx,
+		repo:       repo,
+		tx:         tx,
+		profileSvc: profSvc,
 	}
 }
 
@@ -47,10 +51,18 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 	var user *domain.User
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		logger.Info("Enter the transaction")
 		user, err = s.repo.CreateAccount(txCtx, req.Email, string(hashed))
 		if err != nil {
 			return err
 		}
+
+		_, err := s.profileSvc.CreateProfile(ctx, user.ID, nil, nil, req.FullName)
+
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 

@@ -23,8 +23,7 @@ func Success(c *gin.Context, status int, data any) {
 }
 
 func Error(c *gin.Context, err error) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
+	if appErr, ok := errors.AsType[*apperrors.AppError](err); ok {
 		c.JSON(appErrToStatus(appErr.Code), envelope{
 			Error: &apiError{Code: string(appErr.Code), Message: appErr.Message},
 		})

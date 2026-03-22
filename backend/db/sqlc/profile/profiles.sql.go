@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createProfile = `-- name: CreateProfile :one
@@ -20,10 +19,10 @@ RETURNING id, user_id, display_name, avatar_url, bio, updated_at
 `
 
 type CreateProfileParams struct {
-	UserID      uuid.UUID   `json:"user_id"`
-	DisplayName pgtype.Text `json:"display_name"`
-	AvatarUrl   pgtype.Text `json:"avatar_url"`
-	Bio         pgtype.Text `json:"bio"`
+	UserID      uuid.UUID `json:"user_id"`
+	DisplayName string    `json:"display_name"`
+	AvatarUrl   *string   `json:"avatar_url"`
+	Bio         *string   `json:"bio"`
 }
 
 func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (ProfileProfile, error) {

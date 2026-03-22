@@ -3,9 +3,11 @@ package repository
 import (
 	"context"
 
+	"github.com/bytedance/gopkg/util/logger"
 	"github.com/google/uuid"
 	authdb "github.com/octguy/bakerio/backend/db/sqlc/auth"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
 type AuthRepository interface {
@@ -19,49 +21,53 @@ type authRepo struct {
 }
 
 func NewAuthRepo(db *authdb.Queries) AuthRepository {
-	return &authRepo{db: db}
+	return &authRepo{
+		db: db,
+	}
+}
+
+func (r *authRepo) queries(ctx context.Context) *authdb.Queries {
+	if tx, ok := txmanager.Extract(ctx); ok {
+		return r.db.WithTx(tx)
+	}
+	return r.db
 }
 
 func (r *authRepo) CreateAccount(ctx context.Context, email, password string) (*domain.User, error) {
-	user, err := r.db.CreateUser(ctx, authdb.CreateUserParams{
+	q := r.queries(ctx)
+
+	row, err := q.CreateUser(ctx, authdb.CreateUserParams{
 		Email:         email,
 		EmailVerified: false,
 		IsActive:      false,
 	})
+	logger.Info("CreateAccount %v", row)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = r.db.CreateAuthCredential(ctx, authdb.CreateAuthCredentialParams{
-		UserID:       user.ID,
+	_, err = q.CreateAuthCredential(ctx, authdb.CreateAuthCredentialParams{
+		UserID:       row.ID,
 		PasswordHash: password,
 	})
+	logger.Info("CreateAuthCredentials %v")
+
 	if err != nil {
 		return nil, err
 	}
 
-	userCreated := &domain.User{
-		ID:            user.ID,
-		Email:         user.Email,
-		EmailVerified: user.EmailVerified,
-		IsActive:      user.IsActive,
-	}
-	return userCreated, nil
+	return toEntity(&row), nil
 }
 
 func (r *authRepo) FindUserByEmail(ctx context.Context, email string) (*domain.User, error) {
-	row, err := r.db.GetUserByEmail(ctx, email)
+	q := r.queries(ctx)
+
+	row, err := q.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
 
-	res := &domain.User{
-		ID:            row.ID,
-		Email:         row.Email,
-		EmailVerified: row.EmailVerified,
-		IsActive:      row.IsActive,
-	}
-	return res, nil
+	return toEntity(&row), nil
 }
 
 func (r *authRepo) FindUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
@@ -70,11 +76,14 @@ func (r *authRepo) FindUserByID(ctx context.Context, id uuid.UUID) (*domain.User
 		return nil, err
 	}
 
-	user := &domain.User{
-		ID:            row.ID,
-		Email:         row.Email,
-		EmailVerified: row.EmailVerified,
-		IsActive:      row.IsActive,
+	return toEntity(&row), nil
+}
+
+func toEntity(u *authdb.AuthUser) *domain.User {
+	return &domain.User{
+		ID:            u.ID,
+		Email:         u.Email,
+		EmailVerified: u.EmailVerified,
+		IsActive:      u.IsActive,
 	}
-	return user, nil
 }

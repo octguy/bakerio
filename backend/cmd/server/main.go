@@ -7,6 +7,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/auth"
 	"github.com/octguy/bakerio/backend/internal/platform/database"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
+	"github.com/octguy/bakerio/backend/internal/profile"
 	"github.com/octguy/bakerio/backend/pkg/config"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 	"go.uber.org/zap"
@@ -14,7 +15,10 @@ import (
 
 func main() {
 	cfg := config.Load()
-	logger.Init(cfg.Server.Env)
+	err := logger.Init(cfg.Server.Env)
+	if err != nil {
+		return
+	}
 	defer logger.Sync()
 
 	pool, err := database.Connect(context.Background(), cfg.DSN())
@@ -26,7 +30,8 @@ func main() {
 	tx := txmanager.New(pool)
 
 	// Modules
-	authModule := auth.NewModule(pool, tx)
+	profileModule := profile.NewModule(pool, tx)
+	authModule := auth.NewModule(pool, tx, profileModule.Service())
 
 	r := gin.Default()
 

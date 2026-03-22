@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuthAuthCredential struct {
@@ -21,20 +20,20 @@ type AuthAuthCredential struct {
 }
 
 type AuthUser struct {
-	ID            uuid.UUID          `json:"id"`
-	Email         string             `json:"email"`
-	EmailVerified bool               `json:"email_verified"`
-	IsActive      bool               `json:"is_active"`
-	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
-	CreatedAt     time.Time          `json:"created_at"`
-	UpdatedAt     time.Time          `json:"updated_at"`
+	ID            uuid.UUID  `json:"id"`
+	Email         string     `json:"email"`
+	EmailVerified bool       `json:"email_verified"`
+	IsActive      bool       `json:"is_active"`
+	DeletedAt     *time.Time `json:"deleted_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 type ProfileProfile struct {
-	ID          uuid.UUID   `json:"id"`
-	UserID      uuid.UUID   `json:"user_id"`
-	DisplayName pgtype.Text `json:"display_name"`
-	AvatarUrl   pgtype.Text `json:"avatar_url"`
-	Bio         pgtype.Text `json:"bio"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
+	DisplayName string    `json:"display_name"`
+	AvatarUrl   *string   `json:"avatar_url"`
+	Bio         *string   `json:"bio"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

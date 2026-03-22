@@ -16,15 +16,6 @@ type User struct {
 	UpdatedAt     time.Time
 }
 
-type Profile struct {
-	ID          uuid.UUID
-	UserID      uuid.UUID
-	DisplayName *string
-	AvatarURL   *string
-	Bio         *string
-	UpdatedAt   time.Time
-}
-
 type AuthCredential struct {
 	ID                uuid.UUID
 	UserID            uuid.UUID

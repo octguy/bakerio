@@ -7,6 +7,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/auth/handler"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
 	"github.com/octguy/bakerio/backend/internal/auth/service"
+	profilesvc "github.com/octguy/bakerio/backend/internal/profile/service"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
@@ -14,9 +15,9 @@ type Module struct {
 	handler *handler.AuthHandler
 }
 
-func NewModule(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
+func NewModule(pool *pgxpool.Pool, tx *txmanager.TxManager, profSvc profilesvc.ProfileService) *Module {
 	repo := repository.NewAuthRepo(authdb.New(pool))
-	svc := service.NewAuthService(repo, tx)
+	svc := service.NewAuthService(repo, tx, profSvc)
 	h := handler.NewAuthHandler(svc)
 	return &Module{handler: h}
 }
