@@ -19,3 +19,11 @@ LIMIT 1;
 SELECT * FROM auth.users
 WHERE id = $1
 LIMIT 1;
+
+-- name: GetUserWithCredentialsByEmail :one
+SELECT u.id, email, password_hash
+FROM auth.users u
+JOIN auth.auth_credentials au
+ON u.id = au.user_id
+WHERE email = $1
+LIMIT 1;

@@ -106,3 +106,25 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (AuthUser, erro
 	)
 	return i, err
 }
+
+const getUserWithCredentialsByEmail = `-- name: GetUserWithCredentialsByEmail :one
+SELECT u.id, email, password_hash
+FROM auth.users u
+JOIN auth.auth_credentials au
+ON u.id = au.user_id
+WHERE email = $1
+LIMIT 1
+`
+
+type GetUserWithCredentialsByEmailRow struct {
+	ID           uuid.UUID `json:"id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"password_hash"`
+}
+
+func (q *Queries) GetUserWithCredentialsByEmail(ctx context.Context, email string) (GetUserWithCredentialsByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getUserWithCredentialsByEmail, email)
+	var i GetUserWithCredentialsByEmailRow
+	err := row.Scan(&i.ID, &i.Email, &i.PasswordHash)
+	return i, err
+}

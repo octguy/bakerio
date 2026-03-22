@@ -13,6 +13,7 @@ type AuthRepository interface {
 	CreateAccount(ctx context.Context, email, password string) (*domain.User, error)
 	FindUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	FindUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	FindUserWithCredentialsByEmail(ctx context.Context, email string) (*authdb.GetUserWithCredentialsByEmailRow, error)
 }
 
 type authRepo struct {
@@ -68,12 +69,25 @@ func (r *authRepo) FindUserByEmail(ctx context.Context, email string) (*domain.U
 }
 
 func (r *authRepo) FindUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {
-	row, err := r.db.GetUserByID(ctx, id)
+	q := r.queries(ctx)
+
+	row, err := q.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
 	return toEntity(&row), nil
+}
+
+func (r *authRepo) FindUserWithCredentialsByEmail(ctx context.Context, email string) (*authdb.GetUserWithCredentialsByEmailRow, error) {
+	q := r.queries(ctx)
+
+	row, err := q.GetUserWithCredentialsByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &row, nil
 }
 
 func toEntity(u *authdb.AuthUser) *domain.User {

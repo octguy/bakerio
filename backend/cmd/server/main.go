@@ -36,7 +36,7 @@ func main() {
 
 	// 5. Wire
 	profileModule := profile.NewModule(pool, tx)
-	authModule := auth.NewModule(pool, tx, profileModule.Service())
+	authModule := auth.NewModule(pool, tx, profileModule.Service(), cfg.JWT.SecretKey, cfg.JWT.Expiry)
 
 	// 6. Init gin engine
 	r := gin.Default()
