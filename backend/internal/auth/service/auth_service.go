@@ -4,17 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
+	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/profile/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -55,11 +56,13 @@ func NewAuthService(repo repository.AuthRepository, tx *txmanager.TxManager, pro
 func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*dto.RegisterResponse, error) {
 	_, err := s.repo.FindUserByEmail(ctx, req.Email)
 	if err == nil {
+		logger.Log.Warn("register: email already taken", zap.String("email", req.Email))
 		return nil, ErrEmailTaken
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		logger.Log.Error("register: failed to hash password", zap.Error(err))
 		return nil, err
 	}
 
@@ -68,15 +71,19 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		user, err = s.repo.CreateAccount(txCtx, req.Email, string(hashed))
 		if err != nil {
+			logger.Log.Error("register: failed to create account", zap.String("email", req.Email), zap.Error(err))
 			return err
 		}
+
+		logger.Log.Debug("register: account created", zap.String("user_id", user.ID.String()))
 
 		_, err := s.profileSvc.CreateProfile(txCtx, user.ID, nil, nil, req.FullName)
-
 		if err != nil {
+			logger.Log.Error("register: failed to create profile", zap.String("user_id", user.ID.String()), zap.Error(err))
 			return err
 		}
 
+		logger.Log.Debug("register: profile created", zap.String("user_id", user.ID.String()))
 		return nil
 	})
 
@@ -84,14 +91,14 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 		return nil, err
 	}
 
-	res := &dto.RegisterResponse{
+	logger.Log.Info("register: user registered successfully", zap.String("user_id", user.ID.String()), zap.String("email", user.Email))
+
+	return &dto.RegisterResponse{
 		ID:        user.ID,
 		Email:     user.Email,
 		FullName:  req.FullName,
 		CreatedAt: user.CreatedAt,
-	}
-
-	return res, nil
+	}, nil
 }
 
 func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
@@ -103,12 +110,12 @@ func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	//}
 
 	if err != nil {
-		fmt.Println(err.Error())
+		logger.Log.Warn("login: user not found", zap.String("email", req.Email), zap.Error(err))
 		return nil, ErrInvalidCredentials
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		log.Printf("[WARN] login failed - invalid password: email=%s", req.Email)
+		logger.Log.Warn("login: invalid password", zap.String("email", req.Email))
 		return nil, ErrInvalidCredentials
 	}
 

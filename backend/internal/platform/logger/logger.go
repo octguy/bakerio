@@ -12,15 +12,17 @@ func Init(env string) error {
 
 	if env == "development" {
 		cfg = zap.NewDevelopmentConfig()
-		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder // colorized
+		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		cfg.EncoderConfig.TimeKey = "time"
 		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		cfg.OutputPaths = []string{"stdout"}
+		cfg.ErrorOutputPaths = []string{"stderr"}
 	} else {
 		cfg = zap.NewProductionConfig() // JSON, info level
 	}
 
 	var err error
-	Log, err = cfg.Build()
+	Log, err = cfg.Build(zap.AddStacktrace(zapcore.ErrorLevel))
 	return err
 }
 

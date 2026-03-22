@@ -45,6 +45,8 @@ func main() {
 	v1 := r.Group("/api/v1")
 	authModule.RegisterRoutes(v1)
 
+	logger.Log.Info("starting http server")
+
 	// 8. Start server
 	if err := r.Run(":" + cfg.Server.Port); err != nil {
 		logger.Log.Fatal("Server start failed", zap.Error(err))

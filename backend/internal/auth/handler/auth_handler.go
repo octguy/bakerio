@@ -6,8 +6,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/service"
+	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
+	"go.uber.org/zap"
 )
 
 type AuthHandler struct {
@@ -27,16 +29,21 @@ func (h *AuthHandler) RegisterRoutes(rg *gin.RouterGroup) {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req dto.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Log.Warn("register: invalid request body", zap.Error(err))
 		response.Error(c, apperrors.Validation(err.Error()))
 		return
 	}
 
+	logger.Log.Debug("register: incoming request", zap.String("email", req.Email))
+
 	res, err := h.svc.Register(c.Request.Context(), &req)
 	if err != nil {
+		logger.Log.Warn("register: failed", zap.String("email", req.Email), zap.Error(err))
 		response.Error(c, err)
 		return
 	}
 
+	logger.Log.Info("register: success", zap.String("user_id", res.ID.String()), zap.String("email", res.Email))
 	response.Success(c, http.StatusCreated, res)
 }
 
