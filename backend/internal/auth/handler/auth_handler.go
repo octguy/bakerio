@@ -73,13 +73,18 @@ func (h *AuthHandler) Register(c *gin.Context) {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req dto.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Log.Warn("login: invalid request body", zap.Error(err))
 		response.Error(c, apperrors.Validation(err.Error()))
+		return
 	}
 
 	res, err := h.svc.Login(c.Request.Context(), &req)
 	if err != nil {
+		logger.Log.Warn("login: failed", zap.String("email", req.Email), zap.Error(err))
 		response.Error(c, err)
 		return
 	}
+
+	logger.Log.Info("register: success", zap.String("email", req.Email))
 	response.Success(c, http.StatusOK, res)
 }

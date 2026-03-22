@@ -122,6 +122,7 @@ func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 	// Login successful, generate JWT
 	token, err := s.generateToken(user.ID)
 	if err != nil {
+		logger.Log.Error("login: failed to generate token", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
 	}
 
