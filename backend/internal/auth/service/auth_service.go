@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	"github.com/bytedance/gopkg/util/logger"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
 	"github.com/octguy/bakerio/backend/internal/profile/service"
@@ -51,13 +50,12 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 	var user *domain.User
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		logger.Info("Enter the transaction")
 		user, err = s.repo.CreateAccount(txCtx, req.Email, string(hashed))
 		if err != nil {
 			return err
 		}
 
-		_, err := s.profileSvc.CreateProfile(ctx, user.ID, nil, nil, req.FullName)
+		_, err := s.profileSvc.CreateProfile(txCtx, user.ID, nil, nil, req.FullName)
 
 		if err != nil {
 			return err
@@ -65,6 +63,10 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (*
 
 		return nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	res := &dto.RegisterResponse{
 		ID:        user.ID,

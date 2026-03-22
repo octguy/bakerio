@@ -39,6 +39,5 @@ func (m *TxManager) WithTx(ctx context.Context, fn func(ctx context.Context) err
 // Extract returns the pgx.Tx stored in ctx by WithTx, if any.
 func Extract(ctx context.Context) (pgx.Tx, bool) {
 	tx, ok := ctx.Value(contextKey{}).(pgx.Tx)
-	fmt.Println("Through the extract")
 	return tx, ok
 }

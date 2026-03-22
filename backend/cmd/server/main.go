@@ -14,31 +14,38 @@ import (
 )
 
 func main() {
+	// 1. Load all environment variables
 	cfg := config.Load()
+
+	// 2. Init logger
 	err := logger.Init(cfg.Server.Env)
 	if err != nil {
 		return
 	}
 	defer logger.Sync()
 
+	// 3. Create database connection pool
 	pool, err := database.Connect(context.Background(), cfg.DSN())
 	if err != nil {
 		logger.Log.Fatal("failed to connect to database", zap.Error(err))
 	}
 	defer pool.Close()
 
+	// 4. Init transactional factory
 	tx := txmanager.New(pool)
 
-	// Modules
+	// 5. Wire
 	profileModule := profile.NewModule(pool, tx)
 	authModule := auth.NewModule(pool, tx, profileModule.Service())
 
+	// 6. Init gin engine
 	r := gin.Default()
 
+	// 7. Register routes to the engine
 	v1 := r.Group("/api/v1")
 	authModule.RegisterRoutes(v1)
 
-	logger.Log.Info("Server started successfully")
+	// 8. Start server
 	if err := r.Run(":" + cfg.Server.Port); err != nil {
 		logger.Log.Fatal("Server start failed", zap.Error(err))
 	}

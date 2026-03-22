@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 
-	"github.com/bytedance/gopkg/util/logger"
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/profile/dto"
 	"github.com/octguy/bakerio/backend/internal/profile/repository"
@@ -22,7 +21,6 @@ type profileService struct {
 
 func (p *profileService) CreateProfile(ctx context.Context, id uuid.UUID, avt, bio *string, fullName string) (*dto.ProfileResponse, error) {
 	prof, err := p.repo.CreateProfile(ctx, id, avt, bio, fullName)
-	logger.Info("ProfileService.CreateProfile %v", prof)
 	if err != nil {
 		return nil, err
 	}

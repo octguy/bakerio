@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 
-	"github.com/bytedance/gopkg/util/logger"
 	"github.com/google/uuid"
 	authdb "github.com/octguy/bakerio/backend/db/sqlc/auth"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
@@ -41,7 +40,6 @@ func (r *authRepo) CreateAccount(ctx context.Context, email, password string) (*
 		EmailVerified: false,
 		IsActive:      false,
 	})
-	logger.Info("CreateAccount %v", row)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +48,6 @@ func (r *authRepo) CreateAccount(ctx context.Context, email, password string) (*
 		UserID:       row.ID,
 		PasswordHash: password,
 	})
-	logger.Info("CreateAuthCredentials %v")
 
 	if err != nil {
 		return nil, err
@@ -85,5 +82,6 @@ func toEntity(u *authdb.AuthUser) *domain.User {
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
 		IsActive:      u.IsActive,
+		CreatedAt:     u.CreatedAt,
 	}
 }
