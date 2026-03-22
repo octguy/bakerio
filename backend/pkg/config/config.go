@@ -44,7 +44,10 @@ type LoggerConfig struct {
 }
 
 func Load() *Config {
-	godotenv.Load() // Load .env file if it exists
+	err := godotenv.Load()
+	if err != nil {
+		return nil
+	} // Load .env file if it exists
 
 	jwtExpiry, err := time.ParseDuration(os.Getenv("JWT_EXPIRY"))
 	if err != nil {

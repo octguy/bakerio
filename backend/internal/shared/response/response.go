@@ -18,6 +18,15 @@ type apiError struct {
 	Message string `json:"message"`
 }
 
+// ErrorResponse is the error envelope shape returned on all failures.
+// Used for swagger documentation only.
+type ErrorResponse struct {
+	Error struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	} `json:"error"`
+}
+
 func Success(c *gin.Context, status int, data any) {
 	c.JSON(status, envelope{Data: data})
 }

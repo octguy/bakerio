@@ -1,3 +1,15 @@
+// @title           Bakerio API
+// @version         1.0
+// @description     Bakerio bakery marketplace backend API.
+
+// @host      localhost:8080
+// @BasePath  /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and the access token.
+
 package main
 
 import (
@@ -10,7 +22,11 @@ import (
 	"github.com/octguy/bakerio/backend/internal/profile"
 	"github.com/octguy/bakerio/backend/pkg/config"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
+
+	_ "github.com/octguy/bakerio/backend/docs"
 )
 
 func main() {
@@ -44,6 +60,9 @@ func main() {
 	// 7. Register routes to the engine
 	v1 := r.Group("/api/v1")
 	authModule.RegisterRoutes(v1)
+
+	// 8. Swagger UI — available at /swagger/index.html
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	logger.Log.Info("starting http server")
 
