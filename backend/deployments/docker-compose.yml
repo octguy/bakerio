@@ -68,20 +68,20 @@ services:
       # redis:
       #   condition: service_healthy
     environment:
-      PORT: ${PORT}
+      SERVER_PORT: ${SERVER_PORT}
       JWT_SECRET: ${JWT_SECRET}
-      GIN_MODE: ${GIN_MODE}
-      TokenTTL: ${TokenTTL}
+      GIN_MODE: release
+      JWT_EXPIRY: ${JWT_EXPIRY}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       DB_SSLMODE: disable
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+#      REDIS_HOST: redis
+#      REDIS_PORT: 6379
     ports:
-      - "${PORT}:${PORT}"
+      - "${SERVER_PORT}:${SERVER_PORT}"
     networks:
       - bakerio_network
     restart: unless-stopped

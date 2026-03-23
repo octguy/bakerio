@@ -2,3 +2,8 @@
 .DS_Store
 .env
 **/node_modules/
+**/.claude/
+**/.idea/
+**/GUIDE.md
+**/documents
+**/code-reviews
