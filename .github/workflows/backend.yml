@@ -117,7 +117,7 @@ jobs:
             echo "📦 Pulling latest image..."
             docker compose --env-file ../.env pull
 
-            make docker-reset
+            cd ..make docker-reset
             
             # # Run migrations
             # echo "🗄️ Running migrations..."
