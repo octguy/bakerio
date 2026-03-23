@@ -23,17 +23,16 @@ services:
     restart: unless-stopped
 
   migrate:
-    image: migrate/migrate:latest
+    image: migrate/migrate:v4.17.0
     depends_on:
       postgres:
         condition: service_healthy
     volumes:
-      - ../db/migrations:/migrations
+      - ${PWD}/../db/migrations:/migrations
     command:
-      - -path
-      - /migrations
-      - -database
-      - "postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable"
+      - -path=/migrations
+      - -database=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
+      - -verbose
       - up
     networks:
       - bakerio_network
