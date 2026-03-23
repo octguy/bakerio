@@ -68,19 +68,19 @@ run:
 # Start all containers in the background
 #   make docker-up
 docker-up:
-	cd deployments && docker-compose --env-file ../.env up -d
+	cd deployments && docker compose --env-file ../.env up -d
 
 # Stop all containers
 #   make docker-down
 docker-down:
-	cd deployments && docker-compose --env-file ../.env down
+	cd deployments && docker compose --env-file ../.env down
 
 # Stop all containers, remove volumes, then start fresh (destructive — wipes DB data)
 #   make docker-reset
 docker-reset:
-	cd deployments && docker-compose --env-file ../.env down -v && docker-compose --env-file ../.env up -d
+	cd deployments && docker compose --env-file ../.env down -v && docker compose --env-file ../.env up -d --build
 
 # Tail logs from all containers
 #   make docker-logs
 docker-logs:
-	cd deployments && docker-compose --env-file ../.env logs -f
+	cd deployments && docker compose --env-file ../.env logs -f
