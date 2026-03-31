@@ -80,6 +80,11 @@ docker-down:
 docker-reset:
 	cd deployments && docker compose --env-file ../.env down -v && docker compose --env-file ../.env up -d --build
 
+# Rebuild and restart only the app container (keeps DB/Redis/RabbitMQ data)
+#   make deploy
+deploy:
+	cd deployments && docker compose --env-file ../.env up -d --build app
+
 # Tail logs from all containers
 #   make docker-logs
 docker-logs:

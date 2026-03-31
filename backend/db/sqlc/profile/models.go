@@ -19,6 +19,14 @@ type AuthAuthCredential struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+type AuthOutbox struct {
+	ID          uuid.UUID  `json:"id"`
+	RoutingKey  string     `json:"routing_key"`
+	Payload     []byte     `json:"payload"`
+	CreatedAt   time.Time  `json:"created_at"`
+	PublishedAt *time.Time `json:"published_at"`
+}
+
 type AuthUser struct {
 	ID            uuid.UUID  `json:"id"`
 	Email         string     `json:"email"`

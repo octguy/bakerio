@@ -10,7 +10,7 @@ var Log *zap.Logger
 func Init(env string) error {
 	var cfg zap.Config
 
-	if env == "development" {
+	if env != "production" {
 		cfg = zap.NewDevelopmentConfig()
 		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 		cfg.EncoderConfig.TimeKey = "time"

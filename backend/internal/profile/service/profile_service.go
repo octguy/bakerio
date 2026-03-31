@@ -11,7 +11,7 @@ import (
 )
 
 type ProfileService interface {
-	CreateProfile(ctx context.Context, id uuid.UUID, avt, bio *string, fullName string) (*dto.ProfileResponse, error)
+	CreateProfile(ctx context.Context, id uuid.UUID, avatarURL, bio *string, fullName string) (dto.ProfileResponse, error)
 }
 
 type profileService struct {
@@ -19,10 +19,10 @@ type profileService struct {
 	tx   *txmanager.TxManager
 }
 
-func (p *profileService) CreateProfile(ctx context.Context, id uuid.UUID, avt, bio *string, fullName string) (*dto.ProfileResponse, error) {
-	prof, err := p.repo.CreateProfile(ctx, id, avt, bio, fullName)
+func (p *profileService) CreateProfile(ctx context.Context, id uuid.UUID, avatarURL, bio *string, fullName string) (dto.ProfileResponse, error) {
+	prof, err := p.repo.CreateProfile(ctx, id, avatarURL, bio, fullName)
 	if err != nil {
-		return nil, err
+		return dto.ProfileResponse{}, err
 	}
 
 	return toResponse(prof), nil
@@ -35,8 +35,8 @@ func NewProfileService(tx *txmanager.TxManager, repo repository.ProfileRepositor
 	}
 }
 
-func toResponse(prof *domain.Profile) *dto.ProfileResponse {
-	return &dto.ProfileResponse{
+func toResponse(prof *domain.Profile) dto.ProfileResponse {
+	return dto.ProfileResponse{
 		ID:        prof.ID,
 		UserID:    prof.UserID,
 		FullName:  prof.DisplayName,

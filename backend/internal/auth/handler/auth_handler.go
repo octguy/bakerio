@@ -48,7 +48,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	logger.Log.Debug("register: incoming request", zap.String("email", req.Email))
 
-	res, err := h.svc.Register(c.Request.Context(), &req)
+	res, err := h.svc.Register(c.Request.Context(), req)
 	if err != nil {
 		logger.Log.Warn("register: failed", zap.String("email", req.Email), zap.Error(err))
 		response.Error(c, err)
@@ -78,7 +78,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	res, err := h.svc.Login(c.Request.Context(), &req)
+	res, err := h.svc.Login(c.Request.Context(), req)
 	if err != nil {
 		logger.Log.Warn("login: failed", zap.String("email", req.Email), zap.Error(err))
 		response.Error(c, err)

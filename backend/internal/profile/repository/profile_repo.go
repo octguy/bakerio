@@ -10,7 +10,7 @@ import (
 )
 
 type ProfileRepository interface {
-	CreateProfile(ctx context.Context, id uuid.UUID, avt, bio *string, fullName string) (*domain.Profile, error)
+	CreateProfile(ctx context.Context, id uuid.UUID, avatarURL, bio *string, fullName string) (*domain.Profile, error)
 }
 
 type profileRepo struct {
@@ -28,12 +28,12 @@ func NewProfileRepository(db *profiledb.Queries) ProfileRepository {
 	return &profileRepo{db: db}
 }
 
-func (p *profileRepo) CreateProfile(ctx context.Context, userId uuid.UUID, avt, bio *string, fullName string) (*domain.Profile, error) {
+func (p *profileRepo) CreateProfile(ctx context.Context, userId uuid.UUID, avatarURL, bio *string, fullName string) (*domain.Profile, error) {
 	q := p.queries(ctx)
 	row, err := q.CreateProfile(ctx, profiledb.CreateProfileParams{
 		UserID:      userId,
 		DisplayName: fullName,
-		AvatarUrl:   avt,
+		AvatarUrl:   avatarURL,
 		Bio:         bio,
 	})
 
