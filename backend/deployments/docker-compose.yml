@@ -99,7 +99,7 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
-      SERVER_ENV: development
+      SERVER_ENV: ${SERVER_ENV}
       SERVER_PORT: ${SERVER_PORT}
       GIN_MODE: release
       JWT_SECRET: ${JWT_SECRET}

@@ -20,6 +20,7 @@ type Event struct {
 
 // Source is implemented by Repository. The worker depends on this interface.
 type Source interface {
+	Save(ctx context.Context, routingKey string, payload any) error
 	FetchUnpublished(ctx context.Context, limit int) ([]Event, error)
 	MarkPublished(ctx context.Context, id uuid.UUID) error
 }

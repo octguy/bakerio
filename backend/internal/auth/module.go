@@ -9,6 +9,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/auth/handler"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
 	"github.com/octguy/bakerio/backend/internal/auth/service"
+	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
 	profilesvc "github.com/octguy/bakerio/backend/internal/profile/service"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
@@ -23,11 +24,12 @@ func NewModule(
 	tx *txmanager.TxManager,
 	profSvc profilesvc.ProfileService,
 	outboxRepo *outbox.Repository,
+	otpSvc *otp.Service,
 	jwtSecret string,
 	tokenTTL time.Duration,
 ) *Module {
 	repo := repository.NewAuthRepo(authdb.New(pool))
-	svc := service.NewAuthService(repo, tx, profSvc, outboxRepo, jwtSecret, tokenTTL)
+	svc := service.NewAuthService(repo, tx, profSvc, outboxRepo, otpSvc, jwtSecret, tokenTTL)
 	h := handler.NewAuthHandler(svc)
 	return &Module{handler: h}
 }

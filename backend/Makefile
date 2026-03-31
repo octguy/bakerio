@@ -89,3 +89,8 @@ deploy:
 #   make docker-logs
 docker-logs:
 	cd deployments && docker compose --env-file ../.env logs -f
+
+# Start mailhog
+#	make docker-mail
+docker-mail:
+	cd deployments && docker compose --env-file ../.env up -d mailhog

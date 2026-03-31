@@ -27,3 +27,8 @@ JOIN auth.auth_credentials au
 ON u.id = au.user_id
 WHERE email = $1
 LIMIT 1;
+
+-- name: ActivateUser :exec
+UPDATE auth.users
+SET email_verified = true, is_active = true
+where id = $1;

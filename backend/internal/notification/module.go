@@ -7,23 +7,25 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/email"
 	"github.com/octguy/bakerio/backend/internal/platform/mq"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
-	"go.uber.org/zap"
 )
 
 type Module struct {
-	svc *service.NotificationService
+	emailSvc service.EmailService
 }
 
 func New(
 	email *email.MailService,
 	otp *otp.Service,
-	logger *zap.Logger,
 ) *Module {
-	svc := service.NewNotificationService(email, otp, logger)
-	return &Module{svc: svc}
+	svc := service.NewEmailService(email, otp)
+	return &Module{emailSvc: svc}
 }
 
 // RegisterConsumers registers all MQ consumers for the notification module.
 func (m *Module) RegisterConsumers(ctx context.Context, consumer *mq.Consumer) error {
-	return consumer.Consume(ctx, "user.notifications", m.svc.HandleUserRegistered)
+	return consumer.Consume(ctx, "user.notifications", m.emailSvc.HandleUserRegistered)
 }
+
+//func (m *Module) EmailService() service.EmailService {
+//	return m.emailSvc
+//}

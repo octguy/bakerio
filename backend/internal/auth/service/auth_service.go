@@ -11,8 +11,9 @@ import (
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
+	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
-	"github.com/octguy/bakerio/backend/internal/profile/service"
+	profileSvc "github.com/octguy/bakerio/backend/internal/profile/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/internal/shared/event"
@@ -24,6 +25,8 @@ import (
 var (
 	ErrInvalidCredentials = apperrors.Unauthorized("invalid credentials")
 	ErrEmailTaken         = apperrors.Conflict("email already taken")
+	InvalidOTP            = apperrors.Unauthorized("invalid otp")
+	UserNotFound          = apperrors.NotFound("user not found")
 )
 
 type Claims struct {
@@ -35,12 +38,14 @@ type AuthService interface {
 	Register(ctx context.Context, req dto.RegisterRequest) (dto.RegisterResponse, error)
 	Login(ctx context.Context, req dto.LoginRequest) (dto.LoginResponse, error)
 	ValidateToken(tokenStr string) (*Claims, error)
+	VerifyEmail(ctx context.Context, req dto.VerifyEmailRequest) (dto.VerifyEmailResponse, error)
 }
 
 type authService struct {
 	repo       repository.AuthRepository
-	profileSvc service.ProfileService
+	profileSvc profileSvc.ProfileService
 	outboxRepo *outbox.Repository
+	otpSvc     *otp.Service
 	tx         *txmanager.TxManager
 	jwtSecret  []byte
 	tokenTTL   time.Duration
@@ -49,8 +54,9 @@ type authService struct {
 func NewAuthService(
 	repo repository.AuthRepository,
 	tx *txmanager.TxManager,
-	profSvc service.ProfileService,
+	profSvc profileSvc.ProfileService,
 	outboxRepo *outbox.Repository,
+	otpSvc *otp.Service,
 	jwtSecret string,
 	tokenTTL time.Duration) AuthService {
 	return &authService{
@@ -58,6 +64,7 @@ func NewAuthService(
 		tx:         tx,
 		profileSvc: profSvc,
 		outboxRepo: outboxRepo,
+		otpSvc:     otpSvc,
 		jwtSecret:  []byte(jwtSecret),
 		tokenTTL:   tokenTTL,
 	}
@@ -161,6 +168,42 @@ func (s *authService) ValidateToken(tokenStr string) (*Claims, error) {
 	}
 
 	return claims, nil
+}
+
+func (s *authService) VerifyEmail(ctx context.Context, req dto.VerifyEmailRequest) (dto.VerifyEmailResponse, error) {
+	_, err := s.repo.FindUserByID(ctx, req.UserId)
+	if err != nil {
+		logger.Log.Error("verify: user not found", zap.String("id", req.UserId.String()), zap.Error(err))
+		return dto.VerifyEmailResponse{
+			Verified: false,
+			Message:  "user not found",
+		}, UserNotFound
+	}
+
+	validOtp, err := s.otpSvc.Verify(ctx, req.UserId.String(), req.OTP)
+	if err != nil || !validOtp {
+		logger.Log.Error("verify: otp failed", zap.String("id", req.UserId.String()), zap.Error(err))
+		return dto.VerifyEmailResponse{
+			Verified: false,
+			Message:  "otp failed",
+		}, InvalidOTP
+	}
+
+	err = s.repo.ActivateUser(ctx, req.UserId)
+	if err != nil {
+		logger.Log.Error("verify: failed to activate user", zap.String("id", req.UserId.String()), zap.Error(err))
+		return dto.VerifyEmailResponse{
+			Verified: false,
+			Message:  "otp failed",
+		}, err
+	}
+
+	logger.Log.Debug("verify: user activated", zap.String("id", req.UserId.String()))
+
+	return dto.VerifyEmailResponse{
+		Verified: true,
+		Message:  "verified successful",
+	}, nil
 }
 
 func (s *authService) generateToken(userID uuid.UUID) (string, error) {

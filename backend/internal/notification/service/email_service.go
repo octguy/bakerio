@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/octguy/bakerio/backend/internal/platform/email"
+	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/shared/event"
 	"go.uber.org/zap"
@@ -15,14 +16,21 @@ type EmailProvider interface {
 	Send(ctx context.Context, to, subject, body string) error
 }
 
-type NotificationService struct {
-	email  *email.MailService
-	otp    *otp.Service
-	logger *zap.Logger
+type EmailService interface {
+	HandleUserRegistered(ctx context.Context, body []byte) error
+	Verify(ctx context.Context, userID, submitted string) (bool, error)
 }
 
-func NewNotificationService(email *email.MailService, otp *otp.Service, logger *zap.Logger) *NotificationService {
-	return &NotificationService{email: email, otp: otp, logger: logger}
+type emailService struct {
+	email *email.MailService
+	otp   *otp.Service
+}
+
+func NewEmailService(
+	email *email.MailService,
+	otp *otp.Service,
+) EmailService {
+	return &emailService{email: email, otp: otp}
 }
 
 // HandleUserRegistered is the RabbitMQ consumer handler for the "user.registered" event.
@@ -35,7 +43,7 @@ func NewNotificationService(email *email.MailService, otp *otp.Service, logger *
 // This means: if the email send fails, the message stays in the queue and will be
 // retried. Design handlers to be idempotent — generating a new OTP on retry is fine
 // because the new code overwrites the old Redis key (same key, same TTL reset).
-func (s *NotificationService) HandleUserRegistered(ctx context.Context, body []byte) error {
+func (s *emailService) HandleUserRegistered(ctx context.Context, body []byte) error {
 	// 1. Deserialise the event payload from JSON.
 	//    The payload struct mirrors exactly what auth.Register() passed to outboxRepo.Save().
 	var payload event.UserRegisteredPayload
@@ -51,7 +59,7 @@ func (s *NotificationService) HandleUserRegistered(ctx context.Context, body []b
 	//    If Redis is down, this returns an error → message is Nacked → retried.
 	code, err := s.otp.Generate(ctx, payload.UserID.String())
 	if err != nil {
-		s.logger.Error("notification: generate otp failed",
+		logger.Log.Error("notification: generate otp failed",
 			zap.String("user_id", payload.UserID.String()),
 			zap.Error(err),
 		)
@@ -66,7 +74,7 @@ func (s *NotificationService) HandleUserRegistered(ctx context.Context, body []b
 	)
 
 	if err := s.email.Send(ctx, payload.Email, subject, content); err != nil {
-		s.logger.Error("notification: send otp email failed",
+		logger.Log.Error("notification: send otp email failed",
 			zap.String("user_id", payload.UserID.String()),
 			zap.String("email", payload.Email),
 			zap.Error(err),
@@ -74,9 +82,18 @@ func (s *NotificationService) HandleUserRegistered(ctx context.Context, body []b
 		return err // Nack → requeue → retry
 	}
 
-	s.logger.Info("notification: otp email sent",
+	logger.Log.Info("notification: otp email sent",
 		zap.String("user_id", payload.UserID.String()),
 		zap.String("email", payload.Email),
 	)
 	return nil
+}
+
+func (s *emailService) Verify(ctx context.Context, userID, submitted string) (bool, error) {
+	valid, err := s.otp.Verify(ctx, userID, submitted)
+	if err != nil {
+		logger.Log.Error("notification: verify otp failed", zap.String("user_id", userID), zap.String("submitted", submitted), zap.Error(err))
+	}
+
+	return valid, err
 }

@@ -24,6 +24,7 @@ func (h *AuthHandler) RegisterRoutes(rg *gin.RouterGroup) {
 	auth := rg.Group("/auth")
 	auth.POST("/register", h.Register)
 	auth.POST("/login", h.Login)
+	auth.POST("/verify", h.VerifyEmail)
 }
 
 // Register godoc
@@ -86,5 +87,23 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	logger.Log.Info("register: success", zap.String("email", req.Email))
+	response.Success(c, http.StatusOK, res)
+}
+
+func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+	var req dto.VerifyEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Log.Warn("verify: invalid request body", zap.Error(err))
+		response.Error(c, apperrors.Validation(err.Error()))
+	}
+
+	res, err := h.svc.VerifyEmail(c.Request.Context(), req)
+	if err != nil {
+		logger.Log.Warn("verify: invalid otp code", zap.String("otp", req.OTP), zap.Error(err))
+		response.Error(c, err)
+		return
+	}
+
+	logger.Log.Info("verify: success", zap.String("userId", req.UserId.String()))
 	response.Success(c, http.StatusOK, res)
 }

@@ -87,13 +87,14 @@ func main() {
 	publisher := mq.NewPublisher(rmq)
 	consumer := mq.NewConsumer(rmq, logger.Log)
 	authOutbox := outbox.NewRepository(pool, "auth.outbox")
+	otpService := otp.NewService(redisClient)
 
 	// 6. Modules
 	profileModule := profile.NewModule(pool, tx)
-	authModule := auth.NewModule(pool, tx, profileModule.Service(), authOutbox, cfg.JWT.SecretKey, cfg.JWT.Expiry)
-	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otp.NewService(redisClient), logger.Log)
+	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
+	authModule := auth.NewModule(pool, tx, profileModule.Service(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
 
-	// 7. Background workers
+	// 7. Background workers (new goroutine)
 	go outbox.NewWorker(publisher, logger.Log, authOutbox).Run(ctx)
 
 	if err := notifModule.RegisterConsumers(ctx, consumer); err != nil {
