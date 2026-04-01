@@ -11,6 +11,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const activateUser = `-- name: ActivateUser :exec
+UPDATE auth.users
+SET email_verified = true, is_active = true
+where id = $1
+`
+
+func (q *Queries) ActivateUser(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, activateUser, id)
+	return err
+}
+
 const createAuthCredential = `-- name: CreateAuthCredential :one
 INSERT INTO auth.auth_credentials (
     user_id, password_hash
@@ -112,7 +123,7 @@ SELECT u.id, email, password_hash
 FROM auth.users u
 JOIN auth.auth_credentials au
 ON u.id = au.user_id
-WHERE email = $1
+WHERE email = $1 and is_active = true and email_verified = true
 LIMIT 1
 `
 

@@ -13,7 +13,8 @@ type AuthRepository interface {
 	CreateAccount(ctx context.Context, email, password string) (*domain.User, error)
 	FindUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	FindUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
-	FindUserWithCredentialsByEmail(ctx context.Context, email string) (*authdb.GetUserWithCredentialsByEmailRow, error)
+	FindUserWithCredentialsByEmail(ctx context.Context, email string) (authdb.GetUserWithCredentialsByEmailRow, error)
+	ActivateUser(ctx context.Context, id uuid.UUID) error
 }
 
 type authRepo struct {
@@ -79,15 +80,26 @@ func (r *authRepo) FindUserByID(ctx context.Context, id uuid.UUID) (*domain.User
 	return toEntity(&row), nil
 }
 
-func (r *authRepo) FindUserWithCredentialsByEmail(ctx context.Context, email string) (*authdb.GetUserWithCredentialsByEmailRow, error) {
+func (r *authRepo) FindUserWithCredentialsByEmail(ctx context.Context, email string) (authdb.GetUserWithCredentialsByEmailRow, error) {
 	q := r.queries(ctx)
 
 	row, err := q.GetUserWithCredentialsByEmail(ctx, email)
 	if err != nil {
-		return nil, err
+		return authdb.GetUserWithCredentialsByEmailRow{}, err
 	}
 
-	return &row, nil
+	return row, nil
+}
+
+func (r *authRepo) ActivateUser(ctx context.Context, id uuid.UUID) error {
+	q := r.queries(ctx)
+	err := q.ActivateUser(ctx, id)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func toEntity(u *authdb.AuthUser) *domain.User {

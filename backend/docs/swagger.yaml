@@ -41,6 +41,23 @@ definitions:
       id:
         type: string
     type: object
+  dto.VerifyEmailRequest:
+    properties:
+      otp:
+        type: string
+      user_id:
+        type: string
+    required:
+    - otp
+    - user_id
+    type: object
+  dto.VerifyEmailResponse:
+    properties:
+      message:
+        type: string
+      verified:
+        type: boolean
+    type: object
   response.ErrorResponse:
     properties:
       error:
@@ -120,6 +137,44 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponse'
       summary: Register a new user
+      tags:
+      - auth
+  /auth/verify:
+    post:
+      consumes:
+      - application/json
+      description: Verifies a user's email using the 6-digit OTP sent after registration
+      parameters:
+      - description: Verify email payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.VerifyEmailResponse'
+        "400":
+          description: Invalid or expired OTP
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "422":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Verify email address
       tags:
       - auth
 securityDefinitions:

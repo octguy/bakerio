@@ -29,3 +29,13 @@ type RegisterResponse struct {
 type LoginResponse struct {
 	AccessToken string `json:"access_token"`
 }
+
+type VerifyEmailRequest struct {
+	UserId uuid.UUID `json:"user_id" binding:"required"`
+	OTP    string    `json:"otp" binding:"required,numeric,len=6"`
+}
+
+type VerifyEmailResponse struct {
+	Verified bool   `json:"verified"`
+	Message  string `json:"message"`
+}

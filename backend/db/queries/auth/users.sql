@@ -25,5 +25,10 @@ SELECT u.id, email, password_hash
 FROM auth.users u
 JOIN auth.auth_credentials au
 ON u.id = au.user_id
-WHERE email = $1
+WHERE email = $1 and is_active = true and email_verified = true
 LIMIT 1;
+
+-- name: ActivateUser :exec
+UPDATE auth.users
+SET email_verified = true, is_active = true
+where id = $1;

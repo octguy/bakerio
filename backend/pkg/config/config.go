@@ -12,7 +12,9 @@ type Config struct {
 	Server ServerConfig
 	JWT    JWTConfig
 	DB     DatabaseConfig
-	Logger LoggerConfig
+	MQ     RabbitMQConfig
+	Redis  RedisConfig
+	Email  SMTPConfig
 }
 
 type ServerConfig struct {
@@ -35,12 +37,22 @@ type DatabaseConfig struct {
 	SSLMode  string
 }
 
-type LoggerConfig struct {
-	Development       bool
-	DisableCaller     bool
-	DisableStacktrace bool
-	Encoding          string
-	Level             string
+type RabbitMQConfig struct {
+	URL string
+}
+
+type RedisConfig struct {
+	Address  string
+	Password string
+	DB       int
+}
+
+type SMTPConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	From     string
 }
 
 func Load() *Config {
@@ -69,10 +81,25 @@ func Load() *Config {
 			Name:     os.Getenv("DB_NAME"),
 			SSLMode:  os.Getenv("DB_SSLMODE"),
 		},
+		MQ: RabbitMQConfig{
+			URL: os.Getenv("RABBITMQ_URL"),
+		},
+		Redis: RedisConfig{
+			Address:  os.Getenv("REDIS_ADDR"),
+			Password: os.Getenv("REDIS_PASSWORD"),
+			DB:       0,
+		},
+		Email: SMTPConfig{
+			Host:     os.Getenv("EMAIL_HOST"),
+			Port:     os.Getenv("EMAIL_PORT"),
+			User:     os.Getenv("EMAIL_USER"),
+			Password: os.Getenv("EMAIL_PASSWORD"),
+			From:     os.Getenv("EMAIL_FROM"),
+		},
 	}
 }
 
-// Datasource name build
+// DSN is Datasource name build
 func (c *Config) DSN() string {
 	return fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
