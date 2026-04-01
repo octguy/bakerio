@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/octguy/bakerio/backend/internal/notification/template"
 	"github.com/octguy/bakerio/backend/internal/platform/email"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
@@ -68,10 +69,7 @@ func (s *emailService) HandleUserRegistered(ctx context.Context, body []byte) er
 
 	// 3. Send the OTP by email.
 	subject := "Your Bakerio verification code"
-	content := fmt.Sprintf(
-		"Hi %s,\n\nYour verification code is: %s\n\nIt expires in 5 minutes.\n\nDo not share this code with anyone.",
-		payload.DisplayName, code,
-	)
+	content := template.OTPEmail(payload.DisplayName, code)
 
 	if err := s.email.Send(ctx, payload.Email, subject, content); err != nil {
 		logger.Log.Error("notification: send otp email failed",

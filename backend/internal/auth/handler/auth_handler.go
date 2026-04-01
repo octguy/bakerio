@@ -90,11 +90,25 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	response.Success(c, http.StatusOK, res)
 }
 
+// VerifyEmail godoc
+// @Summary      Verify email address
+// @Description  Verifies a user's email using the 6-digit OTP sent after registration
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body     dto.VerifyEmailRequest  true "Verify email payload"
+// @Success      200     {object} dto.VerifyEmailResponse
+// @Failure      400     {object} response.ErrorResponse "Invalid or expired OTP"
+// @Failure      404     {object} response.ErrorResponse "User not found"
+// @Failure      422     {object} response.ErrorResponse "Validation error"
+// @Failure      500     {object} response.ErrorResponse "Internal server error"
+// @Router       /auth/verify [post]
 func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 	var req dto.VerifyEmailRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Log.Warn("verify: invalid request body", zap.Error(err))
 		response.Error(c, apperrors.Validation(err.Error()))
+		return
 	}
 
 	res, err := h.svc.VerifyEmail(c.Request.Context(), req)

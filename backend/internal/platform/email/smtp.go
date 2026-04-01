@@ -30,7 +30,7 @@ func (p *MailService) Send(_ context.Context, to, subject, body string) error {
 	// Not authentication when using mail hog for development environment
 
 	msg := fmt.Sprintf(
-		"From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
+		"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
 		p.cfg.From, to, subject, body,
 	)
 
