@@ -27,6 +27,23 @@ type AuthOutbox struct {
 	PublishedAt *time.Time `json:"published_at"`
 }
 
+type AuthPermission struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+type AuthRole struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description *string   `json:"description"`
+}
+
+type AuthRolePermission struct {
+	ID           uuid.UUID `json:"id"`
+	RoleID       uuid.UUID `json:"role_id"`
+	PermissionID uuid.UUID `json:"permission_id"`
+}
+
 type AuthUser struct {
 	ID            uuid.UUID  `json:"id"`
 	Email         string     `json:"email"`
@@ -35,6 +52,12 @@ type AuthUser struct {
 	DeletedAt     *time.Time `json:"deleted_at"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
+}
+
+type AuthUserRole struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+	RoleID uuid.UUID `json:"role_id"`
 }
 
 type ProfileProfile struct {

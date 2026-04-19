@@ -9,8 +9,11 @@ import (
 	"github.com/octguy/bakerio/backend/internal/shared/response"
 )
 
-// UserIDKey is the context key for the authenticated user's ID.
-const UserIDKey = "userID"
+const (
+	UserIDKey      = "userID"
+	RolesKey       = "roles"
+	PermissionsKey = "permissions"
+)
 
 // JWTAuth validates the Bearer token and injects the user ID into the context.
 func JWTAuth(authSvc service.AuthService) gin.HandlerFunc {
@@ -36,7 +39,8 @@ func JWTAuth(authSvc service.AuthService) gin.HandlerFunc {
 			return
 		}
 
-		c.Set(UserIDKey, claims.UserID) // uuid.UUID is JSON-marshallable, so no need to convert to string
+		c.Set(UserIDKey, claims.UserID)
+		c.Set(RolesKey, claims.Roles)
 		c.Next()
 	}
 }

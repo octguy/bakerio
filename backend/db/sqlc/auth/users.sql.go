@@ -118,6 +118,33 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (AuthUser, erro
 	return i, err
 }
 
+const getUserRoles = `-- name: GetUserRoles :many
+SELECT r.name
+FROM auth.roles r
+JOIN auth.user_roles ur ON r.id = ur.role_id
+WHERE ur.user_id = $1
+`
+
+func (q *Queries) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, getUserRoles, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserWithCredentialsByEmail = `-- name: GetUserWithCredentialsByEmail :one
 SELECT u.id, email, password_hash
 FROM auth.users u

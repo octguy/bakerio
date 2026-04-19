@@ -92,7 +92,11 @@ func main() {
 	// 6. Modules
 	profileModule := profile.NewModule(pool, tx)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
-	authModule := auth.NewModule(pool, tx, profileModule.Service(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
+	authModule := auth.NewModule(pool, redisClient, tx, profileModule.Service(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
+
+	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
+		logger.Log.Fatal("rbac: failed to warm permission cache", zap.Error(err))
+	}
 
 	// 7. Background workers (new goroutine)
 	go outbox.NewWorker(publisher, logger.Log, authOutbox).Run(ctx)

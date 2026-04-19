@@ -31,6 +31,7 @@ var (
 
 type Claims struct {
 	UserID uuid.UUID `json:"user_id"`
+	Roles  []string  `json:"roles"`
 	jwt.RegisteredClaims
 }
 
@@ -43,6 +44,7 @@ type AuthService interface {
 
 type authService struct {
 	repo       repository.AuthRepository
+	rbacSvc    RBACService
 	profileSvc profileSvc.ProfileService
 	outboxRepo *outbox.Repository
 	otpSvc     *otp.Service
@@ -53,6 +55,7 @@ type authService struct {
 
 func NewAuthService(
 	repo repository.AuthRepository,
+	rbacSvc RBACService,
 	tx *txmanager.TxManager,
 	profSvc profileSvc.ProfileService,
 	outboxRepo *outbox.Repository,
@@ -61,6 +64,7 @@ func NewAuthService(
 	tokenTTL time.Duration) AuthService {
 	return &authService{
 		repo:       repo,
+		rbacSvc:    rbacSvc,
 		tx:         tx,
 		profileSvc: profSvc,
 		outboxRepo: outboxRepo,
@@ -97,6 +101,11 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dt
 		_, err := s.profileSvc.CreateProfile(txCtx, user.ID, nil, nil, req.FullName)
 		if err != nil {
 			logger.Log.Error("register: failed to create profile", zap.String("user_id", user.ID.String()), zap.Error(err))
+			return err
+		}
+
+		if err = s.rbacSvc.AssignMemberRole(txCtx, user.ID); err != nil {
+			logger.Log.Error("register: failed to assign member role", zap.String("user_id", user.ID.String()), zap.Error(err))
 			return err
 		}
 
@@ -141,8 +150,13 @@ func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (dto.Logi
 		return dto.LoginResponse{}, ErrInvalidCredentials
 	}
 
-	// Login successful, generate JWT
-	token, err := s.generateToken(user.ID)
+	roles, err := s.rbacSvc.GetUserRoles(ctx, user.ID)
+	if err != nil {
+		logger.Log.Error("login: failed to load user roles", zap.String("email", req.Email), zap.Error(err))
+		return dto.LoginResponse{}, err
+	}
+
+	token, err := s.generateToken(user.ID, roles)
 	if err != nil {
 		logger.Log.Error("login: failed to generate token", zap.String("email", req.Email), zap.Error(err))
 		return dto.LoginResponse{}, err
@@ -206,9 +220,10 @@ func (s *authService) VerifyEmail(ctx context.Context, req dto.VerifyEmailReques
 	}, nil
 }
 
-func (s *authService) generateToken(userID uuid.UUID) (string, error) {
+func (s *authService) generateToken(userID uuid.UUID, roles []string) (string, error) {
 	claims := &Claims{
 		UserID: userID,
+		Roles:  roles,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.tokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
