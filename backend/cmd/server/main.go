@@ -19,15 +19,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth"
+	authService "github.com/octguy/bakerio/backend/internal/auth/service"
 	"github.com/octguy/bakerio/backend/internal/notification"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/database"
 	"github.com/octguy/bakerio/backend/internal/platform/email"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
+	"github.com/octguy/bakerio/backend/internal/platform/middleware"
 	"github.com/octguy/bakerio/backend/internal/platform/mq"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
 	"github.com/octguy/bakerio/backend/internal/profile"
+	"github.com/octguy/bakerio/backend/internal/user"
 	"github.com/octguy/bakerio/backend/pkg/config"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 	swaggerFiles "github.com/swaggo/files"
@@ -93,12 +96,15 @@ func main() {
 	profileModule := profile.NewModule(pool, tx)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
 	authModule := auth.NewModule(pool, redisClient, tx, profileModule.Service(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
+	userModule := user.NewModule(profileModule.Service(), authModule.Service())
 
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
 		logger.Log.Fatal("rbac: failed to warm permission cache", zap.Error(err))
 	}
 
-	// 7. Background workers (new goroutine)
+	seedAdmins(ctx, authModule.Service())
+
+	// 7. Background workers
 	go outbox.NewWorker(publisher, logger.Log, authOutbox).Run(ctx)
 
 	if err := notifModule.RegisterConsumers(ctx, consumer); err != nil {
@@ -108,12 +114,42 @@ func main() {
 	// 8. HTTP server
 	r := gin.Default()
 	v1 := r.Group("/api/v1")
-	authModule.RegisterRoutes(v1)
+
+	// Protected group: JWTAuth + LoadPermissions applied once for all guarded routes
+	authed := v1.Group("/",
+		middleware.JWTAuth(authModule.Service()),
+		middleware.LoadPermissions(authModule.RBACService),
+	)
+
+	authModule.RegisterRoutes(v1, authed)
+	profileModule.RegisterRoutes(authed)
+	userModule.RegisterRoutes(authed)
+
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// 9. Start server
 	logger.Log.Info("starting http server", zap.String("port", cfg.Server.Port))
 	if err := r.Run(":" + cfg.Server.Port); err != nil {
 		logger.Log.Fatal("server failed", zap.Error(err))
+	}
+}
+
+type adminSeed struct {
+	email, fullName, password, role string
+}
+
+func seedAdmins(ctx context.Context, svc authService.AuthService) {
+	admins := []adminSeed{
+		{"superadmin@bakerio.com", "Super Admin", "Admin@1234!", "super_admin"},
+		{"gm@bakerio.com", "General Manager", "Admin@1234!", "general_manager"},
+	}
+	for _, a := range admins {
+		res, err := svc.CreateStaff(ctx, a.email, a.fullName, a.password, a.role)
+		if err != nil {
+			// ErrEmailTaken means the account already exists — skip silently
+			logger.Log.Debug("seed: skipped", zap.String("email", a.email), zap.Error(err))
+			continue
+		}
+		logger.Log.Info("seed: admin created", zap.String("email", res.Email), zap.String("role", a.role))
 	}
 }

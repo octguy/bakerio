@@ -38,14 +38,26 @@ func LoadPermissions(rbacSvc service.RBACService) gin.HandlerFunc {
 // RequirePermission guards a route, allowing only requests whose resolved
 // permissions include perm or the wildcard "*:*:all".
 func RequirePermission(perm string) gin.HandlerFunc {
+	return RequireAnyPermission(perm)
+}
+
+// RequireAnyPermission allows the request if the caller holds at least one of
+// the listed permissions (or the "*:*:all" wildcard).
+func RequireAnyPermission(perms ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		raw, _ := c.Get(PermissionsKey)
-		perms, _ := raw.([]string)
+		held, _ := raw.([]string)
 
-		for _, p := range perms {
-			if p == perm || p == "*:*:all" {
+		for _, h := range held {
+			if h == "*:*:all" {
 				c.Next()
 				return
+			}
+			for _, need := range perms {
+				if h == need {
+					c.Next()
+					return
+				}
 			}
 		}
 

@@ -11,6 +11,8 @@ import (
 
 type ProfileRepository interface {
 	CreateProfile(ctx context.Context, id uuid.UUID, avatarURL, bio *string, fullName string) (*domain.Profile, error)
+	GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*domain.Profile, error)
+	UpdateProfile(ctx context.Context, userID uuid.UUID, displayName string, avatarURL, bio *string) (*domain.Profile, error)
 }
 
 type profileRepo struct {
@@ -41,6 +43,27 @@ func (p *profileRepo) CreateProfile(ctx context.Context, userId uuid.UUID, avata
 		return nil, err
 	}
 
+	return toEntity(row), nil
+}
+
+func (p *profileRepo) GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*domain.Profile, error) {
+	row, err := p.queries(ctx).GetProfileByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return toEntity(row), nil
+}
+
+func (p *profileRepo) UpdateProfile(ctx context.Context, userID uuid.UUID, displayName string, avatarURL, bio *string) (*domain.Profile, error) {
+	row, err := p.queries(ctx).UpdateProfile(ctx, profiledb.UpdateProfileParams{
+		UserID:      userID,
+		DisplayName: displayName,
+		AvatarUrl:   avatarURL,
+		Bio:         bio,
+	})
+	if err != nil {
+		return nil, err
+	}
 	return toEntity(row), nil
 }
 

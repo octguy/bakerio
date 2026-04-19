@@ -76,6 +76,17 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (AuthUse
 	return i, err
 }
 
+const getCredentialsByUserID = `-- name: GetCredentialsByUserID :one
+SELECT password_hash FROM auth.auth_credentials WHERE user_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getCredentialsByUserID, userID)
+	var password_hash string
+	err := row.Scan(&password_hash)
+	return password_hash, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, email, email_verified, is_active, deleted_at, created_at, updated_at FROM auth.users
 WHERE email = $1
@@ -165,4 +176,18 @@ func (q *Queries) GetUserWithCredentialsByEmail(ctx context.Context, email strin
 	var i GetUserWithCredentialsByEmailRow
 	err := row.Scan(&i.ID, &i.Email, &i.PasswordHash)
 	return i, err
+}
+
+const updatePassword = `-- name: UpdatePassword :exec
+UPDATE auth.auth_credentials SET password_hash = $1 WHERE user_id = $2
+`
+
+type UpdatePasswordParams struct {
+	PasswordHash string    `json:"password_hash"`
+	UserID       uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) UpdatePassword(ctx context.Context, arg UpdatePasswordParams) error {
+	_, err := q.db.Exec(ctx, updatePassword, arg.PasswordHash, arg.UserID)
+	return err
 }

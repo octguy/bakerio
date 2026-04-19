@@ -3,9 +3,9 @@ package dto
 import "github.com/google/uuid"
 
 type UpdateProfileRequest struct {
-	FullName  string `json:"full_name" binding:"required"`
-	AvatarURL string `json:"avatar_url"`
-	Bio       string `json:"bio"`
+	DisplayName *string `json:"display_name"`
+	AvatarURL   *string `json:"avatar_url"`
+	Bio         *string `json:"bio"`
 }
 
 type CreateProfileRequest struct {

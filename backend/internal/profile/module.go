@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	profiledb "github.com/octguy/bakerio/backend/db/sqlc/profile"
 	"github.com/octguy/bakerio/backend/internal/profile/handler"
@@ -21,6 +22,8 @@ func NewModule(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
 	return &Module{handler: h, svc: svc}
 }
 
-func (m *Module) Service() service.ProfileService {
-	return m.svc
+func (m *Module) Service() service.ProfileService { return m.svc }
+
+func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
+	m.handler.RegisterRoutes(protected)
 }

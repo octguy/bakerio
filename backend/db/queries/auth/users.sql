@@ -38,3 +38,9 @@ SELECT r.name
 FROM auth.roles r
 JOIN auth.user_roles ur ON r.id = ur.role_id
 WHERE ur.user_id = $1;
+
+-- name: GetCredentialsByUserID :one
+SELECT password_hash FROM auth.auth_credentials WHERE user_id = $1 LIMIT 1;
+
+-- name: UpdatePassword :exec
+UPDATE auth.auth_credentials SET password_hash = $1 WHERE user_id = $2;

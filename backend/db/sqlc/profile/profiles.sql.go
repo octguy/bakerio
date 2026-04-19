@@ -43,3 +43,58 @@ func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (P
 	)
 	return i, err
 }
+
+const getProfileByUserID = `-- name: GetProfileByUserID :one
+SELECT id, user_id, display_name, avatar_url, bio, updated_at FROM profile.profiles WHERE user_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetProfileByUserID(ctx context.Context, userID uuid.UUID) (ProfileProfile, error) {
+	row := q.db.QueryRow(ctx, getProfileByUserID, userID)
+	var i ProfileProfile
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateProfile = `-- name: UpdateProfile :one
+UPDATE profile.profiles
+SET
+    display_name = COALESCE($1, display_name),
+    avatar_url   = $2,
+    bio          = $3,
+    updated_at   = now()
+WHERE user_id = $4
+RETURNING id, user_id, display_name, avatar_url, bio, updated_at
+`
+
+type UpdateProfileParams struct {
+	DisplayName string    `json:"display_name"`
+	AvatarUrl   *string   `json:"avatar_url"`
+	Bio         *string   `json:"bio"`
+	UserID      uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (ProfileProfile, error) {
+	row := q.db.QueryRow(ctx, updateProfile,
+		arg.DisplayName,
+		arg.AvatarUrl,
+		arg.Bio,
+		arg.UserID,
+	)
+	var i ProfileProfile
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.Bio,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

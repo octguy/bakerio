@@ -13,9 +13,11 @@ const (
 	UserIDKey      = "userID"
 	RolesKey       = "roles"
 	PermissionsKey = "permissions"
+	JTIKey         = "jti"
+	ExpiresAtKey   = "expiresAt"
 )
 
-// JWTAuth validates the Bearer token and injects the user ID into the context.
+// JWTAuth validates the Bearer token, checks the blacklist, and injects claims into context.
 func JWTAuth(authSvc service.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -39,8 +41,17 @@ func JWTAuth(authSvc service.AuthService) gin.HandlerFunc {
 			return
 		}
 
+		revoked, err := authSvc.IsRevoked(c.Request.Context(), claims.ID)
+		if err != nil || revoked {
+			response.Error(c, apperrors.Unauthorized("token has been revoked"))
+			c.Abort()
+			return
+		}
+
 		c.Set(UserIDKey, claims.UserID)
 		c.Set(RolesKey, claims.Roles)
+		c.Set(JTIKey, claims.ID)
+		c.Set(ExpiresAtKey, claims.ExpiresAt.Time)
 		c.Next()
 	}
 }

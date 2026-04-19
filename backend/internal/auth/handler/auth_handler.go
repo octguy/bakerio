@@ -2,11 +2,14 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/service"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
+	"github.com/octguy/bakerio/backend/internal/platform/middleware"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
 	"go.uber.org/zap"
@@ -20,11 +23,15 @@ func NewAuthHandler(svc service.AuthService) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 
-func (h *AuthHandler) RegisterRoutes(rg *gin.RouterGroup) {
-	auth := rg.Group("/auth")
-	auth.POST("/register", h.Register)
-	auth.POST("/login", h.Login)
-	auth.POST("/verify", h.VerifyEmail)
+func (h *AuthHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
+	pub := public.Group("/auth")
+	pub.POST("/register", h.Register)
+	pub.POST("/login", h.Login)
+	pub.POST("/verify", h.VerifyEmail)
+
+	prot := protected.Group("/auth")
+	prot.POST("/logout", h.Logout)
+	prot.PATCH("/password", h.ChangePassword)
 }
 
 // Register godoc
@@ -120,4 +127,53 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 
 	logger.Log.Info("verify: success", zap.String("userId", req.UserId.String()))
 	response.Success(c, http.StatusOK, res)
+}
+
+// Logout godoc
+// @Summary      Logout
+// @Description  Invalidates the current JWT by adding it to the Redis blacklist
+// @Tags         auth
+// @Security     BearerAuth
+// @Success      204
+// @Failure      401  {object} response.ErrorResponse
+// @Router       /auth/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) {
+	jti, _ := c.Get(middleware.JTIKey)
+	exp, _ := c.Get(middleware.ExpiresAtKey)
+
+	if err := h.svc.Logout(c.Request.Context(), jti.(string), exp.(time.Time)); err != nil {
+		logger.Log.Error("logout: failed to blacklist token", zap.Error(err))
+		response.Error(c, apperrors.Internal("logout failed", err))
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+// ChangePassword godoc
+// @Summary      Change own password
+// @Description  Changes the authenticated user's password after verifying the current one
+// @Tags         auth
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body     dto.ChangePasswordRequest true "Change password payload"
+// @Success      204
+// @Failure      401  {object} response.ErrorResponse
+// @Failure      422  {object} response.ErrorResponse
+// @Router       /auth/password [patch]
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	var req dto.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, apperrors.Validation(err.Error()))
+		return
+	}
+
+	userID, _ := c.Get(middleware.UserIDKey)
+	if err := h.svc.ChangePassword(c.Request.Context(), userID.(uuid.UUID), req.CurrentPassword, req.NewPassword); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }

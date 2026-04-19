@@ -15,6 +15,8 @@ type AuthRepository interface {
 	FindUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
 	FindUserWithCredentialsByEmail(ctx context.Context, email string) (authdb.GetUserWithCredentialsByEmailRow, error)
 	ActivateUser(ctx context.Context, id uuid.UUID) error
+	GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) (string, error)
+	UpdatePassword(ctx context.Context, userID uuid.UUID, newHash string) error
 }
 
 type authRepo struct {
@@ -100,6 +102,17 @@ func (r *authRepo) ActivateUser(ctx context.Context, id uuid.UUID) error {
 	}
 
 	return nil
+}
+
+func (r *authRepo) GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) (string, error) {
+	return r.queries(ctx).GetCredentialsByUserID(ctx, userID)
+}
+
+func (r *authRepo) UpdatePassword(ctx context.Context, userID uuid.UUID, newHash string) error {
+	return r.queries(ctx).UpdatePassword(ctx, authdb.UpdatePasswordParams{
+		PasswordHash: newHash,
+		UserID:       userID,
+	})
 }
 
 func toEntity(u *authdb.AuthUser) *domain.User {

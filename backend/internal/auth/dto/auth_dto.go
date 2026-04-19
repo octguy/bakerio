@@ -39,3 +39,12 @@ type VerifyEmailResponse struct {
 	Verified bool   `json:"verified"`
 	Message  string `json:"message"`
 }
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required,min=6"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+}
+
+type AdminSetPasswordRequest struct {
+	Password string `json:"password" binding:"required,min=6"`
+}
