@@ -9,6 +9,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/auth/handler"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
 	"github.com/octguy/bakerio/backend/internal/auth/service"
+	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
 	profilesvc "github.com/octguy/bakerio/backend/internal/profile/service"
@@ -16,11 +17,14 @@ import (
 )
 
 type Module struct {
-	handler *handler.AuthHandler
+	handler     *handler.AuthHandler
+	authSvc     service.AuthService
+	RBACService service.RBACService
 }
 
 func NewModule(
 	pool *pgxpool.Pool,
+	redis *cache.Client,
 	tx *txmanager.TxManager,
 	profSvc profilesvc.ProfileService,
 	outboxRepo *outbox.Repository,
@@ -28,12 +32,17 @@ func NewModule(
 	jwtSecret string,
 	tokenTTL time.Duration,
 ) *Module {
-	repo := repository.NewAuthRepo(authdb.New(pool))
-	svc := service.NewAuthService(repo, tx, profSvc, outboxRepo, otpSvc, jwtSecret, tokenTTL)
+	queries := authdb.New(pool)
+	authRepo := repository.NewAuthRepo(queries)
+	rbacRepo := repository.NewRBACRepo(queries)
+	rbacSvc := service.NewRBACService(rbacRepo, redis)
+	svc := service.NewAuthService(authRepo, rbacSvc, redis, tx, profSvc, outboxRepo, otpSvc, jwtSecret, tokenTTL)
 	h := handler.NewAuthHandler(svc)
-	return &Module{handler: h}
+	return &Module{handler: h, authSvc: svc, RBACService: rbacSvc}
 }
 
-func (m *Module) RegisterRoutes(rg *gin.RouterGroup) {
-	m.handler.RegisterRoutes(rg)
+func (m *Module) Service() service.AuthService { return m.authSvc }
+
+func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
+	m.handler.RegisterRoutes(public, protected)
 }

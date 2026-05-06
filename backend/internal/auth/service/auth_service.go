@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
+	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
@@ -31,28 +32,40 @@ var (
 
 type Claims struct {
 	UserID uuid.UUID `json:"user_id"`
+	Roles  []string  `json:"roles"`
 	jwt.RegisteredClaims
 }
+
+const blacklistPrefix = "auth:blacklist:"
 
 type AuthService interface {
 	Register(ctx context.Context, req dto.RegisterRequest) (dto.RegisterResponse, error)
 	Login(ctx context.Context, req dto.LoginRequest) (dto.LoginResponse, error)
 	ValidateToken(tokenStr string) (*Claims, error)
 	VerifyEmail(ctx context.Context, req dto.VerifyEmailRequest) (dto.VerifyEmailResponse, error)
+	Logout(ctx context.Context, jti string, expiresAt time.Time) error
+	IsRevoked(ctx context.Context, jti string) (bool, error)
+	ChangePassword(ctx context.Context, userID uuid.UUID, currentPw, newPw string) error
+	AdminSetPassword(ctx context.Context, targetUserID uuid.UUID, newPw string) error
+	CreateStaff(ctx context.Context, email, fullName, password, roleName string) (dto.RegisterResponse, error)
 }
 
 type authService struct {
 	repo       repository.AuthRepository
+	rbacSvc    RBACService
 	profileSvc profileSvc.ProfileService
 	outboxRepo *outbox.Repository
 	otpSvc     *otp.Service
 	tx         *txmanager.TxManager
+	redis      *cache.Client
 	jwtSecret  []byte
 	tokenTTL   time.Duration
 }
 
 func NewAuthService(
 	repo repository.AuthRepository,
+	rbacSvc RBACService,
+	redis *cache.Client,
 	tx *txmanager.TxManager,
 	profSvc profileSvc.ProfileService,
 	outboxRepo *outbox.Repository,
@@ -61,6 +74,8 @@ func NewAuthService(
 	tokenTTL time.Duration) AuthService {
 	return &authService{
 		repo:       repo,
+		rbacSvc:    rbacSvc,
+		redis:      redis,
 		tx:         tx,
 		profileSvc: profSvc,
 		outboxRepo: outboxRepo,
@@ -97,6 +112,11 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dt
 		_, err := s.profileSvc.CreateProfile(txCtx, user.ID, nil, nil, req.FullName)
 		if err != nil {
 			logger.Log.Error("register: failed to create profile", zap.String("user_id", user.ID.String()), zap.Error(err))
+			return err
+		}
+
+		if err = s.rbacSvc.AssignMemberRole(txCtx, user.ID); err != nil {
+			logger.Log.Error("register: failed to assign member role", zap.String("user_id", user.ID.String()), zap.Error(err))
 			return err
 		}
 
@@ -141,8 +161,13 @@ func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (dto.Logi
 		return dto.LoginResponse{}, ErrInvalidCredentials
 	}
 
-	// Login successful, generate JWT
-	token, err := s.generateToken(user.ID)
+	roles, err := s.rbacSvc.GetUserRoles(ctx, user.ID)
+	if err != nil {
+		logger.Log.Error("login: failed to load user roles", zap.String("email", req.Email), zap.Error(err))
+		return dto.LoginResponse{}, err
+	}
+
+	token, err := s.generateToken(user.ID, roles)
 	if err != nil {
 		logger.Log.Error("login: failed to generate token", zap.String("email", req.Email), zap.Error(err))
 		return dto.LoginResponse{}, err
@@ -206,10 +231,96 @@ func (s *authService) VerifyEmail(ctx context.Context, req dto.VerifyEmailReques
 	}, nil
 }
 
-func (s *authService) generateToken(userID uuid.UUID) (string, error) {
+func (s *authService) Logout(ctx context.Context, jti string, expiresAt time.Time) error {
+	ttl := time.Until(expiresAt)
+	if ttl <= 0 {
+		return nil
+	}
+	return s.redis.Set(ctx, blacklistPrefix+jti, "1", ttl)
+}
+
+func (s *authService) IsRevoked(ctx context.Context, jti string) (bool, error) {
+	val, err := s.redis.Get(ctx, blacklistPrefix+jti)
+	if err != nil {
+		// redis.Nil means key not found — token is not revoked
+		return false, nil
+	}
+	return val == "1", nil
+}
+
+func (s *authService) ChangePassword(ctx context.Context, userID uuid.UUID, currentPw, newPw string) error {
+	hash, err := s.repo.GetCredentialsByUserID(ctx, userID)
+	if err != nil {
+		return apperrors.NotFound("user not found")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPw)); err != nil {
+		return apperrors.Unauthorized("current password is incorrect")
+	}
+	newHash, err := bcrypt.GenerateFromPassword([]byte(newPw), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	return s.repo.UpdatePassword(ctx, userID, string(newHash))
+}
+
+func (s *authService) AdminSetPassword(ctx context.Context, targetUserID uuid.UUID, newPw string) error {
+	newHash, err := bcrypt.GenerateFromPassword([]byte(newPw), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	return s.repo.UpdatePassword(ctx, targetUserID, string(newHash))
+}
+
+func (s *authService) CreateStaff(ctx context.Context, email, fullName, password, roleName string) (dto.RegisterResponse, error) {
+	_, err := s.repo.FindUserByEmail(ctx, email)
+	if err == nil {
+		return dto.RegisterResponse{}, ErrEmailTaken
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return dto.RegisterResponse{}, err
+	}
+
+	var user *domain.User
+
+	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		user, err = s.repo.CreateAccount(txCtx, email, string(hashed))
+		if err != nil {
+			return err
+		}
+
+		// Staff accounts are created active + verified — no email OTP needed
+		if err = s.repo.ActivateUser(txCtx, user.ID); err != nil {
+			return err
+		}
+
+		if _, err = s.profileSvc.CreateProfile(txCtx, user.ID, nil, nil, fullName); err != nil {
+			return err
+		}
+
+		return s.rbacSvc.AssignRole(txCtx, user.ID, roleName)
+	})
+	if err != nil {
+		return dto.RegisterResponse{}, err
+	}
+
+	logger.Log.Info("create staff: account created", zap.String("email", email), zap.String("role", roleName))
+
+	return dto.RegisterResponse{
+		ID:        user.ID,
+		Email:     user.Email,
+		FullName:  fullName,
+		CreatedAt: user.CreatedAt,
+	}, nil
+}
+
+func (s *authService) generateToken(userID uuid.UUID, roles []string) (string, error) {
 	claims := &Claims{
 		UserID: userID,
+		Roles:  roles,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.New().String(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.tokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
@@ -217,7 +328,6 @@ func (s *authService) generateToken(userID uuid.UUID) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString(s.jwtSecret)
-
 	if err != nil {
 		return "", fmt.Errorf("signing token: %w", err)
 	}
