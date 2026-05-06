@@ -1,0 +1,1 @@
+ALTER TABLE auth.users ADD COLUMN branch_id INT REFERENCES branches(id) ON DELETE SET NULL;
