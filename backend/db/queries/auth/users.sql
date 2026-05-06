@@ -44,3 +44,6 @@ SELECT password_hash FROM auth.auth_credentials WHERE user_id = $1 LIMIT 1;
 
 -- name: UpdatePassword :exec
 UPDATE auth.auth_credentials SET password_hash = $1 WHERE user_id = $2;
+
+-- name: GetUserBranchID :one
+SELECT branch_id FROM auth.users WHERE id = $1;

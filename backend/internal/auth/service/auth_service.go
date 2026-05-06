@@ -28,11 +28,20 @@ var (
 	ErrEmailTaken         = apperrors.Conflict("email already taken")
 	InvalidOTP            = apperrors.Unauthorized("invalid otp")
 	UserNotFound          = apperrors.NotFound("user not found")
+	ErrNoBranchAssigned   = apperrors.NotFound("no branch assigned")
 )
+
+var storeLevelRoles = map[string]bool{
+    "store_manager": true,
+    "staff_cashier": true,
+    "baker":         true,
+    "shipper":       true,
+}
 
 type Claims struct {
 	UserID uuid.UUID `json:"user_id"`
 	Roles  []string  `json:"roles"`
+	BranchID *uuid.UUID	 `json:"branch_id,omitempty"` // nil for HQ and customer roles
 	jwt.RegisteredClaims
 }
 
@@ -167,7 +176,25 @@ func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (dto.Logi
 		return dto.LoginResponse{}, err
 	}
 
-	token, err := s.generateToken(user.ID, roles)
+	isStoreLevelStaff := false
+	for _, r := range roles {
+		if storeLevelRoles[r] {
+			isStoreLevelStaff = true
+			break
+		}
+	}
+
+	var branchID *uuid.UUID
+	if isStoreLevelStaff {
+		id,err := s.repo.GetUserBranchID(ctx, user.ID)
+		if err != nil || id == nil {
+			logger.Log.Error("login: store-level user has no branch assignment", zap.String("email", req.Email), zap.Error(err))
+			return dto.LoginResponse{}, ErrNoBranchAssigned
+		}
+		branchID = id
+	}
+
+	token, err := s.generateToken(user.ID, roles, branchID)
 	if err != nil {
 		logger.Log.Error("login: failed to generate token", zap.String("email", req.Email), zap.Error(err))
 		return dto.LoginResponse{}, err
@@ -315,10 +342,11 @@ func (s *authService) CreateStaff(ctx context.Context, email, fullName, password
 	}, nil
 }
 
-func (s *authService) generateToken(userID uuid.UUID, roles []string) (string, error) {
+func (s *authService) generateToken(userID uuid.UUID, roles []string, branchID *uuid.UUID) (string, error) {
 	claims := &Claims{
 		UserID: userID,
 		Roles:  roles,
+		BranchID: branchID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        uuid.New().String(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.tokenTTL)),

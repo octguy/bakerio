@@ -17,6 +17,7 @@ type AuthRepository interface {
 	ActivateUser(ctx context.Context, id uuid.UUID) error
 	GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) (string, error)
 	UpdatePassword(ctx context.Context, userID uuid.UUID, newHash string) error
+	GetUserBranchID(ctx context.Context, id uuid.UUID) (*uuid.UUID, error)
 }
 
 type authRepo struct {
@@ -114,6 +115,10 @@ func (r *authRepo) UpdatePassword(ctx context.Context, userID uuid.UUID, newHash
 		UserID:       userID,
 	})
 }
+
+func (r *authRepo) GetUserBranchID(ctx context.Context, id uuid.UUID) (*uuid.UUID, error) {
+      return r.queries(ctx).GetUserBranchID(ctx, id)                                                                                         
+  }
 
 func toEntity(u *authdb.AuthUser) *domain.User {
 	return &domain.User{

@@ -1,5 +1,5 @@
 CREATE TABLE core.branches (
-    id         SERIAL PRIMARY KEY,
+    id         UUID PRIMARY KEY,
     name       VARCHAR(100) NOT NULL,
     address    TEXT NOT NULL,
     lat        DECIMAL(9,6),
