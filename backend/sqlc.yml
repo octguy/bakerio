@@ -53,3 +53,15 @@ sql:
         emit_empty_slices: true
         sql_package: "pgx/v5"
         overrides: *overrides
+
+  - engine: "postgresql"
+    queries: "db/queries/branch"
+    schema: "db/migrations"
+    gen:
+      go:
+        package: "branchdb"
+        out: "db/sqlc/branch"
+        emit_json_tags: true
+        emit_empty_slices: true
+        sql_package: "pgx/v5"
+        overrides: *overrides

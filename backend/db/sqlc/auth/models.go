@@ -62,7 +62,7 @@ type AuthUserRole struct {
 	RoleID uuid.UUID `json:"role_id"`
 }
 
-type CoreBranch struct {
+type BranchBranch struct {
 	ID        uuid.UUID      `json:"id"`
 	Name      string         `json:"name"`
 	Address   string         `json:"address"`
