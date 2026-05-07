@@ -12,6 +12,7 @@ import (
 const (
 	UserIDKey      = "userID"
 	RolesKey       = "roles"
+	BranchIDKey	   = "branchID"
 	PermissionsKey = "permissions"
 	JTIKey         = "jti"
 	ExpiresAtKey   = "expiresAt"
@@ -50,6 +51,7 @@ func JWTAuth(authSvc service.AuthService) gin.HandlerFunc {
 
 		c.Set(UserIDKey, claims.UserID)
 		c.Set(RolesKey, claims.Roles)
+		c.Set(BranchIDKey, claims.BranchID)
 		c.Set(JTIKey, claims.ID)
 		c.Set(ExpiresAtKey, claims.ExpiresAt.Time)
 		c.Next()

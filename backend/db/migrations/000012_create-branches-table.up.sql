@@ -1,4 +1,4 @@
-CREATE TABLE core.branches (
+CREATE TABLE branch.branches (
     id         UUID PRIMARY KEY,
     name       VARCHAR(100) NOT NULL,
     address    TEXT NOT NULL,
@@ -8,4 +8,4 @@ CREATE TABLE core.branches (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_branches_status ON core.branches(status);
+CREATE INDEX idx_branches_status ON branch.branches(status);
