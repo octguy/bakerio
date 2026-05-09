@@ -25,7 +25,7 @@ type ErrorResponse struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"error"`
-}
+} // @name ErrorResponse
 
 func Success(c *gin.Context, status int, data any) {
 	c.JSON(status, envelope{Data: data})
