@@ -3,7 +3,7 @@
 //   sqlc v1.30.0
 // source: profiles.sql
 
-package profiledb
+package usersdb
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 )
 
 const createProfile = `-- name: CreateProfile :one
-INSERT INTO profile.profiles (
+INSERT INTO users.profiles (
     user_id, display_name, avatar_url, bio
 ) VALUES ($1, $2, $3, $4)
 RETURNING id, user_id, display_name, avatar_url, bio, updated_at
@@ -25,14 +25,14 @@ type CreateProfileParams struct {
 	Bio         *string   `json:"bio"`
 }
 
-func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (ProfileProfile, error) {
+func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (UsersProfile, error) {
 	row := q.db.QueryRow(ctx, createProfile,
 		arg.UserID,
 		arg.DisplayName,
 		arg.AvatarUrl,
 		arg.Bio,
 	)
-	var i ProfileProfile
+	var i UsersProfile
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -45,12 +45,12 @@ func (q *Queries) CreateProfile(ctx context.Context, arg CreateProfileParams) (P
 }
 
 const getProfileByUserID = `-- name: GetProfileByUserID :one
-SELECT id, user_id, display_name, avatar_url, bio, updated_at FROM profile.profiles WHERE user_id = $1 LIMIT 1
+SELECT id, user_id, display_name, avatar_url, bio, updated_at FROM users.profiles WHERE user_id = $1 LIMIT 1
 `
 
-func (q *Queries) GetProfileByUserID(ctx context.Context, userID uuid.UUID) (ProfileProfile, error) {
+func (q *Queries) GetProfileByUserID(ctx context.Context, userID uuid.UUID) (UsersProfile, error) {
 	row := q.db.QueryRow(ctx, getProfileByUserID, userID)
-	var i ProfileProfile
+	var i UsersProfile
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -63,7 +63,7 @@ func (q *Queries) GetProfileByUserID(ctx context.Context, userID uuid.UUID) (Pro
 }
 
 const updateProfile = `-- name: UpdateProfile :one
-UPDATE profile.profiles
+UPDATE users.profiles
 SET
     display_name = COALESCE($1, display_name),
     avatar_url   = $2,
@@ -80,14 +80,14 @@ type UpdateProfileParams struct {
 	UserID      uuid.UUID `json:"user_id"`
 }
 
-func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (ProfileProfile, error) {
+func (q *Queries) UpdateProfile(ctx context.Context, arg UpdateProfileParams) (UsersProfile, error) {
 	row := q.db.QueryRow(ctx, updateProfile,
 		arg.DisplayName,
 		arg.AvatarUrl,
 		arg.Bio,
 		arg.UserID,
 	)
-	var i ProfileProfile
+	var i UsersProfile
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,

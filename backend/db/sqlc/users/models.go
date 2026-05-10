@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.30.0
 
-package profiledb
+package usersdb
 
 import (
 	"time"
@@ -60,7 +60,7 @@ type AuthUserRole struct {
 	RoleID uuid.UUID `json:"role_id"`
 }
 
-type ProfileProfile struct {
+type UsersProfile struct {
 	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`
 	DisplayName string    `json:"display_name"`

@@ -1,4 +1,4 @@
-CREATE TABLE profile.profiles (
+CREATE TABLE users.profiles (
     id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID            NOT NULL,
     display_name    VARCHAR(100)    NULL,

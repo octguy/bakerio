@@ -6,8 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	authSvc "github.com/octguy/bakerio/backend/internal/auth/service"
-	profileDto "github.com/octguy/bakerio/backend/internal/profile/dto"
-	profileSvc "github.com/octguy/bakerio/backend/internal/profile/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/user/dto"
 )
@@ -20,22 +18,21 @@ var allowedRolesByPermission = map[string][]string{
 
 type UserService interface {
 	CreateUser(ctx context.Context, req dto.CreateUserRequest, callerPerms []string) (dto.CreateUserResponse, error)
-	GetUserProfile(ctx context.Context, targetID uuid.UUID) (profileDto.ProfileResponse, error)
-	UpdateUserProfile(ctx context.Context, targetID uuid.UUID, req profileDto.UpdateProfileRequest) (profileDto.ProfileResponse, error)
+	GetUserProfile(ctx context.Context, targetID uuid.UUID) (dto.ProfileResponse, error)
+	UpdateUserProfile(ctx context.Context, targetID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error)
 	AdminSetPassword(ctx context.Context, targetID uuid.UUID, newPassword string) error
 }
 
 type userService struct {
-	profileSvc profileSvc.ProfileService
+	profileSvc ProfileService
 	authSvc    authSvc.AuthService
 }
 
-func NewUserService(profileSvc profileSvc.ProfileService, authSvc authSvc.AuthService) UserService {
+func NewUserService(profileSvc ProfileService, authSvc authSvc.AuthService) UserService {
 	return &userService{profileSvc: profileSvc, authSvc: authSvc}
 }
 
 func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest, callerPerms []string) (dto.CreateUserResponse, error) {
-	// Determine the broadest permission the caller holds and validate the target role.
 	allowed := resolveAllowedRoles(callerPerms)
 	if !slices.Contains(allowed, req.Role) {
 		return dto.CreateUserResponse{}, apperrors.Forbidden("you are not allowed to assign role: " + req.Role)
@@ -55,15 +52,15 @@ func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest,
 	}, nil
 }
 
-func (s *userService) GetUserProfile(ctx context.Context, targetID uuid.UUID) (profileDto.ProfileResponse, error) {
+func (s *userService) GetUserProfile(ctx context.Context, targetID uuid.UUID) (dto.ProfileResponse, error) {
 	prof, err := s.profileSvc.GetProfile(ctx, targetID)
 	if err != nil {
-		return profileDto.ProfileResponse{}, apperrors.NotFound("user profile not found")
+		return dto.ProfileResponse{}, apperrors.NotFound("user profile not found")
 	}
 	return prof, nil
 }
 
-func (s *userService) UpdateUserProfile(ctx context.Context, targetID uuid.UUID, req profileDto.UpdateProfileRequest) (profileDto.ProfileResponse, error) {
+func (s *userService) UpdateUserProfile(ctx context.Context, targetID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error) {
 	return s.profileSvc.UpdateProfile(ctx, targetID, req)
 }
 

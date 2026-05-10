@@ -19,7 +19,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth"
-	authService "github.com/octguy/bakerio/backend/internal/auth/service"
 	"github.com/octguy/bakerio/backend/internal/notification"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/database"
@@ -29,7 +28,6 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/mq"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
-	"github.com/octguy/bakerio/backend/internal/profile"
 	"github.com/octguy/bakerio/backend/internal/user"
 	"github.com/octguy/bakerio/backend/pkg/config"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
@@ -93,10 +91,10 @@ func main() {
 	otpService := otp.NewService(redisClient)
 
 	// 6. Modules
-	profileModule := profile.NewModule(pool, tx)
+	userModule := user.New(pool, tx)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
-	authModule := auth.NewModule(pool, redisClient, tx, profileModule.Service(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
-	userModule := user.NewModule(profileModule.Service(), authModule.Service())
+	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
+	userModule.Wire(authModule.Service())
 
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
 		logger.Log.Fatal("rbac: failed to warm permission cache", zap.Error(err))
@@ -115,14 +113,16 @@ func main() {
 	r := gin.Default()
 	v1 := r.Group("/api/v1")
 
+	// Public group
+	public := v1.Group("/")
+
 	// Protected group: JWTAuth + LoadPermissions applied once for all guarded routes
 	authed := v1.Group("/",
 		middleware.JWTAuth(authModule.Service()),
 		middleware.LoadPermissions(authModule.RBACService),
 	)
 
-	authModule.RegisterRoutes(v1, authed)
-	profileModule.RegisterRoutes(authed)
+	authModule.RegisterRoutes(public, authed)
 	userModule.RegisterRoutes(authed)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -131,25 +131,5 @@ func main() {
 	logger.Log.Info("starting http server", zap.String("port", cfg.Server.Port))
 	if err := r.Run(":" + cfg.Server.Port); err != nil {
 		logger.Log.Fatal("server failed", zap.Error(err))
-	}
-}
-
-type adminSeed struct {
-	email, fullName, password, role string
-}
-
-func seedAdmins(ctx context.Context, svc authService.AuthService) {
-	admins := []adminSeed{
-		{"superadmin@bakerio.com", "Super Admin", "Admin@1234!", "super_admin"},
-		{"gm@bakerio.com", "General Manager", "Admin@1234!", "general_manager"},
-	}
-	for _, a := range admins {
-		res, err := svc.CreateStaff(ctx, a.email, a.fullName, a.password, a.role)
-		if err != nil {
-			// ErrEmailTaken means the account already exists — skip silently
-			logger.Log.Debug("seed: skipped", zap.String("email", a.email), zap.Error(err))
-			continue
-		}
-		logger.Log.Info("seed: admin created", zap.String("email", res.Email), zap.String("role", a.role))
 	}
 }

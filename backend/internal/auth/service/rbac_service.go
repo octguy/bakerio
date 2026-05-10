@@ -44,8 +44,8 @@ func (s *rbacService) AssignMemberRole(ctx context.Context, userID uuid.UUID) er
 }
 
 func (s *rbacService) ResolvePermissions(ctx context.Context, roles []string) ([]string, error) {
-	seen := make(map[string]struct{})
-	result := []string{}
+	seen := make(map[string]struct{}) // hash set
+	var result []string
 
 	for _, role := range roles {
 		perms, err := s.permissionsForRole(ctx, role)
@@ -117,7 +117,6 @@ func (s *rbacService) AssignRole(ctx context.Context, userID uuid.UUID, roleName
 	if err := s.repo.AssignRole(ctx, userID, roleName); err != nil {
 		return err
 	}
-	_ = s.redis.Del(ctx, permCachePrefix+roleName)
 	return nil
 }
 

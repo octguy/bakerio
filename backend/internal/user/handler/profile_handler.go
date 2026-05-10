@@ -6,10 +6,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/platform/middleware"
-	"github.com/octguy/bakerio/backend/internal/profile/dto"
-	"github.com/octguy/bakerio/backend/internal/profile/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
+	"github.com/octguy/bakerio/backend/internal/user/dto"
+	"github.com/octguy/bakerio/backend/internal/user/service"
 )
 
 type ProfileHandler struct {

@@ -1,1 +1,1 @@
-ALTER TABLE profile.profiles ALTER COLUMN display_name SET NOT NULL;
+ALTER TABLE users.profiles ALTER COLUMN display_name SET NOT NULL;
