@@ -14,7 +14,6 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
-	profileSvc "github.com/octguy/bakerio/backend/internal/profile/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/internal/shared/event"
@@ -47,6 +46,12 @@ type Claims struct {
 
 const blacklistPrefix = "auth:blacklist:"
 
+// ProfileCreator is the minimal contract auth needs to seed a profile when an
+// account is created. The user module's profile service satisfies it.
+type ProfileCreator interface {
+	CreateProfile(ctx context.Context, userID uuid.UUID, avatarURL, bio *string, fullName string) error
+}
+
 type AuthService interface {
 	Register(ctx context.Context, req dto.RegisterRequest) (dto.RegisterResponse, error)
 	Login(ctx context.Context, req dto.LoginRequest) (dto.LoginResponse, error)
@@ -62,7 +67,7 @@ type AuthService interface {
 type authService struct {
 	repo       repository.AuthRepository
 	rbacSvc    RBACService
-	profileSvc profileSvc.ProfileService
+	profileSvc ProfileCreator
 	outboxRepo *outbox.Repository
 	otpSvc     *otp.Service
 	tx         *txmanager.TxManager
@@ -76,7 +81,7 @@ func NewAuthService(
 	rbacSvc RBACService,
 	redis *cache.Client,
 	tx *txmanager.TxManager,
-	profSvc profileSvc.ProfileService,
+	profSvc ProfileCreator,
 	outboxRepo *outbox.Repository,
 	otpSvc *otp.Service,
 	jwtSecret string,
@@ -118,7 +123,7 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dt
 
 		logger.Log.Debug("register: account created", zap.String("user_id", user.ID.String()))
 
-		_, err := s.profileSvc.CreateProfile(txCtx, user.ID, nil, nil, req.FullName)
+		err := s.profileSvc.CreateProfile(txCtx, user.ID, nil, nil, req.FullName)
 		if err != nil {
 			logger.Log.Error("register: failed to create profile", zap.String("user_id", user.ID.String()), zap.Error(err))
 			return err
@@ -322,7 +327,7 @@ func (s *authService) CreateStaff(ctx context.Context, email, fullName, password
 			return err
 		}
 
-		if _, err = s.profileSvc.CreateProfile(txCtx, user.ID, nil, nil, fullName); err != nil {
+		if err = s.profileSvc.CreateProfile(txCtx, user.ID, nil, nil, fullName); err != nil {
 			return err
 		}
 

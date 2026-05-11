@@ -12,7 +12,6 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
-	profilesvc "github.com/octguy/bakerio/backend/internal/profile/service"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
@@ -26,7 +25,7 @@ func NewModule(
 	pool *pgxpool.Pool,
 	redis *cache.Client,
 	tx *txmanager.TxManager,
-	profSvc profilesvc.ProfileService,
+	profSvc service.ProfileCreator,
 	outboxRepo *outbox.Repository,
 	otpSvc *otp.Service,
 	jwtSecret string,

@@ -62,17 +62,7 @@ type AuthUserRole struct {
 	RoleID uuid.UUID `json:"role_id"`
 }
 
-type BranchBranch struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Address   string         `json:"address"`
-	Lat       pgtype.Numeric `json:"lat"`
-	Lng       pgtype.Numeric `json:"lng"`
-	Status    string         `json:"status"`
-	CreatedAt time.Time      `json:"created_at"`
-}
-
-type ProfileProfile struct {
+type UsersProfile struct {
 	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`
 	DisplayName string    `json:"display_name"`

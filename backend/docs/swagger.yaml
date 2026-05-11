@@ -1,6 +1,58 @@
 basePath: /api/v1
 definitions:
-  dto.LoginRequest:
+  ChangePasswordRequest:
+    properties:
+      current_password:
+        minLength: 6
+        type: string
+      new_password:
+        minLength: 6
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
+  CreateUserRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      role:
+        type: string
+    required:
+    - email
+    - full_name
+    - password
+    - role
+    type: object
+  CreateUserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      role:
+        type: string
+    type: object
+  ErrorResponse:
+    properties:
+      error:
+        properties:
+          code:
+            type: string
+          message:
+            type: string
+        type: object
+    type: object
+  LoginRequest:
     properties:
       email:
         type: string
@@ -11,12 +63,25 @@ definitions:
     - email
     - password
     type: object
-  dto.LoginResponse:
+  LoginResponse:
     properties:
       access_token:
         type: string
     type: object
-  dto.RegisterRequest:
+  ProfileResponse:
+    properties:
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      user_id:
+        type: string
+    type: object
+  RegisterRequest:
     properties:
       email:
         type: string
@@ -30,7 +95,7 @@ definitions:
     - full_name
     - password
     type: object
-  dto.RegisterResponse:
+  RegisterResponse:
     properties:
       created_at:
         type: string
@@ -41,7 +106,24 @@ definitions:
       id:
         type: string
     type: object
-  dto.VerifyEmailRequest:
+  SetPasswordRequest:
+    properties:
+      password:
+        minLength: 6
+        type: string
+    required:
+    - password
+    type: object
+  UpdateProfileRequest:
+    properties:
+      avatar_url:
+        type: string
+      bio:
+        type: string
+      display_name:
+        type: string
+    type: object
+  VerifyEmailRequest:
     properties:
       otp:
         type: string
@@ -51,22 +133,12 @@ definitions:
     - otp
     - user_id
     type: object
-  dto.VerifyEmailResponse:
+  VerifyEmailResponse:
     properties:
       message:
         type: string
       verified:
         type: boolean
-    type: object
-  response.ErrorResponse:
-    properties:
-      error:
-        properties:
-          code:
-            type: string
-          message:
-            type: string
-        type: object
     type: object
 host: localhost:8080
 info:
@@ -86,23 +158,69 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.LoginRequest'
+          $ref: '#/definitions/LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.LoginResponse'
+            $ref: '#/definitions/LoginResponse'
         "401":
           description: Invalid credentials
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Validation error
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       summary: Login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Invalidates the current JWT by adding it to the Redis blacklist
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - auth
+  /auth/password:
+    patch:
+      consumes:
+      - application/json
+      description: Changes the authenticated user's password after verifying the current
+        one
+      parameters:
+      - description: Change password payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change own password
       tags:
       - auth
   /auth/register:
@@ -116,26 +234,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.RegisterRequest'
+          $ref: '#/definitions/RegisterRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/dto.RegisterResponse'
+            $ref: '#/definitions/RegisterResponse'
         "409":
           description: Email already taken
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Validation error
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       summary: Register a new user
       tags:
       - auth
@@ -150,33 +268,226 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.VerifyEmailRequest'
+          $ref: '#/definitions/VerifyEmailRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/dto.VerifyEmailResponse'
+            $ref: '#/definitions/VerifyEmailResponse'
         "400":
           description: Invalid or expired OTP
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "404":
           description: User not found
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "422":
           description: Validation error
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
         "500":
           description: Internal server error
           schema:
-            $ref: '#/definitions/response.ErrorResponse'
+            $ref: '#/definitions/ErrorResponse'
       summary: Verify email address
       tags:
       - auth
+  /profile:
+    get:
+      description: Returns the authenticated user's profile
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ProfileResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get own profile
+      tags:
+      - profile
+    patch:
+      consumes:
+      - application/json
+      description: Updates display name, avatar URL, and/or bio for the authenticated
+        user
+      parameters:
+      - description: Update profile payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ProfileResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update own profile
+      tags:
+      - profile
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Admin or manager creates a staff account with a specific role.
+        Role must be within the caller's permission level.
+      parameters:
+      - description: Create user payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/CreateUserResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a staff account
+      tags:
+      - users
+  /users/{id}/password:
+    patch:
+      consumes:
+      - application/json
+      description: Admin/manager sets a new password for a staff member without requiring
+        the current password
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Password payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set staff password
+      tags:
+      - users
+  /users/{id}/profile:
+    get:
+      description: Returns the profile of any user. Requires user:view:all or user:manage:branch.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ProfileResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get staff profile
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: Updates display name, avatar URL, and/or bio for a staff member
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update profile payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ProfileResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update staff profile
+      tags:
+      - users
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and the access token.

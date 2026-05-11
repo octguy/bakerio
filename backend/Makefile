@@ -61,6 +61,11 @@ sqlc:
 run:
 	go run ./cmd/server
 
+# Stop the server
+#   make stop
+stop:
+	pkill -f "go run ./cmd/server" || true
+
 # ============================================================
 #  DOCKER
 # ============================================================

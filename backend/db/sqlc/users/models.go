@@ -2,7 +2,7 @@
 // versions:
 //   sqlc v1.31.1
 
-package profiledb
+package usersdb
 
 import (
 	"time"
@@ -72,7 +72,7 @@ type BranchBranch struct {
 	CreatedAt time.Time      `json:"created_at"`
 }
 
-type ProfileProfile struct {
+type UsersProfile struct {
 	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`
 	DisplayName string    `json:"display_name"`

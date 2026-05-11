@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	profiledb "github.com/octguy/bakerio/backend/db/sqlc/profile"
+	usersdb "github.com/octguy/bakerio/backend/db/sqlc/users"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
@@ -16,23 +16,23 @@ type ProfileRepository interface {
 }
 
 type profileRepo struct {
-	db *profiledb.Queries
+	db *usersdb.Queries
 }
 
-func (r *profileRepo) queries(ctx context.Context) *profiledb.Queries {
+func (r *profileRepo) queries(ctx context.Context) *usersdb.Queries {
 	if tx, ok := txmanager.Extract(ctx); ok {
 		return r.db.WithTx(tx)
 	}
 	return r.db
 }
 
-func NewProfileRepository(db *profiledb.Queries) ProfileRepository {
+func NewProfileRepository(db *usersdb.Queries) ProfileRepository {
 	return &profileRepo{db: db}
 }
 
 func (p *profileRepo) CreateProfile(ctx context.Context, userId uuid.UUID, avatarURL, bio *string, fullName string) (*domain.Profile, error) {
 	q := p.queries(ctx)
-	row, err := q.CreateProfile(ctx, profiledb.CreateProfileParams{
+	row, err := q.CreateProfile(ctx, usersdb.CreateProfileParams{
 		UserID:      userId,
 		DisplayName: fullName,
 		AvatarUrl:   avatarURL,
@@ -55,7 +55,7 @@ func (p *profileRepo) GetProfileByUserID(ctx context.Context, userID uuid.UUID) 
 }
 
 func (p *profileRepo) UpdateProfile(ctx context.Context, userID uuid.UUID, displayName string, avatarURL, bio *string) (*domain.Profile, error) {
-	row, err := p.queries(ctx).UpdateProfile(ctx, profiledb.UpdateProfileParams{
+	row, err := p.queries(ctx).UpdateProfile(ctx, usersdb.UpdateProfileParams{
 		UserID:      userID,
 		DisplayName: displayName,
 		AvatarUrl:   avatarURL,
@@ -67,7 +67,7 @@ func (p *profileRepo) UpdateProfile(ctx context.Context, userID uuid.UUID, displ
 	return toEntity(row), nil
 }
 
-func toEntity(dbModel profiledb.ProfileProfile) *domain.Profile {
+func toEntity(dbModel usersdb.UsersProfile) *domain.Profile {
 	return &domain.Profile{
 		ID:          dbModel.ID,
 		UserID:      dbModel.UserID,

@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/platform/middleware"
-	profileDto "github.com/octguy/bakerio/backend/internal/profile/dto"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
 	"github.com/octguy/bakerio/backend/internal/user/dto"
@@ -80,7 +79,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 // @Security     BearerAuth
 // @Produce      json
 // @Param        id   path      string  true  "User ID"
-// @Success      200  {object}  profileDto.ProfileResponse
+// @Success      200  {object}  dto.ProfileResponse
 // @Failure      403  {object}  response.ErrorResponse
 // @Failure      404  {object}  response.ErrorResponse
 // @Router       /users/{id}/profile [get]
@@ -105,9 +104,9 @@ func (h *UserHandler) GetUserProfile(c *gin.Context) {
 // @Security     BearerAuth
 // @Accept       json
 // @Produce      json
-// @Param        id       path      string                       true  "User ID"
-// @Param        request  body      profileDto.UpdateProfileRequest  true  "Update profile payload"
-// @Success      200      {object}  profileDto.ProfileResponse
+// @Param        id       path      string                   true  "User ID"
+// @Param        request  body      dto.UpdateProfileRequest  true  "Update profile payload"
+// @Success      200      {object}  dto.ProfileResponse
 // @Failure      403      {object}  response.ErrorResponse
 // @Failure      404      {object}  response.ErrorResponse
 // @Failure      422      {object}  response.ErrorResponse
@@ -118,7 +117,7 @@ func (h *UserHandler) UpdateUserProfile(c *gin.Context) {
 		response.Error(c, apperrors.Validation("invalid user id"))
 		return
 	}
-	var req profileDto.UpdateProfileRequest
+	var req dto.UpdateProfileRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, apperrors.Validation(err.Error()))
 		return
