@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/branch/repository"
@@ -29,7 +30,7 @@ func NewBranchService(repo repository.BranchRepository) BranchService {
 func (b* branchService) CreateBranch(ctx context.Context, req dto.CreateBranchRequest) (dto.BranchResponse, error) {
 	created, err := b.repo.CreateBranch(ctx, req.Name, req.Address, req.Lat, req.Lng)
 	if err != nil {
-		return dto.BranchResponse{}, err
+		return dto.BranchResponse{}, apperrors.Internal("database error", err)
 	}
 	return toResponse(created), nil
 }
@@ -37,7 +38,10 @@ func (b* branchService) CreateBranch(ctx context.Context, req dto.CreateBranchRe
 func (b* branchService) GetBranchByID(ctx context.Context, id uuid.UUID) (dto.BranchResponse, error) {
 	branch, err := b.repo.GetBranchByID(ctx, id)
 	if err != nil {
-		return dto.BranchResponse{}, err
+		if branch == nil {
+			return dto.BranchResponse{}, apperrors.NotFound("branch not found")
+		}
+		return dto.BranchResponse{}, apperrors.Internal("database error", err)
 	}
 	return toResponse(branch), nil
 }
@@ -45,7 +49,7 @@ func (b* branchService) GetBranchByID(ctx context.Context, id uuid.UUID) (dto.Br
 func (b* branchService) GetAllBranches(ctx context.Context) ([]dto.BranchResponse, error) {
 	rows, err := b.repo.GetAllBranches(ctx)
 	if err != nil {
-		return make([]dto.BranchResponse, 0, len(rows)), err
+		return make([]dto.BranchResponse, 0, len(rows)), apperrors.Internal("database error", err)
 	}
 	branches := make([]dto.BranchResponse, 0, len(rows))
 
@@ -61,7 +65,7 @@ func (b* branchService) GetAllBranches(ctx context.Context) ([]dto.BranchRespons
 func (b* branchService) UpdateBranch(ctx context.Context, id uuid.UUID, req dto.UpdateBranchRequest) (dto.BranchResponse, error) {
 	current, err:= b.repo.GetBranchByID(ctx,id)
 	if err != nil {
-		return dto.BranchResponse{}, err
+		return dto.BranchResponse{}, apperrors.Internal("database error", err)
 	}
 
 	name := current.Name
@@ -78,14 +82,17 @@ func (b* branchService) UpdateBranch(ctx context.Context, id uuid.UUID, req dto.
 
 	updated, err := b.repo.UpdateBranch(ctx, id, name, address, lat, lng)
 	if err != nil {
-		return dto.BranchResponse{}, err
+		return dto.BranchResponse{}, apperrors.Internal("database error", err)
 	}
 	return toResponse(updated), nil
 }
 
 func (b* branchService) UpdateBranchStatus(ctx context.Context, id uuid.UUID, status string) error {
 	err := b.repo.UpdateBranchStatus(ctx, id, status)
-	return err
+	if err != nil {
+		return apperrors.Internal("database error", err)
+	}
+	return nil
 }
 
 func toResponse(branch *domain.Branch) dto.BranchResponse {
