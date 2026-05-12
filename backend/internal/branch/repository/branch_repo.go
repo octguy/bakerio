@@ -10,11 +10,11 @@ import (
 )
 
 type BranchRepository interface {
-	CreateBranch(ctx context.Context, name, address string, lat, lon float32) (*domain.Branch, error)
-	FindBranchById(ctx context.Context, id uuid.UUID) (*domain.Branch, error)
-	FindAllBranches(ctx context.Context) ([]*domain.Branch, error)
-	UpdateBranch(ctx context.Context, branchID uuid.UUID, name, address string, lat, lon float32) (*domain.Branch, error)
-	UpdateStatus(ctx context.Context, branchID uuid.UUID, status string) (*domain.Branch, error)
+	CreateBranch(ctx context.Context, name, address string, lat, lng *float64) (*domain.Branch, error)
+	GetBranchByID(ctx context.Context, id uuid.UUID) (*domain.Branch, error)
+	GetAllBranches(ctx context.Context) ([]*domain.Branch, error)
+	UpdateBranch(ctx context.Context, branchID uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error)
+	UpdateBranchStatus(ctx context.Context, branchID uuid.UUID, status string) error
 }
 
 type branchRepo struct {
@@ -28,17 +28,17 @@ func (r *branchRepo) queries(ctx context.Context) *branchdb.Queries {
 	return r.db
 }
 
-func NewBranchRepository (db *branchdb.Queries) BranchRepository {
+func NewBranchRepository(db *branchdb.Queries) BranchRepository {
 	return &branchRepo{db: db}
 }
 
-func (b *branchRepo) CreateBranch(ctx context.Context, name, address string, lat, lon float32) (*domain.Branch, error) {
+func (b *branchRepo) CreateBranch(ctx context.Context, name, address string, lat, lng *float64) (*domain.Branch, error) {
 	q := b.queries(ctx)
 	row, err := q.CreateBranch(ctx, branchdb.CreateBranchParams{
 		Name:		name,
 		Address: 	address,
 		Lat: 		lat,
-		Lon:		lon,
+		Lng:		lng,
 	})
 
 	if err != nil {
@@ -48,7 +48,7 @@ func (b *branchRepo) CreateBranch(ctx context.Context, name, address string, lat
 	return toEntity(row), nil
 }
 
-func (b *branchRepo) FindBranchById(ctx context.Context, id uuid.UUID) (*domain.Branch, error) {
+func (b *branchRepo) GetBranchByID(ctx context.Context, id uuid.UUID) (*domain.Branch, error) {
 	q := b.queries(ctx)
 
 	row, err := q.GetBranchByID(ctx, id)
@@ -56,10 +56,10 @@ func (b *branchRepo) FindBranchById(ctx context.Context, id uuid.UUID) (*domain.
 		return nil, err
 	}
 
-	return toEntity(&row), nil
+	return toEntity(row), nil
 }
 
-func (b *branchRepo) FindAllBranches(ctx context.Context) ([]*domain.Branch, error) {
+func (b *branchRepo) GetAllBranches(ctx context.Context) ([]*domain.Branch, error) {
 	q := b.queries(ctx)
 
 	rows, err := q.GetAllBranches(ctx)
@@ -72,23 +72,40 @@ func (b *branchRepo) FindAllBranches(ctx context.Context) ([]*domain.Branch, err
 	for _, row := range rows {
 		r := row
 
-		branches = append (branches, toEntity(&r))
+		branches = append (branches, toEntity(r))
 	}
 
 	return branches, nil
 }
 
-func (b *branchRepo) UpdateBranch(ctx context.Context, name, address string, lat, lon float32) (*domain.Branch, errord) {
-	row, err := b.queries(ctx).UpdateBranch(ctx, branchdb.UpdateBranchParams{
+func (b *branchRepo) UpdateBranch(ctx context.Context,id uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error) {
+	q := b.queries(ctx)
+
+	row, err := q.UpdateBranch(ctx, branchdb.UpdateBranchParams{
 		Name:		name,
 		Address:	address,
 		Lat:		lat,
-		Lon:		lon,
+		Lng:		lng,
+		ID:			id,
+
 	})
 	if err != nil {
 		return nil, err
 	}
 	return toEntity(row), nil
+}
+
+func (b *branchRepo) UpdateBranchStatus(ctx context.Context,id uuid.UUID, status string) error {
+	q := b.queries(ctx)
+
+	err := q.UpdateBranchStatus(ctx, branchdb.UpdateBranchStatusParams{
+		Status:		status,
+		ID:			id,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func toEntity(dbModel branchdb.BranchBranch) *domain.Branch {
@@ -97,8 +114,8 @@ func toEntity(dbModel branchdb.BranchBranch) *domain.Branch {
 		Name:		dbModel.Name,
 		Address:	dbModel.Address,
 		Lat:		dbModel.Lat,
-		Lon:		dbModel.Lon,
+		Lng:		dbModel.Lng,
 		Status:		dbModel.Status,
-		CreatedAt:	dbModel.CreatedAt
+		CreatedAt:	dbModel.CreatedAt,
 	}
 }

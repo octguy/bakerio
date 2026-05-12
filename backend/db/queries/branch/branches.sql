@@ -12,7 +12,7 @@ LIMIT 1;
 -- name: GetAllBranches :many
 SELECT * FROM branch.branches;
 
--- name: UpdateStatus :exec
+-- name: UpdateBranchStatus :exec
 UPDATE branch.branches
 SET status = $1
 WHERE id = $2;
@@ -20,7 +20,7 @@ WHERE id = $2;
 -- name: UpdateBranch :one
 UPDATE branch.branches
 SET
-    name = COALESCE($1, name),
+    name = $1,
     address = $2,
     lat = $3,
     lng = $4

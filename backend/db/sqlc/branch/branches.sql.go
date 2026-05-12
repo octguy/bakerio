@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createBranch = `-- name: CreateBranch :one
@@ -20,10 +19,10 @@ INSERT INTO branch.branches (
 `
 
 type CreateBranchParams struct {
-	Name    string         `json:"name"`
-	Address string         `json:"address"`
-	Lat     pgtype.Numeric `json:"lat"`
-	Lng     pgtype.Numeric `json:"lng"`
+	Name    string   `json:"name"`
+	Address string   `json:"address"`
+	Lat     *float64 `json:"lat"`
+	Lng     *float64 `json:"lng"`
 }
 
 func (q *Queries) CreateBranch(ctx context.Context, arg CreateBranchParams) (BranchBranch, error) {
@@ -102,7 +101,7 @@ func (q *Queries) GetBranchByID(ctx context.Context, id uuid.UUID) (BranchBranch
 const updateBranch = `-- name: UpdateBranch :one
 UPDATE branch.branches
 SET
-    name = COALESCE($1, name),
+    name = $1,
     address = $2,
     lat = $3,
     lng = $4
@@ -111,11 +110,11 @@ RETURNING id, name, address, lat, lng, status, created_at
 `
 
 type UpdateBranchParams struct {
-	Name    string         `json:"name"`
-	Address string         `json:"address"`
-	Lat     pgtype.Numeric `json:"lat"`
-	Lng     pgtype.Numeric `json:"lng"`
-	ID      uuid.UUID      `json:"id"`
+	Name    string    `json:"name"`
+	Address string    `json:"address"`
+	Lat     *float64  `json:"lat"`
+	Lng     *float64  `json:"lng"`
+	ID      uuid.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateBranch(ctx context.Context, arg UpdateBranchParams) (BranchBranch, error) {
@@ -139,18 +138,18 @@ func (q *Queries) UpdateBranch(ctx context.Context, arg UpdateBranchParams) (Bra
 	return i, err
 }
 
-const updateStatus = `-- name: UpdateStatus :exec
+const updateBranchStatus = `-- name: UpdateBranchStatus :exec
 UPDATE branch.branches
 SET status = $1
 WHERE id = $2
 `
 
-type UpdateStatusParams struct {
+type UpdateBranchStatusParams struct {
 	Status string    `json:"status"`
 	ID     uuid.UUID `json:"id"`
 }
 
-func (q *Queries) UpdateStatus(ctx context.Context, arg UpdateStatusParams) error {
-	_, err := q.db.Exec(ctx, updateStatus, arg.Status, arg.ID)
+func (q *Queries) UpdateBranchStatus(ctx context.Context, arg UpdateBranchStatusParams) error {
+	_, err := q.db.Exec(ctx, updateBranchStatus, arg.Status, arg.ID)
 	return err
 }

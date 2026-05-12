@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuthAuthCredential struct {
@@ -63,16 +62,16 @@ type AuthUserRole struct {
 }
 
 type BranchBranch struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Address   string         `json:"address"`
-	Lat       pgtype.Numeric `json:"lat"`
-	Lng       pgtype.Numeric `json:"lng"`
-	Status    string         `json:"status"`
-	CreatedAt time.Time      `json:"created_at"`
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	Address   string    `json:"address"`
+	Lat       *float64  `json:"lat"`
+	Lng       *float64  `json:"lng"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
-type ProfileProfile struct {
+type UsersProfile struct {
 	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`
 	DisplayName string    `json:"display_name"`
