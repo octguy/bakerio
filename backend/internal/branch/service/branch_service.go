@@ -20,11 +20,12 @@ type BranchService interface {
 }
 
 type branchService struct {
+	tx   *txmanager.TxManager
 	repo repository.BranchRepository
 }
 
-func NewBranchService(repo repository.BranchRepository) BranchService {
-	return &branchService{repo: repo}
+func NewBranchService(tx *txmanager.TxManager, repo repository.BranchRepository) BranchService {
+	return &branchService{tx: tx, repo: repo}
 }
 
 func (b* branchService) CreateBranch(ctx context.Context, req dto.CreateBranchRequest) (dto.BranchResponse, error) {
@@ -38,11 +39,13 @@ func (b* branchService) CreateBranch(ctx context.Context, req dto.CreateBranchRe
 func (b* branchService) GetBranchByID(ctx context.Context, id uuid.UUID) (dto.BranchResponse, error) {
 	branch, err := b.repo.GetBranchByID(ctx, id)
 	if err != nil {
-		if branch == nil {
-			return dto.BranchResponse{}, apperrors.NotFound("branch not found")
-		}
 		return dto.BranchResponse{}, apperrors.Internal("database error", err)
 	}
+	
+	if branch == nil {
+		return dto.BranchResponse{}, apperrors.NotFound("branch not found")
+	}
+	
 	return toResponse(branch), nil
 }
 
@@ -66,6 +69,10 @@ func (b* branchService) UpdateBranch(ctx context.Context, id uuid.UUID, req dto.
 	current, err:= b.repo.GetBranchByID(ctx,id)
 	if err != nil {
 		return dto.BranchResponse{}, apperrors.Internal("database error", err)
+	}
+
+	if current == nil {
+		return dto.BranchResponse{}, apperrors.NotFound("branch not found")
 	}
 
 	name := current.Name

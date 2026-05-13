@@ -19,6 +19,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth"
+	"github.com/octguy/bakerio/backend/internal/branch"
 	"github.com/octguy/bakerio/backend/internal/notification"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/database"
@@ -92,6 +93,7 @@ func main() {
 
 	// 6. Modules
 	userModule := user.New(pool, tx)
+	branchModule := branch.New(pool, tx)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
 	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
 	userModule.Wire(authModule.Service())
@@ -124,6 +126,7 @@ func main() {
 
 	authModule.RegisterRoutes(public, authed)
 	userModule.RegisterRoutes(authed)
+	branchModule.RegisterRoutes(authed)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

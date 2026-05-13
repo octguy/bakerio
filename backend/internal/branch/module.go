@@ -18,9 +18,9 @@ type Module struct {
 	h   *handler.BranchHandler
 }
 
-func New(pool *pgxpool.Pool) *Module {
+func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
 	repo := repository.NewBranchRepository(usersdb.New(pool))
-	svc := service.NewBranchService(repo)
+	svc := service.NewBranchService(tx, repo)
 	return &Module{
 		svc: svc,
 		h:   handler.NewBranchHandler(svc),
