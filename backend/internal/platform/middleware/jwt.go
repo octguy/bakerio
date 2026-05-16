@@ -6,13 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
+	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
 )
 
 const (
 	UserIDKey      = "userID"
 	RolesKey       = "roles"
-	BranchIDKey	   = "branchID"
+	BranchIDKey    = "branchID"
 	PermissionsKey = "permissions"
 	JTIKey         = "jti"
 	ExpiresAtKey   = "expiresAt"
@@ -57,7 +58,7 @@ func JWTAuth(authSvc service.AuthService) gin.HandlerFunc {
 		c.Set(ExpiresAtKey, claims.ExpiresAt.Time)
 
 		// Enrich the Go context so service layers can access identity
-		ctx := WithCaller(c.Request.Context(), claims.UserID, claims.BranchID)
+		ctx := authcontext.WithCaller(c.Request.Context(), claims.UserID, claims.BranchID)
 		c.Request = c.Request.WithContext(ctx)
 
 		c.Next()

@@ -20,11 +20,11 @@ type LoginRequest struct {
 
 // Responses
 type RegisterResponse struct {
-	ID        uuid.UUID 	`json:"id"`
-	Email     string    	`json:"email"`
-	FullName  string    	`json:"full_name"`
-	CreatedAt time.Time 	`json:"created_at"`
-	BranchID  *uuid.UUID 	`json:"branch_id"`
+	ID        uuid.UUID  `json:"id"`
+	Email     string     `json:"email"`
+	FullName  string     `json:"full_name"`
+	CreatedAt time.Time  `json:"created_at"`
+	BranchID  *uuid.UUID `json:"branch_id"`
 } // @name RegisterResponse
 
 type LoginResponse struct {

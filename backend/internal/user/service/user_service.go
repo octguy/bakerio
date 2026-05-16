@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 	authSvc "github.com/octguy/bakerio/backend/internal/auth/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
+	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/user/dto"
-	"github.com/octguy/bakerio/backend/internal/platform/middleware"
 )
 
 // allowedRolesByPermission defines which roles each permission level may assign.
@@ -39,14 +39,12 @@ func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest,
 		return dto.CreateUserResponse{}, apperrors.Forbidden("you are not allowed to assign role: " + req.Role)
 	}
 
-	if slices.Contains(callerPerms, "user:manage:branch") {
-		// You'll need to extract the caller's BranchID from the context
-		// (We can use a helper like middleware.CallerBranchID(ctx))
-		callerBID, _ := middleware.CallerBranchID(ctx)
-		
+	if !slices.Contains(callerPerms, "user:manage:all") && !slices.Contains(callerPerms, "*:*:all") && slices.Contains(callerPerms, "user:manage:branch") {
+		callerBID, _ := authcontext.CallerBranchID(ctx)
+
 		if req.BranchID == nil || *req.BranchID != callerBID {
 			return dto.CreateUserResponse{}, apperrors.Forbidden("you can only create staff for your own branch")
-			}
+		}
 	}
 
 	user, err := s.authSvc.CreateStaff(ctx, req.Email, req.FullName, req.Password, req.Role, req.BranchID)

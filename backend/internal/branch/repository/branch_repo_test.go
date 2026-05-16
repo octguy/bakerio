@@ -19,7 +19,7 @@ type BranchRepoTestSuite struct {
 
 func (s *BranchRepoTestSuite) SetupSuite() {
 	ctx := context.Background()
-	
+
 	// Try to get DSN from environment, fallback to a local default
 	dsn := os.Getenv("TEST_DB_URL")
 	if dsn == "" {
@@ -86,7 +86,7 @@ func (s *BranchRepoTestSuite) TestCreateBranch() {
 			s.NotEqual(uuid.Nil, branch.ID)
 			s.Equal(tt.bName, branch.Name)
 			s.Equal(tt.address, branch.Address)
-			
+
 			if tt.lat != nil {
 				s.Equal(*tt.lat, *branch.Lat)
 				s.Equal(*tt.lng, *branch.Lng)
@@ -97,7 +97,7 @@ func (s *BranchRepoTestSuite) TestCreateBranch() {
 
 func (s *BranchRepoTestSuite) TestGetBranchByID() {
 	ctx := context.Background()
-	
+
 	// 1. Setup: Create a branch to find
 	created, err := s.repo.CreateBranch(ctx, "Target Branch", "Target Addr", nil, nil)
 	s.NoError(err)
@@ -118,7 +118,7 @@ func (s *BranchRepoTestSuite) TestGetBranchByID() {
 
 func (s *BranchRepoTestSuite) TestGetAllBranches() {
 	ctx := context.Background()
-	
+
 	// 1. Setup: Insert multiple branches
 	_, _ = s.repo.CreateBranch(ctx, "B1", "A1", nil, nil)
 	_, _ = s.repo.CreateBranch(ctx, "B2", "A2", nil, nil)

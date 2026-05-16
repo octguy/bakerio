@@ -4,10 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
 )
+
+type Postgres struct {
+	Pool *pgxpool.Pool
+}
+
+func (p *Postgres) Close() {
+	if p.Pool != nil {
+		p.Pool.Close()
+	}
+}
 
 func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)

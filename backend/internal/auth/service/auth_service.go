@@ -9,13 +9,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
-	branchdto "github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
+	branchdto "github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
+	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/internal/shared/event"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
@@ -28,21 +29,21 @@ var (
 	ErrEmailTaken         = apperrors.Conflict("email already taken")
 	InvalidOTP            = apperrors.Unauthorized("invalid otp")
 	UserNotFound          = apperrors.NotFound("user not found")
-	ErrBranchNotFound		  = apperrors.NotFound("branch not found")
+	ErrBranchNotFound     = apperrors.NotFound("branch not found")
 	ErrNoBranchAssigned   = apperrors.NotFound("no branch assigned")
 )
 
 var storeLevelRoles = map[string]bool{
-    "store_manager": true,
-    "staff_cashier": true,
-    "baker":         true,
-    "shipper":       true,
+	"store_manager": true,
+	"staff_cashier": true,
+	"baker":         true,
+	"shipper":       true,
 }
 
 type Claims struct {
-	UserID uuid.UUID `json:"user_id"`
-	Roles  []string  `json:"roles"`
-	BranchID *uuid.UUID	 `json:"branch_id,omitempty"` // nil for HQ and customer roles
+	UserID   uuid.UUID  `json:"user_id"`
+	Roles    []string   `json:"roles"`
+	BranchID *uuid.UUID `json:"branch_id,omitempty"` // nil for HQ and customer roles
 	jwt.RegisteredClaims
 }
 
@@ -100,7 +101,7 @@ func NewAuthService(
 		redis:      redis,
 		tx:         tx,
 		profileSvc: profSvc,
-		branchSvc:	branchSvc,
+		branchSvc:  branchSvc,
 		outboxRepo: outboxRepo,
 		otpSvc:     otpSvc,
 		jwtSecret:  []byte(jwtSecret),
@@ -200,7 +201,7 @@ func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (dto.Logi
 
 	var branchID *uuid.UUID
 	if isStoreLevelStaff {
-		id,err := s.repo.GetUserBranchID(ctx, user.ID)
+		id, err := s.repo.GetUserBranchID(ctx, user.ID)
 		if err != nil || id == nil {
 			logger.Log.Error("login: store-level user has no branch assignment", zap.String("email", req.Email), zap.Error(err))
 			return dto.LoginResponse{}, ErrNoBranchAssigned
@@ -323,14 +324,24 @@ func (s *authService) CreateStaff(ctx context.Context, email, fullName, password
 			return dto.RegisterResponse{}, ErrNoBranchAssigned
 		}
 
+		// Defense-in-depth: if caller is branch-restricted, they must create staff in their own branch
+		if callerBID, ok := authcontext.CallerBranchID(ctx); ok && callerBID != uuid.Nil {
+			if *branchID != callerBID {
+				return dto.RegisterResponse{}, apperrors.Forbidden("you can only create staff for your own branch")
+			}
+		}
+
 		_, err := s.branchSvc.GetBranchByID(ctx, *branchID)
 		if err != nil {
-			return dto.RegisterResponse{}, ErrBranchNotFound
+			var appErr *apperrors.AppError
+			if errors.As(err, &appErr) && appErr.Code == apperrors.CodeNotFound {
+				return dto.RegisterResponse{}, ErrBranchNotFound
+			}
+			return dto.RegisterResponse{}, err
 		}
 	} else {
 		branchID = nil
 	}
-
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -372,8 +383,8 @@ func (s *authService) CreateStaff(ctx context.Context, email, fullName, password
 
 func (s *authService) generateToken(userID uuid.UUID, roles []string, branchID *uuid.UUID) (string, error) {
 	claims := &Claims{
-		UserID: userID,
-		Roles:  roles,
+		UserID:   userID,
+		Roles:    roles,
 		BranchID: branchID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        uuid.New().String(),

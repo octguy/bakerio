@@ -5,7 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	productdb "github.com/octguy/bakerio/backend/db/sqlc/product"
-	"github.com/octguy/bakerio/backend/internal/platform/middleware"
+	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
@@ -35,8 +35,8 @@ func (r *categoryRepo) queries(ctx context.Context) *productdb.Queries {
 }
 
 func (r *categoryRepo) Create(ctx context.Context, name, slug string, parentID *uuid.UUID, sortOrder int32) (*domain.Category, error) {
-	callerID, _ := middleware.CallerID(ctx)
-	
+	callerID, _ := authcontext.CallerID(ctx)
+
 	row, err := r.queries(ctx).CreateCategory(ctx, productdb.CreateCategoryParams{
 		Name:      name,
 		Slug:      slug,
@@ -72,7 +72,7 @@ func (r *categoryRepo) List(ctx context.Context) ([]*domain.Category, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	result := make([]*domain.Category, 0, len(rows))
 	for _, row := range rows {
 		result = append(result, toCategoryEntity(&row))
@@ -81,7 +81,7 @@ func (r *categoryRepo) List(ctx context.Context) ([]*domain.Category, error) {
 }
 
 func (r *categoryRepo) Update(ctx context.Context, id uuid.UUID, name, slug string, parentID *uuid.UUID, sortOrder int32, isActive bool) (*domain.Category, error) {
-	callerID, _ := middleware.CallerID(ctx)
+	callerID, _ := authcontext.CallerID(ctx)
 
 	row, err := r.queries(ctx).UpdateCategory(ctx, productdb.UpdateCategoryParams{
 		ID:        id,
@@ -99,7 +99,7 @@ func (r *categoryRepo) Update(ctx context.Context, id uuid.UUID, name, slug stri
 }
 
 func (r *categoryRepo) Delete(ctx context.Context, id uuid.UUID) error {
-	callerID, _ := middleware.CallerID(ctx)
+	callerID, _ := authcontext.CallerID(ctx)
 	return r.queries(ctx).SoftDeleteCategory(ctx, productdb.SoftDeleteCategoryParams{
 		ID:        id,
 		UpdatedBy: nullableUUID(callerID),

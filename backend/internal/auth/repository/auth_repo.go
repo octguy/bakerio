@@ -44,7 +44,7 @@ func (r *authRepo) CreateAccount(ctx context.Context, email, password string, br
 		Email:         email,
 		EmailVerified: false,
 		IsActive:      false,
-		BranchID:	   branchID,
+		BranchID:      branchID,
 	})
 	if err != nil {
 		return nil, err
@@ -118,8 +118,8 @@ func (r *authRepo) UpdatePassword(ctx context.Context, userID uuid.UUID, newHash
 }
 
 func (r *authRepo) GetUserBranchID(ctx context.Context, id uuid.UUID) (*uuid.UUID, error) {
-      return r.queries(ctx).GetUserBranchID(ctx, id)                                                                                         
-  }
+	return r.queries(ctx).GetUserBranchID(ctx, id)
+}
 
 func toEntity(u *authdb.AuthUser) *domain.User {
 	return &domain.User{

@@ -45,9 +45,7 @@ sql:
             go_type: { type: "float64", pointer: true}
           - column: "branch.branches.lng"
             go_type: { type: "float64", pointer: true}
-          - column: "*.price"
-            go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
-          - column: "*.total_amount"
+          - column: "product.product_prices.price"
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
 
   - engine: "postgresql"

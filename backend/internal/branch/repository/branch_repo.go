@@ -35,10 +35,10 @@ func NewBranchRepository(db *branchdb.Queries) BranchRepository {
 func (b *branchRepo) CreateBranch(ctx context.Context, name, address string, lat, lng *float64) (*domain.Branch, error) {
 	q := b.queries(ctx)
 	row, err := q.CreateBranch(ctx, branchdb.CreateBranchParams{
-		Name:		name,
-		Address: 	address,
-		Lat: 		lat,
-		Lng:		lng,
+		Name:    name,
+		Address: address,
+		Lat:     lat,
+		Lng:     lng,
 	})
 
 	if err != nil {
@@ -72,22 +72,21 @@ func (b *branchRepo) GetAllBranches(ctx context.Context) ([]*domain.Branch, erro
 	for _, row := range rows {
 		r := row
 
-		branches = append (branches, toEntity(r))
+		branches = append(branches, toEntity(r))
 	}
 
 	return branches, nil
 }
 
-func (b *branchRepo) UpdateBranch(ctx context.Context,id uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error) {
+func (b *branchRepo) UpdateBranch(ctx context.Context, id uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error) {
 	q := b.queries(ctx)
 
 	row, err := q.UpdateBranch(ctx, branchdb.UpdateBranchParams{
-		Name:		name,
-		Address:	address,
-		Lat:		lat,
-		Lng:		lng,
-		ID:			id,
-
+		Name:    name,
+		Address: address,
+		Lat:     lat,
+		Lng:     lng,
+		ID:      id,
 	})
 	if err != nil {
 		return nil, err
@@ -95,12 +94,12 @@ func (b *branchRepo) UpdateBranch(ctx context.Context,id uuid.UUID, name, addres
 	return toEntity(row), nil
 }
 
-func (b *branchRepo) UpdateBranchStatus(ctx context.Context,id uuid.UUID, status string) error {
+func (b *branchRepo) UpdateBranchStatus(ctx context.Context, id uuid.UUID, status string) error {
 	q := b.queries(ctx)
 
 	err := q.UpdateBranchStatus(ctx, branchdb.UpdateBranchStatusParams{
-		Status:		status,
-		ID:			id,
+		Status: status,
+		ID:     id,
 	})
 	if err != nil {
 		return err
@@ -110,12 +109,12 @@ func (b *branchRepo) UpdateBranchStatus(ctx context.Context,id uuid.UUID, status
 
 func toEntity(dbModel branchdb.BranchBranch) *domain.Branch {
 	return &domain.Branch{
-		ID: 		dbModel.ID,
-		Name:		dbModel.Name,
-		Address:	dbModel.Address,
-		Lat:		dbModel.Lat,
-		Lng:		dbModel.Lng,
-		Status:		dbModel.Status,
-		CreatedAt:	dbModel.CreatedAt,
+		ID:        dbModel.ID,
+		Name:      dbModel.Name,
+		Address:   dbModel.Address,
+		Lat:       dbModel.Lat,
+		Lng:       dbModel.Lng,
+		Status:    dbModel.Status,
+		CreatedAt: dbModel.CreatedAt,
 	}
 }

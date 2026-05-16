@@ -32,12 +32,12 @@ func NewCategoryService(tx *txmanager.TxManager, repo repository.CategoryReposit
 
 func (s *categoryService) CreateCategory(ctx context.Context, req dto.CreateCategoryRequest) (dto.CategoryResponse, error) {
 	slug := slugify(req.Name)
-	
+
 	category, err := s.repo.Create(ctx, req.Name, slug, req.ParentID, req.SortOrder)
 	if err != nil {
 		return dto.CategoryResponse{}, apperrors.Internal("failed to create category", err)
 	}
-	
+
 	return toCategoryResponse(category), nil
 }
 
@@ -57,7 +57,7 @@ func (s *categoryService) ListCategories(ctx context.Context) ([]dto.CategoryRes
 	if err != nil {
 		return nil, apperrors.Internal("failed to list categories", err)
 	}
-	
+
 	res := make([]dto.CategoryResponse, 0, len(categories))
 	for _, c := range categories {
 		res = append(res, toCategoryResponse(c))
@@ -76,7 +76,7 @@ func (s *categoryService) UpdateCategory(ctx context.Context, id uuid.UUID, req 
 	if err != nil {
 		return dto.CategoryResponse{}, apperrors.Internal("failed to update category", err)
 	}
-	
+
 	return toCategoryResponse(category), nil
 }
 

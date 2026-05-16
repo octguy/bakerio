@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
-	"github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -70,35 +70,35 @@ func (s *BranchServiceTestSuite) SetupTest() {
 
 // --- 3. TEST METHODS ---
 
-func (s* BranchServiceTestSuite) TestGetAllBranches() {
+func (s *BranchServiceTestSuite) TestGetAllBranches() {
 	branch1ID := uuid.New()
 	branch2ID := uuid.New()
 
 	tests := []struct {
-		name			string
-		mockRepoResp	[]*domain.Branch
-		mockRepoErr		error
-		expectedError	apperrors.Code
-		expectedCount	int
+		name          string
+		mockRepoResp  []*domain.Branch
+		mockRepoErr   error
+		expectedError apperrors.Code
+		expectedCount int
 	}{
 		{
-			name:			"Success (Empty)",
-			mockRepoResp:	[]*domain.Branch{},
-			mockRepoErr:	nil,
-			expectedCount:  0,
-		},{
-			name:			"Success (With Data)",
-			mockRepoResp:	[]*domain.Branch{
+			name:          "Success (Empty)",
+			mockRepoResp:  []*domain.Branch{},
+			mockRepoErr:   nil,
+			expectedCount: 0,
+		}, {
+			name: "Success (With Data)",
+			mockRepoResp: []*domain.Branch{
 				{ID: branch1ID, Name: "Branch 1"},
 				{ID: branch2ID, Name: "Branch 2"},
 			},
-			mockRepoErr:	nil,
-			expectedCount:  2,
-		},{
-			name:			"Database Error",
-			mockRepoResp:	nil,
-			mockRepoErr:	apperrors.Internal("db failure", nil),
-			expectedError:	apperrors.CodeInternal,
+			mockRepoErr:   nil,
+			expectedCount: 2,
+		}, {
+			name:          "Database Error",
+			mockRepoResp:  nil,
+			mockRepoErr:   apperrors.Internal("db failure", nil),
+			expectedError: apperrors.CodeInternal,
 		},
 	}
 
@@ -136,11 +136,11 @@ func (s *BranchServiceTestSuite) TestGetBranchByID() {
 		expectedError apperrors.Code
 	}{
 		{
-			name:         	"Success",
-			id:           	branchID,
-			mockRepoResp: 	&domain.Branch{ID: branchID, Name: "Central Bakery"},
-			mockRepoErr:  	nil,
-			expectedError:	"",
+			name:          "Success",
+			id:            branchID,
+			mockRepoResp:  &domain.Branch{ID: branchID, Name: "Central Bakery"},
+			mockRepoErr:   nil,
+			expectedError: "",
 		},
 		{
 			name:          "Not Found",
@@ -150,11 +150,11 @@ func (s *BranchServiceTestSuite) TestGetBranchByID() {
 			expectedError: apperrors.CodeNotFound,
 		},
 		{
-			name:			"Database Error",
-			id:				branchID,
-			mockRepoResp:	nil,
-			mockRepoErr:	apperrors.Internal("db failure", nil),
-			expectedError:	apperrors.CodeInternal,
+			name:          "Database Error",
+			id:            branchID,
+			mockRepoResp:  nil,
+			mockRepoErr:   apperrors.Internal("db failure", nil),
+			expectedError: apperrors.CodeInternal,
 		},
 	}
 
@@ -184,29 +184,29 @@ func (s *BranchServiceTestSuite) TestCreateBranch() {
 	request := dto.CreateBranchRequest{Name: "Test Branch", Address: "Test Address", Lat: floatPtr(36.0), Lng: floatPtr(36.0)}
 
 	tests := []struct {
-		name			string
-		req				*dto.CreateBranchRequest
-		mockRepoResp	*domain.Branch
-		mockRepoErr		error
-		expectedError	apperrors.Code
+		name          string
+		req           *dto.CreateBranchRequest
+		mockRepoResp  *domain.Branch
+		mockRepoErr   error
+		expectedError apperrors.Code
 	}{
 		{
-			name: 			"Success",
-			req:			&request,
-			mockRepoResp:	&domain.Branch{ID: branchID, Name: "Test Branch", Address: "Test Address", Lat: floatPtr(36.0), Lng: floatPtr(36.0)},
-			mockRepoErr:	nil,
-			expectedError:	"",
+			name:          "Success",
+			req:           &request,
+			mockRepoResp:  &domain.Branch{ID: branchID, Name: "Test Branch", Address: "Test Address", Lat: floatPtr(36.0), Lng: floatPtr(36.0)},
+			mockRepoErr:   nil,
+			expectedError: "",
 		},
 		{
-			name:			"Database Error",
-			req: 			&request,
-			mockRepoResp:	nil,
-			mockRepoErr:	apperrors.Internal("db failure", nil),
-			expectedError:	apperrors.CodeInternal,
+			name:          "Database Error",
+			req:           &request,
+			mockRepoResp:  nil,
+			mockRepoErr:   apperrors.Internal("db failure", nil),
+			expectedError: apperrors.CodeInternal,
 		},
 	}
 
-		for _, tt := range tests {
+	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			s.mockRepo.On("CreateBranch",
 				mock.Anything,
@@ -246,13 +246,13 @@ func (s *BranchServiceTestSuite) TestUpdateBranch() {
 	}
 
 	tests := []struct {
-		name          string
-		req           dto.UpdateBranchRequest
-		mockGetResp   *domain.Branch
-		mockGetErr    error
+		name           string
+		req            dto.UpdateBranchRequest
+		mockGetResp    *domain.Branch
+		mockGetErr     error
 		mockUpdateResp *domain.Branch
 		mockUpdateErr  error
-		expectedError apperrors.Code
+		expectedError  apperrors.Code
 	}{
 		{
 			name: "Success (Partial Update)",
@@ -303,13 +303,21 @@ func (s *BranchServiceTestSuite) TestUpdateBranch() {
 			if tt.mockGetResp != nil && tt.mockGetErr == nil {
 				// Calculate expected update params based on merge logic
 				expName := tt.mockGetResp.Name
-				if tt.req.Name != nil { expName = *tt.req.Name }
+				if tt.req.Name != nil {
+					expName = *tt.req.Name
+				}
 				expAddr := tt.mockGetResp.Address
-				if tt.req.Address != nil { expAddr = *tt.req.Address }
+				if tt.req.Address != nil {
+					expAddr = *tt.req.Address
+				}
 				expLat := tt.mockGetResp.Lat
-				if tt.req.Lat != nil { expLat = tt.req.Lat }
+				if tt.req.Lat != nil {
+					expLat = tt.req.Lat
+				}
 				expLng := tt.mockGetResp.Lng
-				if tt.req.Lng != nil { expLng = tt.req.Lng }
+				if tt.req.Lng != nil {
+					expLng = tt.req.Lng
+				}
 
 				s.mockRepo.On("UpdateBranch", mock.Anything, branchID, expName, expAddr, expLat, expLng).
 					Return(tt.mockUpdateResp, tt.mockUpdateErr).Once()
