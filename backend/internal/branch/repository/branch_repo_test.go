@@ -135,19 +135,43 @@ func (s *BranchRepoTestSuite) TestUpdateBranch() {
 	ctx := context.Background()
 	lat, lng := 10.0, 20.0
 
-	// 1. Setup: Create a branch to update
-	branch, err := s.repo.CreateBranch(ctx, "Original Name", "Original Address", nil, nil)
-	s.NoError(err)
+	// Setup: Create a common base branch to update
+	branch, _ := s.repo.CreateBranch(ctx, "Base Name", "Base Addr", &lat, &lng)
 
-	// 2. Act: Update it
-	updated, err := s.repo.UpdateBranch(ctx, branch.ID, "Updated Name", "Updated Address", &lat, &lng)
+	tests := []struct {
+		name    string
+		newName string
+		newAddr string
+		newLat  *float64
+		newLng  *float64
+	}{
+		{
+			name:    "Update Name and Address",
+			newName: "Updated Name",
+			newAddr: "Updated Address",
+			newLat:  &lat,
+			newLng:  &lng,
+		},
+		{
+			name:    "Clear Coordinates (Null transition)",
+			newName: "Base Name",
+			newAddr: "Base Addr",
+			newLat:  nil,
+			newLng:  nil,
+		},
+	}
 
-	// 3. Assert
-	s.NoError(err)
-	s.Equal("Updated Name", updated.Name)
-	s.Equal("Updated Address", updated.Address)
-	s.Equal(lat, *updated.Lat)
-	s.Equal(lng, *updated.Lng)
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			updated, err := s.repo.UpdateBranch(ctx, branch.ID, tt.newName, tt.newAddr, tt.newLat, tt.newLng)
+
+			s.NoError(err)
+			s.Equal(tt.newName, updated.Name)
+			s.Equal(tt.newAddr, updated.Address)
+			s.Equal(tt.newLat, updated.Lat)
+			s.Equal(tt.newLng, updated.Lng)
+		})
+	}
 }
 
 func (s *BranchRepoTestSuite) TestUpdateBranchStatus() {
@@ -166,24 +190,6 @@ func (s *BranchRepoTestSuite) TestUpdateBranchStatus() {
 	// Verify change
 	found, _ := s.repo.GetBranchByID(ctx, branch.ID)
 	s.Equal("inactive", found.Status)
-}
-
-func (s *BranchRepoTestSuite) TestUpdateBranch_ClearCoordinates() {
-	ctx := context.Background()
-	lat, lng := 10.0, 20.0
-
-	// 1. Setup: Start with coordinates
-	branch, err := s.repo.CreateBranch(ctx, "Coordinates Test", "123 St", &lat, &lng)
-	s.NoError(err)
-	s.NotNil(branch.Lat)
-
-	// 2. Act: Update to NULL
-	updated, err := s.repo.UpdateBranch(ctx, branch.ID, "Coordinates Test", "123 St", nil, nil)
-
-	// 3. Assert: Verify they are actually nil in the DB
-	s.NoError(err)
-	s.Nil(updated.Lat)
-	s.Nil(updated.Lng)
 }
 
 func TestBranchRepoSuite(t *testing.T) {
