@@ -50,19 +50,25 @@ func (q *Queries) CreateAuthCredential(ctx context.Context, arg CreateAuthCreden
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO auth.users (
-    email, email_verified, is_active
-) VALUES ($1, $2, $3)
+    email, email_verified, is_active, branch_id
+) VALUES ($1, $2, $3, $4)
     RETURNING id, email, email_verified, is_active, deleted_at, created_at, updated_at, branch_id
 `
 
 type CreateUserParams struct {
-	Email         string `json:"email"`
-	EmailVerified bool   `json:"email_verified"`
-	IsActive      bool   `json:"is_active"`
+	Email         string     `json:"email"`
+	EmailVerified bool       `json:"email_verified"`
+	IsActive      bool       `json:"is_active"`
+	BranchID      *uuid.UUID `json:"branch_id"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (AuthUser, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.Email, arg.EmailVerified, arg.IsActive)
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Email,
+		arg.EmailVerified,
+		arg.IsActive,
+		arg.BranchID,
+	)
 	var i AuthUser
 	err := row.Scan(
 		&i.ID,

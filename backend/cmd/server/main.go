@@ -95,7 +95,7 @@ func main() {
 	userModule := user.New(pool, tx)
 	branchModule := branch.New(pool, tx)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
-	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
+	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), branchModule.BranchService(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
 	userModule.Wire(authModule.Service())
 
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {

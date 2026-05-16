@@ -1,7 +1,7 @@
 -- name: CreateUser :one
 INSERT INTO auth.users (
-    email, email_verified, is_active
-) VALUES ($1, $2, $3)
+    email, email_verified, is_active, branch_id
+) VALUES ($1, $2, $3, $4)
     RETURNING *;
 
 -- name: CreateAuthCredential :one

@@ -9,6 +9,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
+	branchdto "github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
@@ -27,6 +28,7 @@ var (
 	ErrEmailTaken         = apperrors.Conflict("email already taken")
 	InvalidOTP            = apperrors.Unauthorized("invalid otp")
 	UserNotFound          = apperrors.NotFound("user not found")
+	ErrBranchNotFound		  = apperrors.NotFound("branch not found")
 	ErrNoBranchAssigned   = apperrors.NotFound("no branch assigned")
 )
 
@@ -52,6 +54,10 @@ type ProfileCreator interface {
 	CreateProfile(ctx context.Context, userID uuid.UUID, avatarURL, bio *string, fullName string) error
 }
 
+type BranchValidator interface {
+	GetBranchByID(ctx context.Context, id uuid.UUID) (branchdto.BranchResponse, error)
+}
+
 type AuthService interface {
 	Register(ctx context.Context, req dto.RegisterRequest) (dto.RegisterResponse, error)
 	Login(ctx context.Context, req dto.LoginRequest) (dto.LoginResponse, error)
@@ -61,13 +67,14 @@ type AuthService interface {
 	IsRevoked(ctx context.Context, jti string) (bool, error)
 	ChangePassword(ctx context.Context, userID uuid.UUID, currentPw, newPw string) error
 	AdminSetPassword(ctx context.Context, targetUserID uuid.UUID, newPw string) error
-	CreateStaff(ctx context.Context, email, fullName, password, roleName string) (dto.RegisterResponse, error)
+	CreateStaff(ctx context.Context, email, fullName, password, roleName string, branchID *uuid.UUID) (dto.RegisterResponse, error)
 }
 
 type authService struct {
 	repo       repository.AuthRepository
 	rbacSvc    RBACService
 	profileSvc ProfileCreator
+	branchSvc  BranchValidator
 	outboxRepo *outbox.Repository
 	otpSvc     *otp.Service
 	tx         *txmanager.TxManager
@@ -82,6 +89,7 @@ func NewAuthService(
 	redis *cache.Client,
 	tx *txmanager.TxManager,
 	profSvc ProfileCreator,
+	branchSvc BranchValidator,
 	outboxRepo *outbox.Repository,
 	otpSvc *otp.Service,
 	jwtSecret string,
@@ -92,6 +100,7 @@ func NewAuthService(
 		redis:      redis,
 		tx:         tx,
 		profileSvc: profSvc,
+		branchSvc:	branchSvc,
 		outboxRepo: outboxRepo,
 		otpSvc:     otpSvc,
 		jwtSecret:  []byte(jwtSecret),
@@ -115,7 +124,7 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dt
 	var user *domain.User
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		user, err = s.repo.CreateAccount(txCtx, req.Email, string(hashed))
+		user, err = s.repo.CreateAccount(txCtx, req.Email, string(hashed), nil)
 		if err != nil {
 			logger.Log.Error("register: failed to create account", zap.String("email", req.Email), zap.Error(err))
 			return err
@@ -303,11 +312,25 @@ func (s *authService) AdminSetPassword(ctx context.Context, targetUserID uuid.UU
 	return s.repo.UpdatePassword(ctx, targetUserID, string(newHash))
 }
 
-func (s *authService) CreateStaff(ctx context.Context, email, fullName, password, roleName string) (dto.RegisterResponse, error) {
+func (s *authService) CreateStaff(ctx context.Context, email, fullName, password, roleName string, branchID *uuid.UUID) (dto.RegisterResponse, error) {
 	_, err := s.repo.FindUserByEmail(ctx, email)
 	if err == nil {
 		return dto.RegisterResponse{}, ErrEmailTaken
 	}
+
+	if storeLevelRoles[roleName] {
+		if branchID == nil || *branchID == uuid.Nil {
+			return dto.RegisterResponse{}, ErrNoBranchAssigned
+		}
+
+		_, err := s.branchSvc.GetBranchByID(ctx, *branchID)
+		if err != nil {
+			return dto.RegisterResponse{}, ErrBranchNotFound
+		}
+	} else {
+		branchID = nil
+	}
+
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -317,7 +340,7 @@ func (s *authService) CreateStaff(ctx context.Context, email, fullName, password
 	var user *domain.User
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		user, err = s.repo.CreateAccount(txCtx, email, string(hashed))
+		user, err = s.repo.CreateAccount(txCtx, email, string(hashed), branchID)
 		if err != nil {
 			return err
 		}

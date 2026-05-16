@@ -10,7 +10,7 @@ import (
 )
 
 type AuthRepository interface {
-	CreateAccount(ctx context.Context, email, password string) (*domain.User, error)
+	CreateAccount(ctx context.Context, email, password string, branchID *uuid.UUID) (*domain.User, error)
 	FindUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	FindUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
 	FindUserWithCredentialsByEmail(ctx context.Context, email string) (authdb.GetUserWithCredentialsByEmailRow, error)
@@ -37,13 +37,14 @@ func (r *authRepo) queries(ctx context.Context) *authdb.Queries {
 	return r.db
 }
 
-func (r *authRepo) CreateAccount(ctx context.Context, email, password string) (*domain.User, error) {
+func (r *authRepo) CreateAccount(ctx context.Context, email, password string, branchID *uuid.UUID) (*domain.User, error) {
 	q := r.queries(ctx)
 
 	row, err := q.CreateUser(ctx, authdb.CreateUserParams{
 		Email:         email,
 		EmailVerified: false,
 		IsActive:      false,
+		BranchID:	   branchID,
 	})
 	if err != nil {
 		return nil, err
@@ -126,6 +127,7 @@ func toEntity(u *authdb.AuthUser) *domain.User {
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
 		IsActive:      u.IsActive,
+		BranchID:      u.BranchID,
 		CreatedAt:     u.CreatedAt,
 	}
 }

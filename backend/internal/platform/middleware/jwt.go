@@ -55,6 +55,11 @@ func JWTAuth(authSvc service.AuthService) gin.HandlerFunc {
 		c.Set(BranchIDKey, claims.BranchID)
 		c.Set(JTIKey, claims.ID)
 		c.Set(ExpiresAtKey, claims.ExpiresAt.Time)
+
+		// Enrich the Go context so service layers can access identity
+		ctx := WithCaller(c.Request.Context(), claims.UserID, claims.BranchID)
+		c.Request = c.Request.WithContext(ctx)
+
 		c.Next()
 	}
 }

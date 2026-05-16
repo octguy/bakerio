@@ -3,8 +3,7 @@ package branch
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	usersdb "github.com/octguy/bakerio/backend/db/sqlc/branch"
-	authSvc "github.com/octguy/bakerio/backend/internal/auth/service"
+	branchdb "github.com/octguy/bakerio/backend/db/sqlc/branch"
 	"github.com/octguy/bakerio/backend/internal/branch/handler"
 	"github.com/octguy/bakerio/backend/internal/branch/repository"
 	"github.com/octguy/bakerio/backend/internal/branch/service"
@@ -19,7 +18,7 @@ type Module struct {
 }
 
 func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
-	repo := repository.NewBranchRepository(usersdb.New(pool))
+	repo := repository.NewBranchRepository(branchdb.New(pool))
 	svc := service.NewBranchService(tx, repo)
 	return &Module{
 		svc: svc,
