@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuthAuthCredential struct {
@@ -69,6 +70,59 @@ type BranchBranch struct {
 	Lng       *float64  `json:"lng"`
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type ProductCategory struct {
+	ID        uuid.UUID  `json:"id"`
+	Name      string     `json:"name"`
+	Slug      string     `json:"slug"`
+	ParentID  *uuid.UUID `json:"parent_id"`
+	SortOrder int32      `json:"sort_order"`
+	IsActive  bool       `json:"is_active"`
+	DeletedAt *time.Time `json:"deleted_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	CreatedBy *uuid.UUID `json:"created_by"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	UpdatedBy *uuid.UUID `json:"updated_by"`
+}
+
+type ProductProduct struct {
+	ID          uuid.UUID  `json:"id"`
+	Sku         string     `json:"sku"`
+	Name        string     `json:"name"`
+	Slug        string     `json:"slug"`
+	Description *string    `json:"description"`
+	CategoryID  *uuid.UUID `json:"category_id"`
+	Unit        string     `json:"unit"`
+	IsActive    bool       `json:"is_active"`
+	DeletedAt   *time.Time `json:"deleted_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	CreatedBy   *uuid.UUID `json:"created_by"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	UpdatedBy   *uuid.UUID `json:"updated_by"`
+}
+
+type ProductProductImage struct {
+	ID        uuid.UUID  `json:"id"`
+	ProductID uuid.UUID  `json:"product_id"`
+	Url       string     `json:"url"`
+	IsPrimary bool       `json:"is_primary"`
+	SortOrder int32      `json:"sort_order"`
+	CreatedAt time.Time  `json:"created_at"`
+	CreatedBy *uuid.UUID `json:"created_by"`
+}
+
+type ProductProductPrice struct {
+	ID        uuid.UUID      `json:"id"`
+	ProductID uuid.UUID      `json:"product_id"`
+	BranchID  uuid.UUID      `json:"branch_id"`
+	Price     pgtype.Numeric `json:"price"`
+	IsActive  bool           `json:"is_active"`
+	DeletedAt *time.Time     `json:"deleted_at"`
+	CreatedAt time.Time      `json:"created_at"`
+	CreatedBy *uuid.UUID     `json:"created_by"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	UpdatedBy *uuid.UUID     `json:"updated_by"`
 }
 
 type UsersProfile struct {

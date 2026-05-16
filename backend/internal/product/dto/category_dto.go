@@ -1,0 +1,31 @@
+package dto
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type CreateCategoryRequest struct {
+	Name      string     `json:"name"       binding:"required,max=100"`
+	ParentID  *uuid.UUID `json:"parent_id"  binding:"omitempty"`
+	SortOrder int32      `json:"sort_order"`
+} // @name CreateCategoryRequest
+
+type UpdateCategoryRequest struct {
+	Name      string     `json:"name"       binding:"required,max=100"`
+	ParentID  *uuid.UUID `json:"parent_id"  binding:"omitempty"`
+	SortOrder int32      `json:"sort_order"`
+	IsActive  bool       `json:"is_active"`
+} // @name UpdateCategoryRequest
+
+type CategoryResponse struct {
+	ID        uuid.UUID  `json:"id"`
+	Name      string     `json:"name"`
+	Slug      string     `json:"slug"`
+	ParentID  *uuid.UUID `json:"parent_id,omitempty"`
+	SortOrder int32      `json:"sort_order"`
+	IsActive  bool       `json:"is_active"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+} // @name CategoryResponse
