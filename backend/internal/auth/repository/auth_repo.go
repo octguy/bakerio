@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	authdb "github.com/octguy/bakerio/backend/db/sqlc/auth"
+	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
@@ -38,6 +39,7 @@ func (r *authRepo) queries(ctx context.Context) *authdb.Queries {
 }
 
 func (r *authRepo) CreateAccount(ctx context.Context, email, password string, branchID *uuid.UUID) (*domain.User, error) {
+	callerID, _ := authcontext.CallerID(ctx)
 	q := r.queries(ctx)
 
 	row, err := q.CreateUser(ctx, authdb.CreateUserParams{
@@ -45,6 +47,8 @@ func (r *authRepo) CreateAccount(ctx context.Context, email, password string, br
 		EmailVerified: false,
 		IsActive:      false,
 		BranchID:      branchID,
+		CreatedBy:     nullableUUID(callerID),
+		UpdatedBy:     nullableUUID(callerID),
 	})
 	if err != nil {
 		return nil, err
@@ -53,6 +57,8 @@ func (r *authRepo) CreateAccount(ctx context.Context, email, password string, br
 	_, err = q.CreateAuthCredential(ctx, authdb.CreateAuthCredentialParams{
 		UserID:       row.ID,
 		PasswordHash: password,
+		CreatedBy:    nullableUUID(callerID),
+		UpdatedBy:    nullableUUID(callerID),
 	})
 
 	if err != nil {
@@ -111,8 +117,10 @@ func (r *authRepo) GetCredentialsByUserID(ctx context.Context, userID uuid.UUID)
 }
 
 func (r *authRepo) UpdatePassword(ctx context.Context, userID uuid.UUID, newHash string) error {
+	callerID, _ := authcontext.CallerID(ctx)
 	return r.queries(ctx).UpdatePassword(ctx, authdb.UpdatePasswordParams{
 		PasswordHash: newHash,
+		UpdatedBy:    nullableUUID(callerID),
 		UserID:       userID,
 	})
 }
@@ -129,5 +137,16 @@ func toEntity(u *authdb.AuthUser) *domain.User {
 		IsActive:      u.IsActive,
 		BranchID:      u.BranchID,
 		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+		DeletedAt:     u.DeletedAt,
+		CreatedBy:     u.CreatedBy,
+		UpdatedBy:     u.UpdatedBy,
 	}
+}
+
+func nullableUUID(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+	return &id
 }
