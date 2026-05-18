@@ -195,7 +195,7 @@ func (s *ProcurementServiceTestSuite) TestCreatePO() {
 		emptyCtx := context.Background()
 		_, err := s.service.CreatePO(emptyCtx, req)
 		s.Error(err)
-		s.Contains(err.Error(), "assigned")
+		s.Contains(err.Error(), "no branch assigned")
 	})
 }
 
