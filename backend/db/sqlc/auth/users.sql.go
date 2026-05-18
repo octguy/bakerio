@@ -24,18 +24,25 @@ func (q *Queries) ActivateUser(ctx context.Context, id uuid.UUID) error {
 
 const createAuthCredential = `-- name: CreateAuthCredential :one
 INSERT INTO auth.auth_credentials (
-    user_id, password_hash
-) VALUES ($1, $2)
-    RETURNING id, user_id, password_hash, password_changed_at, created_at, updated_at
+    user_id, password_hash, created_by, updated_by
+) VALUES ($1, $2, $3, $4)
+    RETURNING id, user_id, password_hash, password_changed_at, created_at, updated_at, created_by, updated_by
 `
 
 type CreateAuthCredentialParams struct {
-	UserID       uuid.UUID `json:"user_id"`
-	PasswordHash string    `json:"password_hash"`
+	UserID       uuid.UUID  `json:"user_id"`
+	PasswordHash string     `json:"password_hash"`
+	CreatedBy    *uuid.UUID `json:"created_by"`
+	UpdatedBy    *uuid.UUID `json:"updated_by"`
 }
 
 func (q *Queries) CreateAuthCredential(ctx context.Context, arg CreateAuthCredentialParams) (AuthAuthCredential, error) {
-	row := q.db.QueryRow(ctx, createAuthCredential, arg.UserID, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, createAuthCredential,
+		arg.UserID,
+		arg.PasswordHash,
+		arg.CreatedBy,
+		arg.UpdatedBy,
+	)
 	var i AuthAuthCredential
 	err := row.Scan(
 		&i.ID,
@@ -44,15 +51,17 @@ func (q *Queries) CreateAuthCredential(ctx context.Context, arg CreateAuthCreden
 		&i.PasswordChangedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CreatedBy,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO auth.users (
-    email, email_verified, is_active, branch_id
-) VALUES ($1, $2, $3, $4)
-    RETURNING id, email, email_verified, is_active, deleted_at, created_at, updated_at, branch_id
+    email, email_verified, is_active, branch_id, created_by, updated_by
+) VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING id, email, email_verified, is_active, deleted_at, created_at, updated_at, branch_id, created_by, updated_by
 `
 
 type CreateUserParams struct {
@@ -60,6 +69,8 @@ type CreateUserParams struct {
 	EmailVerified bool       `json:"email_verified"`
 	IsActive      bool       `json:"is_active"`
 	BranchID      *uuid.UUID `json:"branch_id"`
+	CreatedBy     *uuid.UUID `json:"created_by"`
+	UpdatedBy     *uuid.UUID `json:"updated_by"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (AuthUser, error) {
@@ -68,6 +79,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (AuthUse
 		arg.EmailVerified,
 		arg.IsActive,
 		arg.BranchID,
+		arg.CreatedBy,
+		arg.UpdatedBy,
 	)
 	var i AuthUser
 	err := row.Scan(
@@ -79,6 +92,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (AuthUse
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BranchID,
+		&i.CreatedBy,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
@@ -106,7 +121,7 @@ func (q *Queries) GetUserBranchID(ctx context.Context, id uuid.UUID) (*uuid.UUID
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, email_verified, is_active, deleted_at, created_at, updated_at, branch_id FROM auth.users
+SELECT id, email, email_verified, is_active, deleted_at, created_at, updated_at, branch_id, created_by, updated_by FROM auth.users
 WHERE email = $1
 LIMIT 1
 `
@@ -123,12 +138,14 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (AuthUser, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BranchID,
+		&i.CreatedBy,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, email_verified, is_active, deleted_at, created_at, updated_at, branch_id FROM auth.users
+SELECT id, email, email_verified, is_active, deleted_at, created_at, updated_at, branch_id, created_by, updated_by FROM auth.users
 WHERE id = $1
 LIMIT 1
 `
@@ -145,6 +162,8 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (AuthUser, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BranchID,
+		&i.CreatedBy,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
@@ -199,15 +218,18 @@ func (q *Queries) GetUserWithCredentialsByEmail(ctx context.Context, email strin
 }
 
 const updatePassword = `-- name: UpdatePassword :exec
-UPDATE auth.auth_credentials SET password_hash = $1 WHERE user_id = $2
+UPDATE auth.auth_credentials 
+SET password_hash = $1, updated_at = NOW(), updated_by = $2 
+WHERE user_id = $3
 `
 
 type UpdatePasswordParams struct {
-	PasswordHash string    `json:"password_hash"`
-	UserID       uuid.UUID `json:"user_id"`
+	PasswordHash string     `json:"password_hash"`
+	UpdatedBy    *uuid.UUID `json:"updated_by"`
+	UserID       uuid.UUID  `json:"user_id"`
 }
 
 func (q *Queries) UpdatePassword(ctx context.Context, arg UpdatePasswordParams) error {
-	_, err := q.db.Exec(ctx, updatePassword, arg.PasswordHash, arg.UserID)
+	_, err := q.db.Exec(ctx, updatePassword, arg.PasswordHash, arg.UpdatedBy, arg.UserID)
 	return err
 }

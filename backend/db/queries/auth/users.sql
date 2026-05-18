@@ -1,13 +1,13 @@
 -- name: CreateUser :one
 INSERT INTO auth.users (
-    email, email_verified, is_active, branch_id
-) VALUES ($1, $2, $3, $4)
+    email, email_verified, is_active, branch_id, created_by, updated_by
+) VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *;
 
 -- name: CreateAuthCredential :one
 INSERT INTO auth.auth_credentials (
-    user_id, password_hash
-) VALUES ($1, $2)
+    user_id, password_hash, created_by, updated_by
+) VALUES ($1, $2, $3, $4)
     RETURNING *;
 
 -- name: GetUserByEmail :one
@@ -43,7 +43,9 @@ WHERE ur.user_id = $1;
 SELECT password_hash FROM auth.auth_credentials WHERE user_id = $1 LIMIT 1;
 
 -- name: UpdatePassword :exec
-UPDATE auth.auth_credentials SET password_hash = $1 WHERE user_id = $2;
+UPDATE auth.auth_credentials 
+SET password_hash = $1, updated_at = NOW(), updated_by = $2 
+WHERE user_id = $3;
 
 -- name: GetUserBranchID :one
 SELECT branch_id FROM auth.users WHERE id = $1;

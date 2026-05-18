@@ -15,7 +15,7 @@ const createBranch = `-- name: CreateBranch :one
 INSERT INTO branch.branches (
     name, address, lat, lng, created_by, updated_by
 ) VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by
+RETURNING id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by, region
 `
 
 type CreateBranchParams struct {
@@ -49,12 +49,13 @@ func (q *Queries) CreateBranch(ctx context.Context, arg CreateBranchParams) (Bra
 		&i.UpdatedAt,
 		&i.UpdatedBy,
 		&i.CreatedBy,
+		&i.Region,
 	)
 	return i, err
 }
 
 const getAllBranches = `-- name: GetAllBranches :many
-SELECT id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by FROM branch.branches
+SELECT id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by, region FROM branch.branches
 WHERE deleted_at IS NULL
 `
 
@@ -79,6 +80,7 @@ func (q *Queries) GetAllBranches(ctx context.Context) ([]BranchBranch, error) {
 			&i.UpdatedAt,
 			&i.UpdatedBy,
 			&i.CreatedBy,
+			&i.Region,
 		); err != nil {
 			return nil, err
 		}
@@ -91,7 +93,7 @@ func (q *Queries) GetAllBranches(ctx context.Context) ([]BranchBranch, error) {
 }
 
 const getBranchByID = `-- name: GetBranchByID :one
-SELECT id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by FROM branch.branches
+SELECT id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by, region FROM branch.branches
 WHERE id = $1 AND deleted_at IS NULL
 LIMIT 1
 `
@@ -111,6 +113,7 @@ func (q *Queries) GetBranchByID(ctx context.Context, id uuid.UUID) (BranchBranch
 		&i.UpdatedAt,
 		&i.UpdatedBy,
 		&i.CreatedBy,
+		&i.Region,
 	)
 	return i, err
 }
@@ -140,7 +143,7 @@ SET
     lng = $4,
     updated_by = $5
 WHERE id = $6 AND deleted_at IS NULL
-RETURNING id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by
+RETURNING id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by, region
 `
 
 type UpdateBranchParams struct {
@@ -174,6 +177,7 @@ func (q *Queries) UpdateBranch(ctx context.Context, arg UpdateBranchParams) (Bra
 		&i.UpdatedAt,
 		&i.UpdatedBy,
 		&i.CreatedBy,
+		&i.Region,
 	)
 	return i, err
 }

@@ -12,12 +12,14 @@ import (
 )
 
 type AuthAuthCredential struct {
-	ID                uuid.UUID `json:"id"`
-	UserID            uuid.UUID `json:"user_id"`
-	PasswordHash      string    `json:"password_hash"`
-	PasswordChangedAt time.Time `json:"password_changed_at"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID                uuid.UUID  `json:"id"`
+	UserID            uuid.UUID  `json:"user_id"`
+	PasswordHash      string     `json:"password_hash"`
+	PasswordChangedAt time.Time  `json:"password_changed_at"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
+	CreatedBy         *uuid.UUID `json:"created_by"`
+	UpdatedBy         *uuid.UUID `json:"updated_by"`
 }
 
 type AuthOutbox struct {
@@ -54,6 +56,8 @@ type AuthUser struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 	BranchID      *uuid.UUID `json:"branch_id"`
+	CreatedBy     *uuid.UUID `json:"created_by"`
+	UpdatedBy     *uuid.UUID `json:"updated_by"`
 }
 
 type AuthUserRole struct {
@@ -74,6 +78,51 @@ type BranchBranch struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 	UpdatedBy *uuid.UUID `json:"updated_by"`
 	CreatedBy *uuid.UUID `json:"created_by"`
+	Region    string     `json:"region"`
+}
+
+type ProcurementOutbox struct {
+	ID          uuid.UUID  `json:"id"`
+	RoutingKey  string     `json:"routing_key"`
+	Payload     []byte     `json:"payload"`
+	PublishedAt *time.Time `json:"published_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+}
+
+type ProcurementPoItem struct {
+	ID         uuid.UUID       `json:"id"`
+	PoID       uuid.UUID       `json:"po_id"`
+	ProductID  uuid.UUID       `json:"product_id"`
+	Quantity   decimal.Decimal `json:"quantity"`
+	UnitPrice  decimal.Decimal `json:"unit_price"`
+	TotalPrice decimal.Decimal `json:"total_price"`
+}
+
+type ProcurementPurchaseOrder struct {
+	ID          uuid.UUID       `json:"id"`
+	SupplierID  uuid.UUID       `json:"supplier_id"`
+	BranchID    uuid.UUID       `json:"branch_id"`
+	Status      string          `json:"status"`
+	TotalAmount decimal.Decimal `json:"total_amount"`
+	Note        *string         `json:"note"`
+	DeletedAt   *time.Time      `json:"deleted_at"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+	CreatedBy   *uuid.UUID      `json:"created_by"`
+	UpdatedBy   *uuid.UUID      `json:"updated_by"`
+}
+
+type ProcurementSupplier struct {
+	ID          uuid.UUID  `json:"id"`
+	Name        string     `json:"name"`
+	ContactInfo *string    `json:"contact_info"`
+	Region      string     `json:"region"`
+	IsActive    bool       `json:"is_active"`
+	DeletedAt   *time.Time `json:"deleted_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	CreatedBy   *uuid.UUID `json:"created_by"`
+	UpdatedBy   *uuid.UUID `json:"updated_by"`
 }
 
 type ProductCategory struct {
