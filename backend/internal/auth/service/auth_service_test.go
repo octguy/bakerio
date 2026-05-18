@@ -474,6 +474,51 @@ func (s *AuthServiceTestSuite) TestCreateStaff() {
 	})
 }
 
+func (s *AuthServiceTestSuite) TestValidateToken() {
+	userID := uuid.New()
+	roles := []string{"member"}
+	
+	s.Run("Success", func() {
+		// We need to generate a real token to validate it
+		token, err := s.service.(*authService).generateToken(userID, roles, nil)
+		s.NoError(err)
+		s.NotEmpty(token)
+
+		claims, err := s.service.ValidateToken(token)
+		s.NoError(err)
+		s.Equal(userID, claims.UserID)
+		s.Equal(roles, claims.Roles)
+	})
+
+	s.Run("Invalid Token", func() {
+		_, err := s.service.ValidateToken("invalid-token")
+		s.Error(err)
+	})
+
+	s.Run("Expired Token", func() {
+		// Create a service with very short TTL
+		expiredSvc := NewAuthService(
+			s.mockRepo,
+			s.mockRBAC,
+			s.mockCache,
+			&NoOpTxManager{},
+			s.mockProfile,
+			s.mockBranch,
+			s.mockOutbox,
+			s.mockOTP,
+			s.jwtSecret,
+			-time.Hour, // Expired
+		)
+
+		token, err := expiredSvc.(*authService).generateToken(userID, roles, nil)
+		s.NoError(err)
+
+		_, err = expiredSvc.ValidateToken(token)
+		s.Error(err)
+		s.Contains(err.Error(), "expired")
+	})
+}
+
 func TestAuthServiceSuite(t *testing.T) {
 	suite.Run(t, new(AuthServiceTestSuite))
 }
