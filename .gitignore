@@ -9,3 +9,7 @@
 **/code-reviews
 
 **/CLAUDE.md
+
+# Go test coverage output
+coverage.out
+*.out
