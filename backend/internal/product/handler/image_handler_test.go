@@ -7,6 +7,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/textproto"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -50,27 +51,111 @@ func (s *ImageHandlerTestSuite) SetupTest() {
 
 	group := s.router.Group("/products/:id/images")
 	group.POST("", s.handler.Upload)
+	group.DELETE("/:imgId", s.handler.Delete)
+	group.PATCH("/:imgId/primary", s.handler.SetPrimary)
 }
 
-func (s *ImageHandlerTestSuite) TestUpload_InvalidType() {
+func (s *ImageHandlerTestSuite) TestUpload() {
 	productID := uuid.New()
+	url := "http://example.com/test.jpg"
+	resp := dto.ProductImageResponse{ID: uuid.New(), Url: url}
 
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, _ := writer.CreateFormFile("file", "test.txt")
-	part.Write([]byte("some text"))
-	writer.Close()
+	s.Run("Success", func() {
+		s.mockSvc.On("UploadImage", mock.Anything, productID, mock.Anything, "image/jpeg", false).Return(resp, nil).Once()
 
-	w := httptest.NewRecorder()
-	r, _ := http.NewRequest(http.MethodPost, "/products/"+productID.String()+"/images", body)
-	r.Header.Set("Content-Type", writer.FormDataContentType())
-	
-	// Manually set a non-image content type for the file part if possible, 
-	// but FormFile uses the header from the part.
-	
-	s.router.ServeHTTP(w, r)
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		
+		h := make(textproto.MIMEHeader)
+		h.Set("Content-Disposition", `form-data; name="file"; filename="test.jpg"`)
+		h.Set("Content-Type", "image/jpeg")
+		part, _ := writer.CreatePart(h)
+		part.Write([]byte("fake image data"))
+		writer.Close()
 
-	s.Equal(http.StatusUnprocessableEntity, w.Code)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPost, "/products/"+productID.String()+"/images", body)
+		r.Header.Set("Content-Type", writer.FormDataContentType())
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusCreated, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid Type", func() {
+		body := &bytes.Buffer{}
+		writer := multipart.NewWriter(body)
+		part, _ := writer.CreateFormFile("file", "test.txt")
+		part.Write([]byte("some text"))
+		writer.Close()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPost, "/products/"+productID.String()+"/images", body)
+		r.Header.Set("Content-Type", writer.FormDataContentType())
+		
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *ImageHandlerTestSuite) TestDelete() {
+	productID := uuid.New()
+	imageID := uuid.New()
+
+	s.Run("Success", func() {
+		s.mockSvc.On("DeleteImage", mock.Anything, imageID).Return(nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodDelete, "/products/"+productID.String()+"/images/"+imageID.String(), nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusNoContent, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid Image ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodDelete, "/products/"+productID.String()+"/images/invalid", nil)
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *ImageHandlerTestSuite) TestSetPrimary() {
+	productID := uuid.New()
+	imageID := uuid.New()
+
+	s.Run("Success", func() {
+		s.mockSvc.On("SetPrimary", mock.Anything, productID, imageID).Return(nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/products/"+productID.String()+"/images/"+imageID.String()+"/primary", nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusNoContent, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid Product ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/products/invalid/images/"+imageID.String()+"/primary", nil)
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+
+	s.Run("Invalid Image ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/products/"+productID.String()+"/images/invalid/primary", nil)
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *ImageHandlerTestSuite) TestRegisterRoutes() {
+	router := gin.New()
+	s.handler.RegisterRoutes(router.Group("/api"))
+	s.NotNil(router)
 }
 
 func TestImageHandlerSuite(t *testing.T) {

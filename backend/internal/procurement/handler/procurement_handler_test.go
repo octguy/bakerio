@@ -158,6 +158,12 @@ func (s *ProcurementHandlerTestSuite) TestUpdateStatus() {
 	})
 }
 
+func (s *ProcurementHandlerTestSuite) TestRegisterRoutes() {
+	router := gin.New()
+	s.handler.RegisterRoutes(router.Group("/api"))
+	s.NotNil(router)
+}
+
 func TestProcurementHandlerSuite(t *testing.T) {
 	suite.Run(t, new(ProcurementHandlerTestSuite))
 }

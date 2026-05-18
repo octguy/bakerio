@@ -132,6 +132,90 @@ func (s *CategoryHandlerTestSuite) TestGetCategory() {
 		s.Equal(http.StatusNotFound, w.Code)
 		s.mockSvc.AssertExpectations(s.T())
 	})
+
+	s.Run("Invalid ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/categories/invalid", nil)
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *CategoryHandlerTestSuite) TestListCategories() {
+	resp := []dto.CategoryResponse{{ID: uuid.New(), Name: "Breads"}}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("ListCategories", mock.Anything).Return(resp, nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/categories", nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+}
+
+func (s *CategoryHandlerTestSuite) TestUpdateCategory() {
+	id := uuid.New()
+	name := "Updated Name"
+	req := dto.UpdateCategoryRequest{Name: name}
+	resp := dto.CategoryResponse{ID: id, Name: name}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("UpdateCategory", mock.Anything, id, req).Return(resp, nil).Once()
+
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/categories/"+id.String(), bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid ID", func() {
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/categories/invalid", bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+
+	s.Run("Validation Error", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/categories/"+id.String(), bytes.NewBufferString("{invalid}"))
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *CategoryHandlerTestSuite) TestDeleteCategory() {
+	id := uuid.New()
+
+	s.Run("Success", func() {
+		s.mockSvc.On("DeleteCategory", mock.Anything, id).Return(nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodDelete, "/categories/"+id.String(), nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusNoContent, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodDelete, "/categories/invalid", nil)
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *CategoryHandlerTestSuite) TestRegisterRoutes() {
+	router := gin.New()
+	s.handler.RegisterRoutes(router.Group("/api"))
+	s.NotNil(router)
 }
 
 func TestCategoryHandlerSuite(t *testing.T) {

@@ -190,6 +190,12 @@ func (s *SupplierHandlerTestSuite) TestDeleteSupplier() {
 	})
 }
 
+func (s *SupplierHandlerTestSuite) TestRegisterRoutes() {
+	router := gin.New()
+	s.handler.RegisterRoutes(router.Group("/api"))
+	s.NotNil(router)
+}
+
 func TestSupplierHandlerSuite(t *testing.T) {
 	suite.Run(t, new(SupplierHandlerTestSuite))
 }

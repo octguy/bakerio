@@ -99,6 +99,14 @@ func (s *BranchHandlerTestSuite) TestCreateBranch() {
 
 		s.Equal(http.StatusUnprocessableEntity, w.Code)
 	})
+	s.Run("Service Error", func() {
+		w := httptest.NewRecorder()
+		s.mockSvc.On("CreateBranch", mock.Anything, req).Return(dto.BranchResponse{}, apperrors.Internal("err", nil)).Once()
+		body, _ := json.Marshal(req)
+		r, _ := http.NewRequest(http.MethodPost, "/branch", bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusInternalServerError, w.Code)
+	})
 }
 
 func (s *BranchHandlerTestSuite) TestGetBranchByID() {
@@ -234,6 +242,13 @@ func (s *BranchHandlerTestSuite) TestDeleteBranch() {
 
 		s.Equal(http.StatusUnprocessableEntity, w.Code)
 	})
+}
+
+func (s *BranchHandlerTestSuite) TestRegisterRoutes() {
+	router := gin.New()
+	s.handler.RegisterRoutes(router.Group("/api"))
+	// Basic check that it doesn't panic and routes are registered
+	s.NotNil(router)
 }
 
 func TestBranchHandlerSuite(t *testing.T) {

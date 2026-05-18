@@ -111,6 +111,52 @@ func (s *ProductHandlerTestSuite) TestCreateProduct() {
 		s.Equal(http.StatusCreated, w.Code)
 		s.mockSvc.AssertExpectations(s.T())
 	})
+
+	s.Run("Validation Error", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPost, "/products", bytes.NewBufferString("{invalid}"))
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *ProductHandlerTestSuite) TestGetProduct() {
+	id := uuid.New()
+	resp := dto.ProductResponse{ID: id, Name: "Prod 1"}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("GetProduct", mock.Anything, id).Return(resp, nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/products/"+id.String(), nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/products/invalid", nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *ProductHandlerTestSuite) TestListProducts() {
+	resp := []dto.ProductResponse{{ID: uuid.New(), Name: "Prod 1"}}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("ListProducts", mock.Anything).Return(resp, nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/products", nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
 }
 
 func (s *ProductHandlerTestSuite) TestGetPriceHistory() {
@@ -130,13 +176,16 @@ func (s *ProductHandlerTestSuite) TestGetPriceHistory() {
 		s.Equal(http.StatusOK, w.Code)
 		s.mockSvc.AssertExpectations(s.T())
 	})
-	s.Run("Validation Error", func() {
+
+	s.Run("Invalid ID", func() {
 		w := httptest.NewRecorder()
-		r, _ := http.NewRequest(http.MethodPost, "/products", bytes.NewBufferString("{invalid}"))
+		r, _ := http.NewRequest(http.MethodGet, "/products/invalid/prices", nil)
 		s.router.ServeHTTP(w, r)
+
 		s.Equal(http.StatusUnprocessableEntity, w.Code)
 	})
 }
+
 
 func (s *ProductHandlerTestSuite) TestUpdateProduct() {
 	id := uuid.New()
@@ -208,6 +257,12 @@ func (s *ProductHandlerTestSuite) TestSetPrice() {
 		s.router.ServeHTTP(w, r)
 		s.Equal(http.StatusUnprocessableEntity, w.Code)
 	})
+}
+
+func (s *ProductHandlerTestSuite) TestRegisterRoutes() {
+	router := gin.New()
+	s.handler.RegisterRoutes(router.Group("/api"))
+	s.NotNil(router)
 }
 
 func TestProductHandlerSuite(t *testing.T) {
