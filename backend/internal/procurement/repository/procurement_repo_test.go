@@ -131,6 +131,46 @@ func (s *ProcurementRepoTestSuite) TestPurchaseOrderPersistence() {
 	s.Equal(decimal.NewFromInt(100).String(), fetchedItems[0].TotalPrice.String())
 }
 
+func (s *ProcurementRepoTestSuite) TestListPOsByBranch() {
+	ctx := context.Background()
+
+	branch1, _ := s.branchQueries.CreateBranch(ctx, branchdb.CreateBranchParams{Name: "B1", Address: "A1", Region: "south"})
+	branch2, _ := s.branchQueries.CreateBranch(ctx, branchdb.CreateBranchParams{Name: "B2", Address: "A2", Region: "north"})
+	sup, _ := s.supRepo.Create(ctx, &domain.Supplier{Name: "Sup", Region: "south"})
+
+	po1 := &domain.PurchaseOrder{SupplierID: sup.ID, BranchID: branch1.ID, Status: domain.POStatusDraft, TotalAmount: decimal.NewFromInt(100)}
+	po2 := &domain.PurchaseOrder{SupplierID: sup.ID, BranchID: branch2.ID, Status: domain.POStatusDraft, TotalAmount: decimal.NewFromInt(200)}
+
+	_, _ = s.repo.CreatePO(ctx, po1)
+	_, _ = s.repo.CreatePO(ctx, po2)
+
+	list1, err := s.repo.ListPOsByBranch(ctx, branch1.ID)
+	s.NoError(err)
+	s.Len(list1, 1)
+	s.Equal(branch1.ID, list1[0].BranchID)
+
+	list2, err := s.repo.ListPOsByBranch(ctx, branch2.ID)
+	s.NoError(err)
+	s.Len(list2, 1)
+	s.Equal(branch2.ID, list2[0].BranchID)
+}
+
+func (s *ProcurementRepoTestSuite) TestUpdatePOStatus() {
+	ctx := context.Background()
+
+	branch, _ := s.branchQueries.CreateBranch(ctx, branchdb.CreateBranchParams{Name: "B1", Address: "A1", Region: "south"})
+	sup, _ := s.supRepo.Create(ctx, &domain.Supplier{Name: "Sup", Region: "south"})
+	po := &domain.PurchaseOrder{SupplierID: sup.ID, BranchID: branch.ID, Status: domain.POStatusDraft, TotalAmount: decimal.NewFromInt(100)}
+	created, _ := s.repo.CreatePO(ctx, po)
+
+	updated, err := s.repo.UpdatePOStatus(ctx, created.ID, domain.POStatusApproved)
+	s.NoError(err)
+	s.Equal(domain.POStatusApproved, updated.Status)
+
+	fetched, _ := s.repo.GetPO(ctx, created.ID)
+	s.Equal(domain.POStatusApproved, fetched.Status)
+}
+
 func TestProcurementRepoSuite(t *testing.T) {
 	suite.Run(t, new(ProcurementRepoTestSuite))
 }
