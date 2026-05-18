@@ -13,6 +13,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/middleware"
 	"github.com/octguy/bakerio/backend/internal/procurement/dto"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -65,6 +66,64 @@ func (s *ProcurementHandlerTestSuite) SetupTest() {
 		// Mock permission for test
 		c.Set(middleware.PermissionsKey, []string{"procurement:approve:branch"})
 		s.handler.UpdateStatus(c)
+	})
+}
+
+func (s *ProcurementHandlerTestSuite) TestCreatePO() {
+	supplierID := uuid.New()
+	req := dto.CreatePORequest{
+		SupplierID: supplierID,
+		Note:       "Test PO",
+		Items: []dto.CreatePOItemRequest{
+			{
+				ProductID: uuid.New(),
+				Quantity:  decimal.NewFromInt(10),
+				UnitPrice: decimal.NewFromInt(5),
+			},
+		},
+	}
+	resp := dto.POResponse{ID: uuid.New(), Note: &req.Note}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("CreatePO", mock.Anything, req).Return(resp, nil).Once()
+
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPost, "/procurement/orders", bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusCreated, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Validation Error", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPost, "/procurement/orders", bytes.NewBufferString("{invalid}"))
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *ProcurementHandlerTestSuite) TestGetPO() {
+	id := uuid.New()
+	resp := dto.POResponse{ID: id}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("GetPO", mock.Anything, id).Return(resp, nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/procurement/orders/"+id.String(), nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/procurement/orders/invalid", nil)
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
 	})
 }
 

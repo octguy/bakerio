@@ -9,14 +9,14 @@ import (
 
 type CreatePOItemRequest struct {
 	ProductID uuid.UUID       `json:"product_id" binding:"required"`
-	Quantity  decimal.Decimal `json:"quantity" binding:"required,gt=0"`
-	UnitPrice decimal.Decimal `json:"unit_price" binding:"required,gt=0"`
+	Quantity  decimal.Decimal `json:"quantity" binding:"required"`
+	UnitPrice decimal.Decimal `json:"unit_price" binding:"required"`
 } // @name CreatePOItemRequest
 
 type CreatePORequest struct {
 	SupplierID uuid.UUID             `json:"supplier_id" binding:"required"`
 	Note       string                `json:"note" binding:"omitempty"`
-	Items      []CreatePOItemRequest `json:"items" binding:"required,dive,min=1"`
+	Items      []CreatePOItemRequest `json:"items" binding:"required,min=1,dive"`
 } // @name CreatePORequest
 
 type POItemResponse struct {

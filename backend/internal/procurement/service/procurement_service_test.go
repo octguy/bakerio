@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
 	"github.com/octguy/bakerio/backend/internal/procurement/dto"
+	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/shopspring/decimal"
@@ -234,6 +235,51 @@ func (s *ProcurementServiceTestSuite) TestUpdateStatus() {
 		s.NoError(err)
 		s.Equal(domain.POStatusReceived, res.Status)
 		s.mockOutbox.AssertExpectations(s.T())
+	})
+}
+
+func (s *ProcurementServiceTestSuite) TestGetPO() {
+	id := uuid.New()
+	po := &domain.PurchaseOrder{ID: id, Status: domain.POStatusDraft}
+
+	s.Run("Success", func() {
+		s.mockRepo.On("GetPO", mock.Anything, id).Return(po, nil).Once()
+		s.mockRepo.On("GetPOItems", mock.Anything, id).Return([]*domain.POItem{}, nil).Once()
+
+		res, err := s.service.GetPO(context.Background(), id)
+		s.NoError(err)
+		s.Equal(id, res.ID)
+		s.mockRepo.AssertExpectations(s.T())
+	})
+
+	s.Run("Not Found", func() {
+		s.mockRepo.On("GetPO", mock.Anything, id).Return(nil, apperrors.NotFound("")).Once()
+
+		_, err := s.service.GetPO(context.Background(), id)
+		s.Error(err)
+		s.mockRepo.AssertExpectations(s.T())
+	})
+}
+
+func (s *ProcurementServiceTestSuite) TestListPOs() {
+	branchID := uuid.New()
+	ctx := authcontext.WithCaller(context.Background(), uuid.New(), &branchID)
+	pos := []*domain.PurchaseOrder{{ID: uuid.New(), BranchID: branchID}}
+
+	s.Run("Success", func() {
+		s.mockRepo.On("ListPOsByBranch", mock.Anything, branchID).Return(pos, nil).Once()
+
+		res, err := s.service.ListPOs(ctx)
+		s.NoError(err)
+		s.Len(res, 1)
+		s.mockRepo.AssertExpectations(s.T())
+	})
+
+	s.Run("No Branch", func() {
+		emptyCtx := context.Background()
+		_, err := s.service.ListPOs(emptyCtx)
+		s.Error(err)
+		s.Contains(err.Error(), "assigned")
 	})
 }
 

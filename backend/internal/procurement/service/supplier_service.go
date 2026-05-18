@@ -43,7 +43,7 @@ func (s *supplierService) Create(ctx context.Context, req dto.CreateSupplierRequ
 
 func (s *supplierService) Get(ctx context.Context, id uuid.UUID) (dto.SupplierResponse, error) {
 	supplier, err := s.repo.GetByID(ctx, id)
-	if err != nil {
+	if err != nil || supplier == nil {
 		return dto.SupplierResponse{}, apperrors.NotFound("supplier not found")
 	}
 	return toSupplierResponse(supplier), nil
@@ -64,7 +64,7 @@ func (s *supplierService) List(ctx context.Context, region string) ([]dto.Suppli
 
 func (s *supplierService) Update(ctx context.Context, id uuid.UUID, req dto.UpdateSupplierRequest) (dto.SupplierResponse, error) {
 	current, err := s.repo.GetByID(ctx, id)
-	if err != nil {
+	if err != nil || current == nil {
 		return dto.SupplierResponse{}, apperrors.NotFound("supplier not found")
 	}
 
@@ -90,8 +90,8 @@ func (s *supplierService) Update(ctx context.Context, id uuid.UUID, req dto.Upda
 }
 
 func (s *supplierService) Delete(ctx context.Context, id uuid.UUID) error {
-	_, err := s.repo.GetByID(ctx, id)
-	if err != nil {
+	sup, err := s.repo.GetByID(ctx, id)
+	if err != nil || sup == nil {
 		return apperrors.NotFound("supplier not found")
 	}
 	if err := s.repo.Delete(ctx, id); err != nil {
