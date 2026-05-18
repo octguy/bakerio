@@ -15,6 +15,8 @@ type User struct {
 	DeletedAt     *time.Time
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	CreatedBy     *uuid.UUID
+	UpdatedBy     *uuid.UUID
 }
 
 type AuthCredential struct {
