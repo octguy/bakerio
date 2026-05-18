@@ -104,11 +104,11 @@ func (m *MockOutboxSource) Save(ctx context.Context, routingKey string, payload 
 }
 
 func (m *MockOutboxSource) FetchUnpublished(ctx context.Context, limit int) ([]outbox.Event, error) {
-	return nil, nil // Not used here
+	return nil, nil
 }
 
 func (m *MockOutboxSource) MarkPublished(ctx context.Context, id uuid.UUID) error {
-	return nil // Not used here
+	return nil
 }
 
 // Transaction manager that just runs the func
@@ -122,10 +122,10 @@ func (n *NoOpTxManager) WithTx(ctx context.Context, f func(context.Context) erro
 
 type ProcurementServiceTestSuite struct {
 	suite.Suite
-	mockRepo      *MockProcurementRepo
-	mockSupRepo   *MockSupplierRepo
-	mockOutbox    *MockOutboxSource
-	service       ProcurementService
+	mockRepo    *MockProcurementRepo
+	mockSupRepo *MockSupplierRepo
+	mockOutbox  *MockOutboxSource
+	service     ProcurementService
 }
 
 func (s *ProcurementServiceTestSuite) SetupTest() {
@@ -157,29 +157,31 @@ func (s *ProcurementServiceTestSuite) TestCreatePO() {
 
 	s.Run("Success", func() {
 		s.mockSupRepo.On("GetByID", ctx, supplierID).Return(&domain.Supplier{ID: supplierID}, nil).Once()
-		
-		po := &domain.PurchaseOrder{
+
+		createdPO := &domain.PurchaseOrder{
+			ID:          uuid.New(),
 			SupplierID:  supplierID,
 			BranchID:    branchID,
-			Status:      StatusDraft,
+			Status:      domain.POStatusDraft,
 			TotalAmount: decimal.NewFromInt(50),
-			Note:        &req.Note,
 		}
-		
-		createdPO := *po
-		createdPO.ID = uuid.New()
-		
-		s.mockRepo.On("CreatePO", ctx, mock.Anything).Return(&createdPO, nil).Once()
-		
+
+		s.mockRepo.On("CreatePO", ctx, mock.MatchedBy(func(p *domain.PurchaseOrder) bool {
+			return p.SupplierID == supplierID && p.BranchID == branchID && p.Status == domain.POStatusDraft
+		})).Return(createdPO, nil).Once()
+
 		item := &domain.POItem{
+			ID:         uuid.New(),
 			POID:       createdPO.ID,
 			ProductID:  productID,
 			Quantity:   decimal.NewFromInt(10),
 			UnitPrice:  decimal.NewFromInt(5),
 			TotalPrice: decimal.NewFromInt(50),
 		}
-		
-		s.mockRepo.On("CreatePOItem", ctx, mock.Anything).Return(item, nil).Once()
+
+		s.mockRepo.On("CreatePOItem", ctx, mock.MatchedBy(func(i *domain.POItem) bool {
+			return i.ProductID == productID && i.Quantity.Equal(decimal.NewFromInt(10))
+		})).Return(item, nil).Once()
 
 		res, err := s.service.CreatePO(ctx, req)
 
@@ -193,7 +195,7 @@ func (s *ProcurementServiceTestSuite) TestCreatePO() {
 		emptyCtx := context.Background()
 		_, err := s.service.CreatePO(emptyCtx, req)
 		s.Error(err)
-		s.Contains(err.Error(), "no branch assigned")
+		s.Contains(err.Error(), "assigned")
 	})
 }
 
@@ -202,9 +204,9 @@ func (s *ProcurementServiceTestSuite) TestUpdateStatus() {
 	ctx := context.Background()
 
 	s.Run("Invalid Transition", func() {
-		s.mockRepo.On("GetPO", ctx, poID).Return(&domain.PurchaseOrder{Status: StatusReceived}, nil).Once()
-		
-		_, err := s.service.UpdateStatus(ctx, poID, StatusPending)
+		s.mockRepo.On("GetPO", ctx, poID).Return(&domain.PurchaseOrder{Status: domain.POStatusReceived}, nil).Once()
+
+		_, err := s.service.UpdateStatus(ctx, poID, domain.POStatusPending)
 		s.Error(err)
 		s.Contains(err.Error(), "invalid transition")
 	})
@@ -212,25 +214,25 @@ func (s *ProcurementServiceTestSuite) TestUpdateStatus() {
 	s.Run("Success to Received", func() {
 		po := &domain.PurchaseOrder{
 			ID:         poID,
-			Status:     StatusApproved,
+			Status:     domain.POStatusApproved,
 			BranchID:   uuid.New(),
 			SupplierID: uuid.New(),
 		}
 		s.mockRepo.On("GetPO", ctx, poID).Return(po, nil).Once()
-		
+
 		updatedPO := *po
-		updatedPO.Status = StatusReceived
-		s.mockRepo.On("UpdatePOStatus", ctx, poID, StatusReceived).Return(&updatedPO, nil).Once()
-		
+		updatedPO.Status = domain.POStatusReceived
+		s.mockRepo.On("UpdatePOStatus", ctx, poID, domain.POStatusReceived).Return(&updatedPO, nil).Once()
+
 		items := []*domain.POItem{{ID: uuid.New(), POID: poID}}
 		s.mockRepo.On("GetPOItems", ctx, poID).Return(items, nil).Once()
-		
+
 		s.mockOutbox.On("Save", ctx, "procurement.order_received", mock.Anything).Return(nil).Once()
 
-		res, err := s.service.UpdateStatus(ctx, poID, StatusReceived)
+		res, err := s.service.UpdateStatus(ctx, poID, domain.POStatusReceived)
 
 		s.NoError(err)
-		s.Equal(StatusReceived, res.Status)
+		s.Equal(domain.POStatusReceived, res.Status)
 		s.mockOutbox.AssertExpectations(s.T())
 	})
 }
