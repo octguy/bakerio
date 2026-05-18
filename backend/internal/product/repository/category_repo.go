@@ -121,10 +121,3 @@ func toCategoryEntity(c *productdb.ProductCategory) *domain.Category {
 		UpdatedBy: c.UpdatedBy,
 	}
 }
-
-func nullableUUID(id uuid.UUID) *uuid.UUID {
-	if id == uuid.Nil {
-		return nil
-	}
-	return &id
-}
