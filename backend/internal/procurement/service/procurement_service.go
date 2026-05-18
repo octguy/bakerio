@@ -15,14 +15,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const (
-	StatusDraft    = "DRAFT"
-	StatusPending  = "PENDING"
-	StatusApproved = "APPROVED"
-	StatusRejected = "REJECTED"
-	StatusReceived = "RECEIVED"
-)
-
 type ProcurementService interface {
 	CreatePO(ctx context.Context, req dto.CreatePORequest) (dto.POResponse, error)
 	GetPO(ctx context.Context, id uuid.UUID) (dto.POResponse, error)
@@ -81,7 +73,7 @@ func (s *procurementService) CreatePO(ctx context.Context, req dto.CreatePOReque
 		po := &domain.PurchaseOrder{
 			SupplierID:  req.SupplierID,
 			BranchID:    branchID,
-			Status:      StatusDraft,
+			Status:      domain.POStatusDraft,
 			TotalAmount: totalAmount,
 			Note:        &req.Note,
 		}
@@ -160,7 +152,7 @@ func (s *procurementService) UpdateStatus(ctx context.Context, id uuid.UUID, new
 			return err
 		}
 
-		if newStatus == StatusReceived {
+		if newStatus == domain.POStatusReceived {
 			// Fetch items for the event
 			items, err := s.repo.GetPOItems(ctx, id)
 			if err != nil {
@@ -192,11 +184,11 @@ func (s *procurementService) UpdateStatus(ctx context.Context, id uuid.UUID, new
 
 func isValidTransition(current, next string) bool {
 	transitions := map[string][]string{
-		StatusDraft:    {StatusPending, StatusRejected},
-		StatusPending:  {StatusApproved, StatusRejected},
-		StatusApproved: {StatusReceived, StatusRejected},
-		StatusRejected: {},
-		StatusReceived: {},
+		domain.POStatusDraft:    {domain.POStatusPending, domain.POStatusRejected},
+		domain.POStatusPending:  {domain.POStatusApproved, domain.POStatusRejected},
+		domain.POStatusApproved: {domain.POStatusReceived, domain.POStatusRejected},
+		domain.POStatusRejected: {},
+		domain.POStatusReceived: {},
 	}
 
 	allowed, ok := transitions[current]

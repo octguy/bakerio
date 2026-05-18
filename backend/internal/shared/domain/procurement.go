@@ -7,6 +7,14 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const (
+	POStatusDraft    = "DRAFT"
+	POStatusPending  = "PENDING"
+	POStatusApproved = "APPROVED"
+	POStatusRejected = "REJECTED"
+	POStatusReceived = "RECEIVED"
+)
+
 type PurchaseOrder struct {
 	ID          uuid.UUID
 	SupplierID  uuid.UUID

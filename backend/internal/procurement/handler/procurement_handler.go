@@ -9,6 +9,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/procurement/dto"
 	"github.com/octguy/bakerio/backend/internal/procurement/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
+	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
 )
 
@@ -120,7 +121,7 @@ func (h *ProcurementHandler) UpdateStatus(c *gin.Context) {
 	}
 
 	// Permission check for specific statuses
-	if req.Status == service.StatusApproved || req.Status == service.StatusRejected {
+	if req.Status == domain.POStatusApproved || req.Status == domain.POStatusRejected {
 		// Need procurement:approve:branch
 		raw, _ := c.Get(middleware.PermissionsKey)
 		perms, _ := raw.([]string)
