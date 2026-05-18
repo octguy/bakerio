@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/octguy/bakerio/backend/internal/platform/middleware"
 	"github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/branch/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
@@ -21,11 +22,12 @@ func NewBranchHandler(svc service.BranchService) *BranchHandler {
 
 func (h *BranchHandler) RegisterRoutes(protected *gin.RouterGroup) {
 	g := protected.Group("/branch")
-	g.GET("", h.GetBranchList)
-	g.GET("/:id", h.GetBranchByID)
-	g.POST("", h.CreateBranch)
-	g.PATCH("/:id", h.UpdateBranch)
-	g.PATCH("/:id/status", h.UpdateStatus)
+	g.GET("", middleware.RequirePermission("branch:view:all"), h.GetBranchList)
+	g.GET("/:id", middleware.RequirePermission("branch:view:all"), h.GetBranchByID)
+	g.POST("", middleware.RequirePermission("branch:manage:all"), h.CreateBranch)
+	g.PATCH("/:id", middleware.RequirePermission("branch:manage:all"), h.UpdateBranch)
+	g.PATCH("/:id/status", middleware.RequirePermission("branch:manage:all"), h.UpdateStatus)
+	g.DELETE("/:id", middleware.RequirePermission("branch:manage:all"), h.DeleteBranch)
 }
 
 // GetBranchList returns all branches
@@ -33,6 +35,7 @@ func (h *BranchHandler) RegisterRoutes(protected *gin.RouterGroup) {
 // @Description  Retrieve all branches
 // @Tags         branch
 // @Produce      json
+// @Security     BearerAuth
 // @Success      200  {object}  response.Response{data=[]dto.BranchResponse}
 // @Router       /branch [get]
 func (h *BranchHandler) GetBranchList(c *gin.Context) {
@@ -50,6 +53,7 @@ func (h *BranchHandler) GetBranchList(c *gin.Context) {
 // @Tags         branch
 // @Produce      json
 // @Param        id   path      string  true  "Branch ID"
+// @Security     BearerAuth
 // @Success      200  {object}  response.Response{data=dto.BranchResponse}
 // @Failure      400  {object}  response.Response
 // @Failure      404  {object}  response.Response
@@ -161,4 +165,29 @@ func (h *BranchHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, nil)
+}
+
+// DeleteBranch soft-deletes a branch
+// @Summary      Delete branch
+// @Description  Soft-delete a branch from the system
+// @Tags         branch
+// @Param        id   path      string  true  "Branch ID"
+// @Success      204
+// @Failure      400  {object}  response.Response
+// @Failure      404  {object}  response.Response
+// @Security     BearerAuth
+// @Router       /branch/{id} [delete]
+func (h *BranchHandler) DeleteBranch(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, apperrors.Validation("invalid branch id"))
+		return
+	}
+
+	err = h.svc.DeleteBranch(c.Request.Context(), id)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

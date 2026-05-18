@@ -17,6 +17,7 @@ type BranchService interface {
 	GetAllBranches(ctx context.Context) ([]dto.BranchResponse, error)
 	UpdateBranch(ctx context.Context, id uuid.UUID, req dto.UpdateBranchRequest) (dto.BranchResponse, error)
 	UpdateBranchStatus(ctx context.Context, id uuid.UUID, status string) error
+	DeleteBranch(ctx context.Context, id uuid.UUID) error
 }
 
 type branchService struct {
@@ -52,14 +53,12 @@ func (b *branchService) GetBranchByID(ctx context.Context, id uuid.UUID) (dto.Br
 func (b *branchService) GetAllBranches(ctx context.Context) ([]dto.BranchResponse, error) {
 	rows, err := b.repo.GetAllBranches(ctx)
 	if err != nil {
-		return make([]dto.BranchResponse, 0, len(rows)), apperrors.Internal("database error", err)
+		return nil, apperrors.Internal("database error", err)
 	}
 	branches := make([]dto.BranchResponse, 0, len(rows))
 
 	for _, row := range rows {
-		r := row
-
-		branches = append(branches, toResponse(r))
+		branches = append(branches, toResponse(row))
 	}
 
 	return branches, nil
@@ -110,12 +109,19 @@ func (b *branchService) UpdateBranchStatus(ctx context.Context, id uuid.UUID, st
 	return nil
 }
 
+func (b *branchService) DeleteBranch(ctx context.Context, id uuid.UUID) error {
+	return b.repo.SoftDeleteBranch(ctx, id)
+}
+
 func toResponse(branch *domain.Branch) dto.BranchResponse {
 	return dto.BranchResponse{
-		ID:      branch.ID,
-		Name:    branch.Name,
-		Address: branch.Address,
-		Lat:     branch.Lat,
-		Lng:     branch.Lng,
+		ID:        branch.ID,
+		Name:      branch.Name,
+		Address:   branch.Address,
+		Lat:       branch.Lat,
+		Lng:       branch.Lng,
+		Status:    branch.Status,
+		CreatedAt: branch.CreatedAt,
+		UpdatedAt: branch.UpdatedAt,
 	}
 }

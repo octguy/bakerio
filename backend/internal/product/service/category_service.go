@@ -2,14 +2,13 @@ package service
 
 import (
 	"context"
-	"regexp"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/product/dto"
 	"github.com/octguy/bakerio/backend/internal/product/repository"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	"github.com/octguy/bakerio/backend/internal/shared/slug"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
@@ -23,17 +22,17 @@ type CategoryService interface {
 
 type categoryService struct {
 	repo repository.CategoryRepository
-	tx   *txmanager.TxManager
+	tx   txmanager.TransactionManager
 }
 
-func NewCategoryService(tx *txmanager.TxManager, repo repository.CategoryRepository) CategoryService {
+func NewCategoryService(tx txmanager.TransactionManager, repo repository.CategoryRepository) CategoryService {
 	return &categoryService{tx: tx, repo: repo}
 }
 
 func (s *categoryService) CreateCategory(ctx context.Context, req dto.CreateCategoryRequest) (dto.CategoryResponse, error) {
-	slug := slugify(req.Name)
+	categorySlug := slug.Make(req.Name)
 
-	category, err := s.repo.Create(ctx, req.Name, slug, req.ParentID, req.SortOrder)
+	category, err := s.repo.Create(ctx, req.Name, categorySlug, req.ParentID, req.SortOrder)
 	if err != nil {
 		return dto.CategoryResponse{}, apperrors.Internal("failed to create category", err)
 	}
@@ -66,13 +65,22 @@ func (s *categoryService) ListCategories(ctx context.Context) ([]dto.CategoryRes
 }
 
 func (s *categoryService) UpdateCategory(ctx context.Context, id uuid.UUID, req dto.UpdateCategoryRequest) (dto.CategoryResponse, error) {
-	// 1. Prevent circular parent reference
+	// 1. Check existence
+	current, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return dto.CategoryResponse{}, apperrors.Internal("database error", err)
+	}
+	if current == nil {
+		return dto.CategoryResponse{}, apperrors.NotFound("category not found")
+	}
+
+	// 2. Prevent circular parent reference
 	if req.ParentID != nil && *req.ParentID == id {
 		return dto.CategoryResponse{}, apperrors.Validation("category cannot be its own parent")
 	}
 
-	slug := slugify(req.Name)
-	category, err := s.repo.Update(ctx, id, req.Name, slug, req.ParentID, req.SortOrder, req.IsActive)
+	categorySlug := slug.Make(req.Name)
+	category, err := s.repo.Update(ctx, id, req.Name, categorySlug, req.ParentID, req.SortOrder, req.IsActive)
 	if err != nil {
 		return dto.CategoryResponse{}, apperrors.Internal("failed to update category", err)
 	}
@@ -95,12 +103,4 @@ func toCategoryResponse(c *domain.Category) dto.CategoryResponse {
 		CreatedAt: c.CreatedAt,
 		UpdatedAt: c.UpdatedAt,
 	}
-}
-
-var slugRegex = regexp.MustCompile("[^a-z0-9]+")
-
-func slugify(s string) string {
-	s = strings.ToLower(s)
-	s = slugRegex.ReplaceAllString(s, "-")
-	return strings.Trim(s, "-")
 }

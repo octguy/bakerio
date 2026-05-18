@@ -28,3 +28,17 @@ SET
     deleted_at = NOW(),
     updated_by = $2
 WHERE product_id = $1 AND branch_id = $3;
+
+-- name: InsertPriceHistory :one
+INSERT INTO product.product_price_history (
+    product_id, branch_id, price, changed_by
+) VALUES (
+    $1, $2, $3, $4
+) RETURNING *;
+
+-- name: ListPriceHistory :many
+SELECT h.*, u.email as changed_by_email
+FROM product.product_price_history h
+LEFT JOIN auth.users u ON h.changed_by = u.id
+WHERE h.product_id = $1
+ORDER BY h.effective_at DESC;

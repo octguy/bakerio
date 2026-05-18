@@ -4,15 +4,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
-type Branch struct {
+type ProductPrice struct {
 	ID        uuid.UUID
-	Name      string
-	Address   string
-	Lat       *float64
-	Lng       *float64
-	Status    string
+	ProductID uuid.UUID
+	BranchID  uuid.UUID
+	Price     decimal.Decimal
+	IsActive  bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt *time.Time

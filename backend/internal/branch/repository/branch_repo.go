@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	branchdb "github.com/octguy/bakerio/backend/db/sqlc/branch"
+	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
@@ -15,6 +16,7 @@ type BranchRepository interface {
 	GetAllBranches(ctx context.Context) ([]*domain.Branch, error)
 	UpdateBranch(ctx context.Context, branchID uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error)
 	UpdateBranchStatus(ctx context.Context, branchID uuid.UUID, status string) error
+	SoftDeleteBranch(ctx context.Context, branchID uuid.UUID) error
 }
 
 type branchRepo struct {
@@ -33,12 +35,15 @@ func NewBranchRepository(db *branchdb.Queries) BranchRepository {
 }
 
 func (b *branchRepo) CreateBranch(ctx context.Context, name, address string, lat, lng *float64) (*domain.Branch, error) {
+	callerID, _ := authcontext.CallerID(ctx)
 	q := b.queries(ctx)
 	row, err := q.CreateBranch(ctx, branchdb.CreateBranchParams{
-		Name:    name,
-		Address: address,
-		Lat:     lat,
-		Lng:     lng,
+		Name:      name,
+		Address:   address,
+		Lat:       lat,
+		Lng:       lng,
+		CreatedBy: nullableUUID(callerID),
+		UpdatedBy: nullableUUID(callerID),
 	})
 
 	if err != nil {
@@ -70,23 +75,23 @@ func (b *branchRepo) GetAllBranches(ctx context.Context) ([]*domain.Branch, erro
 	branches := make([]*domain.Branch, 0, len(rows))
 
 	for _, row := range rows {
-		r := row
-
-		branches = append(branches, toEntity(r))
+		branches = append(branches, toEntity(row))
 	}
 
 	return branches, nil
 }
 
 func (b *branchRepo) UpdateBranch(ctx context.Context, id uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error) {
+	callerID, _ := authcontext.CallerID(ctx)
 	q := b.queries(ctx)
 
 	row, err := q.UpdateBranch(ctx, branchdb.UpdateBranchParams{
-		Name:    name,
-		Address: address,
-		Lat:     lat,
-		Lng:     lng,
-		ID:      id,
+		Name:      name,
+		Address:   address,
+		Lat:       lat,
+		Lng:       lng,
+		UpdatedBy: nullableUUID(callerID),
+		ID:        id,
 	})
 	if err != nil {
 		return nil, err
@@ -95,16 +100,28 @@ func (b *branchRepo) UpdateBranch(ctx context.Context, id uuid.UUID, name, addre
 }
 
 func (b *branchRepo) UpdateBranchStatus(ctx context.Context, id uuid.UUID, status string) error {
+	callerID, _ := authcontext.CallerID(ctx)
 	q := b.queries(ctx)
 
 	err := q.UpdateBranchStatus(ctx, branchdb.UpdateBranchStatusParams{
-		Status: status,
-		ID:     id,
+		Status:    status,
+		UpdatedBy: nullableUUID(callerID),
+		ID:        id,
 	})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (b *branchRepo) SoftDeleteBranch(ctx context.Context, branchID uuid.UUID) error {
+	callerID, _ := authcontext.CallerID(ctx)
+	q := b.queries(ctx)
+
+	return q.SoftDeleteBranch(ctx, branchdb.SoftDeleteBranchParams{
+		ID:        branchID,
+		UpdatedBy: nullableUUID(callerID),
+	})
 }
 
 func toEntity(dbModel branchdb.BranchBranch) *domain.Branch {
@@ -116,5 +133,16 @@ func toEntity(dbModel branchdb.BranchBranch) *domain.Branch {
 		Lng:       dbModel.Lng,
 		Status:    dbModel.Status,
 		CreatedAt: dbModel.CreatedAt,
+		UpdatedAt: dbModel.UpdatedAt,
+		DeletedAt: dbModel.DeletedAt,
+		CreatedBy: dbModel.CreatedBy,
+		UpdatedBy: dbModel.UpdatedBy,
 	}
+}
+
+func nullableUUID(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+	return &id
 }

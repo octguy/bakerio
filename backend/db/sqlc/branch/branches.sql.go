@@ -13,16 +13,18 @@ import (
 
 const createBranch = `-- name: CreateBranch :one
 INSERT INTO branch.branches (
-    name, address, lat, lng
-) VALUES ($1, $2, $3, $4)
-    RETURNING id, name, address, lat, lng, status, created_at
+    name, address, lat, lng, created_by, updated_by
+) VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by
 `
 
 type CreateBranchParams struct {
-	Name    string   `json:"name"`
-	Address string   `json:"address"`
-	Lat     *float64 `json:"lat"`
-	Lng     *float64 `json:"lng"`
+	Name      string     `json:"name"`
+	Address   string     `json:"address"`
+	Lat       *float64   `json:"lat"`
+	Lng       *float64   `json:"lng"`
+	CreatedBy *uuid.UUID `json:"created_by"`
+	UpdatedBy *uuid.UUID `json:"updated_by"`
 }
 
 func (q *Queries) CreateBranch(ctx context.Context, arg CreateBranchParams) (BranchBranch, error) {
@@ -31,6 +33,8 @@ func (q *Queries) CreateBranch(ctx context.Context, arg CreateBranchParams) (Bra
 		arg.Address,
 		arg.Lat,
 		arg.Lng,
+		arg.CreatedBy,
+		arg.UpdatedBy,
 	)
 	var i BranchBranch
 	err := row.Scan(
@@ -41,12 +45,17 @@ func (q *Queries) CreateBranch(ctx context.Context, arg CreateBranchParams) (Bra
 		&i.Lng,
 		&i.Status,
 		&i.CreatedAt,
+		&i.DeletedAt,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.CreatedBy,
 	)
 	return i, err
 }
 
 const getAllBranches = `-- name: GetAllBranches :many
-SELECT id, name, address, lat, lng, status, created_at FROM branch.branches
+SELECT id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by FROM branch.branches
+WHERE deleted_at IS NULL
 `
 
 func (q *Queries) GetAllBranches(ctx context.Context) ([]BranchBranch, error) {
@@ -66,6 +75,10 @@ func (q *Queries) GetAllBranches(ctx context.Context) ([]BranchBranch, error) {
 			&i.Lng,
 			&i.Status,
 			&i.CreatedAt,
+			&i.DeletedAt,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+			&i.CreatedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -78,8 +91,8 @@ func (q *Queries) GetAllBranches(ctx context.Context) ([]BranchBranch, error) {
 }
 
 const getBranchByID = `-- name: GetBranchByID :one
-SELECT id, name, address, lat, lng, status, created_at FROM branch.branches
-WHERE id = $1
+SELECT id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by FROM branch.branches
+WHERE id = $1 AND deleted_at IS NULL
 LIMIT 1
 `
 
@@ -94,8 +107,28 @@ func (q *Queries) GetBranchByID(ctx context.Context, id uuid.UUID) (BranchBranch
 		&i.Lng,
 		&i.Status,
 		&i.CreatedAt,
+		&i.DeletedAt,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.CreatedBy,
 	)
 	return i, err
+}
+
+const softDeleteBranch = `-- name: SoftDeleteBranch :exec
+UPDATE branch.branches
+SET deleted_at = NOW(), updated_by = $1
+WHERE id = $2
+`
+
+type SoftDeleteBranchParams struct {
+	UpdatedBy *uuid.UUID `json:"updated_by"`
+	ID        uuid.UUID  `json:"id"`
+}
+
+func (q *Queries) SoftDeleteBranch(ctx context.Context, arg SoftDeleteBranchParams) error {
+	_, err := q.db.Exec(ctx, softDeleteBranch, arg.UpdatedBy, arg.ID)
+	return err
 }
 
 const updateBranch = `-- name: UpdateBranch :one
@@ -104,17 +137,19 @@ SET
     name = $1,
     address = $2,
     lat = $3,
-    lng = $4
-WHERE id = $5
-RETURNING id, name, address, lat, lng, status, created_at
+    lng = $4,
+    updated_by = $5
+WHERE id = $6 AND deleted_at IS NULL
+RETURNING id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by
 `
 
 type UpdateBranchParams struct {
-	Name    string    `json:"name"`
-	Address string    `json:"address"`
-	Lat     *float64  `json:"lat"`
-	Lng     *float64  `json:"lng"`
-	ID      uuid.UUID `json:"id"`
+	Name      string     `json:"name"`
+	Address   string     `json:"address"`
+	Lat       *float64   `json:"lat"`
+	Lng       *float64   `json:"lng"`
+	UpdatedBy *uuid.UUID `json:"updated_by"`
+	ID        uuid.UUID  `json:"id"`
 }
 
 func (q *Queries) UpdateBranch(ctx context.Context, arg UpdateBranchParams) (BranchBranch, error) {
@@ -123,6 +158,7 @@ func (q *Queries) UpdateBranch(ctx context.Context, arg UpdateBranchParams) (Bra
 		arg.Address,
 		arg.Lat,
 		arg.Lng,
+		arg.UpdatedBy,
 		arg.ID,
 	)
 	var i BranchBranch
@@ -134,22 +170,27 @@ func (q *Queries) UpdateBranch(ctx context.Context, arg UpdateBranchParams) (Bra
 		&i.Lng,
 		&i.Status,
 		&i.CreatedAt,
+		&i.DeletedAt,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.CreatedBy,
 	)
 	return i, err
 }
 
 const updateBranchStatus = `-- name: UpdateBranchStatus :exec
 UPDATE branch.branches
-SET status = $1
-WHERE id = $2
+SET status = $1, updated_by = $2
+WHERE id = $3 AND deleted_at IS NULL
 `
 
 type UpdateBranchStatusParams struct {
-	Status string    `json:"status"`
-	ID     uuid.UUID `json:"id"`
+	Status    string     `json:"status"`
+	UpdatedBy *uuid.UUID `json:"updated_by"`
+	ID        uuid.UUID  `json:"id"`
 }
 
 func (q *Queries) UpdateBranchStatus(ctx context.Context, arg UpdateBranchStatusParams) error {
-	_, err := q.db.Exec(ctx, updateBranchStatus, arg.Status, arg.ID)
+	_, err := q.db.Exec(ctx, updateBranchStatus, arg.Status, arg.UpdatedBy, arg.ID)
 	return err
 }

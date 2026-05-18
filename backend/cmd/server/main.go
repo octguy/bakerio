@@ -25,6 +25,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/database"
 	"github.com/octguy/bakerio/backend/internal/platform/email"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
+	"github.com/octguy/bakerio/backend/internal/platform/mediastore"
 	"github.com/octguy/bakerio/backend/internal/platform/middleware"
 	"github.com/octguy/bakerio/backend/internal/platform/mq"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
@@ -85,6 +86,12 @@ func main() {
 	}
 	ch.Close()
 
+	// 4.4. Media Storage
+	mediaStore, err := mediastore.NewLocalMediaStore(cfg.Uploads.Dir, cfg.Uploads.BaseURL)
+	if err != nil {
+		logger.Log.Fatal("mediastore init failed", zap.Error(err))
+	}
+
 	// 5. Services
 	tx := txmanager.New(pool)
 	publisher := mq.NewPublisher(rmq)
@@ -95,9 +102,9 @@ func main() {
 	// 6. Modules
 	userModule := user.New(pool, tx)
 	branchModule := branch.New(pool, tx)
-	productModule := product.New(pool, tx)
+	productModule := product.New(pool, tx, mediaStore, cfg.Uploads.MaxSize)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
-	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), branchModule.BranchService(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
+	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), branchModule.Service(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
 	userModule.Wire(authModule.Service())
 
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
@@ -115,6 +122,10 @@ func main() {
 
 	// 8. HTTP server
 	r := gin.Default()
+
+	// Register static route for uploads
+	r.Static("/uploads", cfg.Uploads.Dir)
+
 	v1 := r.Group("/api/v1")
 
 	// Public group

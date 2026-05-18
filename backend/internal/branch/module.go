@@ -26,7 +26,7 @@ func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
 	}
 }
 
-func (m *Module) BranchService() service.BranchService { return m.svc }
+func (m *Module) Service() service.BranchService { return m.svc }
 
 func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
 	m.h.RegisterRoutes(protected)

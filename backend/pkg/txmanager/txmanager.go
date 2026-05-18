@@ -10,6 +10,10 @@ import (
 
 type contextKey struct{}
 
+type TransactionManager interface {
+	WithTx(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
 type TxManager struct {
 	pool *pgxpool.Pool
 }

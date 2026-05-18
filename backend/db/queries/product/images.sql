@@ -20,6 +20,10 @@ UPDATE product.product_images
 SET is_primary = true
 WHERE id = $1;
 
+-- name: GetProductImageByID :one
+SELECT * FROM product.product_images
+WHERE id = $1;
+
 -- name: DeleteProductImage :exec
 DELETE FROM product.product_images
 WHERE id = $1;

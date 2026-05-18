@@ -7,27 +7,30 @@ package productdb
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 const createProduct = `-- name: CreateProduct :one
 INSERT INTO product.products (
-    sku, name, slug, description, category_id, unit, created_by, updated_by
+    sku, name, slug, description, category_id, unit, base_price, created_by, updated_by
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
-) RETURNING id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
+) RETURNING id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by, base_price
 `
 
 type CreateProductParams struct {
-	Sku         string     `json:"sku"`
-	Name        string     `json:"name"`
-	Slug        string     `json:"slug"`
-	Description *string    `json:"description"`
-	CategoryID  *uuid.UUID `json:"category_id"`
-	Unit        string     `json:"unit"`
-	CreatedBy   *uuid.UUID `json:"created_by"`
-	UpdatedBy   *uuid.UUID `json:"updated_by"`
+	Sku         string          `json:"sku"`
+	Name        string          `json:"name"`
+	Slug        string          `json:"slug"`
+	Description *string         `json:"description"`
+	CategoryID  *uuid.UUID      `json:"category_id"`
+	Unit        string          `json:"unit"`
+	BasePrice   decimal.Decimal `json:"base_price"`
+	CreatedBy   *uuid.UUID      `json:"created_by"`
+	UpdatedBy   *uuid.UUID      `json:"updated_by"`
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (ProductProduct, error) {
@@ -38,6 +41,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		arg.Description,
 		arg.CategoryID,
 		arg.Unit,
+		arg.BasePrice,
 		arg.CreatedBy,
 		arg.UpdatedBy,
 	)
@@ -56,12 +60,13 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+		&i.BasePrice,
 	)
 	return i, err
 }
 
 const getProductByID = `-- name: GetProductByID :one
-SELECT id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.products
+SELECT id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by, base_price FROM product.products
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -82,12 +87,13 @@ func (q *Queries) GetProductByID(ctx context.Context, id uuid.UUID) (ProductProd
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+		&i.BasePrice,
 	)
 	return i, err
 }
 
 const getProductBySlug = `-- name: GetProductBySlug :one
-SELECT id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.products
+SELECT id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by, base_price FROM product.products
 WHERE slug = $1 AND deleted_at IS NULL
 `
 
@@ -108,25 +114,97 @@ func (q *Queries) GetProductBySlug(ctx context.Context, slug string) (ProductPro
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+		&i.BasePrice,
+	)
+	return i, err
+}
+
+const getProductWithCategoryByID = `-- name: GetProductWithCategoryByID :one
+SELECT p.id, p.sku, p.name, p.slug, p.description, p.category_id, p.unit, p.is_active, p.deleted_at, p.created_at, p.created_by, p.updated_at, p.updated_by, p.base_price, c.name as category_name, c.slug as category_slug
+FROM product.products p
+LEFT JOIN product.categories c ON p.category_id = c.id
+WHERE p.id = $1 AND p.deleted_at IS NULL
+`
+
+type GetProductWithCategoryByIDRow struct {
+	ID           uuid.UUID       `json:"id"`
+	Sku          string          `json:"sku"`
+	Name         string          `json:"name"`
+	Slug         string          `json:"slug"`
+	Description  *string         `json:"description"`
+	CategoryID   *uuid.UUID      `json:"category_id"`
+	Unit         string          `json:"unit"`
+	IsActive     bool            `json:"is_active"`
+	DeletedAt    *time.Time      `json:"deleted_at"`
+	CreatedAt    time.Time       `json:"created_at"`
+	CreatedBy    *uuid.UUID      `json:"created_by"`
+	UpdatedAt    time.Time       `json:"updated_at"`
+	UpdatedBy    *uuid.UUID      `json:"updated_by"`
+	BasePrice    decimal.Decimal `json:"base_price"`
+	CategoryName *string         `json:"category_name"`
+	CategorySlug *string         `json:"category_slug"`
+}
+
+func (q *Queries) GetProductWithCategoryByID(ctx context.Context, id uuid.UUID) (GetProductWithCategoryByIDRow, error) {
+	row := q.db.QueryRow(ctx, getProductWithCategoryByID, id)
+	var i GetProductWithCategoryByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.Sku,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.CategoryID,
+		&i.Unit,
+		&i.IsActive,
+		&i.DeletedAt,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.BasePrice,
+		&i.CategoryName,
+		&i.CategorySlug,
 	)
 	return i, err
 }
 
 const listProducts = `-- name: ListProducts :many
-SELECT id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.products
-WHERE deleted_at IS NULL
-ORDER BY name ASC
+SELECT p.id, p.sku, p.name, p.slug, p.description, p.category_id, p.unit, p.is_active, p.deleted_at, p.created_at, p.created_by, p.updated_at, p.updated_by, p.base_price, c.name as category_name, c.slug as category_slug
+FROM product.products p
+LEFT JOIN product.categories c ON p.category_id = c.id
+WHERE p.deleted_at IS NULL
+ORDER BY p.name ASC
 `
 
-func (q *Queries) ListProducts(ctx context.Context) ([]ProductProduct, error) {
+type ListProductsRow struct {
+	ID           uuid.UUID       `json:"id"`
+	Sku          string          `json:"sku"`
+	Name         string          `json:"name"`
+	Slug         string          `json:"slug"`
+	Description  *string         `json:"description"`
+	CategoryID   *uuid.UUID      `json:"category_id"`
+	Unit         string          `json:"unit"`
+	IsActive     bool            `json:"is_active"`
+	DeletedAt    *time.Time      `json:"deleted_at"`
+	CreatedAt    time.Time       `json:"created_at"`
+	CreatedBy    *uuid.UUID      `json:"created_by"`
+	UpdatedAt    time.Time       `json:"updated_at"`
+	UpdatedBy    *uuid.UUID      `json:"updated_by"`
+	BasePrice    decimal.Decimal `json:"base_price"`
+	CategoryName *string         `json:"category_name"`
+	CategorySlug *string         `json:"category_slug"`
+}
+
+func (q *Queries) ListProducts(ctx context.Context) ([]ListProductsRow, error) {
 	rows, err := q.db.Query(ctx, listProducts)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ProductProduct{}
+	items := []ListProductsRow{}
 	for rows.Next() {
-		var i ProductProduct
+		var i ListProductsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Sku,
@@ -141,6 +219,9 @@ func (q *Queries) ListProducts(ctx context.Context) ([]ProductProduct, error) {
 			&i.CreatedBy,
 			&i.UpdatedAt,
 			&i.UpdatedBy,
+			&i.BasePrice,
+			&i.CategoryName,
+			&i.CategorySlug,
 		); err != nil {
 			return nil, err
 		}
@@ -153,7 +234,7 @@ func (q *Queries) ListProducts(ctx context.Context) ([]ProductProduct, error) {
 }
 
 const listProductsByCategory = `-- name: ListProductsByCategory :many
-SELECT id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.products
+SELECT id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by, base_price FROM product.products
 WHERE category_id = $1 AND deleted_at IS NULL
 ORDER BY name ASC
 `
@@ -181,6 +262,7 @@ func (q *Queries) ListProductsByCategory(ctx context.Context, categoryID *uuid.U
 			&i.CreatedBy,
 			&i.UpdatedAt,
 			&i.UpdatedBy,
+			&i.BasePrice,
 		); err != nil {
 			return nil, err
 		}
@@ -220,22 +302,24 @@ SET
     category_id = $6,
     unit = $7,
     is_active = $8,
+    base_price = $9,
     updated_at = NOW(),
-    updated_by = $9
+    updated_by = $10
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by
+RETURNING id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by, base_price
 `
 
 type UpdateProductParams struct {
-	ID          uuid.UUID  `json:"id"`
-	Sku         string     `json:"sku"`
-	Name        string     `json:"name"`
-	Slug        string     `json:"slug"`
-	Description *string    `json:"description"`
-	CategoryID  *uuid.UUID `json:"category_id"`
-	Unit        string     `json:"unit"`
-	IsActive    bool       `json:"is_active"`
-	UpdatedBy   *uuid.UUID `json:"updated_by"`
+	ID          uuid.UUID       `json:"id"`
+	Sku         string          `json:"sku"`
+	Name        string          `json:"name"`
+	Slug        string          `json:"slug"`
+	Description *string         `json:"description"`
+	CategoryID  *uuid.UUID      `json:"category_id"`
+	Unit        string          `json:"unit"`
+	IsActive    bool            `json:"is_active"`
+	BasePrice   decimal.Decimal `json:"base_price"`
+	UpdatedBy   *uuid.UUID      `json:"updated_by"`
 }
 
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (ProductProduct, error) {
@@ -248,6 +332,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		arg.CategoryID,
 		arg.Unit,
 		arg.IsActive,
+		arg.BasePrice,
 		arg.UpdatedBy,
 	)
 	var i ProductProduct
@@ -265,6 +350,45 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+		&i.BasePrice,
+	)
+	return i, err
+}
+
+const updateProductPrice = `-- name: UpdateProductPrice :one
+UPDATE product.products
+SET 
+    base_price = $2,
+    updated_at = NOW(),
+    updated_by = $3
+WHERE id = $1 AND deleted_at IS NULL
+RETURNING id, sku, name, slug, description, category_id, unit, is_active, deleted_at, created_at, created_by, updated_at, updated_by, base_price
+`
+
+type UpdateProductPriceParams struct {
+	ID        uuid.UUID       `json:"id"`
+	BasePrice decimal.Decimal `json:"base_price"`
+	UpdatedBy *uuid.UUID      `json:"updated_by"`
+}
+
+func (q *Queries) UpdateProductPrice(ctx context.Context, arg UpdateProductPriceParams) (ProductProduct, error) {
+	row := q.db.QueryRow(ctx, updateProductPrice, arg.ID, arg.BasePrice, arg.UpdatedBy)
+	var i ProductProduct
+	err := row.Scan(
+		&i.ID,
+		&i.Sku,
+		&i.Name,
+		&i.Slug,
+		&i.Description,
+		&i.CategoryID,
+		&i.Unit,
+		&i.IsActive,
+		&i.DeletedAt,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+		&i.BasePrice,
 	)
 	return i, err
 }

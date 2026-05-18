@@ -9,18 +9,25 @@ import (
 )
 
 type Config struct {
-	Server ServerConfig
-	JWT    JWTConfig
-	DB     DatabaseConfig
-	MQ     RabbitMQConfig
-	Redis  RedisConfig
-	Email  SMTPConfig
+	Server  ServerConfig
+	JWT     JWTConfig
+	DB      DatabaseConfig
+	MQ      RabbitMQConfig
+	Redis   RedisConfig
+	Email   SMTPConfig
+	Uploads UploadsConfig
 }
 
 type ServerConfig struct {
 	Env  string
 	Port string
 	Mode string
+}
+
+type UploadsConfig struct {
+	Dir     string
+	MaxSize int64
+	BaseURL string
 }
 
 type JWTConfig struct {
@@ -63,11 +70,31 @@ func Load() *Config {
 		jwtExpiry = 15 * time.Minute // Default to 15 minutes if parsing fails
 	}
 
+	maxUploadSize := int64(5 * 1024 * 1024) // Default 5MB
+	if envMaxSize := os.Getenv("MAX_UPLOAD_SIZE"); envMaxSize != "" {
+		fmt.Sscanf(envMaxSize, "%d", &maxUploadSize)
+	}
+
+	baseURL := os.Getenv("BASE_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:" + os.Getenv("SERVER_PORT")
+	}
+
+	uploadsDir := os.Getenv("UPLOADS_DIR")
+	if uploadsDir == "" {
+		uploadsDir = "./uploads"
+	}
+
 	return &Config{
 		Server: ServerConfig{
 			Env:  os.Getenv("SERVER_ENV"),
 			Port: os.Getenv("SERVER_PORT"),
 			Mode: os.Getenv("GIN_MODE"),
+		},
+		Uploads: UploadsConfig{
+			Dir:     uploadsDir,
+			MaxSize: maxUploadSize,
+			BaseURL: baseURL,
 		},
 		JWT: JWTConfig{
 			SecretKey: os.Getenv("JWT_SECRET"),

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/shopspring/decimal"
 )
 
 type AuthAuthCredential struct {
@@ -63,13 +63,17 @@ type AuthUserRole struct {
 }
 
 type BranchBranch struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Address   string    `json:"address"`
-	Lat       *float64  `json:"lat"`
-	Lng       *float64  `json:"lng"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID  `json:"id"`
+	Name      string     `json:"name"`
+	Address   string     `json:"address"`
+	Lat       *float64   `json:"lat"`
+	Lng       *float64   `json:"lng"`
+	Status    string     `json:"status"`
+	CreatedAt time.Time  `json:"created_at"`
+	DeletedAt *time.Time `json:"deleted_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	UpdatedBy *uuid.UUID `json:"updated_by"`
+	CreatedBy *uuid.UUID `json:"created_by"`
 }
 
 type ProductCategory struct {
@@ -87,19 +91,20 @@ type ProductCategory struct {
 }
 
 type ProductProduct struct {
-	ID          uuid.UUID  `json:"id"`
-	Sku         string     `json:"sku"`
-	Name        string     `json:"name"`
-	Slug        string     `json:"slug"`
-	Description *string    `json:"description"`
-	CategoryID  *uuid.UUID `json:"category_id"`
-	Unit        string     `json:"unit"`
-	IsActive    bool       `json:"is_active"`
-	DeletedAt   *time.Time `json:"deleted_at"`
-	CreatedAt   time.Time  `json:"created_at"`
-	CreatedBy   *uuid.UUID `json:"created_by"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	UpdatedBy   *uuid.UUID `json:"updated_by"`
+	ID          uuid.UUID       `json:"id"`
+	Sku         string          `json:"sku"`
+	Name        string          `json:"name"`
+	Slug        string          `json:"slug"`
+	Description *string         `json:"description"`
+	CategoryID  *uuid.UUID      `json:"category_id"`
+	Unit        string          `json:"unit"`
+	IsActive    bool            `json:"is_active"`
+	DeletedAt   *time.Time      `json:"deleted_at"`
+	CreatedAt   time.Time       `json:"created_at"`
+	CreatedBy   *uuid.UUID      `json:"created_by"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+	UpdatedBy   *uuid.UUID      `json:"updated_by"`
+	BasePrice   decimal.Decimal `json:"base_price"`
 }
 
 type ProductProductImage struct {
@@ -113,16 +118,25 @@ type ProductProductImage struct {
 }
 
 type ProductProductPrice struct {
-	ID        uuid.UUID      `json:"id"`
-	ProductID uuid.UUID      `json:"product_id"`
-	BranchID  uuid.UUID      `json:"branch_id"`
-	Price     pgtype.Numeric `json:"price"`
-	IsActive  bool           `json:"is_active"`
-	DeletedAt *time.Time     `json:"deleted_at"`
-	CreatedAt time.Time      `json:"created_at"`
-	CreatedBy *uuid.UUID     `json:"created_by"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	UpdatedBy *uuid.UUID     `json:"updated_by"`
+	ID        uuid.UUID       `json:"id"`
+	ProductID uuid.UUID       `json:"product_id"`
+	BranchID  uuid.UUID       `json:"branch_id"`
+	Price     decimal.Decimal `json:"price"`
+	IsActive  bool            `json:"is_active"`
+	DeletedAt *time.Time      `json:"deleted_at"`
+	CreatedAt time.Time       `json:"created_at"`
+	CreatedBy *uuid.UUID      `json:"created_by"`
+	UpdatedAt time.Time       `json:"updated_at"`
+	UpdatedBy *uuid.UUID      `json:"updated_by"`
+}
+
+type ProductProductPriceHistory struct {
+	ID          uuid.UUID       `json:"id"`
+	ProductID   uuid.UUID       `json:"product_id"`
+	BranchID    *uuid.UUID      `json:"branch_id"`
+	Price       decimal.Decimal `json:"price"`
+	EffectiveAt time.Time       `json:"effective_at"`
+	ChangedBy   *uuid.UUID      `json:"changed_by"`
 }
 
 type UsersProfile struct {

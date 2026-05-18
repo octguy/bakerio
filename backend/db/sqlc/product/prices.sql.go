@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/shopspring/decimal"
 )
 
 const deleteProductPrice = `-- name: DeleteProductPrice :exec
@@ -60,6 +60,86 @@ func (q *Queries) GetPriceByBranch(ctx context.Context, arg GetPriceByBranchPara
 	return i, err
 }
 
+const insertPriceHistory = `-- name: InsertPriceHistory :one
+INSERT INTO product.product_price_history (
+    product_id, branch_id, price, changed_by
+) VALUES (
+    $1, $2, $3, $4
+) RETURNING id, product_id, branch_id, price, effective_at, changed_by
+`
+
+type InsertPriceHistoryParams struct {
+	ProductID uuid.UUID       `json:"product_id"`
+	BranchID  *uuid.UUID      `json:"branch_id"`
+	Price     decimal.Decimal `json:"price"`
+	ChangedBy *uuid.UUID      `json:"changed_by"`
+}
+
+func (q *Queries) InsertPriceHistory(ctx context.Context, arg InsertPriceHistoryParams) (ProductProductPriceHistory, error) {
+	row := q.db.QueryRow(ctx, insertPriceHistory,
+		arg.ProductID,
+		arg.BranchID,
+		arg.Price,
+		arg.ChangedBy,
+	)
+	var i ProductProductPriceHistory
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.BranchID,
+		&i.Price,
+		&i.EffectiveAt,
+		&i.ChangedBy,
+	)
+	return i, err
+}
+
+const listPriceHistory = `-- name: ListPriceHistory :many
+SELECT h.id, h.product_id, h.branch_id, h.price, h.effective_at, h.changed_by, u.email as changed_by_email
+FROM product.product_price_history h
+LEFT JOIN auth.users u ON h.changed_by = u.id
+WHERE h.product_id = $1
+ORDER BY h.effective_at DESC
+`
+
+type ListPriceHistoryRow struct {
+	ID             uuid.UUID       `json:"id"`
+	ProductID      uuid.UUID       `json:"product_id"`
+	BranchID       *uuid.UUID      `json:"branch_id"`
+	Price          decimal.Decimal `json:"price"`
+	EffectiveAt    time.Time       `json:"effective_at"`
+	ChangedBy      *uuid.UUID      `json:"changed_by"`
+	ChangedByEmail *string         `json:"changed_by_email"`
+}
+
+func (q *Queries) ListPriceHistory(ctx context.Context, productID uuid.UUID) ([]ListPriceHistoryRow, error) {
+	rows, err := q.db.Query(ctx, listPriceHistory, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPriceHistoryRow{}
+	for rows.Next() {
+		var i ListPriceHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProductID,
+			&i.BranchID,
+			&i.Price,
+			&i.EffectiveAt,
+			&i.ChangedBy,
+			&i.ChangedByEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPricesByBranch = `-- name: ListPricesByBranch :many
 SELECT pp.id, pp.product_id, pp.branch_id, pp.price, pp.is_active, pp.deleted_at, pp.created_at, pp.created_by, pp.updated_at, pp.updated_by, p.name as product_name
 FROM product.product_prices pp
@@ -68,17 +148,17 @@ WHERE pp.branch_id = $1 AND pp.deleted_at IS NULL AND p.deleted_at IS NULL
 `
 
 type ListPricesByBranchRow struct {
-	ID          uuid.UUID      `json:"id"`
-	ProductID   uuid.UUID      `json:"product_id"`
-	BranchID    uuid.UUID      `json:"branch_id"`
-	Price       pgtype.Numeric `json:"price"`
-	IsActive    bool           `json:"is_active"`
-	DeletedAt   *time.Time     `json:"deleted_at"`
-	CreatedAt   time.Time      `json:"created_at"`
-	CreatedBy   *uuid.UUID     `json:"created_by"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	UpdatedBy   *uuid.UUID     `json:"updated_by"`
-	ProductName string         `json:"product_name"`
+	ID          uuid.UUID       `json:"id"`
+	ProductID   uuid.UUID       `json:"product_id"`
+	BranchID    uuid.UUID       `json:"branch_id"`
+	Price       decimal.Decimal `json:"price"`
+	IsActive    bool            `json:"is_active"`
+	DeletedAt   *time.Time      `json:"deleted_at"`
+	CreatedAt   time.Time       `json:"created_at"`
+	CreatedBy   *uuid.UUID      `json:"created_by"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+	UpdatedBy   *uuid.UUID      `json:"updated_by"`
+	ProductName string          `json:"product_name"`
 }
 
 func (q *Queries) ListPricesByBranch(ctx context.Context, branchID uuid.UUID) ([]ListPricesByBranchRow, error) {
@@ -129,11 +209,11 @@ RETURNING id, product_id, branch_id, price, is_active, deleted_at, created_at, c
 `
 
 type SetProductPriceParams struct {
-	ProductID uuid.UUID      `json:"product_id"`
-	BranchID  uuid.UUID      `json:"branch_id"`
-	Price     pgtype.Numeric `json:"price"`
-	CreatedBy *uuid.UUID     `json:"created_by"`
-	UpdatedBy *uuid.UUID     `json:"updated_by"`
+	ProductID uuid.UUID       `json:"product_id"`
+	BranchID  uuid.UUID       `json:"branch_id"`
+	Price     decimal.Decimal `json:"price"`
+	CreatedBy *uuid.UUID      `json:"created_by"`
+	UpdatedBy *uuid.UUID      `json:"updated_by"`
 }
 
 func (q *Queries) SetProductPrice(ctx context.Context, arg SetProductPriceParams) (ProductProductPrice, error) {
