@@ -21,8 +21,8 @@ RETURNING *;
 
 -- name: CreatePOItem :one
 INSERT INTO procurement.po_items (
-    po_id, product_id, quantity, unit_price, total_price
-) VALUES ($1, $2, $3, $4, $5)
+    po_id, product_id, quantity, unit_price
+) VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetPOItems :many

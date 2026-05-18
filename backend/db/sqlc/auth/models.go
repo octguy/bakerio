@@ -110,6 +110,7 @@ type ProcurementPurchaseOrder struct {
 	UpdatedAt   time.Time       `json:"updated_at"`
 	CreatedBy   *uuid.UUID      `json:"created_by"`
 	UpdatedBy   *uuid.UUID      `json:"updated_by"`
+	Version     int32           `json:"version"`
 }
 
 type ProcurementSupplier struct {
@@ -186,6 +187,12 @@ type ProductProductPriceHistory struct {
 	Price       decimal.Decimal `json:"price"`
 	EffectiveAt time.Time       `json:"effective_at"`
 	ChangedBy   *uuid.UUID      `json:"changed_by"`
+}
+
+type SharedProcessedEvent struct {
+	EventID     uuid.UUID `json:"event_id"`
+	Consumer    string    `json:"consumer"`
+	ProcessedAt time.Time `json:"processed_at"`
 }
 
 type UsersProfile struct {

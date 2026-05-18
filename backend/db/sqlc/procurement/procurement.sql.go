@@ -14,17 +14,16 @@ import (
 
 const createPOItem = `-- name: CreatePOItem :one
 INSERT INTO procurement.po_items (
-    po_id, product_id, quantity, unit_price, total_price
-) VALUES ($1, $2, $3, $4, $5)
+    po_id, product_id, quantity, unit_price
+) VALUES ($1, $2, $3, $4)
 RETURNING id, po_id, product_id, quantity, unit_price, total_price
 `
 
 type CreatePOItemParams struct {
-	PoID       uuid.UUID       `json:"po_id"`
-	ProductID  uuid.UUID       `json:"product_id"`
-	Quantity   decimal.Decimal `json:"quantity"`
-	UnitPrice  decimal.Decimal `json:"unit_price"`
-	TotalPrice decimal.Decimal `json:"total_price"`
+	PoID      uuid.UUID       `json:"po_id"`
+	ProductID uuid.UUID       `json:"product_id"`
+	Quantity  decimal.Decimal `json:"quantity"`
+	UnitPrice decimal.Decimal `json:"unit_price"`
 }
 
 func (q *Queries) CreatePOItem(ctx context.Context, arg CreatePOItemParams) (ProcurementPoItem, error) {
@@ -33,7 +32,6 @@ func (q *Queries) CreatePOItem(ctx context.Context, arg CreatePOItemParams) (Pro
 		arg.ProductID,
 		arg.Quantity,
 		arg.UnitPrice,
-		arg.TotalPrice,
 	)
 	var i ProcurementPoItem
 	err := row.Scan(
@@ -51,7 +49,7 @@ const createPurchaseOrder = `-- name: CreatePurchaseOrder :one
 INSERT INTO procurement.purchase_orders (
     supplier_id, branch_id, status, total_amount, note, created_by, updated_by
 ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by
+RETURNING id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by, version
 `
 
 type CreatePurchaseOrderParams struct {
@@ -87,6 +85,7 @@ func (q *Queries) CreatePurchaseOrder(ctx context.Context, arg CreatePurchaseOrd
 		&i.UpdatedAt,
 		&i.CreatedBy,
 		&i.UpdatedBy,
+		&i.Version,
 	)
 	return i, err
 }
@@ -124,7 +123,7 @@ func (q *Queries) GetPOItems(ctx context.Context, poID uuid.UUID) ([]Procurement
 }
 
 const getPurchaseOrder = `-- name: GetPurchaseOrder :one
-SELECT id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by FROM procurement.purchase_orders
+SELECT id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by, version FROM procurement.purchase_orders
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -143,12 +142,13 @@ func (q *Queries) GetPurchaseOrder(ctx context.Context, id uuid.UUID) (Procureme
 		&i.UpdatedAt,
 		&i.CreatedBy,
 		&i.UpdatedBy,
+		&i.Version,
 	)
 	return i, err
 }
 
 const listPurchaseOrdersByBranch = `-- name: ListPurchaseOrdersByBranch :many
-SELECT id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by FROM procurement.purchase_orders
+SELECT id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by, version FROM procurement.purchase_orders
 WHERE branch_id = $1 AND deleted_at IS NULL
 ORDER BY created_at DESC
 `
@@ -174,6 +174,7 @@ func (q *Queries) ListPurchaseOrdersByBranch(ctx context.Context, branchID uuid.
 			&i.UpdatedAt,
 			&i.CreatedBy,
 			&i.UpdatedBy,
+			&i.Version,
 		); err != nil {
 			return nil, err
 		}
@@ -189,7 +190,7 @@ const updatePOStatus = `-- name: UpdatePOStatus :one
 UPDATE procurement.purchase_orders
 SET status = $2, updated_at = NOW(), updated_by = $3
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by
+RETURNING id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by, version
 `
 
 type UpdatePOStatusParams struct {
@@ -213,6 +214,7 @@ func (q *Queries) UpdatePOStatus(ctx context.Context, arg UpdatePOStatusParams) 
 		&i.UpdatedAt,
 		&i.CreatedBy,
 		&i.UpdatedBy,
+		&i.Version,
 	)
 	return i, err
 }

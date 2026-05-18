@@ -30,6 +30,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/mq"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
+	"github.com/octguy/bakerio/backend/internal/procurement"
 	"github.com/octguy/bakerio/backend/internal/product"
 	"github.com/octguy/bakerio/backend/internal/user"
 	"github.com/octguy/bakerio/backend/pkg/config"
@@ -97,6 +98,7 @@ func main() {
 	publisher := mq.NewPublisher(rmq)
 	consumer := mq.NewConsumer(rmq, logger.Log)
 	authOutbox := outbox.NewRepository(pool, "auth.outbox")
+	procurementOutbox := outbox.NewRepository(pool, "procurement.outbox")
 	otpService := otp.NewService(redisClient)
 
 	// 6. Modules
@@ -105,6 +107,7 @@ func main() {
 	productModule := product.New(pool, tx, mediaStore, cfg.Uploads.MaxSize)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
 	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), branchModule.Service(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
+	procurementModule := procurement.NewModule(pool, tx)
 	userModule.Wire(authModule.Service())
 
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
@@ -114,7 +117,7 @@ func main() {
 	seedAdmins(ctx, authModule.Service())
 
 	// 7. Background workers
-	go outbox.NewWorker(publisher, logger.Log, authOutbox).Run(ctx)
+	go outbox.NewWorker(publisher, logger.Log, authOutbox, procurementOutbox).Run(ctx)
 
 	if err := notifModule.RegisterConsumers(ctx, consumer); err != nil {
 		logger.Log.Fatal("notification consumers failed", zap.Error(err))
@@ -141,6 +144,7 @@ func main() {
 	userModule.RegisterRoutes(authed)
 	branchModule.RegisterRoutes(authed)
 	productModule.RegisterRoutes(authed)
+	procurementModule.RegisterRoutes(authed)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
