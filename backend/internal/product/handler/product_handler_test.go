@@ -130,6 +130,84 @@ func (s *ProductHandlerTestSuite) TestGetPriceHistory() {
 		s.Equal(http.StatusOK, w.Code)
 		s.mockSvc.AssertExpectations(s.T())
 	})
+	s.Run("Validation Error", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPost, "/products", bytes.NewBufferString("{invalid}"))
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *ProductHandlerTestSuite) TestUpdateProduct() {
+	id := uuid.New()
+	name := "Updated Product"
+	req := dto.UpdateProductRequest{Name: &name}
+	resp := dto.ProductResponse{ID: id, Name: name}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("UpdateProduct", mock.Anything, id, req).Return(resp, nil).Once()
+
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/products/"+id.String(), bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+	})
+
+	s.Run("Invalid ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/products/invalid", bytes.NewBufferString("{}"))
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *ProductHandlerTestSuite) TestDeleteProduct() {
+	id := uuid.New()
+
+	s.Run("Success", func() {
+		s.mockSvc.On("DeleteProduct", mock.Anything, id).Return(nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodDelete, "/products/"+id.String(), nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusNoContent, w.Code)
+	})
+
+	s.Run("Invalid ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodDelete, "/products/invalid", nil)
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *ProductHandlerTestSuite) TestSetPrice() {
+	id := uuid.New()
+	price := decimal.NewFromInt(20)
+	req := dto.SetPriceRequest{BranchID: uuid.New(), Price: price}
+	resp := dto.ProductPriceResponse{BranchID: req.BranchID, Price: price}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("SetPrice", mock.Anything, id, req).Return(resp, nil).Once()
+
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPost, "/products/"+id.String()+"/prices", bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+	})
+
+	s.Run("Invalid ID", func() {
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPost, "/products/invalid/prices", bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
 }
 
 func TestProductHandlerSuite(t *testing.T) {

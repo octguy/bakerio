@@ -99,6 +99,84 @@ func (s *ProductRepoTestSuite) TestPriceHistory() {
 	s.Nil(history[0].BranchID)
 }
 
+func (s *ProductRepoTestSuite) TestGetByIDAndSlug() {
+	ctx := context.Background()
+	p := &domain.Product{SKU: "S2", Name: "N2", Slug: "s-2", Unit: "p", BasePrice: decimal.NewFromInt(10)}
+	created, err := s.repo.Create(ctx, p)
+	s.NoError(err)
+
+	byID, err := s.repo.GetByID(ctx, created.ID)
+	s.NoError(err)
+	s.Equal(created.ID, byID.ID)
+
+	bySlug, err := s.repo.GetBySlug(ctx, "s-2")
+	s.NoError(err)
+	s.Equal(created.ID, bySlug.ID)
+
+	_, err = s.repo.GetByID(ctx, uuid.New())
+	s.Error(err)
+}
+
+func (s *ProductRepoTestSuite) TestList() {
+	ctx := context.Background()
+	p1 := &domain.Product{SKU: "S3", Name: "N3", Slug: "s-3", Unit: "p", BasePrice: decimal.NewFromInt(10)}
+	p2 := &domain.Product{SKU: "S4", Name: "N4", Slug: "s-4", Unit: "p", BasePrice: decimal.NewFromInt(20)}
+	_, _ = s.repo.Create(ctx, p1)
+	_, _ = s.repo.Create(ctx, p2)
+
+	list, err := s.repo.List(ctx)
+	s.NoError(err)
+	s.GreaterOrEqual(len(list), 2)
+}
+
+func (s *ProductRepoTestSuite) TestUpdate() {
+	ctx := context.Background()
+	p := &domain.Product{SKU: "S5", Name: "N5", Slug: "s-5", Unit: "p", BasePrice: decimal.NewFromInt(10), IsActive: true}
+	created, err := s.repo.Create(ctx, p)
+	s.NoError(err)
+
+	created.Name = "N5 Updated"
+	created.BasePrice = decimal.NewFromInt(15)
+	created.IsActive = false
+	updated, err := s.repo.Update(ctx, created)
+	s.NoError(err)
+	s.Equal("N5 Updated", updated.Name)
+	s.False(updated.IsActive)
+	s.True(updated.BasePrice.Equal(decimal.NewFromInt(15)))
+}
+
+func (s *ProductRepoTestSuite) TestDelete() {
+	ctx := context.Background()
+	p := &domain.Product{SKU: "S6", Name: "N6", Slug: "s-6", Unit: "p", BasePrice: decimal.NewFromInt(10)}
+	created, err := s.repo.Create(ctx, p)
+	s.NoError(err)
+
+	err = s.repo.Delete(ctx, created.ID)
+	s.NoError(err)
+
+	_, err = s.repo.GetByID(ctx, created.ID)
+	s.Error(err)
+}
+
+func (s *ProductRepoTestSuite) TestGetPrice() {
+	ctx := context.Background()
+	branchID := uuid.New()
+	_, _ = s.testDB.Pool.Exec(ctx, "INSERT INTO branch.branches (id, name, address) VALUES ($1, $2, $3)", branchID, "B", "A")
+
+	p := &domain.Product{SKU: "S7", Name: "N7", Slug: "s-7", Unit: "p", BasePrice: decimal.NewFromInt(10)}
+	created, _ := s.repo.Create(ctx, p)
+
+	price := decimal.NewFromInt(20)
+	_, _ = s.repo.SetPrice(ctx, created.ID, branchID, price)
+
+	pp, err := s.repo.GetPrice(ctx, created.ID, branchID)
+	s.NoError(err)
+	s.True(pp.Price.Equal(price))
+
+	_, err = s.repo.GetPrice(ctx, created.ID, uuid.New())
+	s.Error(err)
+}
+
 func TestProductRepoSuite(t *testing.T) {
 	suite.Run(t, new(ProductRepoTestSuite))
 }

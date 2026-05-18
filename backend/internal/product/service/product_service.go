@@ -161,6 +161,10 @@ func (s *productService) DeleteProduct(ctx context.Context, id uuid.UUID) error 
 func (s *productService) SetPrice(ctx context.Context, productID uuid.UUID, req dto.SetPriceRequest) (dto.ProductPriceResponse, error) {
 	var res dto.ProductPriceResponse
 	err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if req.BranchID == uuid.Nil {
+			return apperrors.Validation("branch_id required for price override. use UpdateProduct to change global price")
+		}
+
 		price, err := s.repo.SetPrice(txCtx, productID, req.BranchID, req.Price)
 		if err != nil {
 			return err

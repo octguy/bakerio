@@ -192,6 +192,31 @@ func (s *CategoryServiceTestSuite) TestUpdateCategory() {
 	})
 }
 
+func (s *CategoryServiceTestSuite) TestListCategories() {
+	ctx := context.Background()
+	cats := []*domain.Category{{ID: uuid.New(), Name: "C1"}}
+
+	s.Run("Success", func() {
+		s.mockRepo.On("List", ctx).Return(cats, nil).Once()
+		res, err := s.service.ListCategories(ctx)
+		s.NoError(err)
+		s.Len(res, 1)
+		s.mockRepo.AssertExpectations(s.T())
+	})
+}
+
+func (s *CategoryServiceTestSuite) TestDeleteCategory() {
+	ctx := context.Background()
+	id := uuid.New()
+
+	s.Run("Success", func() {
+		s.mockRepo.On("Delete", ctx, id).Return(nil).Once()
+		err := s.service.DeleteCategory(ctx, id)
+		s.NoError(err)
+		s.mockRepo.AssertExpectations(s.T())
+	})
+}
+
 func TestCategoryServiceSuite(t *testing.T) {
 	suite.Run(t, new(CategoryServiceTestSuite))
 }

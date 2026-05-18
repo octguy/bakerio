@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -62,29 +63,92 @@ func (m *MockMediaStore) Delete(ctx context.Context, url string) error {
 	return args.Error(0)
 }
 
+type MockImageTxManager struct {
+	mock.Mock
+}
+
+func (m *MockImageTxManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	m.Called(ctx, mock.Anything)
+	return fn(ctx)
+}
+
 // --- TEST SUITE ---
 
 type ImageServiceTestSuite struct {
 	suite.Suite
 	mockRepo  *MockImageRepo
 	mockMS    *MockMediaStore
+	mockTx    *MockImageTxManager
 	service   ImageService
 }
 
 func (s *ImageServiceTestSuite) SetupTest() {
 	s.mockRepo = new(MockImageRepo)
 	s.mockMS = new(MockMediaStore)
-	// We need a real TxManager or a mock one. NewImageService takes *txmanager.TxManager.
-	// For simplicity, let's pass nil or a minimal one if possible.
-	// Actually, ImageService uses s.tx.WithTx.
-	s.service = NewImageService(nil, s.mockRepo, s.mockMS)
+	s.mockTx = new(MockImageTxManager)
+	s.service = NewImageService(s.mockTx, s.mockRepo, s.mockMS)
 }
 
-// NOTE: Since ImageService depends on a real *txmanager.TxManager which depends on pgxpool, 
-// unit testing with mocks for TX is tricky without an interface for TxManager.
-// For now, I'll skip the Service unit test that uses WithTx and focus on Repo/Handler,
-// or I can refactor ImageService to use an interface for TxManager.
+func (s *ImageServiceTestSuite) TestUploadImage() {
+	ctx := context.Background()
+	productID := uuid.New()
+	url := "http://example.com/img.jpg"
+	content := strings.NewReader("fake-image")
+
+	img := &domain.ProductImage{ID: uuid.New(), Url: url}
+
+	s.Run("Success", func() {
+		s.mockMS.On("Upload", ctx, "products", content, "image/jpeg").Return(url, nil).Once()
+		s.mockTx.On("WithTx", ctx, mock.Anything).Return(nil).Once()
+		s.mockRepo.On("AddImage", ctx, productID, url, false, int32(0)).Return(img, nil).Once()
+
+		res, err := s.service.UploadImage(ctx, productID, content, "image/jpeg", false)
+
+		s.NoError(err)
+		s.Equal(url, res.Url)
+		s.mockMS.AssertExpectations(s.T())
+		s.mockTx.AssertExpectations(s.T())
+		s.mockRepo.AssertExpectations(s.T())
+	})
+}
+
+func (s *ImageServiceTestSuite) TestDeleteImage() {
+	ctx := context.Background()
+	id := uuid.New()
+	url := "http://example.com/img.jpg"
+	img := &domain.ProductImage{ID: id, Url: url}
+
+	s.Run("Success", func() {
+		s.mockRepo.On("GetByID", ctx, id).Return(img, nil).Once()
+		s.mockTx.On("WithTx", ctx, mock.Anything).Return(nil).Once()
+		s.mockRepo.On("Delete", ctx, id).Return(nil).Once()
+		s.mockMS.On("Delete", ctx, url).Return(nil).Once()
+
+		err := s.service.DeleteImage(ctx, id)
+
+		s.NoError(err)
+		s.mockRepo.AssertExpectations(s.T())
+		s.mockTx.AssertExpectations(s.T())
+		s.mockMS.AssertExpectations(s.T())
+	})
+}
+
+func (s *ImageServiceTestSuite) TestSetPrimary() {
+	ctx := context.Background()
+	productID := uuid.New()
+	imageID := uuid.New()
+
+	s.Run("Success", func() {
+		s.mockTx.On("WithTx", ctx, mock.Anything).Return(nil).Once()
+		s.mockRepo.On("SetPrimary", ctx, productID, imageID).Return(nil).Once()
+
+		err := s.service.SetPrimary(ctx, productID, imageID)
+		s.NoError(err)
+		s.mockRepo.AssertExpectations(s.T())
+		s.mockTx.AssertExpectations(s.T())
+	})
+}
 
 func TestImageServiceSuite(t *testing.T) {
-	// suite.Run(t, new(ImageServiceTestSuite))
+	suite.Run(t, new(ImageServiceTestSuite))
 }

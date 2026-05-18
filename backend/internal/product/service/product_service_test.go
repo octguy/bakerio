@@ -93,11 +93,19 @@ func (m *MockProductRepo) InsertPriceHistory(ctx context.Context, productID uuid
 	return args.Error(0)
 }
 
+func (m *MockProductRepo) GetEffectivePrice(ctx context.Context, productID, branchID uuid.UUID) (decimal.Decimal, error) {
+	args := m.Called(ctx, productID, branchID)
+	return args.Get(0).(decimal.Decimal), args.Error(1)
+}
+
 // --- 2. NO-OP TX MANAGER ---
 
-type NoOpTxManager struct{}
+type MockProductTxManager struct {
+	mock.Mock
+}
 
-func (m *NoOpTxManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+func (m *MockProductTxManager) WithTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	m.Called(ctx, mock.Anything)
 	return fn(ctx)
 }
 
@@ -107,13 +115,15 @@ type ProductServiceTestSuite struct {
 	suite.Suite
 	mockRepo      *MockProductRepo
 	mockImageRepo *MockImageRepo
+	mockTx        *MockProductTxManager
 	service       ProductService
 }
 
 func (s *ProductServiceTestSuite) SetupTest() {
 	s.mockRepo = new(MockProductRepo)
 	s.mockImageRepo = new(MockImageRepo)
-	s.service = NewProductService(&NoOpTxManager{}, s.mockRepo, s.mockImageRepo)
+	s.mockTx = new(MockProductTxManager)
+	s.service = NewProductService(s.mockTx, s.mockRepo, s.mockImageRepo)
 }
 
 // --- 4. TEST METHODS ---
@@ -136,10 +146,11 @@ func (s *ProductServiceTestSuite) TestCreateProduct() {
 	}
 
 	s.Run("Success", func() {
-		s.mockRepo.On("Create", mock.Anything, mock.MatchedBy(func(prod *domain.Product) bool {
+		s.mockTx.On("WithTx", ctx, mock.Anything).Return(nil).Once()
+		s.mockRepo.On("Create", ctx, mock.MatchedBy(func(prod *domain.Product) bool {
 			return prod.SKU == req.SKU && prod.Name == req.Name && prod.BasePrice.Equal(price)
 		})).Return(p, nil).Once()
-		s.mockRepo.On("InsertPriceHistory", mock.Anything, p.ID, (*uuid.UUID)(nil), price).Return(nil).Once()
+		s.mockRepo.On("InsertPriceHistory", ctx, p.ID, (*uuid.UUID)(nil), price).Return(nil).Once()
 
 		res, err := s.service.CreateProduct(ctx, req)
 
@@ -147,6 +158,7 @@ func (s *ProductServiceTestSuite) TestCreateProduct() {
 		s.Equal(p.ID, res.ID)
 		s.Equal(p.SKU, res.SKU)
 		s.mockRepo.AssertExpectations(s.T())
+		s.mockTx.AssertExpectations(s.T())
 	})
 }
 
@@ -207,8 +219,9 @@ func (s *ProductServiceTestSuite) TestSetPrice() {
 	}
 
 	s.Run("Success", func() {
-		s.mockRepo.On("SetPrice", mock.Anything, productID, branchID, price).Return(pp, nil).Once()
-		s.mockRepo.On("InsertPriceHistory", mock.Anything, productID, &branchID, price).Return(nil).Once()
+		s.mockTx.On("WithTx", ctx, mock.Anything).Return(nil).Once()
+		s.mockRepo.On("SetPrice", ctx, productID, branchID, price).Return(pp, nil).Once()
+		s.mockRepo.On("InsertPriceHistory", ctx, productID, &branchID, price).Return(nil).Once()
 
 		res, err := s.service.SetPrice(ctx, productID, req)
 
@@ -216,6 +229,73 @@ func (s *ProductServiceTestSuite) TestSetPrice() {
 		s.Equal(price, res.Price)
 		s.Equal(branchID, res.BranchID)
 		s.mockRepo.AssertExpectations(s.T())
+		s.mockTx.AssertExpectations(s.T())
+	})
+
+	s.Run("Nil Branch ID", func() {
+		req.BranchID = uuid.Nil
+		s.mockTx.On("WithTx", ctx, mock.Anything).Return(apperrors.Validation("branch_id required for price override. use UpdateProduct to change global price")).Once()
+		_, err := s.service.SetPrice(ctx, productID, req)
+		s.Error(err)
+	})
+}
+
+func (s *ProductServiceTestSuite) TestListProducts() {
+	products := []*domain.Product{{ID: uuid.New(), Name: "Product 1"}}
+
+	s.Run("Success", func() {
+		s.mockRepo.On("List", mock.Anything).Return(products, nil).Once()
+
+		res, err := s.service.ListProducts(context.Background())
+		s.NoError(err)
+		s.Len(res, 1)
+	})
+}
+
+func (s *ProductServiceTestSuite) TestUpdateProduct() {
+	id := uuid.New()
+	product := &domain.Product{ID: id, Name: "Product 1", BasePrice: decimal.NewFromInt(10)}
+	newName := "Product Updated"
+	newPrice := decimal.NewFromInt(20)
+	req := dto.UpdateProductRequest{
+		Name:      &newName,
+		BasePrice: &newPrice,
+	}
+
+	s.Run("Success", func() {
+		s.mockTx.On("WithTx", mock.Anything, mock.Anything).Return(nil).Once()
+		s.mockRepo.On("GetByID", mock.Anything, id).Return(product, nil).Twice()
+		s.mockRepo.On("InsertPriceHistory", mock.Anything, id, (*uuid.UUID)(nil), newPrice).Return(nil).Once()
+		s.mockRepo.On("Update", mock.Anything, mock.Anything).Return(product, nil).Once()
+		s.mockImageRepo.On("ListByProduct", mock.Anything, id).Return([]*domain.ProductImage{}, nil).Once()
+
+		res, err := s.service.UpdateProduct(context.Background(), id, req)
+		s.NoError(err)
+		s.Equal(id, res.ID)
+	})
+}
+
+func (s *ProductServiceTestSuite) TestDeleteProduct() {
+	id := uuid.New()
+
+	s.Run("Success", func() {
+		s.mockRepo.On("Delete", mock.Anything, id).Return(nil).Once()
+
+		err := s.service.DeleteProduct(context.Background(), id)
+		s.NoError(err)
+	})
+}
+
+func (s *ProductServiceTestSuite) TestGetPriceHistory() {
+	id := uuid.New()
+	history := []*domain.ProductPriceHistory{{ID: uuid.New(), ProductID: id, Price: decimal.NewFromInt(10)}}
+
+	s.Run("Success", func() {
+		s.mockRepo.On("ListPriceHistory", mock.Anything, id).Return(history, nil).Once()
+
+		res, err := s.service.GetPriceHistory(context.Background(), id)
+		s.NoError(err)
+		s.Len(res, 1)
 	})
 }
 
