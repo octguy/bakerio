@@ -13,8 +13,8 @@ import (
 
 const createBranch = `-- name: CreateBranch :one
 INSERT INTO branch.branches (
-    name, address, lat, lng, created_by, updated_by
-) VALUES ($1, $2, $3, $4, $5, $6)
+    name, address, lat, lng, region, created_by, updated_by
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by, region
 `
 
@@ -23,6 +23,7 @@ type CreateBranchParams struct {
 	Address   string     `json:"address"`
 	Lat       *float64   `json:"lat"`
 	Lng       *float64   `json:"lng"`
+	Region    string     `json:"region"`
 	CreatedBy *uuid.UUID `json:"created_by"`
 	UpdatedBy *uuid.UUID `json:"updated_by"`
 }
@@ -33,6 +34,7 @@ func (q *Queries) CreateBranch(ctx context.Context, arg CreateBranchParams) (Bra
 		arg.Address,
 		arg.Lat,
 		arg.Lng,
+		arg.Region,
 		arg.CreatedBy,
 		arg.UpdatedBy,
 	)
@@ -141,8 +143,9 @@ SET
     address = $2,
     lat = $3,
     lng = $4,
-    updated_by = $5
-WHERE id = $6 AND deleted_at IS NULL
+    region = $5,
+    updated_by = $6
+WHERE id = $7 AND deleted_at IS NULL
 RETURNING id, name, address, lat, lng, status, created_at, deleted_at, updated_at, updated_by, created_by, region
 `
 
@@ -151,6 +154,7 @@ type UpdateBranchParams struct {
 	Address   string     `json:"address"`
 	Lat       *float64   `json:"lat"`
 	Lng       *float64   `json:"lng"`
+	Region    string     `json:"region"`
 	UpdatedBy *uuid.UUID `json:"updated_by"`
 	ID        uuid.UUID  `json:"id"`
 }
@@ -161,6 +165,7 @@ func (q *Queries) UpdateBranch(ctx context.Context, arg UpdateBranchParams) (Bra
 		arg.Address,
 		arg.Lat,
 		arg.Lng,
+		arg.Region,
 		arg.UpdatedBy,
 		arg.ID,
 	)

@@ -16,8 +16,8 @@ type MockBranchRepo struct {
 	mock.Mock
 }
 
-func (m *MockBranchRepo) CreateBranch(ctx context.Context, name, address string, lat, lng *float64) (*domain.Branch, error) {
-	args := m.Called(ctx, name, address, lat, lng)
+func (m *MockBranchRepo) CreateBranch(ctx context.Context, name, address string, lat, lng *float64, region string) (*domain.Branch, error) {
+	args := m.Called(ctx, name, address, lat, lng, region)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -40,8 +40,8 @@ func (m *MockBranchRepo) GetAllBranches(ctx context.Context) ([]*domain.Branch, 
 	return args.Get(0).([]*domain.Branch), args.Error(1)
 }
 
-func (m *MockBranchRepo) UpdateBranch(ctx context.Context, id uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error) {
-	args := m.Called(ctx, id, name, address, lat, lng)
+func (m *MockBranchRepo) UpdateBranch(ctx context.Context, id uuid.UUID, name, address string, lat, lng *float64, region string) (*domain.Branch, error) {
+	args := m.Called(ctx, id, name, address, lat, lng, region)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

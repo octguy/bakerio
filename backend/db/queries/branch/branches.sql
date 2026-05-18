@@ -1,7 +1,7 @@
 -- name: CreateBranch :one
 INSERT INTO branch.branches (
-    name, address, lat, lng, created_by, updated_by
-) VALUES ($1, $2, $3, $4, $5, $6)
+    name, address, lat, lng, region, created_by, updated_by
+) VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetBranchByID :one
@@ -25,8 +25,9 @@ SET
     address = $2,
     lat = $3,
     lng = $4,
-    updated_by = $5
-WHERE id = $6 AND deleted_at IS NULL
+    region = $5,
+    updated_by = $6
+WHERE id = $7 AND deleted_at IS NULL
 RETURNING *;
 
 -- name: SoftDeleteBranch :exec

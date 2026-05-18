@@ -71,7 +71,7 @@ func (s *BranchHandlerTestSuite) SetupTest() {
 }
 
 func (s *BranchHandlerTestSuite) TestCreateBranch() {
-	req := dto.CreateBranchRequest{Name: "Main Street", Address: "123 Main St"}
+	req := dto.CreateBranchRequest{Name: "Main Street", Address: "123 Main St", Region: "south"}
 	resp := dto.BranchResponse{ID: uuid.New(), Name: "Main Street"}
 
 	s.Run("Success", func() {

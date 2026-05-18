@@ -30,7 +30,7 @@ func NewBranchService(tx *txmanager.TxManager, repo repository.BranchRepository)
 }
 
 func (b *branchService) CreateBranch(ctx context.Context, req dto.CreateBranchRequest) (dto.BranchResponse, error) {
-	created, err := b.repo.CreateBranch(ctx, req.Name, req.Address, req.Lat, req.Lng)
+	created, err := b.repo.CreateBranch(ctx, req.Name, req.Address, req.Lat, req.Lng, req.Region)
 	if err != nil {
 		return dto.BranchResponse{}, apperrors.Internal("database error", err)
 	}
@@ -94,7 +94,12 @@ func (b *branchService) UpdateBranch(ctx context.Context, id uuid.UUID, req dto.
 		lng = req.Lng
 	}
 
-	updated, err := b.repo.UpdateBranch(ctx, id, name, address, lat, lng)
+	region := current.Region
+	if req.Region != nil {
+		region = *req.Region
+	}
+
+	updated, err := b.repo.UpdateBranch(ctx, id, name, address, lat, lng, region)
 	if err != nil {
 		return dto.BranchResponse{}, apperrors.Internal("database error", err)
 	}
@@ -121,6 +126,7 @@ func toResponse(branch *domain.Branch) dto.BranchResponse {
 		Lat:       branch.Lat,
 		Lng:       branch.Lng,
 		Status:    branch.Status,
+		Region:    branch.Region,
 		CreatedAt: branch.CreatedAt,
 		UpdatedAt: branch.UpdatedAt,
 	}

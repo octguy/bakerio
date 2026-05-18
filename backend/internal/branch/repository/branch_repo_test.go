@@ -49,6 +49,7 @@ func (s *BranchRepoTestSuite) TestCreateBranch() {
 		address string
 		lat     *float64
 		lng     *float64
+		region  string
 	}{
 		{
 			name:    "Successful Creation",
@@ -56,17 +57,19 @@ func (s *BranchRepoTestSuite) TestCreateBranch() {
 			address: "123 Le Loi, D1",
 			lat:     &lat,
 			lng:     &lng,
+			region:  "south",
 		},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			branch, err := s.repo.CreateBranch(ctx, tt.bName, tt.address, tt.lat, tt.lng)
+			branch, err := s.repo.CreateBranch(ctx, tt.bName, tt.address, tt.lat, tt.lng, tt.region)
 
 			s.NoError(err)
 			s.NotEqual(uuid.Nil, branch.ID)
 			s.Equal(tt.bName, branch.Name)
 			s.Equal(tt.address, branch.Address)
+			s.Equal(tt.region, branch.Region)
 			s.NotZero(branch.CreatedAt)
 			s.NotZero(branch.UpdatedAt)
 			s.Nil(branch.DeletedAt)
@@ -76,7 +79,7 @@ func (s *BranchRepoTestSuite) TestCreateBranch() {
 
 func (s *BranchRepoTestSuite) TestSoftDeleteBranch() {
 	ctx := context.Background()
-	branch, _ := s.repo.CreateBranch(ctx, "To Delete", "Addr", nil, nil)
+	branch, _ := s.repo.CreateBranch(ctx, "To Delete", "Addr", nil, nil, "south")
 
 	err := s.repo.SoftDeleteBranch(ctx, branch.ID)
 	s.NoError(err)

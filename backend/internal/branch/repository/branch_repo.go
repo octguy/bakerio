@@ -11,10 +11,10 @@ import (
 )
 
 type BranchRepository interface {
-	CreateBranch(ctx context.Context, name, address string, lat, lng *float64) (*domain.Branch, error)
+	CreateBranch(ctx context.Context, name, address string, lat, lng *float64, region string) (*domain.Branch, error)
 	GetBranchByID(ctx context.Context, id uuid.UUID) (*domain.Branch, error)
 	GetAllBranches(ctx context.Context) ([]*domain.Branch, error)
-	UpdateBranch(ctx context.Context, branchID uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error)
+	UpdateBranch(ctx context.Context, branchID uuid.UUID, name, address string, lat, lng *float64, region string) (*domain.Branch, error)
 	UpdateBranchStatus(ctx context.Context, branchID uuid.UUID, status string) error
 	SoftDeleteBranch(ctx context.Context, branchID uuid.UUID) error
 }
@@ -34,7 +34,7 @@ func NewBranchRepository(db *branchdb.Queries) BranchRepository {
 	return &branchRepo{db: db}
 }
 
-func (b *branchRepo) CreateBranch(ctx context.Context, name, address string, lat, lng *float64) (*domain.Branch, error) {
+func (b *branchRepo) CreateBranch(ctx context.Context, name, address string, lat, lng *float64, region string) (*domain.Branch, error) {
 	callerID, _ := authcontext.CallerID(ctx)
 	q := b.queries(ctx)
 	row, err := q.CreateBranch(ctx, branchdb.CreateBranchParams{
@@ -42,6 +42,7 @@ func (b *branchRepo) CreateBranch(ctx context.Context, name, address string, lat
 		Address:   address,
 		Lat:       lat,
 		Lng:       lng,
+		Region:    region,
 		CreatedBy: nullableUUID(callerID),
 		UpdatedBy: nullableUUID(callerID),
 	})
@@ -81,7 +82,7 @@ func (b *branchRepo) GetAllBranches(ctx context.Context) ([]*domain.Branch, erro
 	return branches, nil
 }
 
-func (b *branchRepo) UpdateBranch(ctx context.Context, id uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error) {
+func (b *branchRepo) UpdateBranch(ctx context.Context, id uuid.UUID, name, address string, lat, lng *float64, region string) (*domain.Branch, error) {
 	callerID, _ := authcontext.CallerID(ctx)
 	q := b.queries(ctx)
 
@@ -90,6 +91,7 @@ func (b *branchRepo) UpdateBranch(ctx context.Context, id uuid.UUID, name, addre
 		Address:   address,
 		Lat:       lat,
 		Lng:       lng,
+		Region:    region,
 		UpdatedBy: nullableUUID(callerID),
 		ID:        id,
 	})
@@ -132,6 +134,7 @@ func toEntity(dbModel branchdb.BranchBranch) *domain.Branch {
 		Lat:       dbModel.Lat,
 		Lng:       dbModel.Lng,
 		Status:    dbModel.Status,
+		Region:    dbModel.Region,
 		CreatedAt: dbModel.CreatedAt,
 		UpdatedAt: dbModel.UpdatedAt,
 		DeletedAt: dbModel.DeletedAt,
