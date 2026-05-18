@@ -51,9 +51,13 @@ sql:
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
           - column: "product.product_price_history.price"
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
-          - column: "supplier.purchase_orders.total_amount"
+          - column: "procurement.purchase_orders.total_amount"
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
-          - column: "supplier.po_items.unit_price"
+          - column: "procurement.po_items.unit_price"
+            go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
+          - column: "procurement.po_items.total_price"
+            go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
+          - column: "procurement.po_items.quantity"
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
 
   - engine: "postgresql"
@@ -87,6 +91,18 @@ sql:
       go:
         package: "productdb"
         out: "db/sqlc/product"
+        emit_json_tags: true
+        emit_empty_slices: true
+        sql_package: "pgx/v5"
+        overrides: *overrides
+
+  - engine: "postgresql"
+    queries: "db/queries/procurement"
+    schema: "db/migrations"
+    gen:
+      go:
+        package: "procurementdb"
+        out: "db/sqlc/procurement"
         emit_json_tags: true
         emit_empty_slices: true
         sql_package: "pgx/v5"
