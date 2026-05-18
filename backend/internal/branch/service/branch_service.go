@@ -21,11 +21,11 @@ type BranchService interface {
 }
 
 type branchService struct {
-	tx   *txmanager.TxManager
+	tx   txmanager.TransactionManager
 	repo repository.BranchRepository
 }
 
-func NewBranchService(tx *txmanager.TxManager, repo repository.BranchRepository) BranchService {
+func NewBranchService(tx txmanager.TransactionManager, repo repository.BranchRepository) BranchService {
 	return &branchService{tx: tx, repo: repo}
 }
 

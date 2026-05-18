@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/branch/dto"
+	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
@@ -65,14 +66,19 @@ func (s *BranchHandlerTestSuite) SetupTest() {
 	s.handler = NewBranchHandler(s.mockSvc)
 	s.router = gin.New()
 
+	// No middleware for unit testing
 	group := s.router.Group("/branch")
 	group.POST("", s.handler.CreateBranch)
+	group.GET("", s.handler.GetBranchList)
 	group.GET("/:id", s.handler.GetBranchByID)
+	group.PATCH("/:id", s.handler.UpdateBranch)
+	group.PATCH("/:id/status", s.handler.UpdateStatus)
+	group.DELETE("/:id", s.handler.DeleteBranch)
 }
 
 func (s *BranchHandlerTestSuite) TestCreateBranch() {
-	req := dto.CreateBranchRequest{Name: "Main Street", Address: "123 Main St", Region: "south"}
-	resp := dto.BranchResponse{ID: uuid.New(), Name: "Main Street"}
+	req := dto.CreateBranchRequest{Name: "Main Street", Address: "123 Main St", Region: "north"}
+	resp := dto.BranchResponse{ID: uuid.New(), Name: "Main Street", Region: "north"}
 
 	s.Run("Success", func() {
 		s.mockSvc.On("CreateBranch", mock.Anything, req).Return(resp, nil).Once()
@@ -84,6 +90,149 @@ func (s *BranchHandlerTestSuite) TestCreateBranch() {
 
 		s.Equal(http.StatusCreated, w.Code)
 		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Validation Error", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPost, "/branch", bytes.NewBufferString("{invalid}"))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *BranchHandlerTestSuite) TestGetBranchByID() {
+	id := uuid.New()
+	resp := dto.BranchResponse{ID: id, Name: "Main Street"}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("GetBranchByID", mock.Anything, id).Return(resp, nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/branch/"+id.String(), nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Not Found", func() {
+		s.mockSvc.On("GetBranchByID", mock.Anything, id).Return(dto.BranchResponse{}, apperrors.NotFound("not found")).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/branch/"+id.String(), nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusNotFound, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/branch/invalid-id", nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *BranchHandlerTestSuite) TestGetBranchList() {
+	resp := []dto.BranchResponse{{ID: uuid.New(), Name: "B1"}}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("GetAllBranches", mock.Anything).Return(resp, nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodGet, "/branch", nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+}
+
+func (s *BranchHandlerTestSuite) TestUpdateBranch() {
+	id := uuid.New()
+	name := "Updated"
+	req := dto.UpdateBranchRequest{Name: &name}
+	resp := dto.BranchResponse{ID: id, Name: name}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("UpdateBranch", mock.Anything, id, req).Return(resp, nil).Once()
+
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/branch/"+id.String(), bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Validation Error (Invalid ID)", func() {
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/branch/invalid", bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+
+	s.Run("Validation Error (Invalid JSON)", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/branch/"+id.String(), bytes.NewBufferString("bad json"))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *BranchHandlerTestSuite) TestUpdateStatus() {
+	id := uuid.New()
+	req := dto.UpdateStatusRequest{Status: "inactive"}
+
+	s.Run("Success", func() {
+		s.mockSvc.On("UpdateBranchStatus", mock.Anything, id, "inactive").Return(nil).Once()
+
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/branch/"+id.String()+"/status", bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusOK, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid ID", func() {
+		body, _ := json.Marshal(req)
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodPatch, "/branch/invalid/status", bytes.NewBuffer(body))
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
+	})
+}
+
+func (s *BranchHandlerTestSuite) TestDeleteBranch() {
+	id := uuid.New()
+
+	s.Run("Success", func() {
+		s.mockSvc.On("DeleteBranch", mock.Anything, id).Return(nil).Once()
+
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodDelete, "/branch/"+id.String(), nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusNoContent, w.Code)
+		s.mockSvc.AssertExpectations(s.T())
+	})
+
+	s.Run("Invalid ID", func() {
+		w := httptest.NewRecorder()
+		r, _ := http.NewRequest(http.MethodDelete, "/branch/invalid", nil)
+		s.router.ServeHTTP(w, r)
+
+		s.Equal(http.StatusUnprocessableEntity, w.Code)
 	})
 }
 

@@ -96,6 +96,48 @@ func (s *BranchRepoTestSuite) TestSoftDeleteBranch() {
 	s.NotNil(deletedAt)
 }
 
+func (s *BranchRepoTestSuite) TestGetAllBranches() {
+	ctx := context.Background()
+	_, _ = s.repo.CreateBranch(ctx, "B1", "Addr1", nil, nil, "south")
+	b2, _ := s.repo.CreateBranch(ctx, "B2", "Addr2", nil, nil, "north")
+
+	_ = s.repo.SoftDeleteBranch(ctx, b2.ID)
+
+	branches, err := s.repo.GetAllBranches(ctx)
+	s.NoError(err)
+	s.Len(branches, 1)
+	s.Equal("B1", branches[0].Name)
+}
+
+func (s *BranchRepoTestSuite) TestUpdateBranch() {
+	ctx := context.Background()
+	b, _ := s.repo.CreateBranch(ctx, "B1", "Addr1", nil, nil, "south")
+
+	lat := 1.0
+	updated, err := s.repo.UpdateBranch(ctx, b.ID, "B1 Updated", "Addr Updated", &lat, nil, "north")
+	s.NoError(err)
+	s.Equal("B1 Updated", updated.Name)
+	s.Equal("Addr Updated", updated.Address)
+	s.Equal("north", updated.Region)
+	s.NotNil(updated.Lat)
+	s.Nil(updated.Lng)
+
+	// Ensure error on invalid ID
+	_, err = s.repo.UpdateBranch(ctx, uuid.New(), "B1", "Addr", nil, nil, "south")
+	s.Error(err)
+}
+
+func (s *BranchRepoTestSuite) TestUpdateBranchStatus() {
+	ctx := context.Background()
+	b, _ := s.repo.CreateBranch(ctx, "B1", "Addr1", nil, nil, "south")
+
+	err := s.repo.UpdateBranchStatus(ctx, b.ID, "inactive")
+	s.NoError(err)
+
+	found, _ := s.repo.GetBranchByID(ctx, b.ID)
+	s.Equal("inactive", found.Status)
+}
+
 func TestBranchRepoSuite(t *testing.T) {
 	suite.Run(t, new(BranchRepoTestSuite))
 }
