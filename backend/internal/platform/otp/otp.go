@@ -17,13 +17,20 @@ const (
 	otpDigits = 1_000_000       // range: 000000 – 999999
 )
 
-type Service struct {
-	cache *cache.Client
+type OTPService interface {
+	Generate(ctx context.Context, userID string) (string, error)
+	Verify(ctx context.Context, userID, submitted string) (bool, error)
 }
 
-func NewService(cache *cache.Client) *Service {
+type Service struct {
+	cache cache.Cache
+}
+
+func NewService(cache cache.Cache) *Service {
 	return &Service{cache: cache}
 }
+
+var _ OTPService = (*Service)(nil)
 
 // Generate creates a cryptographically secure 6-digit OTP and stores it in
 // Redis under the key "otp:{userID}" with a 5-minute TTL.

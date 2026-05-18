@@ -15,7 +15,7 @@ type Module struct {
 
 func New(
 	email *email.MailService,
-	otp *otp.Service,
+	otp otp.OTPService,
 ) *Module {
 	svc := service.NewEmailService(email, otp)
 	return &Module{emailSvc: svc}

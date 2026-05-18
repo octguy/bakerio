@@ -9,12 +9,23 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// Cache defines the contract for key-value storage.
+// This allows mocking the cache in tests without a running Redis.
+type Cache interface {
+	Set(ctx context.Context, key string, value string, ttl time.Duration) error
+	Get(ctx context.Context, key string) (string, error)
+	Del(ctx context.Context, key string) error
+	Close() error
+}
+
 // Client wraps *redis.Client so the rest of the app never imports go-redis directly.
 // If you ever swap to another cache (memcached, in-memory for tests), you only
 // change this file — callers depend on the Cache interface, not go-redis.
 type Client struct {
 	rdb *redis.Client
 }
+
+var _ Cache = (*Client)(nil)
 
 func NewClient(cfg config.RedisConfig) (*Client, error) {
 	rdb := redis.NewClient(&redis.Options{

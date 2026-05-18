@@ -76,10 +76,10 @@ type authService struct {
 	rbacSvc    RBACService
 	profileSvc ProfileCreator
 	branchSvc  BranchValidator
-	outboxRepo *outbox.Repository
-	otpSvc     *otp.Service
+	outboxRepo outbox.Source
+	otpSvc     otp.OTPService
 	tx         txmanager.TransactionManager
-	redis      *cache.Client
+	redis      cache.Cache
 	jwtSecret  []byte
 	tokenTTL   time.Duration
 }
@@ -87,12 +87,12 @@ type authService struct {
 func NewAuthService(
 	repo repository.AuthRepository,
 	rbacSvc RBACService,
-	redis *cache.Client,
+	redis cache.Cache,
 	tx txmanager.TransactionManager,
 	profSvc ProfileCreator,
 	branchSvc BranchValidator,
-	outboxRepo *outbox.Repository,
-	otpSvc *otp.Service,
+	outboxRepo outbox.Source,
+	otpSvc otp.OTPService,
 	jwtSecret string,
 	tokenTTL time.Duration) AuthService {
 	return &authService{

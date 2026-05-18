@@ -24,12 +24,12 @@ type EmailService interface {
 
 type emailService struct {
 	email *email.MailService
-	otp   *otp.Service
+	otp   otp.OTPService
 }
 
 func NewEmailService(
 	email *email.MailService,
-	otp *otp.Service,
+	otp otp.OTPService,
 ) EmailService {
 	return &emailService{email: email, otp: otp}
 }

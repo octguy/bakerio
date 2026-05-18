@@ -23,12 +23,12 @@ type Module struct {
 
 func NewModule(
 	pool *pgxpool.Pool,
-	redis *cache.Client,
-	tx *txmanager.TxManager,
+	redis cache.Cache,
+	tx txmanager.TransactionManager,
 	profSvc service.ProfileCreator,
 	branchSvc service.BranchValidator,
-	outboxRepo *outbox.Repository,
-	otpSvc *otp.Service,
+	outboxRepo outbox.Source,
+	otpSvc otp.OTPService,
 	jwtSecret string,
 	tokenTTL time.Duration,
 ) *Module {

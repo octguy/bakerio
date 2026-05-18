@@ -28,10 +28,10 @@ type RBACService interface {
 
 type rbacService struct {
 	repo  repository.RBACRepository
-	redis *cache.Client
+	redis cache.Cache
 }
 
-func NewRBACService(repo repository.RBACRepository, redis *cache.Client) RBACService {
+func NewRBACService(repo repository.RBACRepository, redis cache.Cache) RBACService {
 	return &rbacService{repo: repo, redis: redis}
 }
 
