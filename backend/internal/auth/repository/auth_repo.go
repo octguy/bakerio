@@ -19,6 +19,7 @@ type AuthRepository interface {
 	GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) (string, error)
 	UpdatePassword(ctx context.Context, userID uuid.UUID, newHash string) error
 	GetUserBranchID(ctx context.Context, id uuid.UUID) (*uuid.UUID, error)
+	UpdateUserBranchID(ctx context.Context, userID uuid.UUID, branchID *uuid.UUID) error
 }
 
 type authRepo struct {
@@ -127,6 +128,13 @@ func (r *authRepo) UpdatePassword(ctx context.Context, userID uuid.UUID, newHash
 
 func (r *authRepo) GetUserBranchID(ctx context.Context, id uuid.UUID) (*uuid.UUID, error) {
 	return r.queries(ctx).GetUserBranchID(ctx, id)
+}
+
+func (r *authRepo) UpdateUserBranchID(ctx context.Context, userID uuid.UUID, branchID *uuid.UUID) error {
+	return r.queries(ctx).UpdateUserBranchID(ctx, authdb.UpdateUserBranchIDParams{
+		ID:       userID,
+		BranchID: branchID,
+	})
 }
 
 func toEntity(u *authdb.AuthUser) *domain.User {

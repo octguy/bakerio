@@ -76,6 +76,11 @@ func (m *MockAuthRepo) UpdatePassword(ctx context.Context, userID uuid.UUID, new
 	return args.Error(0)
 }
 
+func (m *MockAuthRepo) UpdateUserBranchID(ctx context.Context, userID uuid.UUID, branchID *uuid.UUID) error {
+	args := m.Called(ctx, userID, branchID)
+	return args.Error(0)
+}
+
 type MockRBACService struct {
 	mock.Mock
 }

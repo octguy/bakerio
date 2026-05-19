@@ -49,3 +49,6 @@ WHERE user_id = $3;
 
 -- name: GetUserBranchID :one
 SELECT branch_id FROM auth.users WHERE id = $1;
+
+-- name: UpdateUserBranchID :exec
+UPDATE auth.users SET branch_id = $2, updated_at = NOW() WHERE id = $1;

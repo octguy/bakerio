@@ -43,6 +43,6 @@ func NewModule(
 
 func (m *Module) Service() service.AuthService { return m.authSvc }
 
-func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
-	m.handler.RegisterRoutes(public, protected)
+func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup, rateLimiters ...gin.HandlerFunc) {
+	m.handler.RegisterRoutes(public, protected, rateLimiters...)
 }

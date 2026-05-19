@@ -23,11 +23,30 @@ func NewAuthHandler(svc service.AuthService) *AuthHandler {
 	return &AuthHandler{svc: svc}
 }
 
-func (h *AuthHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
+func (h *AuthHandler) RegisterRoutes(public, protected *gin.RouterGroup, rateLimiters ...gin.HandlerFunc) {
 	pub := public.Group("/auth")
-	pub.POST("/register", h.Register)
-	pub.POST("/login", h.Login)
-	pub.POST("/verify", h.VerifyEmail)
+
+	// Apply rate limiters if provided (index 0 = login/verify, index 1 = register)
+	var loginRL, registerRL gin.HandlerFunc
+	if len(rateLimiters) > 0 {
+		loginRL = rateLimiters[0]
+	}
+	if len(rateLimiters) > 1 {
+		registerRL = rateLimiters[1]
+	}
+
+	if registerRL != nil {
+		pub.POST("/register", registerRL, h.Register)
+	} else {
+		pub.POST("/register", h.Register)
+	}
+	if loginRL != nil {
+		pub.POST("/login", loginRL, h.Login)
+		pub.POST("/verify", loginRL, h.VerifyEmail)
+	} else {
+		pub.POST("/login", h.Login)
+		pub.POST("/verify", h.VerifyEmail)
+	}
 
 	prot := protected.Group("/auth")
 	prot.POST("/logout", h.Logout)

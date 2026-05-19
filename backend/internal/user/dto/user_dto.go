@@ -9,7 +9,7 @@ import (
 type CreateUserRequest struct {
 	Email    string     `json:"email" binding:"required,email"`
 	FullName string     `json:"full_name" binding:"required"`
-	Password string     `json:"password" binding:"required,min=6"`
+	Password string     `json:"password" binding:"required,min=6,max=72"`
 	Role     string     `json:"role" binding:"required"`
 	BranchID *uuid.UUID `json:"branch_id" binding:"omitempty"`
 } // @name CreateUserRequest
@@ -24,5 +24,9 @@ type CreateUserResponse struct {
 } // @name CreateUserResponse
 
 type SetPasswordRequest struct {
-	Password string `json:"password" binding:"required,min=6"`
+	Password string `json:"password" binding:"required,min=6,max=72"`
 } // @name SetPasswordRequest
+
+type UpdateUserBranchRequest struct {
+	BranchID *uuid.UUID `json:"branch_id" binding:"required"`
+} // @name UpdateUserBranchRequest

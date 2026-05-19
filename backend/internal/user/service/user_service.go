@@ -22,6 +22,7 @@ type UserService interface {
 	GetUserProfile(ctx context.Context, targetID uuid.UUID) (dto.ProfileResponse, error)
 	UpdateUserProfile(ctx context.Context, targetID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error)
 	AdminSetPassword(ctx context.Context, targetID uuid.UUID, newPassword string) error
+	UpdateUserBranch(ctx context.Context, userID uuid.UUID, branchID *uuid.UUID) error
 }
 
 type userService struct {
@@ -76,6 +77,10 @@ func (s *userService) UpdateUserProfile(ctx context.Context, targetID uuid.UUID,
 
 func (s *userService) AdminSetPassword(ctx context.Context, targetID uuid.UUID, newPassword string) error {
 	return s.authSvc.AdminSetPassword(ctx, targetID, newPassword)
+}
+
+func (s *userService) UpdateUserBranch(ctx context.Context, userID uuid.UUID, branchID *uuid.UUID) error {
+	return s.authSvc.UpdateUserBranchID(ctx, userID, branchID)
 }
 
 // resolveAllowedRoles returns the union of assignable roles based on the caller's permissions.

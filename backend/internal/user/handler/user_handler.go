@@ -38,6 +38,10 @@ func (h *UserHandler) RegisterRoutes(protected *gin.RouterGroup) {
 		middleware.RequireAnyPermission("user:manage:all", "user:manage:branch"),
 		h.SetUserPassword,
 	)
+	g.PATCH("/:id/branch",
+		middleware.RequirePermission("user:manage:all"),
+		h.UpdateUserBranch,
+	)
 }
 
 // CreateUser godoc
@@ -156,6 +160,37 @@ func (h *UserHandler) SetUserPassword(c *gin.Context) {
 	}
 
 	if err := h.svc.AdminSetPassword(c.Request.Context(), targetID, req.Password); err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+// UpdateUserBranch godoc
+// @Summary      Update user branch assignment
+// @Description  Assign a user to a different branch
+// @Tags         users
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string                       true  "User ID"
+// @Param        request  body      dto.UpdateUserBranchRequest  true  "Branch assignment"
+// @Success      204
+// @Failure      403  {object}  response.ErrorResponse
+// @Failure      422  {object}  response.ErrorResponse
+// @Router       /users/{id}/branch [patch]
+func (h *UserHandler) UpdateUserBranch(c *gin.Context) {
+	targetID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, apperrors.Validation("invalid user id"))
+		return
+	}
+	var req dto.UpdateUserBranchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, apperrors.Validation(err.Error()))
+		return
+	}
+	if err := h.svc.UpdateUserBranch(c.Request.Context(), targetID, req.BranchID); err != nil {
 		response.Error(c, err)
 		return
 	}

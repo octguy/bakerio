@@ -69,6 +69,7 @@ type AuthService interface {
 	ChangePassword(ctx context.Context, userID uuid.UUID, currentPw, newPw string) error
 	AdminSetPassword(ctx context.Context, targetUserID uuid.UUID, newPw string) error
 	CreateStaff(ctx context.Context, email, fullName, password, roleName string, branchID *uuid.UUID) (dto.RegisterResponse, error)
+	UpdateUserBranchID(ctx context.Context, userID uuid.UUID, branchID *uuid.UUID) error
 }
 
 type authService struct {
@@ -400,4 +401,8 @@ func (s *authService) generateToken(userID uuid.UUID, roles []string, branchID *
 	}
 
 	return signed, nil
+}
+
+func (s *authService) UpdateUserBranchID(ctx context.Context, userID uuid.UUID, branchID *uuid.UUID) error {
+	return s.repo.UpdateUserBranchID(ctx, userID, branchID)
 }

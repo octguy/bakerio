@@ -66,6 +66,11 @@ func (m *MockAuthService) CreateStaff(ctx context.Context, email, fullName, pass
 	return dto.RegisterResponse{}, nil
 }
 
+func (m *MockAuthService) UpdateUserBranchID(ctx context.Context, userID uuid.UUID, branchID *uuid.UUID) error {
+	args := m.Called(ctx, userID, branchID)
+	return args.Error(0)
+}
+
 // --- 2. TEST SUITE ---
 
 type AuthHandlerTestSuite struct {

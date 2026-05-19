@@ -233,3 +233,17 @@ func (q *Queries) UpdatePassword(ctx context.Context, arg UpdatePasswordParams) 
 	_, err := q.db.Exec(ctx, updatePassword, arg.PasswordHash, arg.UpdatedBy, arg.UserID)
 	return err
 }
+
+const updateUserBranchID = `-- name: UpdateUserBranchID :exec
+UPDATE auth.users SET branch_id = $2, updated_at = NOW() WHERE id = $1
+`
+
+type UpdateUserBranchIDParams struct {
+	ID       uuid.UUID  `json:"id"`
+	BranchID *uuid.UUID `json:"branch_id"`
+}
+
+func (q *Queries) UpdateUserBranchID(ctx context.Context, arg UpdateUserBranchIDParams) error {
+	_, err := q.db.Exec(ctx, updateUserBranchID, arg.ID, arg.BranchID)
+	return err
+}
