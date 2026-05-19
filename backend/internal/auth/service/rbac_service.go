@@ -117,6 +117,7 @@ func (s *rbacService) AssignRole(ctx context.Context, userID uuid.UUID, roleName
 	if err := s.repo.AssignRole(ctx, userID, roleName); err != nil {
 		return err
 	}
+	_ = s.redis.Del(ctx, permCachePrefix+roleName)
 	return nil
 }
 

@@ -133,6 +133,7 @@ func (s *RBACServiceTestSuite) TestAssignRemoveRole() {
 
 	s.Run("Assign", func() {
 		s.mockRepo.On("AssignRole", ctx, userID, role).Return(nil).Once()
+		s.mockCache.On("Del", ctx, permCachePrefix+role).Return(nil).Once()
 		err := s.service.AssignRole(ctx, userID, role)
 		s.NoError(err)
 	})
