@@ -42,8 +42,13 @@ func (m *MockProcurementRepo) ListPOsByBranch(ctx context.Context, branchID uuid
 	return args.Get(0).([]*domain.PurchaseOrder), args.Error(1)
 }
 
-func (m *MockProcurementRepo) UpdatePOStatus(ctx context.Context, id uuid.UUID, status string) (*domain.PurchaseOrder, error) {
-	args := m.Called(ctx, id, status)
+func (m *MockProcurementRepo) ListAllPOs(ctx context.Context) ([]*domain.PurchaseOrder, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]*domain.PurchaseOrder), args.Error(1)
+}
+
+func (m *MockProcurementRepo) UpdatePOStatus(ctx context.Context, id uuid.UUID, status string, version int32) (*domain.PurchaseOrder, error) {
+	args := m.Called(ctx, id, status, version)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -223,7 +228,7 @@ func (s *ProcurementServiceTestSuite) TestUpdateStatus() {
 
 		updatedPO := *po
 		updatedPO.Status = domain.POStatusReceived
-		s.mockRepo.On("UpdatePOStatus", ctx, poID, domain.POStatusReceived).Return(&updatedPO, nil).Once()
+		s.mockRepo.On("UpdatePOStatus", ctx, poID, domain.POStatusReceived, int32(0)).Return(&updatedPO, nil).Once()
 
 		items := []*domain.POItem{{ID: uuid.New(), POID: poID}}
 		s.mockRepo.On("GetPOItems", ctx, poID).Return(items, nil).Once()
@@ -263,23 +268,24 @@ func (s *ProcurementServiceTestSuite) TestGetPO() {
 
 func (s *ProcurementServiceTestSuite) TestListPOs() {
 	branchID := uuid.New()
-	ctx := authcontext.WithCaller(context.Background(), uuid.New(), &branchID)
 	pos := []*domain.PurchaseOrder{{ID: uuid.New(), BranchID: branchID}}
 
 	s.Run("Success", func() {
 		s.mockRepo.On("ListPOsByBranch", mock.Anything, branchID).Return(pos, nil).Once()
 
-		res, err := s.service.ListPOs(ctx)
+		res, err := s.service.ListPOs(context.Background(), &branchID)
 		s.NoError(err)
 		s.Len(res, 1)
 		s.mockRepo.AssertExpectations(s.T())
 	})
 
-	s.Run("No Branch", func() {
-		emptyCtx := context.Background()
-		_, err := s.service.ListPOs(emptyCtx)
-		s.Error(err)
-		s.Contains(err.Error(), "assigned")
+	s.Run("All POs", func() {
+		s.mockRepo.On("ListAllPOs", mock.Anything).Return(pos, nil).Once()
+
+		res, err := s.service.ListPOs(context.Background(), nil)
+		s.NoError(err)
+		s.Len(res, 1)
+		s.mockRepo.AssertExpectations(s.T())
 	})
 }
 

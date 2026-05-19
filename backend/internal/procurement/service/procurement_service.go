@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
 	"github.com/octguy/bakerio/backend/internal/procurement/dto"
 	"github.com/octguy/bakerio/backend/internal/procurement/repository"
@@ -18,7 +20,7 @@ import (
 type ProcurementService interface {
 	CreatePO(ctx context.Context, req dto.CreatePORequest) (dto.POResponse, error)
 	GetPO(ctx context.Context, id uuid.UUID) (dto.POResponse, error)
-	ListPOs(ctx context.Context) ([]dto.POResponse, error)
+	ListPOs(ctx context.Context, branchID *uuid.UUID) ([]dto.POResponse, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, newStatus string) (dto.POResponse, error)
 }
 
@@ -49,8 +51,11 @@ func (s *procurementService) CreatePO(ctx context.Context, req dto.CreatePOReque
 		return dto.POResponse{}, apperrors.Forbidden("no branch assigned to current user")
 	}
 
-	_, err := s.supRepo.GetByID(ctx, req.SupplierID)
+	sup, err := s.supRepo.GetByID(ctx, req.SupplierID)
 	if err != nil {
+		return dto.POResponse{}, apperrors.Internal("failed to check supplier", err)
+	}
+	if sup == nil {
 		return dto.POResponse{}, apperrors.NotFound("supplier not found")
 	}
 
@@ -105,6 +110,9 @@ func (s *procurementService) CreatePO(ctx context.Context, req dto.CreatePOReque
 func (s *procurementService) GetPO(ctx context.Context, id uuid.UUID) (dto.POResponse, error) {
 	po, err := s.repo.GetPO(ctx, id)
 	if err != nil {
+		return dto.POResponse{}, apperrors.Internal("failed to fetch PO", err)
+	}
+	if po == nil {
 		return dto.POResponse{}, apperrors.NotFound("purchase order not found")
 	}
 
@@ -117,13 +125,15 @@ func (s *procurementService) GetPO(ctx context.Context, id uuid.UUID) (dto.PORes
 	return toPOResponse(po), nil
 }
 
-func (s *procurementService) ListPOs(ctx context.Context) ([]dto.POResponse, error) {
-	branchID, ok := authcontext.CallerBranchID(ctx)
-	if !ok || branchID == uuid.Nil {
-		return nil, apperrors.Forbidden("no branch assigned")
-	}
+func (s *procurementService) ListPOs(ctx context.Context, branchID *uuid.UUID) ([]dto.POResponse, error) {
+	var pos []*domain.PurchaseOrder
+	var err error
 
-	pos, err := s.repo.ListPOsByBranch(ctx, branchID)
+	if branchID == nil {
+		pos, err = s.repo.ListAllPOs(ctx)
+	} else {
+		pos, err = s.repo.ListPOsByBranch(ctx, *branchID)
+	}
 	if err != nil {
 		return nil, apperrors.Internal("failed to list POs", err)
 	}
@@ -138,7 +148,17 @@ func (s *procurementService) ListPOs(ctx context.Context) ([]dto.POResponse, err
 func (s *procurementService) UpdateStatus(ctx context.Context, id uuid.UUID, newStatus string) (dto.POResponse, error) {
 	current, err := s.repo.GetPO(ctx, id)
 	if err != nil {
+		return dto.POResponse{}, apperrors.Internal("failed to fetch PO", err)
+	}
+	if current == nil {
 		return dto.POResponse{}, apperrors.NotFound("purchase order not found")
+	}
+
+	// Idempotent: already in target state
+	if current.Status == newStatus {
+		items, _ := s.repo.GetPOItems(ctx, id)
+		current.Items = items
+		return toPOResponse(current), nil
 	}
 
 	if !isValidTransition(current.Status, newStatus) {
@@ -147,7 +167,7 @@ func (s *procurementService) UpdateStatus(ctx context.Context, id uuid.UUID, new
 
 	var updatedPO *domain.PurchaseOrder
 	err = s.txManager.WithTx(ctx, func(ctx context.Context) error {
-		updatedPO, err = s.repo.UpdatePOStatus(ctx, id, newStatus)
+		updatedPO, err = s.repo.UpdatePOStatus(ctx, id, newStatus, current.Version)
 		if err != nil {
 			return err
 		}
@@ -176,6 +196,9 @@ func (s *procurementService) UpdateStatus(ctx context.Context, id uuid.UUID, new
 	})
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dto.POResponse{}, apperrors.Conflict("purchase order was modified concurrently, please retry")
+		}
 		return dto.POResponse{}, apperrors.Internal("status update failed", err)
 	}
 
@@ -223,6 +246,7 @@ func toPOResponse(po *domain.PurchaseOrder) dto.POResponse {
 		Status:      po.Status,
 		TotalAmount: po.TotalAmount,
 		Note:        po.Note,
+		Version:     po.Version,
 		CreatedAt:   po.CreatedAt,
 		UpdatedAt:   po.UpdatedAt,
 		Items:       items,
