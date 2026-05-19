@@ -120,6 +120,8 @@ jobs:
             cd ..
             make docker-reset
             
+            cd deployments
+            
             # Run migrations
             echo "🗄️ Running migrations..."
             docker compose --env-file ../.env run --rm migrate
