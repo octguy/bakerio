@@ -7,7 +7,9 @@
 **/GUIDE.md
 **/documents
 **/code-reviews
-
+**/.venv/
+**/__pycache__/
+**/*.png
 **/CLAUDE.md
 
 # Go test coverage output
