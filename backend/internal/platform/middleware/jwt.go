@@ -39,7 +39,7 @@ func JWTAuth(authSvc service.AuthService) gin.HandlerFunc {
 		// Extract token
 		claims, err := authSvc.ValidateToken(parts[1])
 		if err != nil {
-			response.Error(c, apperrors.Unauthorized("Invalid token: "+err.Error()))
+			response.Error(c, apperrors.Unauthorized("invalid or expired token"))
 			c.Abort()
 			return
 		}
