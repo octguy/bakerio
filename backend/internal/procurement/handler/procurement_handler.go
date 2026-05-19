@@ -11,6 +11,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
+	"github.com/octguy/bakerio/backend/internal/shared/scope"
 )
 
 type ProcurementHandler struct {
@@ -88,7 +89,18 @@ func (h *ProcurementHandler) GetPO(c *gin.Context) {
 // @Success      200  {array}   dto.POResponse
 // @Router       /procurement/orders [get]
 func (h *ProcurementHandler) ListPOs(c *gin.Context) {
-	res, err := h.svc.ListPOs(c.Request.Context())
+	s, err := scope.Resolve(c, "procurement:view:all")
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	var branchID *uuid.UUID
+	if !s.All {
+		branchID = s.BranchID
+	}
+
+	res, err := h.svc.ListPOs(c.Request.Context(), branchID)
 	if err != nil {
 		response.Error(c, err)
 		return

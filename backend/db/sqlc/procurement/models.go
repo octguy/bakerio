@@ -105,12 +105,18 @@ type ProcurementPurchaseOrder struct {
 	Status      string          `json:"status"`
 	TotalAmount decimal.Decimal `json:"total_amount"`
 	Note        *string         `json:"note"`
+	Code        *string         `json:"code"`
 	DeletedAt   *time.Time      `json:"deleted_at"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 	CreatedBy   *uuid.UUID      `json:"created_by"`
 	UpdatedBy   *uuid.UUID      `json:"updated_by"`
 	Version     int32           `json:"version"`
+	SubmittedAt *time.Time      `json:"submitted_at"`
+	ApprovedBy  *uuid.UUID      `json:"approved_by"`
+	ApprovedAt  *time.Time      `json:"approved_at"`
+	ReceivedAt  *time.Time      `json:"received_at"`
+	CancelledAt *time.Time      `json:"cancelled_at"`
 }
 
 type ProcurementSupplier struct {

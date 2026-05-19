@@ -188,8 +188,8 @@ func (q *Queries) ListPurchaseOrdersByBranch(ctx context.Context, branchID uuid.
 
 const updatePOStatus = `-- name: UpdatePOStatus :one
 UPDATE procurement.purchase_orders
-SET status = $2, updated_at = NOW(), updated_by = $3
-WHERE id = $1 AND deleted_at IS NULL
+SET status = $2, version = version + 1, updated_at = NOW(), updated_by = $3
+WHERE id = $1 AND version = $4 AND deleted_at IS NULL
 RETURNING id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by, version
 `
 
@@ -197,10 +197,11 @@ type UpdatePOStatusParams struct {
 	ID        uuid.UUID  `json:"id"`
 	Status    string     `json:"status"`
 	UpdatedBy *uuid.UUID `json:"updated_by"`
+	Version   int32      `json:"version"`
 }
 
 func (q *Queries) UpdatePOStatus(ctx context.Context, arg UpdatePOStatusParams) (ProcurementPurchaseOrder, error) {
-	row := q.db.QueryRow(ctx, updatePOStatus, arg.ID, arg.Status, arg.UpdatedBy)
+	row := q.db.QueryRow(ctx, updatePOStatus, arg.ID, arg.Status, arg.UpdatedBy, arg.Version)
 	var i ProcurementPurchaseOrder
 	err := row.Scan(
 		&i.ID,
@@ -217,4 +218,43 @@ func (q *Queries) UpdatePOStatus(ctx context.Context, arg UpdatePOStatusParams) 
 		&i.Version,
 	)
 	return i, err
+}
+
+const listAllPurchaseOrders = `-- name: ListAllPurchaseOrders :many
+SELECT id, supplier_id, branch_id, status, total_amount, note, deleted_at, created_at, updated_at, created_by, updated_by, version FROM procurement.purchase_orders
+WHERE deleted_at IS NULL
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListAllPurchaseOrders(ctx context.Context) ([]ProcurementPurchaseOrder, error) {
+	rows, err := q.db.Query(ctx, listAllPurchaseOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ProcurementPurchaseOrder{}
+	for rows.Next() {
+		var i ProcurementPurchaseOrder
+		if err := rows.Scan(
+			&i.ID,
+			&i.SupplierID,
+			&i.BranchID,
+			&i.Status,
+			&i.TotalAmount,
+			&i.Note,
+			&i.DeletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CreatedBy,
+			&i.UpdatedBy,
+			&i.Version,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

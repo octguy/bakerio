@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	procurementdb "github.com/octguy/bakerio/backend/db/sqlc/procurement"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
@@ -14,7 +16,8 @@ type ProcurementRepository interface {
 	CreatePO(ctx context.Context, po *domain.PurchaseOrder) (*domain.PurchaseOrder, error)
 	GetPO(ctx context.Context, id uuid.UUID) (*domain.PurchaseOrder, error)
 	ListPOsByBranch(ctx context.Context, branchID uuid.UUID) ([]*domain.PurchaseOrder, error)
-	UpdatePOStatus(ctx context.Context, id uuid.UUID, status string) (*domain.PurchaseOrder, error)
+	ListAllPOs(ctx context.Context) ([]*domain.PurchaseOrder, error)
+	UpdatePOStatus(ctx context.Context, id uuid.UUID, status string, version int32) (*domain.PurchaseOrder, error)
 	CreatePOItem(ctx context.Context, item *domain.POItem) (*domain.POItem, error)
 	GetPOItems(ctx context.Context, poID uuid.UUID) ([]*domain.POItem, error)
 }
@@ -54,6 +57,9 @@ func (r *procurementRepo) CreatePO(ctx context.Context, po *domain.PurchaseOrder
 func (r *procurementRepo) GetPO(ctx context.Context, id uuid.UUID) (*domain.PurchaseOrder, error) {
 	row, err := r.queries(ctx).GetPurchaseOrder(ctx, id)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return toPOEntity(&row), nil
@@ -71,12 +77,25 @@ func (r *procurementRepo) ListPOsByBranch(ctx context.Context, branchID uuid.UUI
 	return res, nil
 }
 
-func (r *procurementRepo) UpdatePOStatus(ctx context.Context, id uuid.UUID, status string) (*domain.PurchaseOrder, error) {
+func (r *procurementRepo) ListAllPOs(ctx context.Context) ([]*domain.PurchaseOrder, error) {
+	rows, err := r.queries(ctx).ListAllPurchaseOrders(ctx)
+	if err != nil {
+		return nil, err
+	}
+	res := make([]*domain.PurchaseOrder, 0, len(rows))
+	for _, row := range rows {
+		res = append(res, toPOEntity(&row))
+	}
+	return res, nil
+}
+
+func (r *procurementRepo) UpdatePOStatus(ctx context.Context, id uuid.UUID, status string, version int32) (*domain.PurchaseOrder, error) {
 	callerID, _ := authcontext.CallerID(ctx)
 	row, err := r.queries(ctx).UpdatePOStatus(ctx, procurementdb.UpdatePOStatusParams{
 		ID:        id,
 		Status:    status,
 		UpdatedBy: nullableUUID(callerID),
+		Version:   version,
 	})
 	if err != nil {
 		return nil, err

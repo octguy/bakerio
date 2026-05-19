@@ -34,11 +34,13 @@ type POResponse struct {
 	Status      string           `json:"status"`
 	TotalAmount decimal.Decimal  `json:"total_amount"`
 	Note        *string          `json:"note"`
+	Version     int32            `json:"version"`
 	CreatedAt   time.Time        `json:"created_at"`
 	UpdatedAt   time.Time        `json:"updated_at"`
 	Items       []POItemResponse `json:"items,omitempty"`
 } // @name POResponse
 
 type UpdatePOStatusRequest struct {
-	Status string `json:"status" binding:"required,oneof=PENDING APPROVED REJECTED RECEIVED"`
+	Status  string `json:"status" binding:"required,oneof=PENDING APPROVED REJECTED RECEIVED"`
+	Version int32  `json:"version"`
 } // @name UpdatePOStatusRequest

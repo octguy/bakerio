@@ -32,8 +32,8 @@ func (m *MockProcurementService) GetPO(ctx context.Context, id uuid.UUID) (dto.P
 	return args.Get(0).(dto.POResponse), args.Error(1)
 }
 
-func (m *MockProcurementService) ListPOs(ctx context.Context) ([]dto.POResponse, error) {
-	args := m.Called(ctx)
+func (m *MockProcurementService) ListPOs(ctx context.Context, branchID *uuid.UUID) ([]dto.POResponse, error) {
+	args := m.Called(ctx, branchID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -60,7 +60,10 @@ func (s *ProcurementHandlerTestSuite) SetupTest() {
 
 	group := s.router.Group("/procurement/orders")
 	group.POST("", s.handler.CreatePO)
-	group.GET("", s.handler.ListPOs)
+	group.GET("", func(c *gin.Context) {
+		c.Set(middleware.PermissionsKey, []string{"procurement:view:all"})
+		s.handler.ListPOs(c)
+	})
 	group.GET("/:id", s.handler.GetPO)
 	group.PATCH("/:id/status", func(c *gin.Context) {
 		// Mock permission for test
@@ -131,7 +134,7 @@ func (s *ProcurementHandlerTestSuite) TestListPOs() {
 	resp := []dto.POResponse{{ID: uuid.New()}}
 
 	s.Run("Success", func() {
-		s.mockSvc.On("ListPOs", mock.Anything).Return(resp, nil).Once()
+		s.mockSvc.On("ListPOs", mock.Anything, (*uuid.UUID)(nil)).Return(resp, nil).Once()
 
 		w := httptest.NewRecorder()
 		r, _ := http.NewRequest(http.MethodGet, "/procurement/orders", nil)

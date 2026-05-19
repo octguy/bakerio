@@ -163,7 +163,7 @@ func (s *ProcurementRepoTestSuite) TestUpdatePOStatus() {
 	po := &domain.PurchaseOrder{SupplierID: sup.ID, BranchID: branch.ID, Status: domain.POStatusDraft, TotalAmount: decimal.NewFromInt(100)}
 	created, _ := s.repo.CreatePO(ctx, po)
 
-	updated, err := s.repo.UpdatePOStatus(ctx, created.ID, domain.POStatusApproved)
+	updated, err := s.repo.UpdatePOStatus(ctx, created.ID, domain.POStatusApproved, created.Version)
 	s.NoError(err)
 	s.Equal(domain.POStatusApproved, updated.Status)
 
