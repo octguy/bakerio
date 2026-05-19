@@ -24,10 +24,10 @@ func (h *BranchHandler) RegisterRoutes(protected *gin.RouterGroup) {
 	g := protected.Group("/branch")
 	g.GET("", middleware.RequirePermission("branch:view:all"), h.GetBranchList)
 	g.GET("/:id", middleware.RequirePermission("branch:view:all"), h.GetBranchByID)
-	g.POST("", middleware.RequirePermission("branch:manage:all"), h.CreateBranch)
-	g.PATCH("/:id", middleware.RequirePermission("branch:manage:all"), h.UpdateBranch)
-	g.PATCH("/:id/status", middleware.RequirePermission("branch:manage:all"), h.UpdateStatus)
-	g.DELETE("/:id", middleware.RequirePermission("branch:manage:all"), h.DeleteBranch)
+	g.POST("", middleware.RequirePermission("branch:create:all"), h.CreateBranch)
+	g.PATCH("/:id", middleware.RequirePermission("branch:update:all"), h.UpdateBranch)
+	g.PATCH("/:id/status", middleware.RequirePermission("branch:update:all"), h.UpdateStatus)
+	g.DELETE("/:id", middleware.RequirePermission("branch:update:all"), h.DeleteBranch)
 }
 
 // GetBranchList returns all branches
