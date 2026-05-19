@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -19,9 +20,10 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Env  string
-	Port string
-	Mode string
+	Env         string
+	Port        string
+	Mode        string
+	CORSOrigins []string
 }
 
 type UploadsConfig struct {
@@ -85,11 +87,17 @@ func Load() *Config {
 		uploadsDir = "./uploads"
 	}
 
+	corsOrigins := []string{"*"}
+	if env := os.Getenv("CORS_ORIGINS"); env != "" {
+		corsOrigins = strings.Split(env, ",")
+	}
+
 	return &Config{
 		Server: ServerConfig{
-			Env:  os.Getenv("SERVER_ENV"),
-			Port: os.Getenv("SERVER_PORT"),
-			Mode: os.Getenv("GIN_MODE"),
+			Env:         os.Getenv("SERVER_ENV"),
+			Port:        os.Getenv("SERVER_PORT"),
+			Mode:        os.Getenv("GIN_MODE"),
+			CORSOrigins: corsOrigins,
 		},
 		Uploads: UploadsConfig{
 			Dir:     uploadsDir,
