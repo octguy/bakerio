@@ -1,81 +1,101 @@
--- Insert all unique permissions
+-- v1 permission set. Folded together: original phase-1 perms + product/branch perms
+-- previously seeded by 000014. Migration 014 is now a no-op.
+
 INSERT INTO auth.permissions (name) VALUES
-('*:*:all'),
-('auth:manage_roles:all'),
-('branch:create:all'),
-('module:configure:all'),
-('user:manage:all'),
-('user:view:all'),
-('report:view:all'),
-('branch:view:all'),
-('promotion:approve:all'),
-('order:view:all'),
-('inventory:view:all'),
-('user:manage:branch'),
-('inventory:approve_receipt:branch'),
-('report:view:branch'),
-('order:view:branch'),
-('product:view:all'),
-('promotion:view:all'),
-('shift:manage:branch'),
-('order:create:branch'),
-('order:update:branch'),
-('order:confirm_online:branch'),
-('inventory:view:branch'),
-('customer:lookup:all'),
-('production:view_plan:branch'),
-('production:update_output:branch'),
-('inventory:update_shelf:branch'),
-('delivery:view_route:branch'),
-('delivery:update_status:branch'),
-('delivery:confirm_cod:branch'),
-('cart:manage:own'),
-('order:create:own'),
-('order:view:own'),
-('order:cancel:own'),
-('loyalty:view:own'),
-('loyalty:redeem:own'),
-('review:create:own'),
-('profile:manage:own');
+    -- wildcard
+    ('*:*:all'),
+    -- profile (everyone authenticated)
+    ('profile:manage:own'),
+    -- branch
+    ('branch:view:all'),
+    ('branch:manage:all'),
+    ('branch:manage:own'),
+    -- user mgmt
+    ('user:view:all'),
+    ('user:manage:all'),
+    ('user:manage:branch'),
+    -- product
+    ('product:view:all'),
+    ('product:manage:all'),
+    -- voucher
+    ('voucher:manage:all'),
+    ('voucher:apply:own'),
+    -- cart
+    ('cart:manage:own'),
+    -- address
+    ('address:manage:own'),
+    -- order (customer)
+    ('order:create:own'),
+    ('order:view:own'),
+    ('order:cancel:own'),
+    -- order (branch staff/manager)
+    ('order:view:branch'),
+    ('order:update:branch'),
+    -- payment
+    ('payment:pay:own'),
+    ('payment:mark:branch');
 
--- super_admin
+-- super_admin: wildcard
 INSERT INTO auth.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM auth.roles r, auth.permissions p
-WHERE r.name = 'super_admin'
-  AND p.name IN ('*:*:all','auth:manage_roles:all','branch:create:all','module:configure:all','user:manage:all');
+WHERE r.name = 'super_admin' AND p.name = '*:*:all';
 
--- general_manager
+-- product_manager
 INSERT INTO auth.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM auth.roles r, auth.permissions p
-WHERE r.name = 'general_manager'
-  AND p.name IN ('report:view:all','branch:view:all','promotion:approve:all','order:view:all','user:view:all','user:manage:all','inventory:view:all');
+WHERE r.name = 'product_manager'
+  AND p.name IN (
+      'profile:manage:own',
+      'product:view:all', 'product:manage:all',
+      'voucher:manage:all'
+  );
 
--- store_manager
+-- branch_manager
 INSERT INTO auth.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM auth.roles r, auth.permissions p
-WHERE r.name = 'store_manager'
-  AND p.name IN ('user:manage:branch','inventory:approve_receipt:branch','report:view:branch','order:view:branch','product:view:all','promotion:view:all','shift:manage:branch');
+WHERE r.name = 'branch_manager'
+  AND p.name IN (
+      'profile:manage:own',
+      'branch:view:all', 'branch:manage:own',
+      'user:manage:branch',
+      'product:view:all',
+      'order:view:branch', 'order:update:branch',
+      'payment:mark:branch'
+  );
 
--- staff_cashier
+-- branch_staff
 INSERT INTO auth.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM auth.roles r, auth.permissions p
-WHERE r.name = 'staff_cashier'
-  AND p.name IN ('order:create:branch','order:update:branch','order:confirm_online:branch','product:view:all','inventory:view:branch','customer:lookup:all');
+WHERE r.name = 'branch_staff'
+  AND p.name IN (
+      'profile:manage:own',
+      'branch:view:all',
+      'product:view:all',
+      'order:view:branch', 'order:update:branch',
+      'payment:mark:branch'
+  );
 
--- baker
+-- customer
 INSERT INTO auth.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM auth.roles r, auth.permissions p
-WHERE r.name = 'baker'
-  AND p.name IN ('production:view_plan:branch','production:update_output:branch','inventory:update_shelf:branch');
+WHERE r.name = 'customer'
+  AND p.name IN (
+      'profile:manage:own',
+      'branch:view:all',
+      'product:view:all',
+      'cart:manage:own',
+      'address:manage:own',
+      'order:create:own', 'order:view:own', 'order:cancel:own',
+      'voucher:apply:own',
+      'payment:pay:own'
+  );
 
--- shipper
+-- guest
 INSERT INTO auth.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM auth.roles r, auth.permissions p
-WHERE r.name = 'shipper'
-  AND p.name IN ('delivery:view_route:branch','delivery:update_status:branch','delivery:confirm_cod:branch','order:view:branch');
-
--- member
-INSERT INTO auth.role_permissions (role_id, permission_id)
-SELECT r.id, p.id FROM auth.roles r, auth.permissions p
-WHERE r.name = 'member'
-  AND p.name IN ('product:view:all','branch:view:all','cart:manage:own','order:create:own','order:view:own','order:cancel:own','loyalty:view:own','loyalty:redeem:own','review:create:own','profile:manage:own');
+WHERE r.name = 'guest'
+  AND p.name IN (
+      'branch:view:all',
+      'product:view:all',
+      'cart:manage:own'
+  );

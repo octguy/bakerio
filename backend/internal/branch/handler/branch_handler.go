@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/branch/service"
+	"github.com/octguy/bakerio/backend/internal/platform/middleware"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
 )
@@ -21,11 +22,11 @@ func NewBranchHandler(svc service.BranchService) *BranchHandler {
 
 func (h *BranchHandler) RegisterRoutes(protected *gin.RouterGroup) {
 	g := protected.Group("/branch")
-	g.GET("", h.GetBranchList)
-	g.GET("/:id", h.GetBranchByID)
-	g.POST("", h.CreateBranch)
-	g.PATCH("/:id", h.UpdateBranch)
-	g.PATCH("/:id/status", h.UpdateStatus)
+	g.GET("", middleware.RequirePermission("branch:view:all"), h.GetBranchList)
+	g.GET("/:id", middleware.RequirePermission("branch:view:all"), h.GetBranchByID)
+	g.POST("", middleware.RequirePermission("branch:manage:all"), h.CreateBranch)
+	g.PATCH("/:id", middleware.RequirePermission("branch:manage:all"), h.UpdateBranch)
+	g.PATCH("/:id/status", middleware.RequirePermission("branch:manage:all"), h.UpdateStatus)
 }
 
 // GetBranchList returns all branches
@@ -33,7 +34,9 @@ func (h *BranchHandler) RegisterRoutes(protected *gin.RouterGroup) {
 // @Description  Retrieve all branches
 // @Tags         branch
 // @Produce      json
-// @Success      200  {object}  response.Response{data=[]dto.BranchResponse}
+// @Security     BearerAuth
+// @Success      200  {array}   dto.BranchResponse
+// @Failure      401  {object}  response.ErrorResponse
 // @Router       /branch [get]
 func (h *BranchHandler) GetBranchList(c *gin.Context) {
 	branches, err := h.svc.GetAllBranches(c.Request.Context())
@@ -50,9 +53,10 @@ func (h *BranchHandler) GetBranchList(c *gin.Context) {
 // @Tags         branch
 // @Produce      json
 // @Param        id   path      string  true  "Branch ID"
-// @Success      200  {object}  response.Response{data=dto.BranchResponse}
-// @Failure      400  {object}  response.Response
-// @Failure      404  {object}  response.Response
+// @Security     BearerAuth
+// @Success      200  {object}  dto.BranchResponse
+// @Failure      400  {object}  response.ErrorResponse
+// @Failure      404  {object}  response.ErrorResponse
 // @Router       /branch/{id} [get]
 func (h *BranchHandler) GetBranchByID(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
@@ -76,9 +80,10 @@ func (h *BranchHandler) GetBranchByID(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        request  body      dto.CreateBranchRequest  true  "Create branch request"
-// @Success      201      {object}  response.Response{data=dto.BranchResponse}
-// @Failure      400      {object}  response.Response
 // @Security     BearerAuth
+// @Success      201      {object}  dto.BranchResponse
+// @Failure      400      {object}  response.ErrorResponse
+// @Failure      422      {object}  response.ErrorResponse
 // @Router       /branch [post]
 func (h *BranchHandler) CreateBranch(c *gin.Context) {
 	var req dto.CreateBranchRequest
@@ -103,10 +108,11 @@ func (h *BranchHandler) CreateBranch(c *gin.Context) {
 // @Produce      json
 // @Param        id       path      string                   true  "Branch ID"
 // @Param        request  body      dto.UpdateBranchRequest  true  "Update branch request"
-// @Success      200      {object}  response.Response{data=dto.BranchResponse}
-// @Failure      400      {object}  response.Response
-// @Failure      404      {object}  response.Response
 // @Security     BearerAuth
+// @Success      200      {object}  dto.BranchResponse
+// @Failure      400      {object}  response.ErrorResponse
+// @Failure      404      {object}  response.ErrorResponse
+// @Failure      422      {object}  response.ErrorResponse
 // @Router       /branch/{id} [patch]
 func (h *BranchHandler) UpdateBranch(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
@@ -137,10 +143,11 @@ func (h *BranchHandler) UpdateBranch(c *gin.Context) {
 // @Produce      json
 // @Param        id       path      string                   true  "Branch ID"
 // @Param        request  body      dto.UpdateStatusRequest  true  "Update status request"
-// @Success      200      {object}  response.Response
-// @Failure      400      {object}  response.Response
-// @Failure      404      {object}  response.Response
 // @Security     BearerAuth
+// @Success      200
+// @Failure      400      {object}  response.ErrorResponse
+// @Failure      404      {object}  response.ErrorResponse
+// @Failure      422      {object}  response.ErrorResponse
 // @Router       /branch/{id}/status [patch]
 func (h *BranchHandler) UpdateStatus(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))

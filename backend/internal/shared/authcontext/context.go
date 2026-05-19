@@ -10,7 +10,6 @@ type ctxKey int
 
 const (
 	userIDKey ctxKey = iota
-	branchIDKey
 )
 
 // CallerID extracts the user ID from the context.
@@ -23,21 +22,9 @@ func CallerID(ctx context.Context) (uuid.UUID, bool) {
 	return id, ok
 }
 
-// CallerBranchID extracts the branch ID from the context.
-// Returns uuid.Nil and false if not present (e.g. for HQ staff).
-func CallerBranchID(ctx context.Context) (uuid.UUID, bool) {
-	id, ok := ctx.Value(branchIDKey).(uuid.UUID)
-	if !ok {
-		return uuid.Nil, false
-	}
-	return id, ok
-}
-
-// WithCaller injects the user ID and optional branch ID into a new context.
-func WithCaller(ctx context.Context, userID uuid.UUID, branchID *uuid.UUID) context.Context {
-	ctx = context.WithValue(ctx, userIDKey, userID)
-	if branchID != nil {
-		ctx = context.WithValue(ctx, branchIDKey, *branchID)
-	}
-	return ctx
+// WithCaller injects the user ID into a new context.
+// Branch ownership is no longer carried in context — resolve from
+// branch.MembershipService at the point of use.
+func WithCaller(ctx context.Context, userID uuid.UUID) context.Context {
+	return context.WithValue(ctx, userIDKey, userID)
 }

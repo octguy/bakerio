@@ -40,7 +40,7 @@ func (s *rbacService) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]str
 }
 
 func (s *rbacService) AssignMemberRole(ctx context.Context, userID uuid.UUID) error {
-	return s.repo.AssignRole(ctx, userID, "member")
+	return s.repo.AssignRole(ctx, userID, "customer")
 }
 
 func (s *rbacService) ResolvePermissions(ctx context.Context, roles []string) ([]string, error) {

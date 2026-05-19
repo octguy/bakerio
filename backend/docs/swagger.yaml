@@ -1,5 +1,41 @@
 basePath: /api/v1
 definitions:
+  BranchResponse:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+      name:
+        type: string
+      status:
+        type: string
+    type: object
+  CategoryResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      parent_id:
+        type: string
+      slug:
+        type: string
+      sort_order:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   ChangePasswordRequest:
     properties:
       current_password:
@@ -12,8 +48,41 @@ definitions:
     - current_password
     - new_password
     type: object
+  CreateBranchRequest:
+    properties:
+      address:
+        type: string
+      lat:
+        maximum: 90
+        minimum: -90
+        type: number
+      lng:
+        maximum: 180
+        minimum: -180
+        type: number
+      name:
+        maxLength: 100
+        type: string
+    required:
+    - address
+    - name
+    type: object
+  CreateCategoryRequest:
+    properties:
+      name:
+        maxLength: 100
+        type: string
+      parent_id:
+        type: string
+      sort_order:
+        type: integer
+    required:
+    - name
+    type: object
   CreateUserRequest:
     properties:
+      branch_id:
+        type: string
       email:
         type: string
       full_name:
@@ -31,6 +100,8 @@ definitions:
     type: object
   CreateUserResponse:
     properties:
+      branch_id:
+        type: string
       created_at:
         type: string
       email:
@@ -70,13 +141,17 @@ definitions:
     type: object
   ProfileResponse:
     properties:
+      address:
+        type: string
       avatar_url:
         type: string
       bio:
         type: string
-      full_name:
+      display_name:
         type: string
       id:
+        type: string
+      phone:
         type: string
       user_id:
         type: string
@@ -114,14 +189,58 @@ definitions:
     required:
     - password
     type: object
+  UpdateBranchRequest:
+    properties:
+      address:
+        type: string
+      lat:
+        maximum: 90
+        minimum: -90
+        type: number
+      lng:
+        maximum: 180
+        minimum: -180
+        type: number
+      name:
+        maxLength: 100
+        type: string
+    type: object
+  UpdateCategoryRequest:
+    properties:
+      is_active:
+        type: boolean
+      name:
+        maxLength: 100
+        type: string
+      parent_id:
+        type: string
+      sort_order:
+        type: integer
+    required:
+    - name
+    type: object
   UpdateProfileRequest:
     properties:
+      address:
+        type: string
       avatar_url:
         type: string
       bio:
         type: string
       display_name:
         type: string
+      phone:
+        type: string
+    type: object
+  UpdateStatusRequest:
+    properties:
+      status:
+        enum:
+        - active
+        - inactive
+        type: string
+    required:
+    - status
     type: object
   VerifyEmailRequest:
     properties:
@@ -295,6 +414,266 @@ paths:
       summary: Verify email address
       tags:
       - auth
+  /branch:
+    get:
+      description: Retrieve all branches
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/BranchResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get branch list
+      tags:
+      - branch
+    post:
+      consumes:
+      - application/json
+      description: Add a new branch to the system
+      parameters:
+      - description: Create branch request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CreateBranchRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/BranchResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create branch
+      tags:
+      - branch
+  /branch/{id}:
+    get:
+      description: Retrieve a single branch by its UUID
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/BranchResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get branch by ID
+      tags:
+      - branch
+    patch:
+      consumes:
+      - application/json
+      description: Update details of an existing branch
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update branch request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateBranchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/BranchResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update branch
+      tags:
+      - branch
+  /branch/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Activate or deactivate a branch
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update status request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update branch status
+      tags:
+      - branch
+  /categories:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/CategoryResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List all active categories
+      tags:
+      - categories
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create category payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/CategoryResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a product category
+      tags:
+      - categories
+  /categories/{id}:
+    delete:
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Soft-delete a category
+      tags:
+      - categories
+    get:
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CategoryResponse'
+      security:
+      - BearerAuth: []
+      summary: Get category by ID
+      tags:
+      - categories
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update category payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CategoryResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a category
+      tags:
+      - categories
   /profile:
     get:
       description: Returns the authenticated user's profile

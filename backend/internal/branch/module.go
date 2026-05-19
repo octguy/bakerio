@@ -13,20 +13,26 @@ import (
 // Module owns branch management.
 
 type Module struct {
-	svc service.BranchService
-	h   *handler.BranchHandler
+	svc           service.BranchService
+	membershipSvc service.MembershipService
+	h             *handler.BranchHandler
 }
 
 func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
-	repo := repository.NewBranchRepository(branchdb.New(pool))
-	svc := service.NewBranchService(tx, repo)
+	queries := branchdb.New(pool)
+	branchRepo := repository.NewBranchRepository(queries)
+	membershipRepo := repository.NewMembershipRepository(queries)
+	svc := service.NewBranchService(tx, branchRepo)
+	membershipSvc := service.NewMembershipService(membershipRepo, branchRepo)
 	return &Module{
-		svc: svc,
-		h:   handler.NewBranchHandler(svc),
+		svc:           svc,
+		membershipSvc: membershipSvc,
+		h:             handler.NewBranchHandler(svc),
 	}
 }
 
-func (m *Module) BranchService() service.BranchService { return m.svc }
+func (m *Module) BranchService() service.BranchService         { return m.svc }
+func (m *Module) MembershipService() service.MembershipService { return m.membershipSvc }
 
 func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
 	m.h.RegisterRoutes(protected)
