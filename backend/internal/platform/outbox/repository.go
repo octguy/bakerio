@@ -46,7 +46,11 @@ func NewRepository(pool *pgxpool.Pool, table string) *Repository {
 // Both pgx.Tx and *pgxpool.Pool expose the same Exec method, so we branch
 // on whether a transaction is active and use whichever is appropriate.
 func (r *Repository) Save(ctx context.Context, routingKey string, payload any) error {
-	body, err := json.Marshal(payload)
+	envelope := map[string]any{
+		"event_id": uuid.New(),
+		"data":     payload,
+	}
+	body, err := json.Marshal(envelope)
 	if err != nil {
 		return err
 	}

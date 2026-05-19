@@ -45,13 +45,16 @@ func NewEmailService(
 // retried. Design handlers to be idempotent — generating a new OTP on retry is fine
 // because the new code overwrites the old Redis key (same key, same TTL reset).
 func (s *emailService) HandleUserRegistered(ctx context.Context, body []byte) error {
-	// 1. Deserialise the event payload from JSON.
-	//    The payload struct mirrors exactly what auth.Register() passed to outboxRepo.Save().
+	// Unwrap the outbox envelope {event_id, data}
+	var envelope struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return fmt.Errorf("notification: unmarshal envelope: %w", err)
+	}
+
 	var payload event.UserRegisteredPayload
-	if err := json.Unmarshal(body, &payload); err != nil {
-		// Malformed JSON is a permanent failure — returning error would requeue forever.
-		// In production, return nil here (or send to DLX) to stop the loop.
-		// For now we return the error so it shows up in logs.
+	if err := json.Unmarshal(envelope.Data, &payload); err != nil {
 		return fmt.Errorf("notification: unmarshal UserRegistered: %w", err)
 	}
 
