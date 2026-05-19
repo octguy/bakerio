@@ -29,13 +29,6 @@ var (
 	UserNotFound          = apperrors.NotFound("user not found")
 )
 
-// BranchScopedRoles returns role names that require a branch_memberships row.
-// The user module enforces this when creating staff.
-var BranchScopedRoles = map[string]bool{
-	"branch_manager": true,
-	"branch_staff":   true,
-}
-
 type Claims struct {
 	UserID uuid.UUID `json:"user_id"`
 	Roles  []string  `json:"roles"`

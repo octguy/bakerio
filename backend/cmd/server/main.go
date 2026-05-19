@@ -67,14 +67,24 @@ func main() {
 	if err != nil {
 		logger.Log.Fatal("redis connect failed", zap.Error(err))
 	}
-	defer redisClient.Close()
+	defer func(redisClient *cache.Client) {
+		err := redisClient.Close()
+		if err != nil {
+			logger.Log.Fatal("redis close failed", zap.Error(err))
+		}
+	}(redisClient)
 
 	// 4.3. RabbitMQ
 	rmq, err := mq.NewRabbitMQ(cfg.MQ.URL, logger.Log)
 	if err != nil {
 		logger.Log.Fatal("rabbitmq connect failed", zap.Error(err))
 	}
-	defer rmq.Close()
+	defer func(rmq *mq.RabbitMQ) {
+		err := rmq.Close()
+		if err != nil {
+			logger.Log.Fatal("rabbitmq close failed", zap.Error(err))
+		}
+	}(rmq)
 
 	ch, err := rmq.Channel()
 	if err != nil {
@@ -83,7 +93,11 @@ func main() {
 	if err := mq.SetupTopology(ch); err != nil {
 		logger.Log.Fatal("rabbitmq: setup topology failed", zap.Error(err))
 	}
-	ch.Close()
+	err = ch.Close()
+	if err != nil {
+		logger.Log.Fatal("rabbitmq: close channel failed", zap.Error(err))
+		return
+	}
 
 	// 5. Services
 	tx := txmanager.New(pool)
