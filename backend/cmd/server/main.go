@@ -14,8 +14,10 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth"
@@ -114,7 +116,7 @@ func main() {
 		logger.Log.Fatal("rbac: failed to warm permission cache", zap.Error(err))
 	}
 
-	seedAdmins(ctx, authModule.Service())
+	seedAdmins(ctx, authModule.Service(), branchModule.Service())
 
 	// 7. Background workers
 	go outbox.NewWorker(publisher, logger.Log, authOutbox, procurementOutbox).Run(ctx)
@@ -125,6 +127,16 @@ func main() {
 
 	// 8. HTTP server
 	r := gin.Default()
+
+	// Global middleware
+	r.Use(middleware.SecurityHeaders())
+	r.Use(middleware.CORS(cfg.Server.CORSOrigins))
+	r.Use(middleware.RequestID())
+
+	// Health check
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 
 	// Register static route for uploads
 	r.Static("/uploads", cfg.Uploads.Dir)
@@ -140,17 +152,43 @@ func main() {
 		middleware.LoadPermissions(authModule.RBACService),
 	)
 
-	authModule.RegisterRoutes(public, authed)
+	// Rate limiters for auth endpoints
+	loginRL := middleware.RateLimit(redisClient, 5, time.Minute)
+	registerRL := middleware.RateLimit(redisClient, 3, time.Minute)
+
+	authModule.RegisterRoutes(public, authed, loginRL, registerRL)
 	userModule.RegisterRoutes(authed)
 	branchModule.RegisterRoutes(authed)
 	productModule.RegisterRoutes(authed)
 	procurementModule.RegisterRoutes(authed)
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Swagger: only in non-production
+	if cfg.Server.Env != "production" {
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
-	// 9. Start server
-	logger.Log.Info("starting http server", zap.String("port", cfg.Server.Port))
-	if err := r.Run(":" + cfg.Server.Port); err != nil {
-		logger.Log.Fatal("server failed", zap.Error(err))
+	// 9. Start server with graceful shutdown
+	srv := &http.Server{
+		Addr:         ":" + cfg.Server.Port,
+		Handler:      r,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	go func() {
+		logger.Log.Info("starting http server", zap.String("port", cfg.Server.Port))
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Log.Fatal("server failed", zap.Error(err))
+		}
+	}()
+
+	<-ctx.Done()
+	logger.Log.Info("shutting down server...")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.Log.Error("server shutdown failed", zap.Error(err))
 	}
 }
