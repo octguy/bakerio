@@ -19,6 +19,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth"
+	"github.com/octguy/bakerio/backend/internal/branch"
 	"github.com/octguy/bakerio/backend/internal/notification"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/database"
@@ -28,6 +29,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/mq"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
+	"github.com/octguy/bakerio/backend/internal/product"
 	"github.com/octguy/bakerio/backend/internal/user"
 	"github.com/octguy/bakerio/backend/pkg/config"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
@@ -92,8 +94,10 @@ func main() {
 
 	// 6. Modules
 	userModule := user.New(pool, tx)
+	branchModule := branch.New(pool, tx)
+	productModule := product.New(pool, tx)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
-	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
+	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), branchModule.BranchService(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
 	userModule.Wire(authModule.Service())
 
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
@@ -124,6 +128,8 @@ func main() {
 
 	authModule.RegisterRoutes(public, authed)
 	userModule.RegisterRoutes(authed)
+	branchModule.RegisterRoutes(authed)
+	productModule.RegisterRoutes(authed)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

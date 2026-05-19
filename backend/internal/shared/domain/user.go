@@ -11,6 +11,7 @@ type User struct {
 	Email         string
 	EmailVerified bool
 	IsActive      bool
+	BranchID      *uuid.UUID
 	DeletedAt     *time.Time
 	CreatedAt     time.Time
 	UpdatedAt     time.Time

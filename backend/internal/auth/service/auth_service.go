@@ -10,11 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
+	branchdto "github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
+	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
 	"github.com/octguy/bakerio/backend/internal/shared/event"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
@@ -27,11 +29,21 @@ var (
 	ErrEmailTaken         = apperrors.Conflict("email already taken")
 	InvalidOTP            = apperrors.Unauthorized("invalid otp")
 	UserNotFound          = apperrors.NotFound("user not found")
+	ErrBranchNotFound     = apperrors.NotFound("branch not found")
+	ErrNoBranchAssigned   = apperrors.NotFound("no branch assigned")
 )
 
+var storeLevelRoles = map[string]bool{
+	"store_manager": true,
+	"staff_cashier": true,
+	"baker":         true,
+	"shipper":       true,
+}
+
 type Claims struct {
-	UserID uuid.UUID `json:"user_id"`
-	Roles  []string  `json:"roles"`
+	UserID   uuid.UUID  `json:"user_id"`
+	Roles    []string   `json:"roles"`
+	BranchID *uuid.UUID `json:"branch_id,omitempty"` // nil for HQ and customer roles
 	jwt.RegisteredClaims
 }
 
@@ -43,6 +55,10 @@ type ProfileCreator interface {
 	CreateProfile(ctx context.Context, userID uuid.UUID, avatarURL, bio *string, fullName string) error
 }
 
+type BranchValidator interface {
+	GetBranchByID(ctx context.Context, id uuid.UUID) (branchdto.BranchResponse, error)
+}
+
 type AuthService interface {
 	Register(ctx context.Context, req dto.RegisterRequest) (dto.RegisterResponse, error)
 	Login(ctx context.Context, req dto.LoginRequest) (dto.LoginResponse, error)
@@ -52,13 +68,14 @@ type AuthService interface {
 	IsRevoked(ctx context.Context, jti string) (bool, error)
 	ChangePassword(ctx context.Context, userID uuid.UUID, currentPw, newPw string) error
 	AdminSetPassword(ctx context.Context, targetUserID uuid.UUID, newPw string) error
-	CreateStaff(ctx context.Context, email, fullName, password, roleName string) (dto.RegisterResponse, error)
+	CreateStaff(ctx context.Context, email, fullName, password, roleName string, branchID *uuid.UUID) (dto.RegisterResponse, error)
 }
 
 type authService struct {
 	repo       repository.AuthRepository
 	rbacSvc    RBACService
 	profileSvc ProfileCreator
+	branchSvc  BranchValidator
 	outboxRepo *outbox.Repository
 	otpSvc     *otp.Service
 	tx         *txmanager.TxManager
@@ -73,6 +90,7 @@ func NewAuthService(
 	redis *cache.Client,
 	tx *txmanager.TxManager,
 	profSvc ProfileCreator,
+	branchSvc BranchValidator,
 	outboxRepo *outbox.Repository,
 	otpSvc *otp.Service,
 	jwtSecret string,
@@ -83,6 +101,7 @@ func NewAuthService(
 		redis:      redis,
 		tx:         tx,
 		profileSvc: profSvc,
+		branchSvc:  branchSvc,
 		outboxRepo: outboxRepo,
 		otpSvc:     otpSvc,
 		jwtSecret:  []byte(jwtSecret),
@@ -106,7 +125,7 @@ func (s *authService) Register(ctx context.Context, req dto.RegisterRequest) (dt
 	var user *domain.User
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		user, err = s.repo.CreateAccount(txCtx, req.Email, string(hashed))
+		user, err = s.repo.CreateAccount(txCtx, req.Email, string(hashed), nil)
 		if err != nil {
 			logger.Log.Error("register: failed to create account", zap.String("email", req.Email), zap.Error(err))
 			return err
@@ -172,7 +191,25 @@ func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (dto.Logi
 		return dto.LoginResponse{}, err
 	}
 
-	token, err := s.generateToken(user.ID, roles)
+	isStoreLevelStaff := false
+	for _, r := range roles {
+		if storeLevelRoles[r] {
+			isStoreLevelStaff = true
+			break
+		}
+	}
+
+	var branchID *uuid.UUID
+	if isStoreLevelStaff {
+		id, err := s.repo.GetUserBranchID(ctx, user.ID)
+		if err != nil || id == nil {
+			logger.Log.Error("login: store-level user has no branch assignment", zap.String("email", req.Email), zap.Error(err))
+			return dto.LoginResponse{}, ErrNoBranchAssigned
+		}
+		branchID = id
+	}
+
+	token, err := s.generateToken(user.ID, roles, branchID)
 	if err != nil {
 		logger.Log.Error("login: failed to generate token", zap.String("email", req.Email), zap.Error(err))
 		return dto.LoginResponse{}, err
@@ -276,10 +313,34 @@ func (s *authService) AdminSetPassword(ctx context.Context, targetUserID uuid.UU
 	return s.repo.UpdatePassword(ctx, targetUserID, string(newHash))
 }
 
-func (s *authService) CreateStaff(ctx context.Context, email, fullName, password, roleName string) (dto.RegisterResponse, error) {
+func (s *authService) CreateStaff(ctx context.Context, email, fullName, password, roleName string, branchID *uuid.UUID) (dto.RegisterResponse, error) {
 	_, err := s.repo.FindUserByEmail(ctx, email)
 	if err == nil {
 		return dto.RegisterResponse{}, ErrEmailTaken
+	}
+
+	if storeLevelRoles[roleName] {
+		if branchID == nil || *branchID == uuid.Nil {
+			return dto.RegisterResponse{}, ErrNoBranchAssigned
+		}
+
+		// Defense-in-depth: if caller is branch-restricted, they must create staff in their own branch
+		if callerBID, ok := authcontext.CallerBranchID(ctx); ok && callerBID != uuid.Nil {
+			if *branchID != callerBID {
+				return dto.RegisterResponse{}, apperrors.Forbidden("you can only create staff for your own branch")
+			}
+		}
+
+		_, err := s.branchSvc.GetBranchByID(ctx, *branchID)
+		if err != nil {
+			var appErr *apperrors.AppError
+			if errors.As(err, &appErr) && appErr.Code == apperrors.CodeNotFound {
+				return dto.RegisterResponse{}, ErrBranchNotFound
+			}
+			return dto.RegisterResponse{}, err
+		}
+	} else {
+		branchID = nil
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -290,7 +351,7 @@ func (s *authService) CreateStaff(ctx context.Context, email, fullName, password
 	var user *domain.User
 
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		user, err = s.repo.CreateAccount(txCtx, email, string(hashed))
+		user, err = s.repo.CreateAccount(txCtx, email, string(hashed), branchID)
 		if err != nil {
 			return err
 		}
@@ -320,10 +381,11 @@ func (s *authService) CreateStaff(ctx context.Context, email, fullName, password
 	}, nil
 }
 
-func (s *authService) generateToken(userID uuid.UUID, roles []string) (string, error) {
+func (s *authService) generateToken(userID uuid.UUID, roles []string, branchID *uuid.UUID) (string, error) {
 	claims := &Claims{
-		UserID: userID,
-		Roles:  roles,
+		UserID:   userID,
+		Roles:    roles,
+		BranchID: branchID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        uuid.New().String(),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.tokenTTL)),

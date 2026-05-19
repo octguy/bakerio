@@ -10,13 +10,14 @@ import (
 )
 
 type AuthRepository interface {
-	CreateAccount(ctx context.Context, email, password string) (*domain.User, error)
+	CreateAccount(ctx context.Context, email, password string, branchID *uuid.UUID) (*domain.User, error)
 	FindUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	FindUserByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
 	FindUserWithCredentialsByEmail(ctx context.Context, email string) (authdb.GetUserWithCredentialsByEmailRow, error)
 	ActivateUser(ctx context.Context, id uuid.UUID) error
 	GetCredentialsByUserID(ctx context.Context, userID uuid.UUID) (string, error)
 	UpdatePassword(ctx context.Context, userID uuid.UUID, newHash string) error
+	GetUserBranchID(ctx context.Context, id uuid.UUID) (*uuid.UUID, error)
 }
 
 type authRepo struct {
@@ -36,13 +37,14 @@ func (r *authRepo) queries(ctx context.Context) *authdb.Queries {
 	return r.db
 }
 
-func (r *authRepo) CreateAccount(ctx context.Context, email, password string) (*domain.User, error) {
+func (r *authRepo) CreateAccount(ctx context.Context, email, password string, branchID *uuid.UUID) (*domain.User, error) {
 	q := r.queries(ctx)
 
 	row, err := q.CreateUser(ctx, authdb.CreateUserParams{
 		Email:         email,
 		EmailVerified: false,
 		IsActive:      false,
+		BranchID:      branchID,
 	})
 	if err != nil {
 		return nil, err
@@ -115,12 +117,17 @@ func (r *authRepo) UpdatePassword(ctx context.Context, userID uuid.UUID, newHash
 	})
 }
 
+func (r *authRepo) GetUserBranchID(ctx context.Context, id uuid.UUID) (*uuid.UUID, error) {
+	return r.queries(ctx).GetUserBranchID(ctx, id)
+}
+
 func toEntity(u *authdb.AuthUser) *domain.User {
 	return &domain.User{
 		ID:            u.ID,
 		Email:         u.Email,
 		EmailVerified: u.EmailVerified,
 		IsActive:      u.IsActive,
+		BranchID:      u.BranchID,
 		CreatedAt:     u.CreatedAt,
 	}
 }

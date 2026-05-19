@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	authSvc "github.com/octguy/bakerio/backend/internal/auth/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
+	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/user/dto"
 )
 
@@ -38,7 +39,15 @@ func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest,
 		return dto.CreateUserResponse{}, apperrors.Forbidden("you are not allowed to assign role: " + req.Role)
 	}
 
-	user, err := s.authSvc.CreateStaff(ctx, req.Email, req.FullName, req.Password, req.Role)
+	if !slices.Contains(callerPerms, "user:manage:all") && !slices.Contains(callerPerms, "*:*:all") && slices.Contains(callerPerms, "user:manage:branch") {
+		callerBID, _ := authcontext.CallerBranchID(ctx)
+
+		if req.BranchID == nil || *req.BranchID != callerBID {
+			return dto.CreateUserResponse{}, apperrors.Forbidden("you can only create staff for your own branch")
+		}
+	}
+
+	user, err := s.authSvc.CreateStaff(ctx, req.Email, req.FullName, req.Password, req.Role, req.BranchID)
 	if err != nil {
 		return dto.CreateUserResponse{}, err
 	}
@@ -48,6 +57,7 @@ func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest,
 		Email:     user.Email,
 		FullName:  user.FullName,
 		Role:      req.Role,
+		BranchID:  user.BranchID,
 		CreatedAt: user.CreatedAt,
 	}, nil
 }
