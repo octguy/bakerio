@@ -64,7 +64,7 @@ def anon_client(base_url: str) -> Iterator[httpx.Client]:
 # --- Role tokens & clients -----------------------------------------------------
 
 @pytest.fixture(scope="session")
-def tokens(anon_client: httpx.Client) -> dict[str, str]:
+def tokens(anon_client: httpx.Client, base_url: str) -> dict[str, str]:
     """Map of role -> bearer token. Missing logins are recorded as None."""
     out: dict[str, str] = {}
     for role, email in SEEDED_ADMINS.items():
@@ -73,6 +73,35 @@ def tokens(anon_client: httpx.Client) -> dict[str, str]:
         except AssertionError:
             # store_manager often fails without a branch — caller should check.
             out[role] = ""
+
+    # If store_manager login failed, try to provision a fresh one using super_admin
+    if not out.get("store_manager") and out.get("super_admin"):
+        with httpx.Client(
+            base_url=base_url, headers=bearer(out["super_admin"]), timeout=30.0
+        ) as c:
+            # 1. Create a branch
+            b_resp = c.post("/branch", json=branch_payload())
+            if b_resp.status_code == 201:
+                branch_id = data(b_resp, 201)["id"]
+                # 2. Create a store manager for that branch
+                email = f"store-manager-{branch_id[:8]}@example.com"
+                u_resp = c.post(
+                    "/users",
+                    json={
+                        "email": email,
+                        "full_name": "Dynamic Store Manager",
+                        "password": ADMIN_PASSWORD,
+                        "role": "store_manager",
+                        "branch_id": branch_id,
+                    },
+                )
+                if u_resp.status_code == 201:
+                    try:
+                        out["store_manager"] = login(
+                            anon_client, email, ADMIN_PASSWORD
+                        )
+                    except AssertionError:
+                        pass
     return out
 
 
@@ -165,3 +194,51 @@ def product(super_client: httpx.Client, category: dict) -> dict:
 @pytest.fixture
 def supplier(super_client: httpx.Client) -> dict:
     return data(super_client.post("/suppliers", json=supplier_payload()), 201)
+
+
+# --- Admin-created user fixture ------------------------------------------------
+
+# The API only allows assigning these roles via POST /users (see
+# user_service.allowedRolesByPermission). All of them are store-level → require
+# branch_id. Use staff_cashier as the default — least-privileged, easy to test.
+ASSIGNABLE_ROLE = "staff_cashier"
+
+
+def _create_active_user(
+    super_client: httpx.Client,
+    branch_id: str,
+    role: str = ASSIGNABLE_ROLE,
+    password: str = "password123",
+) -> dict:
+    """Create an admin-provisioned user — these come out active (login works).
+
+    Returns dto.CreateUserResponse merged with internal helpers (_email, _password).
+    """
+    from helpers import uniq  # local import to avoid circular
+
+    email = f"{uniq('user')}@example.com"
+    body = data(
+        super_client.post(
+            "/users",
+            json={
+                "email": email,
+                "full_name": "Staff User",
+                "password": password,
+                "role": role,
+                "branch_id": branch_id,
+            },
+        ),
+        201,
+    )
+    body["_email"] = email
+    body["_password"] = password
+    return body
+
+
+@pytest.fixture
+def staff_user(super_client: httpx.Client, branch: dict) -> dict:
+    """A freshly admin-provisioned staff_cashier — has an active account and
+    can immediately log in. Use this for any test that needs a *working*
+    user other than the seeded admins.
+    """
+    return _create_active_user(super_client, branch["id"])

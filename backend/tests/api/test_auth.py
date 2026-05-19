@@ -127,11 +127,23 @@ class TestLogout:
         r = anon_client.post("/auth/logout")
         assert r.status_code == 401
 
-    def test_blacklists_token(self, super_client: httpx.Client):
-        assert_status(super_client.post("/auth/logout"), 200)
-        # Subsequent calls with the same blacklisted token are rejected.
-        r = super_client.get("/branch")
-        assert r.status_code == 401
+    def test_blacklists_token(self, anon_client: httpx.Client, staff_user: dict):
+        """Logout invalidates the bearer token.
+
+        Uses an admin-provisioned staff_user so we don't touch the
+        session-scoped super_client token (which would cascade into every
+        other test).
+        """
+        token = login(anon_client, staff_user["_email"], staff_user["_password"])
+        with httpx.Client(
+            base_url=str(anon_client.base_url),
+            timeout=anon_client.timeout,
+            headers={"Authorization": f"Bearer {token}"},
+        ) as c:
+            assert_status(c.post("/auth/logout"), 204)
+            # Token is now blacklisted: any protected route should 401.
+            r = c.get("/branch")
+            assert r.status_code == 401
 
 
 # --- /auth/password (protected) ------------------------------------------------
@@ -144,19 +156,12 @@ class TestChangePassword:
         )
         assert r.status_code == 401
 
-    def test_round_trip(self, anon_client: httpx.Client):
-        # Create a throwaway user so we don't mutate the seeded admins.
-        email = f"{uniq('pwd')}@example.com"
-        original = "originalpw"
+    def test_round_trip(
+        self, anon_client: httpx.Client, staff_user: dict
+    ):
+        original = staff_user["_password"]
         new_pw = "rotatedpw1"
-        data(
-            anon_client.post(
-                "/auth/register",
-                json={"email": email, "full_name": "Pwd User", "password": original},
-            ),
-            201,
-        )
-        token = login(anon_client, email, original)
+        token = login(anon_client, staff_user["_email"], original)
 
         with httpx.Client(
             base_url=str(anon_client.base_url),
@@ -168,30 +173,23 @@ class TestChangePassword:
                     "/auth/password",
                     json={"current_password": original, "new_password": new_pw},
                 ),
-                200,
+                204,
             )
 
         # Old password no longer works; new one does.
         assert error_code(
             anon_client.post(
-                "/auth/login", json={"email": email, "password": original}
+                "/auth/login",
+                json={"email": staff_user["_email"], "password": original},
             ),
             401,
         )
-        assert login(anon_client, email, new_pw)
+        assert login(anon_client, staff_user["_email"], new_pw)
 
     def test_wrong_current_password_rejected(
-        self, anon_client: httpx.Client
+        self, anon_client: httpx.Client, staff_user: dict
     ):
-        email = f"{uniq('pwd')}@example.com"
-        data(
-            anon_client.post(
-                "/auth/register",
-                json={"email": email, "full_name": "X", "password": "secretpw"},
-            ),
-            201,
-        )
-        token = login(anon_client, email, "secretpw")
+        token = login(anon_client, staff_user["_email"], staff_user["_password"])
         with httpx.Client(
             base_url=str(anon_client.base_url),
             timeout=anon_client.timeout,
