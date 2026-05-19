@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	productdb "github.com/octguy/bakerio/backend/db/sqlc/product"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
@@ -54,6 +56,9 @@ func (r *categoryRepo) Create(ctx context.Context, name, slug string, parentID *
 func (r *categoryRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Category, error) {
 	row, err := r.queries(ctx).GetCategoryByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return toCategoryEntity(&row), nil

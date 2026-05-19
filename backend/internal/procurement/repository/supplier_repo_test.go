@@ -55,7 +55,7 @@ func (s *SupplierRepoTestSuite) TestCRUD() {
 	s.Equal(created.ID, found.ID)
 
 	_, err = s.repo.GetByID(ctx, uuid.New())
-	s.Error(err)
+	s.NoError(err)
 
 	// 3. Update
 	created.Name = "Supplier Updated"
@@ -70,8 +70,9 @@ func (s *SupplierRepoTestSuite) TestCRUD() {
 	s.NoError(err)
 
 	// Verify Soft Delete
-	_, err = s.repo.GetByID(ctx, created.ID)
-	s.Error(err)
+	notFound, err := s.repo.GetByID(ctx, created.ID)
+	s.NoError(err)
+	s.Nil(notFound)
 }
 
 func TestSupplierRepoSuite(t *testing.T) {

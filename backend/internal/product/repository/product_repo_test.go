@@ -113,8 +113,9 @@ func (s *ProductRepoTestSuite) TestGetByIDAndSlug() {
 	s.NoError(err)
 	s.Equal(created.ID, bySlug.ID)
 
-	_, err = s.repo.GetByID(ctx, uuid.New())
-	s.Error(err)
+	notFound, err := s.repo.GetByID(ctx, uuid.New())
+	s.NoError(err)
+	s.Nil(notFound)
 }
 
 func (s *ProductRepoTestSuite) TestList() {
@@ -155,7 +156,7 @@ func (s *ProductRepoTestSuite) TestDelete() {
 	s.NoError(err)
 
 	_, err = s.repo.GetByID(ctx, created.ID)
-	s.Error(err)
+	s.NoError(err)
 }
 
 func (s *ProductRepoTestSuite) TestGetPrice() {

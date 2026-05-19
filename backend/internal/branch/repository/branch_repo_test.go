@@ -84,9 +84,9 @@ func (s *BranchRepoTestSuite) TestSoftDeleteBranch() {
 	err := s.repo.SoftDeleteBranch(ctx, branch.ID)
 	s.NoError(err)
 
-	// Should not be findable via GetByID anymore
+	// Should not be findable via GetByID anymore (returns nil, nil after ErrNoRows fix)
 	found, err := s.repo.GetBranchByID(ctx, branch.ID)
-	s.Error(err)
+	s.NoError(err)
 	s.Nil(found)
 
 	// Verify it still exists in DB but with deleted_at set

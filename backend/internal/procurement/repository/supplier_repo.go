@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	procurementdb "github.com/octguy/bakerio/backend/db/sqlc/procurement"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
@@ -51,6 +53,9 @@ func (r *supplierRepo) Create(ctx context.Context, s *domain.Supplier) (*domain.
 func (r *supplierRepo) GetByID(ctx context.Context, id uuid.UUID) (*domain.Supplier, error) {
 	row, err := r.queries(ctx).GetSupplierByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return toSupplierEntity(&row), nil

@@ -83,9 +83,10 @@ func (s *CategoryRepoTestSuite) TestGetByID() {
 	s.Equal(created.ID, found.ID)
 	s.Equal("Bread", found.Name)
 
-	// Test Not Found
-	_, err = s.repo.GetByID(ctx, uuid.New())
-	s.Error(err)
+	// Test Not Found — returns nil, nil after ErrNoRows fix
+	notFound, err := s.repo.GetByID(ctx, uuid.New())
+	s.NoError(err)
+	s.Nil(notFound)
 }
 
 func (s *CategoryRepoTestSuite) TestGetBySlug() {
@@ -132,10 +133,10 @@ func (s *CategoryRepoTestSuite) TestDelete() {
 	err := s.repo.Delete(ctx, cat.ID)
 	s.NoError(err)
 
-	// Verify it's soft deleted (sqlc should return error if GetByID uses WHERE deleted_at IS NULL)
-	// Let's check the query.
-	_, err = s.repo.GetByID(ctx, cat.ID)
-	s.Error(err)
+	// Verify it's soft deleted (returns nil, nil after ErrNoRows fix)
+	notFound, err := s.repo.GetByID(ctx, cat.ID)
+	s.NoError(err)
+	s.Nil(notFound)
 }
 
 func TestCategoryRepoSuite(t *testing.T) {

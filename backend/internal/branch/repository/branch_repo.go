@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	branchdb "github.com/octguy/bakerio/backend/db/sqlc/branch"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
@@ -59,6 +61,9 @@ func (b *branchRepo) GetBranchByID(ctx context.Context, id uuid.UUID) (*domain.B
 
 	row, err := q.GetBranchByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
 
