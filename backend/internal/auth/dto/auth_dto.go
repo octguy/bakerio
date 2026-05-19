@@ -10,12 +10,12 @@ import (
 type RegisterRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	FullName string `json:"full_name" binding:"required"`
-	Password string `json:"password" binding:"required,min=6"`
+	Password string `json:"password" binding:"required,min=6,max=72"`
 } // @name RegisterRequest
 
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
+	Password string `json:"password" binding:"required,min=6,max=72"`
 } // @name LoginRequest
 
 // Responses
@@ -42,10 +42,10 @@ type VerifyEmailResponse struct {
 } // @name VerifyEmailResponse
 
 type ChangePasswordRequest struct {
-	CurrentPassword string `json:"current_password" binding:"required,min=6"`
-	NewPassword     string `json:"new_password" binding:"required,min=6"`
+	CurrentPassword string `json:"current_password" binding:"required,min=6,max=72"`
+	NewPassword     string `json:"new_password" binding:"required,min=6,max=72"`
 } // @name ChangePasswordRequest
 
 type AdminSetPasswordRequest struct {
-	Password string `json:"password" binding:"required,min=6"`
+	Password string `json:"password" binding:"required,min=6,max=72"`
 } // @name AdminSetPasswordRequest
