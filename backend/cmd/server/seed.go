@@ -17,10 +17,10 @@ type adminSeed struct {
 func seedAdmins(ctx context.Context, svc authService.AuthService) {
 	admins := []adminSeed{
 		{"superadmin@bakerio.com", "Super Admin", "123456", "super_admin"},
-		{"gm@bakerio.com", "General Manager", "123456", "general_manager"},
-		{"inventory@bakerio.com", "Inventory Manager", "123456", "inventory_manager"},
-		{"marketing@bakerio.com", "Marketing Manager", "123456", "marketing_manager"},
-		{"store@bakerio.com", "Store Manager", "123456", "store_manager"},
+		{"productmanager@bakerio.com", "Product Manager", "123456", "product_manager"},
+		{"customer1@bakerio.com", "Customer 1", "123456", "customer"},
+		{"customer2@bakerio.com", "Customer 2", "123456", "customer"},
+		{"customer3@bakerio.com", "Customer 3", "123456", "customer"},
 	}
 	for _, a := range admins {
 		res, err := svc.CreateStaff(ctx, a.email, a.fullName, a.password, a.role, nil)
