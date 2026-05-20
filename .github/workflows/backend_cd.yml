@@ -12,8 +12,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.deploy }}
+    steps:
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+
   docker:
-    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+    needs: gate
+    if: needs.gate.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -110,6 +126,6 @@ jobs:
           script: |
             set -e
             sleep 5
-            curl -sf http://localhost:${{ secrets.SERVER_PORT || '8080' }}/health || \
+            curl -sf http://localhost:8080/health || \
               (echo "❌ Health check failed" && docker logs bakerio-app --tail 20 && exit 1)
             echo "✅ Backend is healthy"
