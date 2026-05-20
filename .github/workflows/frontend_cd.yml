@@ -11,10 +11,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy-web:
+  # ─── Branding site → cPanel ───
+  build-web:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    environment: production-web
     defaults:
       run:
         working-directory: frontend
@@ -66,6 +66,23 @@ jobs:
           </IfModule>
           EOF
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-out
+          path: frontend/apps/web/out
+          retention-days: 1
+
+  deploy-web:
+    needs: build-web
+    runs-on: ubuntu-latest
+    environment: production-web
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-out
+          path: dist
+
       - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
@@ -74,15 +91,15 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
           port: 21
-          local-dir: ./frontend/apps/web/out/
+          local-dir: ./dist/
           server-dir: ${{ secrets.FTP_REMOTE_DIR }}
           dangerous-clean-slate: false
           state-name: .ftp-deploy-sync-state.json
 
-  deploy-apps:
+  # ─── Order + Admin → Docker → VPS ───
+  docker-order:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - uses: actions/checkout@v4
@@ -94,8 +111,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push order image
-        uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v5
         with:
           context: ./frontend
           file: ./frontend/apps/order/Dockerfile
@@ -106,8 +122,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push admin image
-        uses: docker/build-push-action@v5
+  docker-admin:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - uses: docker/build-push-action@v5
         with:
           context: ./frontend
           file: ./frontend/apps/admin/Dockerfile
@@ -118,7 +147,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy to VPS
+  deploy-apps:
+    needs: [docker-order, docker-admin]
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Pull and restart containers
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -126,6 +161,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
+            set -e
             cd ~/bakerio
             git pull origin main
             cd backend/deployments
@@ -133,3 +169,23 @@ jobs:
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d order admin nginx
             sleep 3
             docker compose -f docker-compose.prod.yml --env-file .env.prod logs order admin --tail 5
+
+  verify-apps:
+    needs: deploy-apps
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Health check
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            sleep 5
+            curl -sf http://localhost:3001 > /dev/null || (echo "❌ Order app down" && exit 1)
+            echo "✅ Order app healthy"
+            curl -sf http://localhost:3002 > /dev/null || (echo "❌ Admin app down" && exit 1)
+            echo "✅ Admin app healthy"

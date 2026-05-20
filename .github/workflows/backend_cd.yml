@@ -36,13 +36,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  pull:
     needs: docker
     runs-on: ubuntu-latest
     environment: production
 
     steps:
-      - name: Deploy to VPS
+      - name: Pull latest code and image on VPS
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -55,7 +55,60 @@ jobs:
             git pull origin main
             cd backend/deployments
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull app
+
+  migrate:
+    needs: pull
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Run database migrations
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            cd ~/bakerio/backend/deployments
             docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm migrate
+
+  deploy:
+    needs: migrate
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Restart app container
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            cd ~/bakerio/backend/deployments
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app
             sleep 3
             docker compose -f docker-compose.prod.yml --env-file .env.prod logs app --tail 10
+
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Health check
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            sleep 5
+            curl -sf http://localhost:${{ secrets.SERVER_PORT || '8080' }}/health || \
+              (echo "❌ Health check failed" && docker logs bakerio-app --tail 20 && exit 1)
+            echo "✅ Backend is healthy"
