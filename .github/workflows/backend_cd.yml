@@ -5,6 +5,7 @@ on:
     workflows: ["Backend CI"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: backend-cd

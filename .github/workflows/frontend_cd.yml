@@ -5,6 +5,7 @@ on:
     workflows: ["Frontend CI"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: frontend-cd
