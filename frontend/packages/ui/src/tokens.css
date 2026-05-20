@@ -1,0 +1,40 @@
+/* Bakerio Design Tokens */
+:root {
+  /* Colors */
+  --color-cream: #FDF8F3;
+  --color-golden: #D4943A;
+  --color-golden-dark: #B8802E;
+  --color-espresso: #2C1810;
+  --color-cocoa: #5C3D2E;
+  --color-crust: #E8C496;
+  --color-latte: #F5EDE4;
+  --color-vanilla: #FAF3EB;
+
+  /* Typography */
+  --font-heading: "Lora", ui-serif, Georgia, serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(44, 24, 16, 0.04);
+  --shadow-md: 0 4px 12px rgba(44, 24, 16, 0.07);
+  --shadow-lg: 0 8px 24px rgba(44, 24, 16, 0.10);
+  --shadow-glow: 0 0 0 3px rgba(212, 148, 58, 0.15);
+}
