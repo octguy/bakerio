@@ -126,7 +126,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
-            cd ~/bakerio/backend/deployments
+            cd ~/bakerio
+            git pull origin main
+            cd backend/deployments
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull order admin
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d order admin nginx
             sleep 3
