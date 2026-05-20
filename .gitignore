@@ -1,11 +1,13 @@
 **/.DS_Store
 .DS_Store
-.env
+.env*
 **/node_modules/
 **/.claude/
 **/.idea/
 **/GUIDE.md
 **/documents
 **/code-reviews
+**/test
 
 **/CLAUDE.md
+secrets-template.txt

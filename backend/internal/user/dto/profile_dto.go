@@ -4,21 +4,18 @@ import "github.com/google/uuid"
 
 type UpdateProfileRequest struct {
 	DisplayName *string `json:"display_name"`
+	Phone       *string `json:"phone"`
+	Address     *string `json:"address"`
 	AvatarURL   *string `json:"avatar_url"`
 	Bio         *string `json:"bio"`
 } // @name UpdateProfileRequest
 
-type CreateProfileRequest struct {
-	UserID    uuid.UUID `json:"user_id" binding:"required"`
-	AvatarURL string    `json:"avatar_url"`
-	FullName  string    `json:"full_name" binding:"required"`
-	Bio       string    `json:"bio"`
-} // @name CreateProfileRequest
-
 type ProfileResponse struct {
-	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"user_id"`
-	AvatarURL *string   `json:"avatar_url"`
-	FullName  string    `json:"full_name"`
-	Bio       *string   `json:"bio"`
+	ID          uuid.UUID `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
+	DisplayName string    `json:"display_name"`
+	Phone       *string   `json:"phone"`
+	Address     *string   `json:"address"`
+	AvatarURL   *string   `json:"avatar_url"`
+	Bio         *string   `json:"bio"`
 } // @name ProfileResponse

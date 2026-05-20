@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@import "@repo/ui/tokens.css";
+
+@theme inline {
+  --color-cream: #FDF8F3;
+  --color-golden: #D4943A;
+  --color-golden-dark: #B8802E;
+  --color-espresso: #2C1810;
+  --color-cocoa: #5C3D2E;
+  --color-crust: #E8C496;
+  --color-latte: #F5EDE4;
+  --font-heading: "Lora", serif;
+  --font-body: "Inter", sans-serif;
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-espresso);
+  font-family: var(--font-body);
+}

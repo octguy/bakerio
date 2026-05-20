@@ -12,7 +12,7 @@ import (
 type ProfileRepository interface {
 	CreateProfile(ctx context.Context, id uuid.UUID, avatarURL, bio *string, fullName string) (*domain.Profile, error)
 	GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*domain.Profile, error)
-	UpdateProfile(ctx context.Context, userID uuid.UUID, displayName string, avatarURL, bio *string) (*domain.Profile, error)
+	UpdateProfile(ctx context.Context, userID uuid.UUID, displayName string, phone, address, avatarURL, bio *string) (*domain.Profile, error)
 }
 
 type profileRepo struct {
@@ -54,10 +54,12 @@ func (p *profileRepo) GetProfileByUserID(ctx context.Context, userID uuid.UUID) 
 	return toEntity(row), nil
 }
 
-func (p *profileRepo) UpdateProfile(ctx context.Context, userID uuid.UUID, displayName string, avatarURL, bio *string) (*domain.Profile, error) {
+func (p *profileRepo) UpdateProfile(ctx context.Context, userID uuid.UUID, displayName string, phone, address, avatarURL, bio *string) (*domain.Profile, error) {
 	row, err := p.queries(ctx).UpdateProfile(ctx, usersdb.UpdateProfileParams{
 		UserID:      userID,
 		DisplayName: displayName,
+		Phone:       phone,
+		Address:     address,
 		AvatarUrl:   avatarURL,
 		Bio:         bio,
 	})
@@ -72,8 +74,11 @@ func toEntity(dbModel usersdb.UsersProfile) *domain.Profile {
 		ID:          dbModel.ID,
 		UserID:      dbModel.UserID,
 		DisplayName: dbModel.DisplayName,
+		Phone:       dbModel.Phone,
+		Address:     dbModel.Address,
 		AvatarURL:   dbModel.AvatarUrl,
 		Bio:         dbModel.Bio,
+		CreatedAt:   dbModel.CreatedAt,
 		UpdatedAt:   dbModel.UpdatedAt,
 	}
 }

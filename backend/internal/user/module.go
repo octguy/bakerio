@@ -5,6 +5,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	usersdb "github.com/octguy/bakerio/backend/db/sqlc/users"
 	authSvc "github.com/octguy/bakerio/backend/internal/auth/service"
+	branchSvc "github.com/octguy/bakerio/backend/internal/branch/service"
 	"github.com/octguy/bakerio/backend/internal/user/handler"
 	"github.com/octguy/bakerio/backend/internal/user/repository"
 	"github.com/octguy/bakerio/backend/internal/user/service"
@@ -34,9 +35,9 @@ func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
 
 func (m *Module) ProfileService() service.ProfileService { return m.profileSvc }
 
-// Wire finishes construction once the auth service is available.
-func (m *Module) Wire(auth authSvc.AuthService) {
-	userSvc := service.NewUserService(m.profileSvc, auth)
+// Wire finishes construction once the auth and branch services are available.
+func (m *Module) Wire(auth authSvc.AuthService, membership branchSvc.MembershipService) {
+	userSvc := service.NewUserService(m.profileSvc, auth, membership)
 	m.userH = handler.NewUserHandler(userSvc)
 }
 

@@ -1,0 +1,8 @@
+node_modules
+.next
+out
+.turbo
+*.md
+.git
+e2e
+playwright-report

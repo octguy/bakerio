@@ -26,7 +26,6 @@ func NewModule(
 	redis *cache.Client,
 	tx *txmanager.TxManager,
 	profSvc service.ProfileCreator,
-	branchSvc service.BranchValidator,
 	outboxRepo *outbox.Repository,
 	otpSvc *otp.Service,
 	jwtSecret string,
@@ -36,7 +35,7 @@ func NewModule(
 	authRepo := repository.NewAuthRepo(queries)
 	rbacRepo := repository.NewRBACRepo(queries)
 	rbacSvc := service.NewRBACService(rbacRepo, redis)
-	svc := service.NewAuthService(authRepo, rbacSvc, redis, tx, profSvc, branchSvc, outboxRepo, otpSvc, jwtSecret, tokenTTL)
+	svc := service.NewAuthService(authRepo, rbacSvc, redis, tx, profSvc, outboxRepo, otpSvc, jwtSecret, tokenTTL)
 	h := handler.NewAuthHandler(svc)
 	return &Module{handler: h, authSvc: svc, RBACService: rbacSvc}
 }

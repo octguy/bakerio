@@ -39,17 +39,19 @@ func (p *profileService) GetProfile(ctx context.Context, userID uuid.UUID) (dto.
 }
 
 func (p *profileService) UpdateProfile(ctx context.Context, userID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error) {
-	current, err := p.repo.GetProfileByUserID(ctx, userID)
-	if err != nil {
-		return dto.ProfileResponse{}, err
-	}
-
-	displayName := current.DisplayName
+	// display_name is NOT NULL in the table — load current value if caller didn't provide one.
+	displayName := ""
 	if req.DisplayName != nil {
 		displayName = *req.DisplayName
+	} else {
+		current, err := p.repo.GetProfileByUserID(ctx, userID)
+		if err != nil {
+			return dto.ProfileResponse{}, err
+		}
+		displayName = current.DisplayName
 	}
 
-	prof, err := p.repo.UpdateProfile(ctx, userID, displayName, req.AvatarURL, req.Bio)
+	prof, err := p.repo.UpdateProfile(ctx, userID, displayName, req.Phone, req.Address, req.AvatarURL, req.Bio)
 	if err != nil {
 		return dto.ProfileResponse{}, err
 	}
@@ -58,10 +60,12 @@ func (p *profileService) UpdateProfile(ctx context.Context, userID uuid.UUID, re
 
 func toResponse(prof *domain.Profile) dto.ProfileResponse {
 	return dto.ProfileResponse{
-		ID:        prof.ID,
-		UserID:    prof.UserID,
-		FullName:  prof.DisplayName,
-		AvatarURL: prof.AvatarURL,
-		Bio:       prof.Bio,
+		ID:          prof.ID,
+		UserID:      prof.UserID,
+		DisplayName: prof.DisplayName,
+		Phone:       prof.Phone,
+		Address:     prof.Address,
+		AvatarURL:   prof.AvatarURL,
+		Bio:         prof.Bio,
 	}
 }

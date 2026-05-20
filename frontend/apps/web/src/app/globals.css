@@ -1,0 +1,155 @@
+@import "tailwindcss";
+@import "@repo/ui/tokens.css";
+
+:root {
+  --background: #FDF8F3;
+  --foreground: #2C1810;
+  --primary: #D4943A;
+  --primary-foreground: #FFFFFF;
+  --card: #FAF3EB;
+  --muted: #EDE0CC;
+  --muted-foreground: #6B5344;
+  --border: #E8DDD0;
+  --border-light: #F0E8DC;
+  --destructive: #C45B4A;
+  --accent: #E8A94E;
+  --muted-text: #A68B6B;
+  --info: #7A8FA6;
+
+  /* Gradients */
+  --gradient-hero: linear-gradient(180deg, rgba(44, 24, 16, 0.3) 0%, rgba(44, 24, 16, 0.6) 100%);
+  --gradient-warm: linear-gradient(135deg, #FDF8F3 0%, #F5EBD9 100%);
+  --gradient-cta: linear-gradient(135deg, #D4943A 0%, #E8A94E 100%);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(44, 24, 16, 0.06);
+  --shadow-md: 0 4px 16px rgba(44, 24, 16, 0.08);
+  --shadow-lg: 0 8px 32px rgba(44, 24, 16, 0.12);
+  --shadow-glow: 0 0 0 3px rgba(212, 148, 58, 0.15);
+
+  --cream: #FDF8F3;
+  --vanilla: #FAF3EB;
+  --butter: #F5EBD9;
+  --crust: #EDE0CC;
+  --espresso: #2C1810;
+  --cocoa: #4A3228;
+  --caramel: #7A5C3E;
+  --golden: #D4943A;
+  --honey: #E8A94E;
+  --cinnamon: #B5722A;
+  --rose: #C97B6B;
+  --sage: #6B8F5E;
+  --sienna: #C45B4A;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-destructive: var(--destructive);
+  --color-muted-text: var(--muted-text);
+  --color-info: var(--info);
+  --color-accent: var(--accent);
+  --color-cream: var(--cream);
+  --color-vanilla: var(--vanilla);
+  --color-butter: var(--butter);
+  --color-crust: var(--crust);
+  --color-espresso: var(--espresso);
+  --color-cocoa: var(--cocoa);
+  --color-caramel: var(--caramel);
+  --color-golden: var(--golden);
+  --color-honey: var(--honey);
+  --color-cinnamon: var(--cinnamon);
+  --color-rose: var(--rose);
+  --color-sage: var(--sage);
+  --color-sienna: var(--sienna);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-script: var(--font-script);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Button hover effects — forced outside @layer to guarantee specificity */
+.btn-primary {
+  background-color: var(--golden);
+  color: #fff;
+  transition: all 0.3s ease;
+}
+.btn-primary:hover {
+  background-color: var(--cinnamon) !important;
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(181, 114, 42, 0.4);
+}
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-outline {
+  border: 2px solid var(--golden);
+  color: var(--golden);
+  transition: all 0.3s ease;
+}
+.btn-outline:hover {
+  background-color: var(--golden) !important;
+  color: #fff !important;
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(212, 148, 58, 0.3);
+}
+
+.btn-white {
+  border: 2px solid #fff;
+  color: #fff;
+  transition: all 0.3s ease;
+}
+.btn-white:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  transform: scale(1.03);
+}
+
+::selection {
+  background: rgba(212, 148, 58, 0.2);
+  color: var(--espresso);
+}
+
+@keyframes pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.1); }
+}
+
+@keyframes loadingDot {
+  0%, 24% { opacity: 0; }
+  25%, 100% { opacity: 1; }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+@keyframes pulse-play {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

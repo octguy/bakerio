@@ -1,1 +1,0 @@
-ALTER TABLE auth.users DROP COLUMN branch_id;

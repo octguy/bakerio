@@ -23,7 +23,7 @@ func seedAdmins(ctx context.Context, svc authService.AuthService) {
 		{"customer3@bakerio.com", "Customer 3", "123456", "customer"},
 	}
 	for _, a := range admins {
-		res, err := svc.CreateStaff(ctx, a.email, a.fullName, a.password, a.role, nil)
+		res, err := svc.CreateStaff(ctx, a.email, a.fullName, a.password, a.role)
 		if err != nil {
 			// ErrEmailTaken means the account already exists — skip silently
 			logger.Log.Debug("seed: skipped", zap.String("email", a.email), zap.Error(err))

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	authSvc "github.com/octguy/bakerio/backend/internal/auth/service"
+	branchSvc "github.com/octguy/bakerio/backend/internal/branch/service"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/user/dto"
@@ -13,8 +14,15 @@ import (
 
 // allowedRolesByPermission defines which roles each permission level may assign.
 var allowedRolesByPermission = map[string][]string{
-	"user:manage:all":    {"store_manager", "staff_cashier", "baker", "shipper"},
-	"user:manage:branch": {"staff_cashier", "baker", "shipper"},
+	"user:manage:all":    {"branch_manager", "branch_staff", "product_manager"},
+	"user:manage:branch": {"branch_staff"},
+}
+
+// branchScopedRoles mirrors auth.BranchScopedRoles — the user module decides
+// whether a branch_id is required and writes the membership row.
+var branchScopedRoles = map[string]bool{
+	"branch_manager": true,
+	"branch_staff":   true,
 }
 
 type UserService interface {
@@ -25,12 +33,13 @@ type UserService interface {
 }
 
 type userService struct {
-	profileSvc ProfileService
-	authSvc    authSvc.AuthService
+	profileSvc    ProfileService
+	authSvc       authSvc.AuthService
+	membershipSvc branchSvc.MembershipService
 }
 
-func NewUserService(profileSvc ProfileService, authSvc authSvc.AuthService) UserService {
-	return &userService{profileSvc: profileSvc, authSvc: authSvc}
+func NewUserService(profileSvc ProfileService, authSvc authSvc.AuthService, membershipSvc branchSvc.MembershipService) UserService {
+	return &userService{profileSvc: profileSvc, authSvc: authSvc, membershipSvc: membershipSvc}
 }
 
 func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest, callerPerms []string) (dto.CreateUserResponse, error) {
@@ -39,17 +48,43 @@ func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest,
 		return dto.CreateUserResponse{}, apperrors.Forbidden("you are not allowed to assign role: " + req.Role)
 	}
 
-	if !slices.Contains(callerPerms, "user:manage:all") && !slices.Contains(callerPerms, "*:*:all") && slices.Contains(callerPerms, "user:manage:branch") {
-		callerBID, _ := authcontext.CallerBranchID(ctx)
+	// Branch-scoped roles must carry a branch_id; non-branch roles must not.
+	if branchScopedRoles[req.Role] {
+		if req.BranchID == nil || *req.BranchID == uuid.Nil {
+			return dto.CreateUserResponse{}, apperrors.Validation("branch_id is required for role: " + req.Role)
+		}
+	} else {
+		req.BranchID = nil
+	}
 
-		if req.BranchID == nil || *req.BranchID != callerBID {
+	// Branch-manager callers can only create staff for their own branch.
+	if !slices.Contains(callerPerms, "user:manage:all") && !slices.Contains(callerPerms, "*:*:all") && slices.Contains(callerPerms, "user:manage:branch") {
+		callerID, ok := authcontext.CallerID(ctx)
+		if !ok {
+			return dto.CreateUserResponse{}, apperrors.Forbidden("caller identity missing")
+		}
+		callerBranch, err := s.membershipSvc.Get(ctx, callerID)
+		if err != nil {
+			return dto.CreateUserResponse{}, err
+		}
+		if callerBranch == nil {
+			return dto.CreateUserResponse{}, apperrors.Forbidden("you must belong to a branch to create staff")
+		}
+		if req.BranchID == nil || *req.BranchID != *callerBranch {
 			return dto.CreateUserResponse{}, apperrors.Forbidden("you can only create staff for your own branch")
 		}
 	}
 
-	user, err := s.authSvc.CreateStaff(ctx, req.Email, req.FullName, req.Password, req.Role, req.BranchID)
+	user, err := s.authSvc.CreateStaff(ctx, req.Email, req.FullName, req.Password, req.Role)
 	if err != nil {
 		return dto.CreateUserResponse{}, err
+	}
+
+	// If the role is branch-scoped, write the membership row.
+	if req.BranchID != nil {
+		if err := s.membershipSvc.Set(ctx, user.ID, *req.BranchID); err != nil {
+			return dto.CreateUserResponse{}, err
+		}
 	}
 
 	return dto.CreateUserResponse{
@@ -57,7 +92,7 @@ func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest,
 		Email:     user.Email,
 		FullName:  user.FullName,
 		Role:      req.Role,
-		BranchID:  user.BranchID,
+		BranchID:  req.BranchID,
 		CreatedAt: user.CreatedAt,
 	}, nil
 }
