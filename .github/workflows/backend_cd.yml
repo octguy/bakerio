@@ -51,7 +51,9 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd ~/bakerio/backend/deployments
+            cd ~/bakerio
+            git pull origin main
+            cd backend/deployments
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull app
             docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm migrate
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app
