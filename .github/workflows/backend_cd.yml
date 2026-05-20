@@ -1,0 +1,59 @@
+name: Backend CD
+
+on:
+  workflow_run:
+    workflows: ["Backend CI"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: backend-cd
+  cancel-in-progress: false
+
+jobs:
+  docker:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/bakerio:latest
+            ${{ secrets.DOCKER_USERNAME }}/bakerio:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: docker
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            cd ~/bakerio/backend/deployments
+            docker compose -f docker-compose.prod.yml --env-file .env.prod pull app
+            docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm migrate
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app
+            sleep 3
+            docker compose -f docker-compose.prod.yml --env-file .env.prod logs app --tail 10
