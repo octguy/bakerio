@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows: ["Frontend CI"]
     types: [completed]
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -21,7 +20,7 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+          elif [ "${{ github.event.workflow_run.conclusion }}" = "success" ] && [ "${{ github.event.workflow_run.head_branch }}" = "main" ]; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           else
             echo "deploy=false" >> "$GITHUB_OUTPUT"
@@ -92,7 +91,7 @@ jobs:
   deploy-web:
     needs: build-web
     runs-on: ubuntu-latest
-    environment: production-web
+    environment: production
 
     steps:
       - uses: actions/download-artifact@v4
@@ -118,6 +117,7 @@ jobs:
     needs: gate
     if: needs.gate.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
@@ -144,6 +144,7 @@ jobs:
     needs: gate
     if: needs.gate.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
@@ -192,6 +193,7 @@ jobs:
   verify-apps:
     needs: deploy-apps
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Health check

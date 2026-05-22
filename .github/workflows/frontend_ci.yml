@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - "frontend/**"
+      - "backend/**"
       - ".github/workflows/frontend_ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "frontend/**"
+      - "backend/**"
       - ".github/workflows/frontend_ci.yml"
       - ".github/workflows/frontend_cd.yml"
   workflow_dispatch:
@@ -47,14 +49,93 @@ jobs:
       run:
         working-directory: frontend
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: bakeriodb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        env:
+          RABBITMQ_DEFAULT_USER: guest
+          RABBITMQ_DEFAULT_PASS: guest
+        options: >-
+          --health-cmd "rabbitmq-diagnostics ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5672:5672
+
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.1"
+          cache-dependency-path: backend/go.sum
 
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
+
+      - name: Run migrations and seed
+        working-directory: backend
+        run: |
+          curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz | tar xvz
+          chmod +x migrate
+          ./migrate -path db/migrations -database "postgres://testuser:testpass@localhost:5432/bakeriodb?sslmode=disable" up
+          PGPASSWORD=testpass psql -h localhost -U testuser -d bakeriodb -f db/seed_e2e.sql
+
+      - name: Start backend
+        working-directory: backend
+        env:
+          SERVER_ENV: development
+          SERVER_PORT: "8080"
+          GIN_MODE: release
+          JWT_SECRET: e2e-test-secret
+          JWT_EXPIRY: 15m
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DB_USER: testuser
+          DB_PASSWORD: testpass
+          DB_NAME: bakeriodb
+          DB_SSLMODE: disable
+          REDIS_ADDR: localhost:6379
+          REDIS_PASSWORD: ""
+          RABBITMQ_URL: amqp://guest:guest@localhost:5672/
+          EMAIL_HOST: localhost
+          EMAIL_PORT: "1025"
+          EMAIL_USER: ""
+          EMAIL_PASSWORD: ""
+          EMAIL_FROM: noreply@bakerio.com
+        run: |
+          go build -o server ./cmd/server
+          ./server &
+          sleep 5
+          curl -sf http://localhost:8080/health
 
       - run: npm ci
       - run: npx playwright install --with-deps chromium
