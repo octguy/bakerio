@@ -10,7 +10,7 @@ export default function HeroAnimation({ children }: { children: React.ReactNode 
     loadGsap().then(({ gsap }) => {
       gsap.timeline({ defaults: { ease: 'power3.out', duration: 1 } })
         .from(ref.current!.children, { opacity: 0, y: 30, stagger: 0.15 });
-    });
+    }).catch(err => console.error('Failed to load GSAP for HeroAnimation:', err));
   }, []);
 
   return <div ref={ref}>{children}</div>;
