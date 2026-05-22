@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import SectionHeader from "@/components/ui/SectionHeader";
@@ -157,9 +158,9 @@ export default function Home() {
             ))}
           </div>
           <div className="text-center mt-10">
-            <a href="/blog" className="btn-outline px-8 py-3 rounded-[8px] font-medium uppercase tracking-wider text-sm">
+            <Link href="/blog" className="btn-outline px-8 py-3 rounded-[8px] font-medium uppercase tracking-wider text-sm">
               View All Stories
-            </a>
+            </Link>
           </div>
         </section>
       </ScrollReveal>

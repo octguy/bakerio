@@ -1,5 +1,6 @@
 import { getOrders } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function OrdersPage() {
       {orders.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-espresso/50 mb-2">No orders yet</p>
-          <a href="/menu" className="text-golden font-medium">Start ordering →</a>
+          <Link href="/menu" className="text-golden font-medium">Start ordering →</Link>
         </div>
       ) : (
         <div className="space-y-4">

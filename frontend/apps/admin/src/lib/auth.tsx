@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { setToken } from "@repo/api-client";
 
 interface User {
   id: string;
@@ -34,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       setUser(data.user ?? null);
+      if (data.token) setToken(data.token);
     } catch {
       setUser(null);
     } finally {
@@ -41,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => { fetchUser(); }, [fetchUser]);
+  useEffect(() => { void fetchUser(); }, [fetchUser]); // eslint-disable-line react-hooks/set-state-in-effect
 
   const login = async (email: string, password: string): Promise<string | null> => {
     const res = await fetch("/api/auth", {
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     if (data.error) return data.error;
     setUser(data.user);
+    if (data.token) setToken(data.token);
     return null;
   };
 
@@ -62,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ action: "logout" }),
     });
     setUser(null);
+    setToken("");
     router.push("/login");
   };
 

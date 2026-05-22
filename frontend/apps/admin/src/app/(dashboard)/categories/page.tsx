@@ -47,7 +47,7 @@ export default function CategoriesPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
-  const columns: ColumnDef<Category, any>[] = [
+  const columns: ColumnDef<Category, unknown>[] = [
     { accessorKey: "name", header: "Name" },
     { accessorKey: "slug", header: "Slug" },
     { accessorKey: "sort_order", header: "Order" },

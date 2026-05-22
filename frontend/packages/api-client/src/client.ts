@@ -15,9 +15,32 @@ function headers(): HeadersInit {
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { headers: headers(), ...opts });
-  const json = await res.json();
+  if (res.status === 204) {
+    return null as unknown as T;
+  }
+  const text = await res.text();
+  if (!res.ok) {
+    if (!text) {
+      throw new Error(`HTTP error ${res.status} from ${path}`);
+    }
+    let errorMsg = text;
+    try {
+      const json = JSON.parse(text);
+      errorMsg = json.error?.message || json.message || text;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+  if (!text) {
+    return null as unknown as T;
+  }
+  let json: { data?: T; error?: { message: string } };
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid JSON from ${path}: ${text.slice(0, 100)}`);
+  }
   if (json.error) throw new Error(json.error.message);
-  return json.data;
+  return json.data as T;
 }
 
 // ===== AUTH (REAL) =====
