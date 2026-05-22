@@ -29,6 +29,6 @@ func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
 	}
 }
 
-func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
-	m.categoryH.RegisterRoutes(protected)
+func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
+	m.categoryH.RegisterRoutes(public, protected)
 }

@@ -34,6 +34,6 @@ func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
 func (m *Module) BranchService() service.BranchService         { return m.svc }
 func (m *Module) MembershipService() service.MembershipService { return m.membershipSvc }
 
-func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
-	m.h.RegisterRoutes(protected)
+func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
+	m.h.RegisterRoutes(public, protected)
 }
