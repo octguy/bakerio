@@ -52,11 +52,9 @@ jobs:
           cat > apps/web/out/.htaccess <<'EOF'
           <IfModule mod_rewrite.c>
             RewriteEngine On
-            RewriteBase /
-            RewriteRule ^index\.html$ - [L]
-            RewriteCond %{REQUEST_FILENAME} !-f
-            RewriteCond %{REQUEST_FILENAME} !-d
-            RewriteRule . /index.html [L]
+            RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+            RewriteRule ^([^/]+)/?$ /$1.html [L]
+            ErrorDocument 404 /404.html
           </IfModule>
 
           <IfModule mod_headers.c>
@@ -99,18 +97,17 @@ jobs:
           name: web-out
           path: dist
 
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy to cPanel via SCP
+        uses: appleboy/scp-action@v0.1.7
         with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          local-dir: ./dist/
-          server-dir: ${{ secrets.FTP_REMOTE_DIR }}
-          dangerous-clean-slate: false
-          state-name: .ftp-deploy-sync-state.json
+          host: ${{ secrets.CPANEL_HOST }}
+          username: ${{ secrets.CPANEL_USER }}
+          key: ${{ secrets.CPANEL_SSH_KEY }}
+          passphrase: ${{ secrets.CPANEL_SSH_PASSPHRASE }}
+          port: 22
+          source: "dist/**"
+          target: "/home/${{ secrets.CPANEL_USER }}/public_html"
+          strip_components: 1
 
   # ─── Order + Admin → Docker → VPS ───
   docker-order:

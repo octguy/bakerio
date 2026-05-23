@@ -26,7 +26,7 @@ export default function AboutPage() {
     <main>
       {/* Hero */}
       <section className="relative h-[50vh] min-h-[300px] flex items-center justify-center">
-        <Image src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1920&q=80" alt="" fill priority className="object-cover" />
+        <Image src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=1920&q=80" alt="A fresh tray of warm artisan baked goods in a rustic bakery setting" fill priority className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-[rgba(44,24,16,0.3)] to-[rgba(44,24,16,0.6)]" />
         <div className="relative text-center text-white z-10">
           <p className="font-[family-name:var(--font-script)] text-2xl md:text-3xl mb-2">our story</p>

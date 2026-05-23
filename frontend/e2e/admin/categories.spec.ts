@@ -29,23 +29,23 @@ test.describe("Admin — Categories CRUD", () => {
     await page.getByRole("dialog").locator("input").first().fill("Bread");
     await page.getByRole("button", { name: /save/i }).click();
 
-    await expect(page.getByText(/category created|success|bread/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Category created")).toBeVisible({ timeout: 10000 });
   });
 
   test("edits an existing category", async ({ page }) => {
     await page.goto("/categories");
     await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
 
-    // Click the first edit (pencil) icon button in the table
-    await page.locator("table button").first().click();
+    // Click the first edit (pencil) icon button in the table row actions
+    const firstRow = page.locator("tbody tr").first();
+    await firstRow.locator("button").first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
     const nameInput = page.getByRole("dialog").locator("input").first();
-    await nameInput.clear();
     await nameInput.fill("Premium Cakes");
     await page.getByRole("button", { name: /save/i }).click();
 
-    await expect(page.getByText(/category updated|success|premium cakes/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Category updated")).toBeVisible({ timeout: 10000 });
   });
 
   test("deletes a category", async ({ page }) => {
@@ -53,11 +53,12 @@ test.describe("Admin — Categories CRUD", () => {
     await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
 
     // Click the delete (trash) icon button — second button in first row's actions
-    await page.locator("table button").nth(1).click();
+    const firstRow = page.locator("tbody tr").first();
+    await firstRow.locator("button").nth(1).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
     await page.getByRole("button", { name: /delete/i }).last().click();
 
-    await expect(page.getByText(/category deleted|success/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Category deleted")).toBeVisible({ timeout: 10000 });
   });
 });

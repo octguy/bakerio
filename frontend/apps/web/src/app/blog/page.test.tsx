@@ -80,6 +80,6 @@ describe("BlogPage", () => {
   it("renders the correct number of blog posts from mock data", () => {
     render(<BlogPage />);
     const images = screen.getAllByRole("img");
-    expect(images).toHaveLength(2);
+    expect(images).toHaveLength(3);
   });
 });

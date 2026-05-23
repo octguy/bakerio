@@ -12,3 +12,7 @@
 **/CLAUDE.md
 secrets-template.txt
 .gitnexus
+.agents/
+.antigravitycli/
+backend/deployments/backups/
+

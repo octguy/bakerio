@@ -31,19 +31,19 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "npm run dev -w web -- -p 3000",
+      command: "npx -y serve -l 3000 apps/web/out",
       port: 3000,
       reuseExistingServer: true,
       timeout: 60_000,
     },
     {
-      command: "npm run dev -w order -- -p 3001",
+      command: "npm run start -w order -- -p 3001",
       port: 3001,
       reuseExistingServer: true,
       timeout: 60_000,
     },
     {
-      command: "npm run dev -w admin -- -p 3002",
+      command: "npm run start -w admin -- -p 3002",
       port: 3002,
       reuseExistingServer: true,
       timeout: 60_000,

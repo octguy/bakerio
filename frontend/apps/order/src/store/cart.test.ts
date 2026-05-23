@@ -72,11 +72,15 @@ describe('useCartStore', () => {
     expect(useCartStore.getState().discount()).toBe(20000);
   });
 
-  it('updateQuantity changes quantity', () => {
+  it('updateQuantity changes quantity and leaves non-matching items intact', () => {
     useCartStore.getState().addItem(makeItem());
-    const id = useCartStore.getState().items[0].id;
-    useCartStore.getState().updateQuantity(id, 5);
-    expect(useCartStore.getState().items[0].quantity).toBe(5);
+    useCartStore.getState().addItem(makeItem());
+    const items = useCartStore.getState().items;
+    const id1 = items[0].id;
+    const id2 = items[1].id;
+    useCartStore.getState().updateQuantity(id1, 5);
+    expect(useCartStore.getState().items.find(i => i.id === id1)!.quantity).toBe(5);
+    expect(useCartStore.getState().items.find(i => i.id === id2)!.quantity).toBe(1);
   });
 
   it('updateQuantity removes item when qty <= 0', () => {
@@ -84,5 +88,45 @@ describe('useCartStore', () => {
     const id = useCartStore.getState().items[0].id;
     useCartStore.getState().updateQuantity(id, 0);
     expect(useCartStore.getState().items).toHaveLength(0);
+  });
+
+  it('setBranch sets branchId and clears items and coupon', () => {
+    useCartStore.getState().addItem(makeItem());
+    useCartStore.getState().applyCoupon({ code: 'TEST', description: '', discountType: 'fixed', discountValue: 5000 });
+    useCartStore.getState().setBranch('br-saigon');
+    expect(useCartStore.getState().branchId).toBe('br-saigon');
+    expect(useCartStore.getState().items).toHaveLength(0);
+    expect(useCartStore.getState().coupon).toBeNull();
+  });
+
+  it('removeCoupon clears only the coupon', () => {
+    useCartStore.getState().addItem(makeItem());
+    useCartStore.getState().applyCoupon({ code: 'TEST', description: '', discountType: 'fixed', discountValue: 5000 });
+    useCartStore.getState().removeCoupon();
+    expect(useCartStore.getState().items).toHaveLength(1);
+    expect(useCartStore.getState().coupon).toBeNull();
+  });
+
+  it('discount calculates percentage correctly without max limit', () => {
+    useCartStore.getState().addItem(makeItem({ unitPrice: 100000, quantity: 1 }));
+    useCartStore.getState().applyCoupon({ code: 'OFF15', description: '', discountType: 'percent', discountValue: 15 });
+    expect(useCartStore.getState().discount()).toBe(15000);
+  });
+
+  it('discount applies fixed coupon correctly', () => {
+    useCartStore.getState().addItem(makeItem({ unitPrice: 20000, quantity: 1 }));
+    useCartStore.getState().applyCoupon({ code: 'FIX5', description: '', discountType: 'fixed', discountValue: 5000 });
+    expect(useCartStore.getState().discount()).toBe(5000);
+  });
+
+  it('discount applies coupon when subtotal meets minOrder limit', () => {
+    useCartStore.getState().addItem(makeItem({ unitPrice: 30000, quantity: 2 })); // subtotal 60000
+    useCartStore.getState().applyCoupon({ code: 'BIG', description: '', discountType: 'fixed', discountValue: 10000, minOrder: 50000 });
+    expect(useCartStore.getState().discount()).toBe(10000);
+  });
+
+  it('discount returns 0 if no coupon is active', () => {
+    useCartStore.getState().addItem(makeItem({ unitPrice: 50000, quantity: 1 }));
+    expect(useCartStore.getState().discount()).toBe(0);
   });
 });

@@ -13,7 +13,7 @@ test.describe("Branch Selection — Homepage", () => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: "Order from Bakerio" })).toBeVisible();
-    await expect(page.getByText("Select a branch to start your order")).toBeVisible();
+    await expect(page.getByRole("main").getByText("Select a branch to start your order").first()).toBeVisible();
   });
 
   test("handles API failure gracefully with error message", async ({ page }) => {
