@@ -27,12 +27,13 @@ afterEach(cleanup);
 describe("ContactPage", () => {
   it("renders without crashing", () => {
     render(<ContactPage />);
-    expect(screen.getByText("Get in Touch")).toBeInTheDocument();
+    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByText(/hear from you/i)).toBeInTheDocument();
   });
 
   it("renders form inputs with associated labels", () => {
     render(<ContactPage />);
-    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Your name")).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(screen.getByLabelText("Subject")).toBeInTheDocument();
     expect(screen.getByLabelText("Message")).toBeInTheDocument();
@@ -54,17 +55,18 @@ describe("ContactPage", () => {
 
   it("shows success message after valid form submission", () => {
     render(<ContactPage />);
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "John" } });
+    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Hello" } });
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
-    expect(screen.getByText(/thank you! your message has been sent/i)).toBeInTheDocument();
+    expect(screen.getByText("Thank you.")).toBeInTheDocument();
+    expect(screen.getByText(/we'll write back/i)).toBeInTheDocument();
   });
 
   it("shows email-specific error for invalid email format", () => {
     render(<ContactPage />);
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "John" } });
+    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Hello" } });
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
@@ -76,12 +78,12 @@ describe("ContactPage", () => {
 
   it("hides the form after successful submission", () => {
     render(<ContactPage />);
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "John" } });
+    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Hello" } });
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
-    expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Your name")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /send message/i })).not.toBeInTheDocument();
   });
 });

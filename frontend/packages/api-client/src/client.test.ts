@@ -126,8 +126,8 @@ describe("API Client tests", () => {
 
     it("falls back to mock product when getProduct backend fails and item is in mock database", async () => {
       fetchMock.mockRejectedValue(new Error("Backend not found"));
-      const res = await client.getProduct("p-1");
-      expect(res.id).toBe("p-1");
+      const res = await client.getProduct("p-bmi-1");
+      expect(res.id).toBe("p-bmi-1");
     });
 
     it("throws if getProduct backend fails and item is not in mock database", async () => {
@@ -136,7 +136,7 @@ describe("API Client tests", () => {
     });
 
     it("creates product on backend", async () => {
-      const input = { sku: "SKU1", name: "New Prod", unit: "piece", price: 100 };
+      const input = { sku: "SKU1", name: "New Prod", unit: "piece", base_price: 100 };
       const output = { id: "p-new", ...input, base_price: 100, is_active: true, created_at: "" };
       mockResponse(201, { data: output });
       const res = await client.createProduct(input);
@@ -145,7 +145,7 @@ describe("API Client tests", () => {
 
     it("falls back to mock product creation when backend fails", async () => {
       fetchMock.mockRejectedValue(new Error("Creation forbidden"));
-      const input = { sku: "SKU-MOCK", name: "Mock Prod Name", unit: "piece", price: 50 };
+      const input = { sku: "SKU-MOCK", name: "Mock Prod Name", unit: "piece", base_price: 50 };
       const res = await client.createProduct(input);
       expect(res.sku).toBe("SKU-MOCK");
       expect(res.name).toBe("Mock Prod Name");
@@ -160,7 +160,7 @@ describe("API Client tests", () => {
 
     it("falls back to mock product update when backend fails", async () => {
       fetchMock.mockRejectedValue(new Error("Update failed"));
-      const res = await client.updateProduct("p-1", { name: "Updated Via Mock", base_price: 180000 });
+      const res = await client.updateProduct("p-bmi-1", { name: "Updated Via Mock", base_price: 180000 });
       expect(res.name).toBe("Updated Via Mock");
       expect(res.base_price).toBe(180000);
     });
@@ -205,9 +205,9 @@ describe("API Client tests", () => {
 
     it("falls back to mock category list if single category request fails", async () => {
       fetchMock.mockRejectedValue(new Error("Category fetch failed"));
-      const res = await client.getCategory("cat-1");
-      expect(res.id).toBe("cat-1");
-      expect(res.slug).toBe("cakes");
+      const res = await client.getCategory("cat-banhmi");
+      expect(res.id).toBe("cat-banhmi");
+      expect(res.slug).toBe("banh-mi");
     });
 
     it("throws if single category request fails and category slug is not in mock", async () => {
@@ -258,29 +258,28 @@ describe("API Client tests", () => {
 
   describe("Supplier operations", () => {
     it("gets and creates suppliers", async () => {
-      mockResponse(200, { data: [{ id: "sup-1", name: "Wheat Corp" }] });
-      let res = await client.getSuppliers("south");
-      expect(res[0].name).toBe("Wheat Corp");
+      let res = await client.getSuppliers();
+      expect(res.length).toBeGreaterThan(0);
+      expect(res[0].name).toBe("Lê & Sons");
 
-      mockResponse(201, { data: { id: "sup-2", name: "Sugar Inc" } });
-      res = await client.createSupplier({ name: "Sugar Inc", region: "south" });
-      expect(res.name).toBe("Sugar Inc");
+      const created = await client.createSupplier({ name: "Sugar Inc", region: "south" });
+      expect(created.name).toBe("Sugar Inc");
     });
   });
 
   describe("Procurement operations", () => {
     it("handles procurement operations", async () => {
-      mockResponse(200, { data: [{ id: "po-1", status: "PENDING" }] });
       let res = await client.getProcurementOrders();
-      expect(res[0].status).toBe("PENDING");
+      expect(res).toEqual([]);
 
-      mockResponse(201, { data: { id: "po-2", supplier_id: "sup-1" } });
-      res = await client.createProcurementOrder({ supplier_id: "sup-1", items: [] });
-      expect(res.id).toBe("po-2");
+      const created = await client.createProcurementOrder({ supplier_id: "sup-1", items: [] });
+      expect(created.id).toBe("po-1001");
 
-      mockResponse(200, { data: { id: "po-2", status: "APPROVED" } });
-      res = await client.updateProcurementStatus("po-2", "APPROVED");
-      expect(res.status).toBe("APPROVED");
+      res = await client.getProcurementOrders();
+      expect(res[0].id).toBe("po-1001");
+
+      const updated = await client.updateProcurementStatus("po-1001", "DELIVERED");
+      expect(updated!.status).toBe("DELIVERED");
     });
   });
 

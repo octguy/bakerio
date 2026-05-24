@@ -23,6 +23,13 @@ vi.mock('@repo/api-client', () => ({
   createUser: vi.fn(),
 }));
 
+vi.mock('@repo/api-client/mock/staff', () => ({
+  getStaff: vi.fn().mockResolvedValue([
+    { email: "thinh@bakerio.vn", name: "Thinh Nguyễn", initial: "T", role: "Manager", branch: "Lê Lợi", start: "2024", status: "clocked-in", shift: "06:00 — 14:00", accent: "cinnamon" }
+  ]),
+  getStaffCounts: vi.fn().mockResolvedValue({ total: 46, onShift: 28 }),
+}));
+
 vi.mock('@/components/ui/button', () => ({
   Button: ({ children, onClick, ...props }: any) => <button onClick={onClick} {...props}>{children}</button>,
 }));
@@ -69,10 +76,12 @@ describe('UsersPage CRUD flow', () => {
 
   afterEach(cleanup);
 
-  it('renders correctly and shows placeholder text', () => {
+  it('renders correctly and shows staff list', async () => {
     render(<UsersPage />);
-    expect(screen.getByRole('heading', { name: /users/i })).toBeInTheDocument();
-    expect(screen.getByText(/user listing will be available/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /staff/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Thinh Nguyễn')).toBeInTheDocument();
+    });
   });
 
   it('opens and closes the dialog when Cancel is clicked', () => {

@@ -1,25 +1,15 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: [
-      {
-        find: /^@\//,
-        replacement: '',
-        customResolver(source, importer) {
-          if (!importer) return undefined;
-          if (importer.includes('/apps/web/')) {
-            return path.resolve(__dirname, 'apps/web/src', source);
-          }
-          if (importer.includes('/apps/admin/')) {
-            return path.resolve(__dirname, 'apps/admin/src', source);
-          }
-          return path.resolve(__dirname, 'apps/order/src', source);
-        },
-      },
       { find: '@repo/api-client', replacement: path.resolve(__dirname, 'packages/api-client/src') },
     ],
   },

@@ -1,7 +1,28 @@
 // Real API client — connects to Go backend for available endpoints,
-// falls back to mock for unimplemented modules (orders, inventory, payment, delivery)
+// falls back to mock for unimplemented modules (orders, suppliers, procurement,
+// products until backend ships, etc.). See the API audit for the full split.
+//
+// Audit §I pull-quote: three modules in this file used to read as real and
+// weren't (products, suppliers, procurement). Fallback was a silent
+// console.warn, which masks broken backends. We now:
+//   * track which endpoints have been served by mock during this session,
+//     so the admin can surface a visible "mock served" marker.
+//   * point suppliers/procurement directly at local stubs, no fetch attempt.
+//
+// To consume the marker from app code:
+//   import { getApiHealth } from "@repo/api-client";
+//   const { mockServed } = getApiHealth();
 
-import type { Product, Category, Branch, Order, OrderItem, User } from "./types";
+import type { Branch, Category, Product } from "./types";
+
+const MOCK_SERVED = new Set<string>();
+function markMock(key: string) {
+  MOCK_SERVED.add(key);
+}
+
+export function getApiHealth(): { mockServed: string[] } {
+  return { mockServed: [...MOCK_SERVED].sort() };
+}
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
@@ -86,7 +107,8 @@ export const getProducts = cache(async (): Promise<Product[]> => {
   try {
     return await request<Product[]>("/products");
   } catch (err) {
-    console.warn("getProducts backend failed, falling back to mock:", err);
+    markMock("products.list");
+    console.info("[api-client] /products not available — using mock fixtures.", err);
     return mockGetProducts();
   }
 });
@@ -95,27 +117,50 @@ export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
   try {
     return await request<Product>(`/products/${idOrSlug}`);
   } catch (err) {
-    console.warn("getProduct backend failed, falling back to mock:", err);
+    markMock("products.get");
+    console.info("[api-client] /products/:id not available — using mock fixture.", err);
     const found = await mockGetProduct(idOrSlug);
     if (found) return found;
     throw err;
   }
 });
 
-export async function createProduct(data: { sku: string; name: string; unit: string; price: number; description?: string; category_id?: string }) {
+// Audit §II DTO drift: createProduct used to take { price }; updateProduct took
+// { base_price }. Both now use base_price end-to-end.
+export async function createProduct(data: {
+  sku: string;
+  name: string;
+  unit: string;
+  base_price: number;
+  description?: string;
+  category_id?: string;
+  allergens?: string[];
+}) {
   try {
     return await request<Product>("/products", { method: "POST", body: JSON.stringify(data) });
   } catch (err) {
-    console.warn("createProduct backend failed, falling back to mock:", err);
+    markMock("products.create");
+    console.info("[api-client] /products POST not available — creating in mock.", err);
     return mockCreateProduct(data);
   }
 }
 
-export async function updateProduct(id: string, data: Partial<{ name: string; description: string; unit: string; is_active: boolean; base_price: number }>) {
+export async function updateProduct(
+  id: string,
+  data: Partial<{
+    name: string;
+    description: string;
+    unit: string;
+    is_active: boolean;
+    base_price: number;
+    allergens: string[];
+  }>,
+) {
   try {
     return await request<Product>(`/products/${id}`, { method: "PATCH", body: JSON.stringify(data) });
   } catch (err) {
-    console.warn("updateProduct backend failed, falling back to mock:", err);
+    markMock("products.update");
+    console.info("[api-client] /products/:id PATCH not available — updating in mock.", err);
     return mockUpdateProduct(id, data);
   }
 }
@@ -124,7 +169,8 @@ export async function deleteProduct(id: string) {
   try {
     return await request<void>(`/products/${id}`, { method: "DELETE" });
   } catch (err) {
-    console.warn("deleteProduct backend failed, falling back to mock:", err);
+    markMock("products.delete");
+    console.info("[api-client] /products/:id DELETE not available — removing from mock.", err);
     return mockDeleteProduct(id);
   }
 }
@@ -188,29 +234,89 @@ export async function deleteBranch(id: string) {
   return request<void>(`/branch/${id}`, { method: "DELETE" });
 }
 
-// ===== SUPPLIERS (REAL) =====
+// ===== SUPPLIERS (MOCK — audit §I: no backend module) =====
+// Calls used to hit /suppliers and 404. Wired to a local stub so apps don't
+// silently break; if the backend ships, swap the import.
 
-export async function getSuppliers(region?: string) {
-  const q = region ? `?region=${region}` : "";
-  return request<any[]>(`/suppliers${q}`);
+export interface SupplierRow {
+  id: string;
+  name: string;
+  region: string;
+  contact_info?: string;
 }
 
-export async function createSupplier(data: { name: string; region: string; contact_info?: string }) {
-  return request<any>("/suppliers", { method: "POST", body: JSON.stringify(data) });
+const MOCK_SUPPLIERS: SupplierRow[] = [
+  { id: "sup-1", name: "Lê & Sons", region: "Lâm Đồng", contact_info: "+84 263 1100" },
+  { id: "sup-2", name: "Saigon Imports", region: "HCMC", contact_info: "+84 28 3822" },
+  { id: "sup-3", name: "Long An Farm", region: "Long An", contact_info: "+84 272 4000" },
+  { id: "sup-4", name: "Trần family", region: "Long An" },
+  { id: "sup-5", name: "Đà Lạt Co.", region: "Lâm Đồng" },
+  { id: "sup-6", name: "Vinamilk", region: "HCMC" },
+];
+
+export async function getSuppliers(region?: string): Promise<SupplierRow[]> {
+  markMock("suppliers.list");
+  await new Promise((r) => setTimeout(r, 80));
+  return region ? MOCK_SUPPLIERS.filter((s) => s.region === region) : MOCK_SUPPLIERS;
 }
 
-// ===== PROCUREMENT (REAL) =====
-
-export async function getProcurementOrders() {
-  return request<any[]>("/procurement/orders");
+export async function createSupplier(data: { name: string; region: string; contact_info?: string }): Promise<SupplierRow> {
+  markMock("suppliers.create");
+  await new Promise((r) => setTimeout(r, 120));
+  const row: SupplierRow = { id: `sup-${Date.now()}`, ...data };
+  MOCK_SUPPLIERS.push(row);
+  return row;
 }
 
-export async function createProcurementOrder(data: { supplier_id: string; note?: string; items: { product_id: string; quantity: number; unit_price: number }[] }) {
-  return request<any>("/procurement/orders", { method: "POST", body: JSON.stringify(data) });
+// ===== PROCUREMENT (MOCK — audit §I: no backend module) =====
+
+export type ProcurementStatus = "DRAFT" | "ORDERED" | "DELIVERED" | "CANCELLED";
+
+export interface ProcurementOrder {
+  id: string;
+  supplier_id: string;
+  status: ProcurementStatus;
+  note?: string;
+  items: { product_id: string; quantity: number; unit_price: number }[];
+  created_at: string;
 }
 
-export async function updateProcurementStatus(id: string, status: string) {
-  return request<any>(`/procurement/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) });
+const MOCK_PROCUREMENT: ProcurementOrder[] = [];
+
+export async function getProcurementOrders(): Promise<ProcurementOrder[]> {
+  markMock("procurement.list");
+  await new Promise((r) => setTimeout(r, 80));
+  return [...MOCK_PROCUREMENT].reverse();
+}
+
+export async function createProcurementOrder(data: {
+  supplier_id: string;
+  note?: string;
+  items: { product_id: string; quantity: number; unit_price: number }[];
+}): Promise<ProcurementOrder> {
+  markMock("procurement.create");
+  await new Promise((r) => setTimeout(r, 200));
+  const order: ProcurementOrder = {
+    id: `po-${1000 + MOCK_PROCUREMENT.length + 1}`,
+    supplier_id: data.supplier_id,
+    status: "DRAFT",
+    note: data.note,
+    items: data.items,
+    created_at: new Date().toISOString(),
+  };
+  MOCK_PROCUREMENT.push(order);
+  return order;
+}
+
+export async function updateProcurementStatus(id: string, status: ProcurementStatus): Promise<ProcurementOrder | null> {
+  markMock("procurement.update");
+  await new Promise((r) => setTimeout(r, 120));
+  const idx = MOCK_PROCUREMENT.findIndex((o) => o.id === id);
+  if (idx === -1) return null;
+  const current = MOCK_PROCUREMENT[idx];
+  if (!current) return null;
+  current.status = status;
+  return current;
 }
 
 // ===== USERS (REAL) =====
@@ -233,9 +339,18 @@ export async function updateMyProfile(data: { display_name?: string; avatar_url?
 
 // ===== ORDERS (MOCK — backend not implemented) =====
 
-import { createOrder as mockCreateOrder, getOrders as mockGetOrders, getOrder as mockGetOrder, updateOrderStatus as mockUpdateOrderStatus } from "./mock";
+import {
+  createOrder as mockCreateOrder,
+  getOrders as mockGetOrders,
+  getOrder as mockGetOrder,
+  updateOrderStatus as mockUpdateOrderStatus,
+  getOrderStats as mockGetOrderStats,
+  reorderItems as mockReorderItems
+} from "./mock";
 
 export const createOrder = mockCreateOrder;
 export const getOrders = mockGetOrders;
 export const getOrder = mockGetOrder;
 export const updateOrderStatus = mockUpdateOrderStatus;
+export const getOrderStats = mockGetOrderStats;
+export const reorderItems = mockReorderItems;

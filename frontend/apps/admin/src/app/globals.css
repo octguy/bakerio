@@ -1,29 +1,73 @@
 @import "tailwindcss";
 @import "@repo/ui/tokens.css";
 
+:root {
+  /* Bakerio palette */
+  --cream: #FDF8F3;
+  --vanilla: #FAF3EB;
+  --butter: #F5EBD9;
+  --crust: #EDE0CC;
+  --crust-deep: #D9C4A3;
+  --espresso: #2C1810;
+  --espresso-deep: #1F100A;
+  --espresso-soft: #3A271C;
+  --cocoa: #4A3228;
+  --caramel: #7A5C3E;
+  --golden: #D4943A;
+  --honey: #E8A94E;
+  --cinnamon: #B5722A;
+  --rose: #C97B6B;
+  --sage: #6B8F5E;
+  --sienna: #C45B4A;
+
+  /* Admin surface tokens */
+  --admin-bg: #FDF8F3;
+  --admin-card: #FFFFFF;
+  --admin-panel: #FAF3EB;
+  --admin-line: #E8DDD0;
+  --admin-line-2: #D9C4A3;
+  --admin-ink: #2C1810;
+  --admin-ink-text: #FAF3EB;
+  --admin-muted: #A68B6B;
+  --admin-muted-dark: #8D7A60;
+}
+
 @theme inline {
-  --color-brand-50: #fffbeb;
-  --color-brand-100: #fef3c7;
-  --color-brand-200: #fde68a;
-  --color-brand-300: #fcd34d;
-  --color-brand-400: #fbbf24;
-  --color-brand-500: #f59e0b;
-  --color-brand-600: #d97706;
-  --color-brand-700: #b45309;
-  --color-brand-800: #92400e;
-  --color-brand-900: #78350f;
+  --color-cream: var(--cream);
+  --color-vanilla: var(--vanilla);
+  --color-butter: var(--butter);
+  --color-crust: var(--crust);
+  --color-crust-deep: var(--crust-deep);
+  --color-espresso: var(--espresso);
+  --color-cocoa: var(--cocoa);
+  --color-caramel: var(--caramel);
+  --color-golden: var(--golden);
+  --color-honey: var(--honey);
+  --color-cinnamon: var(--cinnamon);
+  --color-rose: var(--rose);
+  --color-sage: var(--sage);
+  --color-sienna: var(--sienna);
 
-  --color-background: #ffffff;
-  --color-foreground: #0f172a;
-  --color-muted: #f1f5f9;
-  --color-muted-foreground: #64748b;
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #f59e0b;
-  --color-destructive: #ef4444;
+  --color-background: var(--admin-bg);
+  --color-foreground: var(--espresso);
+  --color-muted: var(--admin-panel);
+  --color-muted-foreground: var(--admin-muted);
+  --color-border: var(--admin-line);
+  --color-input: var(--admin-line);
+  --color-ring: var(--cinnamon);
+  --color-destructive: var(--sienna);
+  --color-card: var(--admin-card);
+  --color-admin-ink: var(--admin-ink);
+  --color-admin-panel: var(--admin-panel);
+  --color-admin-line: var(--admin-line);
+  --color-admin-muted: var(--admin-muted);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-editorial: var(--font-editorial);
+  --font-news: var(--font-news);
+  --font-mono: var(--font-mono);
+  --font-script: var(--font-script);
 
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
@@ -32,4 +76,69 @@
 
 body {
   font-family: var(--font-sans), system-ui, sans-serif;
+  background: var(--admin-bg);
+  color: var(--espresso);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(212, 148, 58, 0.25);
+  color: var(--espresso);
+}
+
+.font-display    { font-family: var(--font-display), Georgia, serif; }
+.font-editorial  { font-family: var(--font-editorial), Georgia, serif; font-style: italic; }
+.font-news       { font-family: var(--font-news), Georgia, serif; }
+.font-mono       { font-family: var(--font-mono), ui-monospace, monospace; }
+.font-script     { font-family: var(--font-script), cursive; }
+
+/* ── Bakerio motion vocabulary ──────────────────────────── */
+@keyframes bkr-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.85); }
+}
+.bkr-pulse { animation: bkr-pulse 1.6s ease-in-out infinite; transform-origin: center; }
+
+@keyframes bkr-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bkr-rise   { animation: bkr-rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.bkr-rise-1 { animation: bkr-rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 100ms both; }
+.bkr-rise-2 { animation: bkr-rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 240ms both; }
+
+@keyframes bkr-grow-up {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+.bkr-grow-up { transform-origin: 50% 100%; animation: bkr-grow-up 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@keyframes bkr-draw {
+  from { stroke-dashoffset: 220; }
+  to   { stroke-dashoffset: 0; }
+}
+.bkr-draw {
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  animation: bkr-draw 1400ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes bkr-float {
+  0%, 100% { transform: rotate(var(--rot, 0deg)) translateY(0); }
+  50%      { transform: rotate(var(--rot, 0deg)) translateY(-4px); }
+}
+.bkr-float { animation: bkr-float 5s ease-in-out infinite; }
+
+.bkr-lift { transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.3s; }
+.bkr-lift:hover { transform: translateY(-3px); box-shadow: 0 16px 32px -16px rgba(44,24,16,0.3); }
+
+.bkr-press { transition: transform 0.12s ease, filter 0.12s ease; }
+.bkr-press:hover  { filter: brightness(1.05); }
+.bkr-press:active { transform: scale(0.97); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bkr-pulse, .bkr-rise, .bkr-rise-1, .bkr-rise-2, .bkr-grow-up, .bkr-draw, .bkr-float {
+    animation: none !important;
+  }
 }

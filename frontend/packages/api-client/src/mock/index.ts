@@ -2,39 +2,70 @@ import type { Product, Category, Branch, Order, OrderItem } from "../types";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// ── Categories ─────────────────────────────────────────────
+// Audit §III: design shows 8 categories, mock had 4. Grown to match.
 export const mockCategories: Category[] = [
-  { id: "cat-1", name: "Cakes", slug: "cakes", sort_order: 1, is_active: true },
-  { id: "cat-2", name: "Pastries", slug: "pastries", sort_order: 2, is_active: true },
-  { id: "cat-3", name: "Bread", slug: "bread", sort_order: 3, is_active: true },
-  { id: "cat-4", name: "Drinks", slug: "drinks", sort_order: 4, is_active: true },
+  { id: "cat-banhmi", name: "Bánh mì", slug: "banh-mi", sort_order: 1, is_active: true },
+  { id: "cat-sourdough", name: "Sourdough", slug: "sourdough", sort_order: 2, is_active: true },
+  { id: "cat-croissant", name: "Croissant", slug: "croissant", sort_order: 3, is_active: true },
+  { id: "cat-pastry", name: "Pastry", slug: "pastry", sort_order: 4, is_active: true },
+  { id: "cat-cake", name: "Cake", slug: "cake", sort_order: 5, is_active: true },
+  { id: "cat-coffee", name: "Cà phê · Drinks", slug: "coffee", sort_order: 6, is_active: true },
+  { id: "cat-seasonal", name: "Seasonal", slug: "seasonal", sort_order: 7, is_active: true },
+  { id: "cat-gift", name: "Gift box", slug: "gift", sort_order: 8, is_active: true },
 ];
 
+// Image library — bakery / Vietnamese pastry feel
+const IMG = {
+  banhmi: "https://images.unsplash.com/photo-1600326145552-327c4df2c246?w=1400&q=85&auto=format",
+  flour: "https://images.unsplash.com/photo-1568051243851-f9b136146e97?w=1200&q=85&auto=format",
+  pastry: "https://images.unsplash.com/photo-1568827999250-3f6afff96e66?w=1200&q=85&auto=format",
+  pastry2: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=1200&q=85&auto=format",
+  tart: "https://images.unsplash.com/photo-1464195244916-405fa0a82545?w=1200&q=85&auto=format",
+  cake: "https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=1200&q=85&auto=format",
+  cake2: "https://images.unsplash.com/photo-1551024601-bec78aea704b?w=1200&q=85&auto=format",
+  coffee: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=1400&q=85&auto=format",
+  loaves: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1400&q=85&auto=format",
+};
+
+function imageObj(url: string, idx: number) {
+  return [{ id: `img-${idx}`, url, is_primary: true, sort_order: 0 }];
+}
+
+// ── Products ───────────────────────────────────────────────
+// Audit §III: swapped fixtures from English (Vanilla Sponge, Croissant) to
+// Vietnamese names used in the design folio (Bánh mì Sài Gòn, Tart Quýt Hồng).
+// Added optional `allergens` for the menu filter; field is ignored by backend.
 export const mockProducts: Product[] = [
-  { id: "p-1", sku: "CAKE-001", name: "Vanilla Sponge Cake", slug: "vanilla-sponge-cake", description: "Light, fluffy, made with Madagascar vanilla beans and farm-fresh eggs.", base_price: 185000, unit: "piece", is_active: true, category: mockCategories[0], images: [{ id: "img-1", url: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-2", sku: "CAKE-002", name: "Chocolate Fondant", slug: "chocolate-fondant", description: "Rich Belgian chocolate with a molten center, served warm.", base_price: 148000, unit: "piece", is_active: true, category: mockCategories[0], images: [{ id: "img-2", url: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-3", sku: "CAKE-003", name: "Lemon Drizzle Loaf", slug: "lemon-drizzle-loaf", description: "Zesty lemon cake with a sweet glaze, perfect with afternoon tea.", base_price: 92000, unit: "piece", is_active: true, category: mockCategories[0], images: [{ id: "img-3", url: "https://images.unsplash.com/photo-1509365465985-25d11c17e812?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-4", sku: "PAST-001", name: "Butter Croissant", slug: "butter-croissant", description: "Flaky, buttery layers baked to golden perfection.", base_price: 45000, unit: "piece", is_active: true, category: mockCategories[1], images: [{ id: "img-4", url: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-5", sku: "BREAD-001", name: "Sourdough Loaf", slug: "sourdough-loaf", description: "72-hour fermented sourdough with a crispy crust.", base_price: 75000, unit: "piece", is_active: true, category: mockCategories[2], images: [{ id: "img-5", url: "https://images.unsplash.com/photo-1549931319-a545753467c8?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-6", sku: "CAKE-004", name: "Strawberry Tart", slug: "strawberry-tart", description: "Fresh strawberries on vanilla custard in a buttery shell.", base_price: 128000, unit: "piece", is_active: true, category: mockCategories[1], images: [{ id: "img-6", url: "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-7", sku: "CAKE-005", name: "Tiramisu", slug: "tiramisu", description: "House-made mascarpone, espresso-soaked ladyfingers.", base_price: 165000, unit: "piece", is_active: true, category: mockCategories[0], images: [{ id: "img-7", url: "https://images.unsplash.com/photo-1486427944544-d2c246c4df14?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-8", sku: "CAKE-006", name: "Matcha Cheesecake", slug: "matcha-cheesecake", description: "Japanese matcha on a creamy cheesecake base.", base_price: 155000, unit: "piece", is_active: true, category: mockCategories[0], images: [{ id: "img-8", url: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-9", sku: "CAKE-007", name: "Red Velvet", slug: "red-velvet", description: "Classic red velvet with cream cheese frosting.", base_price: 175000, unit: "piece", is_active: true, category: mockCategories[0], images: [{ id: "img-9", url: "https://images.unsplash.com/photo-1616541823729-00fe0aacd32c?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-10", sku: "DRINK-001", name: "Iced Latte", slug: "iced-latte", description: "Smooth espresso with cold milk over ice.", base_price: 55000, unit: "cup", is_active: true, category: mockCategories[3], images: [{ id: "img-10", url: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=600&q=80", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-bmi-1",  sku: "BMI-001",   name: "Bánh mì Sài Gòn",      slug: "banh-mi-sai-gon",      description: "Pâté · chả lụa · jambon · dưa leo. Baked five times daily.", base_price: 65000,  unit: "piece", is_active: true, category: mockCategories[0], images: imageObj(IMG.banhmi, 1),  tag: "★",   allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-bmi-2",  sku: "BMI-002",   name: "Bánh mì heo quay",     slug: "banh-mi-heo-quay",     description: "Crackling roast pork, hoisin glaze.",                       base_price: 72000,  unit: "piece", is_active: true, category: mockCategories[0], images: imageObj(IMG.banhmi, 2),                allergens: ["Gluten"],                       created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-bmi-3",  sku: "BMI-003",   name: "Bánh mì chay",         slug: "banh-mi-chay",         description: "Vegan pâté, marinated mushroom.",                            base_price: 58000,  unit: "piece", is_active: true, category: mockCategories[0], images: imageObj(IMG.banhmi, 3),                allergens: ["Gluten", "Vegan-friendly"],     created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-sdh-1",  sku: "SDH-001",   name: "Sourdough loaf",       slug: "sourdough-loaf",       description: "48-hour ferment, Đà Lạt T55, sea salt.",                     base_price: 110000, unit: "loaf",  is_active: true, category: mockCategories[1], images: imageObj(IMG.loaves, 4),  tag: "✦",   allergens: ["Gluten"],                       created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-sdh-2",  sku: "SDH-002",   name: "Pain de campagne",     slug: "pain-de-campagne",     description: "Rye · whole wheat. Country crumb.",                          base_price: 125000, unit: "loaf",  is_active: true, category: mockCategories[1], images: imageObj(IMG.loaves, 5),                allergens: ["Gluten"],                       created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-cro-1",  sku: "CRO-001",   name: "Croissant au beurre",  slug: "croissant-au-beurre",  description: "AOP butter from Brittany, 81 hand-folded layers.",           base_price: 48000,  unit: "piece", is_active: true, category: mockCategories[2], images: imageObj(IMG.flour, 6),                 allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-cro-2",  sku: "CRO-002",   name: "Pain au chocolat",     slug: "pain-au-chocolat",     description: "Callebaut 70% baton, twin sticks.",                          base_price: 55000,  unit: "piece", is_active: true, category: mockCategories[2], images: imageObj(IMG.pastry, 7),                allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-cro-3",  sku: "CRO-003",   name: "Almond croissant",     slug: "almond-croissant",     description: "Twice-baked, frangipane, shaved almonds.",                   base_price: 62000,  unit: "piece", is_active: true, category: mockCategories[2], images: imageObj(IMG.flour, 8),  tag: "New", allergens: ["Gluten", "Dairy", "Eggs", "Nuts"], created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-pas-1",  sku: "PAS-001",   name: "Tart Quýt Hồng",       slug: "tart-quyt-hong",       description: "Mandarin · honey · thyme.",                                  base_price: 95000,  unit: "piece", is_active: true, category: mockCategories[3], images: imageObj(IMG.tart, 9),    tag: "New", allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-pas-2",  sku: "PAS-002",   name: "Mille-feuille",        slug: "mille-feuille",        description: "Vanilla cream · caramel.",                                   base_price: 88000,  unit: "piece", is_active: true, category: mockCategories[3], images: imageObj(IMG.pastry2, 10),              allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-cak-1",  sku: "CAK-001",   name: "Bánh kem dâu",         slug: "banh-kem-dau",         description: "Mascarpone · strawberry · sponge.",                          base_price: 165000, unit: "whole", is_active: true, category: mockCategories[4], images: imageObj(IMG.cake, 11),  tag: "✦",   allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-cak-2",  sku: "CAK-002",   name: "Cheesecake yuzu",      slug: "cheesecake-yuzu",      description: "Cream cheese, yuzu zest, biscuit base.",                     base_price: 185000, unit: "whole", is_active: true, category: mockCategories[4], images: imageObj(IMG.cake2, 12),                allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-cof-1",  sku: "CFE-001",   name: "Cà phê sữa đá",        slug: "ca-phe-sua-da",        description: "Đà Lạt single-origin, condensed milk, ice.",                 base_price: 38000,  unit: "cup",   is_active: true, category: mockCategories[5], images: imageObj(IMG.coffee, 13),               allergens: ["Dairy"],                        created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-cof-2",  sku: "CFE-002",   name: "Cà phê đen",           slug: "ca-phe-den",           description: "Cold brew, 18h steep.",                                      base_price: 42000,  unit: "cup",   is_active: true, category: mockCategories[5], images: imageObj(IMG.coffee, 14),               allergens: ["Vegan-friendly"],               created_at: "2024-01-01T00:00:00Z" },
 ];
 
 export const mockBranches: Branch[] = [
-  { id: "br-1", name: "Bakerio Saigon Centre", address: "65 Lê Lợi, District 1", lat: 10.7731, lng: 106.7009, status: "active", region: "south" },
-  { id: "br-2", name: "Bakerio Thảo Điền", address: "12 Nguyễn Đăng Giai, Thủ Đức", lat: 10.8031, lng: 106.7351, status: "active", region: "south" },
-  { id: "br-3", name: "Bakerio Phú Mỹ Hưng", address: "Crescent Mall, District 7", lat: 10.7295, lng: 106.7186, status: "active", region: "south" },
+  { id: "br-le-loi",   name: "Lê Lợi Flagship", address: "42 Lê Lợi, Bến Nghé, Q.1",       lat: 10.7738, lng: 106.7030, status: "active", region: "south" },
+  { id: "br-pasteur",  name: "Pasteur",         address: "188 Pasteur, Q.3",               lat: 10.7825, lng: 106.6916, status: "active", region: "south" },
+  { id: "br-thao-dien", name: "Thảo Điền",      address: "16 Xuân Thuỷ, Thủ Đức",          lat: 10.8031, lng: 106.7351, status: "active", region: "south" },
+  { id: "br-pmh",      name: "Phú Mỹ Hưng",     address: "Crescent Mall, Q.7",             lat: 10.7295, lng: 106.7186, status: "active", region: "south" },
 ];
 
+// ── localStorage helpers ────────────────────────────────────
 function getSavedProducts(): Product[] {
   if (typeof window !== "undefined" && window.localStorage) {
     const saved = localStorage.getItem("bakerio-mock-products");
     if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {}
+      try { return JSON.parse(saved); } catch {}
     }
   }
   return mockProducts;
@@ -46,16 +77,105 @@ function saveProducts(products: Product[]) {
   }
 }
 
+export const INITIAL_MOCK_ORDERS: Order[] = [
+  {
+    id: "order-11055",
+    branch_id: "br-le-loi",
+    status: "OUT_FOR_DELIVERY",
+    items: [
+      { id: "oi-11055-0", product_id: "p-bmi-1", product_name: "Bánh mì Sài Gòn", quantity: 2, unit_price: 65000, total_price: 130000 },
+      { id: "oi-11055-1", product_id: "p-cof-1", product_name: "Cà phê sữa đá", quantity: 1, unit_price: 38000, total_price: 38000 },
+    ],
+    total_amount: 168000,
+    payment_method: "MOMO",
+    delivery_address: "123 Nguyễn Huệ, Bến Nghé, Quận 1, HCMC",
+    note: "Call on arrival",
+    created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "order-11056",
+    branch_id: "br-pasteur",
+    status: "READY",
+    items: [
+      { id: "oi-11056-0", product_id: "p-pas-1", product_name: "Tart Quýt Hồng", quantity: 1, unit_price: 95000, total_price: 95000 },
+      { id: "oi-11056-1", product_id: "p-cof-2", product_name: "Cà phê đen", quantity: 1, unit_price: 42000, total_price: 42000 },
+    ],
+    total_amount: 137000,
+    payment_method: "VNPAY",
+    delivery_address: "188 Pasteur, Quận 3, HCMC (Pickup)",
+    note: "No sugar",
+    created_at: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "order-11051",
+    branch_id: "br-thao-dien",
+    status: "DELIVERED",
+    items: [
+      { id: "oi-11051-0", product_id: "p-sdh-1", product_name: "Sourdough loaf", quantity: 1, unit_price: 110000, total_price: 110000 },
+      { id: "oi-11051-1", product_id: "p-bmi-2", product_name: "Bánh mì heo quay", quantity: 1, unit_price: 72000, total_price: 72000 },
+    ],
+    total_amount: 182000,
+    payment_method: "COD",
+    delivery_address: "15 Xuân Thủy, Thảo Điền, Quận 2, HCMC",
+    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 1.5 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: "order-11052",
+    branch_id: "br-le-loi",
+    status: "PREPARING",
+    items: [
+      { id: "oi-11052-0", product_id: "p-cro-1", product_name: "Croissant au beurre", quantity: 2, unit_price: 48000, total_price: 96000 },
+      { id: "oi-11052-1", product_id: "p-cro-2", product_name: "Pain au chocolat", quantity: 2, unit_price: 55000, total_price: 110000 },
+    ],
+    total_amount: 206000,
+    payment_method: "MOMO",
+    delivery_address: "42 Lê Lợi, Bến Nghé, Quận 1, HCMC (Pickup)",
+    created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "order-11053",
+    branch_id: "br-pmh",
+    status: "PENDING_PAYMENT",
+    items: [
+      { id: "oi-11053-0", product_id: "p-cak-1", product_name: "Bánh kem dâu", quantity: 1, unit_price: 165000, total_price: 165000 },
+    ],
+    total_amount: 165000,
+    payment_method: "VNPAY",
+    delivery_address: "Crescent Mall, Quận 7, HCMC (Pickup)",
+    created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+  },
+  {
+    id: "order-11054",
+    branch_id: "br-pasteur",
+    status: "PAID",
+    items: [
+      { id: "oi-11054-0", product_id: "p-sdh-2", product_name: "Pain de campagne", quantity: 1, unit_price: 125000, total_price: 125000 },
+      { id: "oi-11054-1", product_id: "p-cro-3", product_name: "Almond croissant", quantity: 1, unit_price: 62000, total_price: 62000 },
+    ],
+    total_amount: 187000,
+    payment_method: "CARD",
+    delivery_address: "200 Điện Biên Phủ, Quận 3, HCMC",
+    created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+    updated_at: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
+  }
+];
+
 function getSavedOrders(): Order[] {
   if (typeof window !== "undefined" && window.localStorage) {
     const saved = localStorage.getItem("bakerio-mock-orders");
     if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {}
+      try { return JSON.parse(saved); } catch {}
     }
   }
-  return [];
+  if (process.env.NODE_ENV === "test") {
+    return [];
+  }
+  return INITIAL_MOCK_ORDERS;
 }
 
 function saveOrders(orders: Order[]) {
@@ -64,10 +184,11 @@ function saveOrders(orders: Order[]) {
   }
 }
 
-// --- Mock API functions ---
+
+// ── Product API ─────────────────────────────────────────────
 
 export async function getProducts(categorySlug?: string): Promise<Product[]> {
-  await delay(300);
+  await delay(150);
   const products = getSavedProducts();
   if (categorySlug) {
     return products.filter((p) => p.category?.slug === categorySlug);
@@ -76,82 +197,110 @@ export async function getProducts(categorySlug?: string): Promise<Product[]> {
 }
 
 export async function getProduct(slugOrId: string): Promise<Product | null> {
-  await delay(200);
+  await delay(120);
   const products = getSavedProducts();
   return products.find((p) => p.slug === slugOrId || p.id === slugOrId) ?? null;
 }
 
-export async function createProduct(data: { sku: string; name: string; unit: string; price: number; description?: string; category_id?: string }): Promise<Product> {
-  await delay(300);
+// Audit §II: createProduct used to take `price`; updateProduct took `base_price` — DTO drift.
+// Both now take `base_price` to match the real Go DTO.
+export async function createProduct(data: {
+  sku: string;
+  name: string;
+  unit: string;
+  base_price: number;
+  description?: string;
+  category_id?: string;
+  allergens?: string[];
+}): Promise<Product> {
+  await delay(250);
   const products = getSavedProducts();
-  
-  let category: Category | undefined;
-  if (data.category_id) {
-    category = mockCategories.find((c) => c.id === data.category_id);
-  }
-  
+  const category = data.category_id ? mockCategories.find((c) => c.id === data.category_id) : undefined;
+
   const newProduct: Product = {
     id: `p-${Date.now()}`,
     sku: data.sku,
     name: data.name,
     slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     description: data.description,
-    base_price: data.price,
+    base_price: data.base_price,
     unit: data.unit,
     is_active: true,
     category,
-    images: [{ id: `img-${Date.now()}`, url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80", is_primary: true, sort_order: 0 }],
+    allergens: data.allergens,
+    images: imageObj("https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80", Date.now()),
     created_at: new Date().toISOString(),
   };
-  
+
   products.push(newProduct);
   saveProducts(products);
   return newProduct;
 }
 
-export async function updateProduct(id: string, data: Partial<{ name: string; description: string; unit: string; is_active: boolean; base_price: number }>): Promise<Product> {
-  await delay(300);
+export async function updateProduct(
+  id: string,
+  data: Partial<{
+    name: string;
+    description: string;
+    unit: string;
+    is_active: boolean;
+    base_price: number;
+    allergens: string[];
+  }>,
+): Promise<Product> {
+  await delay(250);
   const products = getSavedProducts();
   const index = products.findIndex((p) => p.id === id);
   if (index === -1) throw new Error("Product not found");
-  
-  const updated = {
-    ...products[index],
+
+  const current = products[index];
+  if (!current) throw new Error("Product not found");
+  const updated: Product = {
+    ...current,
     ...data,
-    slug: data.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : products[index].slug,
-    base_price: data.base_price !== undefined ? data.base_price : products[index].base_price,
+    slug: data.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : current.slug,
+    base_price: data.base_price !== undefined ? data.base_price : current.base_price,
   };
-  
+
   products[index] = updated;
   saveProducts(products);
   return updated;
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  await delay(300);
+  await delay(200);
   let products = getSavedProducts();
   products = products.filter((p) => p.id !== id);
   saveProducts(products);
 }
 
+// ── Category & Branch API ───────────────────────────────────
 export async function getCategories(): Promise<Category[]> {
-  await delay(150);
+  await delay(100);
   return mockCategories;
 }
 
 export async function getBranches(): Promise<Branch[]> {
-  await delay(200);
+  await delay(120);
   return mockBranches;
 }
 
-export async function createOrder(items: { product_id: string; quantity: number }[], branchId: string, note?: string): Promise<Order> {
-  await delay(500);
+// ── Orders ──────────────────────────────────────────────────
+export async function createOrder(
+  items: { product_id: string; quantity: number }[],
+  branchId: string,
+  note?: string,
+): Promise<Order> {
+  await delay(400);
   const products = getSavedProducts();
   const savedOrders = getSavedOrders();
   const orderIdCounter = savedOrders.length + 1;
-  
+
   const orderItems: OrderItem[] = items.map((item, i) => {
-    const product = products.find((p) => p.id === item.product_id) || mockProducts.find((p) => p.id === item.product_id)!;
+    const product =
+      products.find((p) => p.id === item.product_id) ||
+      mockProducts.find((p) => p.id === item.product_id);
+    if (!product) throw new Error(`Unknown product ${item.product_id}`);
     return {
       id: `oi-${orderIdCounter}-${i}`,
       product_id: item.product_id,
@@ -179,30 +328,62 @@ export async function createOrder(items: { product_id: string; quantity: number 
 }
 
 export async function getOrders(): Promise<Order[]> {
-  await delay(300);
+  await delay(200);
   const savedOrders = getSavedOrders();
   return [...savedOrders].reverse();
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
-  await delay(200);
+  await delay(120);
   const savedOrders = getSavedOrders();
   return savedOrders.find((o) => o.id === id) ?? null;
 }
 
 export async function updateOrderStatus(id: string, status: Order["status"]): Promise<Order | null> {
-  await delay(300);
+  await delay(200);
   const savedOrders = getSavedOrders();
   const index = savedOrders.findIndex((o) => o.id === id);
   if (index === -1) return null;
-  savedOrders[index].status = status;
-  savedOrders[index].updated_at = new Date().toISOString();
+  const current = savedOrders[index];
+  if (!current) return null;
+  current.status = status;
+  current.updated_at = new Date().toISOString();
   saveOrders(savedOrders);
-  return savedOrders[index];
+  return current;
 }
 
-export async function login(email: string, _password: string): Promise<{ access_token: string; user: { id: string; email: string; full_name: string; roles: string[] } }> {
-  await delay(400);
+// Audit §III order/history: derive lifetime count from saved orders, not hard-coded "47".
+export async function getOrderStats(): Promise<{
+  lifetime: number;
+  inProgress: number;
+  delivered: number;
+  cancelled: number;
+}> {
+  await delay(80);
+  const savedOrders = getSavedOrders();
+  return {
+    lifetime: savedOrders.length,
+    inProgress: savedOrders.filter((o) =>
+      ["PENDING_PAYMENT", "PAID", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status),
+    ).length,
+    delivered: savedOrders.filter((o) => ["DELIVERED", "COMPLETED"].includes(o.status)).length,
+    cancelled: savedOrders.filter((o) => o.status === "CANCELLED").length,
+  };
+}
+
+// Audit §III order/history: reorder helper — clone an order's items into the cart.
+export async function reorderItems(orderId: string): Promise<Array<{ product_id: string; quantity: number }>> {
+  const order = await getOrder(orderId);
+  if (!order) return [];
+  return order.items.map((i) => ({ product_id: i.product_id, quantity: i.quantity }));
+}
+
+// ── Mock login (unused — real /auth/login takes precedence) ────────
+export async function login(
+  email: string,
+  _password: string,
+): Promise<{ access_token: string; user: { id: string; email: string; full_name: string; roles: string[] } }> {
+  await delay(300);
   return {
     access_token: "mock-jwt-token-" + Date.now(),
     user: { id: "user-1", email, full_name: "Demo User", roles: ["member"] },

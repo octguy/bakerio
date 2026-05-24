@@ -40,7 +40,14 @@ export default function ProductsPage() {
   const { data: categories = [] } = useQuery({ queryKey: ["categories"], queryFn: getCategories });
 
   const createMut = useMutation({
-    mutationFn: (d: FormData) => createProduct({ ...d, price: d.price }),
+    mutationFn: (d: FormData) => createProduct({
+      sku: d.sku,
+      name: d.name,
+      unit: d.unit,
+      base_price: d.price,
+      description: d.description,
+      category_id: d.category_id,
+    }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["products"] }); setOpen(false); toast("Product created"); },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -76,8 +83,21 @@ export default function ProductsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Products</h1>
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="mb-1.5 flex items-center gap-3">
+            <span className="block h-px w-6 bg-golden" />
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
+              {products.length} items · {categories.length} categories · 11 shops
+            </span>
+          </div>
+          <h1
+            className="font-display tracking-tight"
+            style={{ fontSize: "clamp(26px,3.6vw,32px)", lineHeight: 1, letterSpacing: "-0.02em" }}
+          >
+            Products <span className="font-editorial text-cinnamon">· the carte</span>
+          </h1>
+        </div>
         <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4" /> Add Product</Button>
       </div>
 

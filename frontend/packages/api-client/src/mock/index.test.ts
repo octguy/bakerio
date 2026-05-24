@@ -28,7 +28,7 @@ describe("Mock API client logic and localStorage persistence", () => {
         sku: "MOCK-CUSTOM",
         name: "Custom Product",
         unit: "piece",
-        price: 250000,
+        base_price: 250000,
         description: "Custom desc",
         category_id: "cat-1",
       };
@@ -54,7 +54,7 @@ describe("Mock API client logic and localStorage persistence", () => {
 
     it("saves and loads orders via localStorage", async () => {
       const order = await mockClient.createOrder(
-        [{ product_id: "p-1", quantity: 2 }],
+        [{ product_id: "p-bmi-1", quantity: 2 }],
         "br-1",
         "Deliver at 5pm"
       );
@@ -85,7 +85,7 @@ describe("Mock API client logic and localStorage persistence", () => {
       expect(prods.length).toBe(mockClient.mockProducts.length);
 
       const order = await mockClient.createOrder(
-        [{ product_id: "p-1", quantity: 1 }],
+        [{ product_id: "p-bmi-1", quantity: 1 }],
         "br-1"
       );
       expect(order.id).toBeDefined();
@@ -112,37 +112,37 @@ describe("Mock API client logic and localStorage persistence", () => {
 
   describe("Product operations", () => {
     it("gets products filtered by category slug", async () => {
-      const prods = await mockClient.getProducts("cakes");
-      expect(prods.every((p) => p.category?.slug === "cakes")).toBe(true);
+      const prods = await mockClient.getProducts("cake");
+      expect(prods.every((p) => p.category?.slug === "cake")).toBe(true);
     });
 
     it("gets product by ID or Slug", async () => {
-      const p1 = await mockClient.getProduct("p-1");
+      const p1 = await mockClient.getProduct("p-bmi-1");
       expect(p1).not.toBeNull();
-      expect(p1!.id).toBe("p-1");
+      expect(p1!.id).toBe("p-bmi-1");
 
-      const pVanilla = await mockClient.getProduct("vanilla-sponge-cake");
+      const pVanilla = await mockClient.getProduct("banh-mi-sai-gon");
       expect(pVanilla).not.toBeNull();
-      expect(pVanilla!.slug).toBe("vanilla-sponge-cake");
+      expect(pVanilla!.slug).toBe("banh-mi-sai-gon");
 
       const pNonexistent = await mockClient.getProduct("non-existent");
       expect(pNonexistent).toBeNull();
     });
 
     it("updates product details", async () => {
-      const updated = await mockClient.updateProduct("p-1", {
-        name: "New Vanilla Sponge Cake",
+      const updated = await mockClient.updateProduct("p-bmi-1", {
+        name: "New Bánh mì Sài Gòn",
         base_price: 200000,
       });
-      expect(updated.name).toBe("New Vanilla Sponge Cake");
+      expect(updated.name).toBe("New Bánh mì Sài Gòn");
       expect(updated.base_price).toBe(200000);
-      expect(updated.slug).toBe("new-vanilla-sponge-cake");
+      expect(updated.slug).toBe("new-b-nh-m-s-i-g-n");
 
       // Verify update with empty/undefined partial values does not overwrite existing ones
-      const updatedPartially = await mockClient.updateProduct("p-1", {
+      const updatedPartially = await mockClient.updateProduct("p-bmi-1", {
         description: "Partial desc update only",
       });
-      expect(updatedPartially.name).toBe("New Vanilla Sponge Cake");
+      expect(updatedPartially.name).toBe("New Bánh mì Sài Gòn");
       expect(updatedPartially.base_price).toBe(200000);
       expect(updatedPartially.description).toBe("Partial desc update only");
 
@@ -154,7 +154,7 @@ describe("Mock API client logic and localStorage persistence", () => {
 
     it("deletes a product", async () => {
       const initialCount = (await mockClient.getProducts()).length;
-      await mockClient.deleteProduct("p-1");
+      await mockClient.deleteProduct("p-bmi-1");
       const afterCount = (await mockClient.getProducts()).length;
       expect(afterCount).toBe(initialCount - 1);
     });
@@ -162,7 +162,7 @@ describe("Mock API client logic and localStorage persistence", () => {
 
   describe("Order operations", () => {
     it("gets order by ID", async () => {
-      const order = await mockClient.createOrder([{ product_id: "p-1", quantity: 1 }], "br-1");
+      const order = await mockClient.createOrder([{ product_id: "p-bmi-1", quantity: 1 }], "br-1");
       const found = await mockClient.getOrder(order.id);
       expect(found).not.toBeNull();
       expect(found!.id).toBe(order.id);
@@ -172,7 +172,7 @@ describe("Mock API client logic and localStorage persistence", () => {
     });
 
     it("updates order status", async () => {
-      const order = await mockClient.createOrder([{ product_id: "p-1", quantity: 1 }], "br-1");
+      const order = await mockClient.createOrder([{ product_id: "p-bmi-1", quantity: 1 }], "br-1");
       const updated = await mockClient.updateOrderStatus(order.id, "COMPLETED");
       expect(updated).not.toBeNull();
       expect(updated!.status).toBe("COMPLETED");
@@ -182,13 +182,13 @@ describe("Mock API client logic and localStorage persistence", () => {
     });
 
     it("creates order using product not in saved list but in mockProducts fallback", async () => {
-      // Set local storage products to exclude p-2
-      localStorage.setItem("bakerio-mock-products", JSON.stringify([{ id: "p-1", name: "Custom Cake", base_price: 100 }]));
+      // Set local storage products to exclude p-bmi-2
+      localStorage.setItem("bakerio-mock-products", JSON.stringify([{ id: "p-bmi-1", name: "Custom Cake", base_price: 100 }]));
       
-      const order = await mockClient.createOrder([{ product_id: "p-2", quantity: 3 }], "br-1");
+      const order = await mockClient.createOrder([{ product_id: "p-bmi-2", quantity: 3 }], "br-1");
       expect(order.items.length).toBe(1);
-      expect(order.items[0].product_name).toBe("Chocolate Fondant");
-      expect(order.items[0].unit_price).toBe(148000);
+      expect(order.items[0].product_name).toBe("Bánh mì heo quay");
+      expect(order.items[0].unit_price).toBe(72000);
     });
   });
 

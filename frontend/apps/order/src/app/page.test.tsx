@@ -29,7 +29,7 @@ describe("HomePage (branch selection)", () => {
 
   it("shows branch selection heading", async () => {
     render(await Page());
-    expect(screen.getByRole("heading", { level: 1, name: /order from bakerio/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /where shall/i })).toBeInTheDocument();
   });
 
   it("displays branch names from API", async () => {
