@@ -12,6 +12,9 @@ vi.mock("@repo/api-client/mock/loyalty", () => ({
   redeemCrumbs: vi.fn().mockResolvedValue(null),
 }));
 vi.mock("@/lib/format", () => ({ formatVND: (n: number) => `${n.toLocaleString("vi-VN")}₫` }));
+vi.mock("@/components/ProtectedRoute", () => ({
+  ProtectedRoute: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 const mockItems = [
   { id: "1", product: { id: "p1", name: "Bánh Mì" }, unitPrice: 25000, quantity: 2, choices: [] },

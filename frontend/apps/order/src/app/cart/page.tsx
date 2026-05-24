@@ -3,10 +3,19 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Croissant } from "lucide-react";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
 
 export default function CartPage() {
+  return (
+    <ProtectedRoute>
+      <CartPageInner />
+    </ProtectedRoute>
+  );
+}
+
+function CartPageInner() {
   const items = useCartStore((s) => s.items);
   const removeItem = useCartStore((s) => s.removeItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);

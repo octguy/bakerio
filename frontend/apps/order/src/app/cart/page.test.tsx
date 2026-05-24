@@ -20,6 +20,10 @@ vi.mock("@/lib/format", () => ({
   formatVND: (amount: number) => `${amount.toLocaleString("vi-VN")}₫`,
 }));
 
+vi.mock("@/components/ProtectedRoute", () => ({
+  ProtectedRoute: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 const mockItems = [
   {
     id: "1",
