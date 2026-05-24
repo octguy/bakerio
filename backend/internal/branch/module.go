@@ -16,6 +16,7 @@ type Module struct {
 	svc           service.BranchService
 	membershipSvc service.MembershipService
 	h             *handler.BranchHandler
+	mh            *handler.MembershipHandler
 }
 
 func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
@@ -34,6 +35,14 @@ func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
 func (m *Module) BranchService() service.BranchService         { return m.svc }
 func (m *Module) MembershipService() service.MembershipService { return m.membershipSvc }
 
+// WireDirectory finishes construction once a UserDirectory (adapter over the
+// user + auth modules) is available. The membership handler enriches its
+// responses with member details, so it can only be built here.
+func (m *Module) WireDirectory(dir service.UserDirectory) {
+	m.mh = handler.NewMembershipHandler(m.membershipSvc, dir)
+}
+
 func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
 	m.h.RegisterRoutes(protected)
+	m.mh.RegisterRoutes(protected)
 }

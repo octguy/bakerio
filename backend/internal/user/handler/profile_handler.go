@@ -13,10 +13,10 @@ import (
 )
 
 type ProfileHandler struct {
-	svc service.ProfileService
+	svc service.UserService
 }
 
-func NewProfileHandler(svc service.ProfileService) *ProfileHandler {
+func NewProfileHandler(svc service.UserService) *ProfileHandler {
 	return &ProfileHandler{svc: svc}
 }
 
@@ -37,7 +37,7 @@ func (h *ProfileHandler) RegisterRoutes(protected *gin.RouterGroup) {
 // @Router       /profile [get]
 func (h *ProfileHandler) GetProfile(c *gin.Context) {
 	userID, _ := c.Get(middleware.UserIDKey)
-	res, err := h.svc.GetProfile(c.Request.Context(), userID.(uuid.UUID))
+	res, err := h.svc.GetOwnProfile(c.Request.Context(), userID.(uuid.UUID))
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -65,7 +65,7 @@ func (h *ProfileHandler) UpdateProfile(c *gin.Context) {
 	}
 
 	userID, _ := c.Get(middleware.UserIDKey)
-	res, err := h.svc.UpdateProfile(c.Request.Context(), userID.(uuid.UUID), req)
+	res, err := h.svc.UpdateOwnProfile(c.Request.Context(), userID.(uuid.UUID), req)
 	if err != nil {
 		response.Error(c, err)
 		return

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	"github.com/google/uuid"
@@ -27,19 +28,38 @@ var branchScopedRoles = map[string]bool{
 
 type UserService interface {
 	CreateUser(ctx context.Context, req dto.CreateUserRequest, callerPerms []string) (dto.CreateUserResponse, error)
-	GetUserProfile(ctx context.Context, targetID uuid.UUID) (dto.ProfileResponse, error)
-	UpdateUserProfile(ctx context.Context, targetID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error)
-	AdminSetPassword(ctx context.Context, targetID uuid.UUID, newPassword string) error
+	GetUserProfile(ctx context.Context, callerPerms []string, targetID uuid.UUID) (dto.ProfileResponse, error)
+	UpdateUserProfile(ctx context.Context, callerPerms []string, targetID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error)
+	AdminSetPassword(ctx context.Context, callerPerms []string, targetID uuid.UUID, newPassword string) error
+
+	// Own-profile operations. The response stays unchanged for plain customers
+	// and gains role + branch for staff.
+	GetOwnProfile(ctx context.Context, userID uuid.UUID) (dto.ProfileResponse, error)
+	UpdateOwnProfile(ctx context.Context, userID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error)
 }
 
 type userService struct {
 	profileSvc    ProfileService
 	authSvc       authSvc.AuthService
+	rbacSvc       authSvc.RBACService
 	membershipSvc branchSvc.MembershipService
+	branchSvc     branchSvc.BranchService
 }
 
-func NewUserService(profileSvc ProfileService, authSvc authSvc.AuthService, membershipSvc branchSvc.MembershipService) UserService {
-	return &userService{profileSvc: profileSvc, authSvc: authSvc, membershipSvc: membershipSvc}
+func NewUserService(
+	profileSvc ProfileService,
+	authSvc authSvc.AuthService,
+	rbacSvc authSvc.RBACService,
+	membershipSvc branchSvc.MembershipService,
+	branchSvc branchSvc.BranchService,
+) UserService {
+	return &userService{
+		profileSvc:    profileSvc,
+		authSvc:       authSvc,
+		rbacSvc:       rbacSvc,
+		membershipSvc: membershipSvc,
+		branchSvc:     branchSvc,
+	}
 }
 
 func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest, callerPerms []string) (dto.CreateUserResponse, error) {
@@ -63,14 +83,15 @@ func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest,
 		if !ok {
 			return dto.CreateUserResponse{}, apperrors.Forbidden("caller identity missing")
 		}
-		callerBranch, err := s.membershipSvc.Get(ctx, callerID)
+		callerMb, err := s.membershipSvc.GetMembership(ctx, callerID)
 		if err != nil {
+			var ae *apperrors.AppError
+			if errors.As(err, &ae) && ae.Code == apperrors.CodeNotFound {
+				return dto.CreateUserResponse{}, apperrors.Forbidden("you must belong to a branch to create staff")
+			}
 			return dto.CreateUserResponse{}, err
 		}
-		if callerBranch == nil {
-			return dto.CreateUserResponse{}, apperrors.Forbidden("you must belong to a branch to create staff")
-		}
-		if req.BranchID == nil || *req.BranchID != *callerBranch {
+		if req.BranchID == nil || *req.BranchID != callerMb.BranchID {
 			return dto.CreateUserResponse{}, apperrors.Forbidden("you can only create staff for your own branch")
 		}
 	}
@@ -81,8 +102,13 @@ func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest,
 	}
 
 	// If the role is branch-scoped, write the membership row.
+	var brief *dto.BranchBrief
 	if req.BranchID != nil {
-		if err := s.membershipSvc.Set(ctx, user.ID, *req.BranchID); err != nil {
+		if err := s.membershipSvc.SetMembership(ctx, user.ID, *req.BranchID); err != nil {
+			return dto.CreateUserResponse{}, err
+		}
+		brief, err = s.branchBrief(ctx, *req.BranchID)
+		if err != nil {
 			return dto.CreateUserResponse{}, err
 		}
 	}
@@ -92,25 +118,175 @@ func (s *userService) CreateUser(ctx context.Context, req dto.CreateUserRequest,
 		Email:     user.Email,
 		FullName:  user.FullName,
 		Role:      req.Role,
-		BranchID:  req.BranchID,
+		Branch:    brief,
 		CreatedAt: user.CreatedAt,
 	}, nil
 }
 
-func (s *userService) GetUserProfile(ctx context.Context, targetID uuid.UUID) (dto.ProfileResponse, error) {
+func (s *userService) GetUserProfile(ctx context.Context, callerPerms []string, targetID uuid.UUID) (dto.ProfileResponse, error) {
+	if err := s.ensureCanManageTarget(ctx, callerPerms, targetID); err != nil {
+		return dto.ProfileResponse{}, err
+	}
 	prof, err := s.profileSvc.GetProfile(ctx, targetID)
 	if err != nil {
 		return dto.ProfileResponse{}, apperrors.NotFound("user profile not found")
 	}
+	// Staff-management view: always attach role + branch (when assigned).
+	if err := s.enrich(ctx, &prof); err != nil {
+		return dto.ProfileResponse{}, err
+	}
 	return prof, nil
 }
 
-func (s *userService) UpdateUserProfile(ctx context.Context, targetID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error) {
-	return s.profileSvc.UpdateProfile(ctx, targetID, req)
+func (s *userService) UpdateUserProfile(ctx context.Context, callerPerms []string, targetID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error) {
+	if err := s.ensureCanManageTarget(ctx, callerPerms, targetID); err != nil {
+		return dto.ProfileResponse{}, err
+	}
+	prof, err := s.profileSvc.UpdateProfile(ctx, targetID, req)
+	if err != nil {
+		return dto.ProfileResponse{}, err
+	}
+	if err := s.enrich(ctx, &prof); err != nil {
+		return dto.ProfileResponse{}, err
+	}
+	return prof, nil
 }
 
-func (s *userService) AdminSetPassword(ctx context.Context, targetID uuid.UUID, newPassword string) error {
+func (s *userService) GetOwnProfile(ctx context.Context, userID uuid.UUID) (dto.ProfileResponse, error) {
+	prof, err := s.profileSvc.GetProfile(ctx, userID)
+	if err != nil {
+		return dto.ProfileResponse{}, apperrors.NotFound("user profile not found")
+	}
+	if err := s.enrichIfStaff(ctx, &prof); err != nil {
+		return dto.ProfileResponse{}, err
+	}
+	return prof, nil
+}
+
+func (s *userService) UpdateOwnProfile(ctx context.Context, userID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error) {
+	prof, err := s.profileSvc.UpdateProfile(ctx, userID, req)
+	if err != nil {
+		return dto.ProfileResponse{}, err
+	}
+	if err := s.enrichIfStaff(ctx, &prof); err != nil {
+		return dto.ProfileResponse{}, err
+	}
+	return prof, nil
+}
+
+func (s *userService) AdminSetPassword(ctx context.Context, callerPerms []string, targetID uuid.UUID, newPassword string) error {
+	if err := s.ensureCanManageTarget(ctx, callerPerms, targetID); err != nil {
+		return err
+	}
 	return s.authSvc.AdminSetPassword(ctx, targetID, newPassword)
+}
+
+// crossBranchUserPerms grant access to any user regardless of branch.
+var crossBranchUserPerms = []string{"*:*:all", "user:manage:all", "user:view:all"}
+
+// ensureCanManageTarget allows admin-level callers to act on any user, but
+// restricts a branch-scoped caller (only user:manage:branch) to staff that
+// belong to the caller's own branch.
+func (s *userService) ensureCanManageTarget(ctx context.Context, callerPerms []string, targetID uuid.UUID) error {
+	for _, p := range callerPerms {
+		if slices.Contains(crossBranchUserPerms, p) {
+			return nil
+		}
+	}
+
+	callerID, ok := authcontext.CallerID(ctx)
+	if !ok {
+		return apperrors.Forbidden("caller identity missing")
+	}
+	callerMb, err := s.membershipSvc.GetMembership(ctx, callerID)
+	if err != nil {
+		var ae *apperrors.AppError
+		if errors.As(err, &ae) && ae.Code == apperrors.CodeNotFound {
+			return apperrors.Forbidden("you must belong to a branch")
+		}
+		return err
+	}
+	targetMb, err := s.membershipSvc.GetMembership(ctx, targetID)
+	if err != nil {
+		var ae *apperrors.AppError
+		if errors.As(err, &ae) && ae.Code == apperrors.CodeNotFound {
+			// Target belongs to no branch → not in the caller's branch.
+			return apperrors.Forbidden("you can only manage staff of your own branch")
+		}
+		return err
+	}
+	if targetMb.BranchID != callerMb.BranchID {
+		return apperrors.Forbidden("you can only manage staff of your own branch")
+	}
+	return nil
+}
+
+// enrich attaches role + branch (when assigned) to a profile. Used for
+// staff-management views where the target is always treated as staff.
+func (s *userService) enrich(ctx context.Context, prof *dto.ProfileResponse) error {
+	roles, err := s.rbacSvc.GetUserRoles(ctx, prof.UserID)
+	if err != nil {
+		return err
+	}
+	prof.Roles = roles
+
+	brief, err := s.membershipBranch(ctx, prof.UserID)
+	if err != nil {
+		return err
+	}
+	prof.Branch = brief
+	return nil
+}
+
+// enrichIfStaff attaches role + branch only when the user is staff. Plain
+// customers/guests are left untouched so their response is unchanged.
+func (s *userService) enrichIfStaff(ctx context.Context, prof *dto.ProfileResponse) error {
+	roles, err := s.rbacSvc.GetUserRoles(ctx, prof.UserID)
+	if err != nil {
+		return err
+	}
+	if isCustomerOnly(roles) {
+		return nil
+	}
+	prof.Roles = roles
+
+	brief, err := s.membershipBranch(ctx, prof.UserID)
+	if err != nil {
+		return err
+	}
+	prof.Branch = brief
+	return nil
+}
+
+// membershipBranch returns the user's branch brief, or nil when the user
+// belongs to no branch (e.g. super_admin, product_manager).
+func (s *userService) membershipBranch(ctx context.Context, userID uuid.UUID) (*dto.BranchBrief, error) {
+	mb, err := s.membershipSvc.GetMembership(ctx, userID)
+	if err != nil {
+		var ae *apperrors.AppError
+		if errors.As(err, &ae) && ae.Code == apperrors.CodeNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return s.branchBrief(ctx, mb.BranchID)
+}
+
+func (s *userService) branchBrief(ctx context.Context, branchID uuid.UUID) (*dto.BranchBrief, error) {
+	br, err := s.branchSvc.GetBranchByID(ctx, branchID)
+	if err != nil {
+		return nil, err
+	}
+	return &dto.BranchBrief{ID: br.ID, Name: br.Name, Address: br.Address}, nil
+}
+
+func isCustomerOnly(roles []string) bool {
+	for _, r := range roles {
+		if r != "customer" && r != "guest" {
+			return false
+		}
+	}
+	return true
 }
 
 // resolveAllowedRoles returns the union of assignable roles based on the caller's permissions.

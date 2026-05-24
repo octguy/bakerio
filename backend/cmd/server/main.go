@@ -112,7 +112,8 @@ func main() {
 	productModule := product.New(pool, tx)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
 	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
-	userModule.Wire(authModule.Service(), branchModule.MembershipService())
+	userModule.Wire(authModule.Service(), authModule.RBACService, branchModule.MembershipService(), branchModule.BranchService())
+	branchModule.WireDirectory(userModule.UserDirectory())
 
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
 		logger.Log.Fatal("rbac: failed to warm permission cache", zap.Error(err))

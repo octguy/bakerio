@@ -20,6 +20,7 @@ import (
 // calls Wire(authSvc) to finish.
 type Module struct {
 	profileSvc service.ProfileService
+	userDir    branchSvc.UserDirectory
 	profileH   *handler.ProfileHandler
 	userH      *handler.UserHandler
 }
@@ -29,17 +30,29 @@ func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
 	svc := service.NewProfileService(tx, repo)
 	return &Module{
 		profileSvc: svc,
-		profileH:   handler.NewProfileHandler(svc),
 	}
 }
 
 func (m *Module) ProfileService() service.ProfileService { return m.profileSvc }
 
 // Wire finishes construction once the auth and branch services are available.
-func (m *Module) Wire(auth authSvc.AuthService, membership branchSvc.MembershipService) {
-	userSvc := service.NewUserService(m.profileSvc, auth, membership)
+// The own-profile handler is built here too, since enrichment (role + branch)
+// needs the auth and branch services.
+func (m *Module) Wire(
+	auth authSvc.AuthService,
+	rbac authSvc.RBACService,
+	membership branchSvc.MembershipService,
+	branch branchSvc.BranchService,
+) {
+	userSvc := service.NewUserService(m.profileSvc, auth, rbac, membership, branch)
 	m.userH = handler.NewUserHandler(userSvc)
+	m.profileH = handler.NewProfileHandler(userSvc)
+	m.userDir = service.NewUserDirectory(m.profileSvc, auth, rbac)
 }
+
+// UserDirectory exposes the adapter the branch module consumes to enrich its
+// member responses. Available after Wire.
+func (m *Module) UserDirectory() branchSvc.UserDirectory { return m.userDir }
 
 func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
 	m.profileH.RegisterRoutes(protected)

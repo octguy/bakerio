@@ -89,7 +89,10 @@ func (h *UserHandler) GetUserProfile(c *gin.Context) {
 		response.Error(c, apperrors.Validation("invalid user id"))
 		return
 	}
-	res, err := h.svc.GetUserProfile(c.Request.Context(), targetID)
+	raw, _ := c.Get(middleware.PermissionsKey)
+	perms, _ := raw.([]string)
+
+	res, err := h.svc.GetUserProfile(c.Request.Context(), perms, targetID)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -122,7 +125,10 @@ func (h *UserHandler) UpdateUserProfile(c *gin.Context) {
 		response.Error(c, apperrors.Validation(err.Error()))
 		return
 	}
-	res, err := h.svc.UpdateUserProfile(c.Request.Context(), targetID, req)
+	raw, _ := c.Get(middleware.PermissionsKey)
+	perms, _ := raw.([]string)
+
+	res, err := h.svc.UpdateUserProfile(c.Request.Context(), perms, targetID, req)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -155,7 +161,10 @@ func (h *UserHandler) SetUserPassword(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.AdminSetPassword(c.Request.Context(), targetID, req.Password); err != nil {
+	raw, _ := c.Get(middleware.PermissionsKey)
+	perms, _ := raw.([]string)
+
+	if err := h.svc.AdminSetPassword(c.Request.Context(), perms, targetID, req.Password); err != nil {
 		response.Error(c, err)
 		return
 	}

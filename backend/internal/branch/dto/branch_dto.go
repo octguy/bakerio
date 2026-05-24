@@ -33,3 +33,24 @@ type BranchResponse struct {
 	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 } // @name BranchResponse
+
+type AssignMemberRequest struct {
+	UserID uuid.UUID `json:"user_id" binding:"required"`
+} // @name AssignMemberRequest
+
+type MemberInfo struct {
+	UserID      uuid.UUID `json:"user_id"`
+	DisplayName string    `json:"display_name"`
+	Email       string    `json:"email"`
+	Roles       []string  `json:"roles"`
+} // @name MemberInfo
+
+type BranchMembersResponse struct {
+	BranchID uuid.UUID    `json:"branch_id"`
+	Members  []MemberInfo `json:"members"`
+} // @name BranchMembersResponse
+
+type MembershipResponse struct {
+	UserID   uuid.UUID `json:"user_id"`
+	BranchID uuid.UUID `json:"branch_id"`
+}
