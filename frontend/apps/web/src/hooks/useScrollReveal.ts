@@ -15,7 +15,7 @@ export function useScrollReveal<T extends HTMLElement>(options?: { y?: number; d
         scrollTrigger: { trigger: el, start: 'top 85%', once: true },
       });
       cleanup = () => { ScrollTrigger.getAll().forEach(t => t.kill()); };
-    });
+    }).catch(err => console.error('Failed to load GSAP for useScrollReveal:', err));
     return () => { cleanup?.(); };
   }, []);
   return ref;

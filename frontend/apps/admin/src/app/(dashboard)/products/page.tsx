@@ -57,7 +57,7 @@ export default function ProductsPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
-  const columns: ColumnDef<Product, any>[] = [
+  const columns: ColumnDef<Product, unknown>[] = [
     { accessorKey: "sku", header: "SKU" },
     { accessorKey: "name", header: "Name" },
     { accessorKey: "category", header: "Category", cell: ({ row }) => row.original.category?.name || "—" },

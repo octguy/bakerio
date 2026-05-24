@@ -9,8 +9,8 @@ export default async function HomePage() {
 
   try {
     branches = await getBranches();
-  } catch (e: any) {
-    error = e.message || "Failed to load branches";
+  } catch (e: unknown) {
+    error = e instanceof Error ? e.message : "Failed to load branches";
   }
 
   return (

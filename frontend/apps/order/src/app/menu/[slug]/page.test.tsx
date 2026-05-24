@@ -1,5 +1,6 @@
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { getProduct } from "@repo/api-client";
 
 vi.mock("@/lib/format", () => ({
   formatVND: (amount: number) =>
@@ -41,5 +42,24 @@ describe("ProductDetailPage", () => {
   it("shows product price formatted in VND", async () => {
     render(await Page({ params: Promise.resolve({ slug: "banh-mi" }) }));
     expect(screen.getByText(/25.000/)).toBeInTheDocument();
+  });
+
+  it("renders placeholder icon when no images exist", async () => {
+    vi.mocked(getProduct).mockResolvedValueOnce({
+      id: "2",
+      name: "Placeholder Bánh",
+      base_price: 15000,
+      slug: "placeholder-banh",
+      description: "No image",
+      images: [],
+    });
+    const { container } = render(await Page({ params: Promise.resolve({ slug: "placeholder-banh" }) }));
+    expect(container.querySelector("img")).toBeNull();
+  });
+
+  it("displays Product not found message when getProduct throws", async () => {
+    vi.mocked(getProduct).mockRejectedValueOnce(new Error("API offline"));
+    render(await Page({ params: Promise.resolve({ slug: "banh-mi" }) }));
+    expect(screen.getByText("Product not found")).toBeInTheDocument();
   });
 });

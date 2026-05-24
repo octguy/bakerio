@@ -1,5 +1,7 @@
 export type { Product, Category, ProductImage, Branch, Order, OrderItem, OrderStatus, CartItem, User, LoginRequest, LoginResponse, ApiResponse } from "./types";
 
+export const VERSION = "1.0.0";
+
 // Re-export the hybrid client (real + mock)
 export {
   // Auth (REAL)

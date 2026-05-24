@@ -4,8 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { action, email, password, full_name } = body;
+  let body: Record<string, string>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const { action, email, password, full_name: _fullName } = body;
 
   try {
     if (action === "login") {
@@ -13,29 +18,39 @@ export async function POST(req: NextRequest) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        cache: "no-store",
       });
-      const json = await res.json();
+      const text = await res.text();
+      const json = JSON.parse(text);
       if (json.error) return NextResponse.json({ error: json.error.message }, { status: 401 });
 
-      // Verify user has admin/manager role
-      const profileRes = await fetch(`${API_BASE}/profile`, {
-        headers: { Authorization: `Bearer ${json.data.access_token}` },
-      });
-      const profileJson = await profileRes.json();
-      const roles: string[] = profileJson.data?.roles || [];
-      if (!roles.some((r) => ["admin", "manager"].includes(r))) {
+      const token = json.data.access_token;
+
+      // Decode JWT payload to extract roles (no verification needed — backend already validated)
+      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+      const roles: string[] = payload.roles || [];
+      if (!roles.some((r: string) => ["admin", "manager", "super_admin"].includes(r))) {
         return NextResponse.json({ error: "Access denied. Admin or Manager role required." }, { status: 403 });
       }
 
+      // Fetch profile for user display info
+      const profileRes = await fetch(`${API_BASE}/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const profileText = await profileRes.text();
+      const profileJson = JSON.parse(profileText);
+      const user = profileJson.data ? { ...profileJson.data, roles } : { email, roles };
+
       const cookieStore = await cookies();
-      cookieStore.set("admin_token", json.data.access_token, {
+      cookieStore.set("admin_token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 7,
       });
-      return NextResponse.json({ success: true, user: profileJson.data });
+      return NextResponse.json({ success: true, user, token });
     }
 
     if (action === "logout") {
@@ -49,19 +64,26 @@ export async function POST(req: NextRequest) {
       const token = cookieStore.get("admin_token")?.value;
       if (!token) return NextResponse.json({ user: null });
 
+      // Decode JWT for roles
+      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+      const roles: string[] = payload.roles || [];
+
       const res = await fetch(`${API_BASE}/profile`, {
         headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
       });
-      const json = await res.json();
+      const text = await res.text();
+      const json = JSON.parse(text);
       if (json.error) {
         cookieStore.delete("admin_token");
         return NextResponse.json({ user: null });
       }
-      return NextResponse.json({ user: json.data });
+      return NextResponse.json({ user: { ...json.data, roles }, token });
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-  } catch {
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  } catch (e) {
+    console.error("[admin/api/auth] error:", e);
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Server error" }, { status: 500 });
   }
 }

@@ -17,14 +17,16 @@ vi.mock("@repo/api-client/mock/analytics", () => ({
 }));
 
 vi.mock("@/components/data-table", () => ({
-  DataTable: ({ data }: any) => (
+  DataTable: ({ columns, data }: any) => (
     <table>
       <tbody>
-        {data.map((row: any) => (
-          <tr key={row.id}>
-            <td>{row.id}</td>
-            <td>{row.customer}</td>
-            <td>{row.status}</td>
+        {data.map((row: any, rIdx: number) => (
+          <tr key={row.id || rIdx}>
+            {columns.map((col: any, cIdx: number) => (
+              <td key={cIdx}>
+                {col.cell ? col.cell({ row: { original: row } }) : row[col.accessorKey]}
+              </td>
+            ))}
           </tr>
         ))}
       </tbody>

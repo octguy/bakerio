@@ -1,7 +1,9 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { getOrders } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
-
-export const dynamic = "force-dynamic";
+import Link from "next/link";
 
 const statusColors: Record<string, string> = {
   PENDING_PAYMENT: "bg-yellow-100 text-yellow-800",
@@ -14,17 +16,33 @@ const statusColors: Record<string, string> = {
   CANCELLED: "bg-red-100 text-red-800",
 };
 
-export default async function OrdersPage() {
-  const orders = await getOrders();
+export default function OrdersPage() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getOrders()
+      .then((data) => {
+        setOrders(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <h1 className="font-heading text-2xl font-bold mb-6">My Orders</h1>
 
-      {orders.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-12">
+          <p className="text-espresso/50">Loading orders...</p>
+        </div>
+      ) : orders.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-espresso/50 mb-2">No orders yet</p>
-          <a href="/menu" className="text-golden font-medium">Start ordering →</a>
+          <Link href="/menu" className="text-golden font-medium">Start ordering →</Link>
         </div>
       ) : (
         <div className="space-y-4">
@@ -37,7 +55,7 @@ export default async function OrdersPage() {
                 </span>
               </div>
               <div className="space-y-1 mb-2">
-                {order.items.map((item) => (
+                {order.items.map((item: any) => (
                   <p key={item.id} className="text-sm">{item.product_name} × {item.quantity}</p>
                 ))}
               </div>

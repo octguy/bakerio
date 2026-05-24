@@ -1,10 +1,17 @@
-import { getProducts, getCategories } from "@repo/api-client";
+import { getProducts, getCategories, type Product, type Category } from "@repo/api-client";
 import { MenuGrid } from "./_components/menu-grid";
 
 export const dynamic = "force-dynamic";
 
 export default async function MenuPage() {
-  const [products, categories] = await Promise.all([getProducts(), getCategories()]);
+  let products: Product[] = [];
+  let categories: Category[] = [];
+
+  try {
+    [products, categories] = await Promise.all([getProducts(), getCategories()]);
+  } catch {
+    // Backend may not have products endpoint yet
+  }
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
