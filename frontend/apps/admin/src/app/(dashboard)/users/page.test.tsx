@@ -23,7 +23,7 @@ vi.mock('@repo/api-client', () => ({
   createUser: vi.fn(),
 }));
 
-vi.mock('@repo/api-client/mock/staff', () => ({
+vi.mock('@repo/api-client/staff', () => ({
   getStaff: vi.fn().mockResolvedValue([
     { email: "thinh@bakerio.vn", name: "Thinh Nguyễn", initial: "T", role: "Manager", branch: "Lê Lợi", start: "2024", status: "clocked-in", shift: "06:00 — 14:00", accent: "cinnamon" }
   ]),

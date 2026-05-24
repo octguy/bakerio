@@ -20,6 +20,29 @@ function markMock(key: string) {
   MOCK_SERVED.add(key);
 }
 
+// adaptProduct maps the Go ProductResponse shape (price as decimal, category_id)
+// onto the frontend Product type (base_price, optional category). It is a no-op
+// for already-frontend-shaped payloads (mocks and tests).
+function adaptProduct(p: any): Product {
+  if (!p || typeof p !== "object") return p as Product;
+  if (p.base_price !== undefined || p.price === undefined) return p as Product;
+  const priceNum = typeof p.price === "string" ? parseFloat(p.price) : Number(p.price);
+  return { ...p, base_price: Number.isFinite(priceNum) ? priceNum : 0 };
+}
+
+// adaptBranch fills the frontend Branch.region field — the Go BranchResponse
+// has no region; we infer north/south/central from latitude when present.
+// Pass through unchanged when there's no lat to derive from, so mock fixtures
+// and tests stay shape-equal.
+function adaptBranch(b: any): Branch {
+  if (!b || typeof b !== "object") return b as Branch;
+  if (b.region) return b as Branch;
+  const lat = typeof b.lat === "number" ? b.lat : Number.NaN;
+  if (!Number.isFinite(lat)) return b as Branch;
+  const region = lat >= 20 ? "north" : lat >= 14 ? "central" : "south";
+  return { ...b, region };
+}
+
 export function getApiHealth(): { mockServed: string[] } {
   return { mockServed: [...MOCK_SERVED].sort() };
 }
@@ -110,7 +133,12 @@ import {
 
 export const getProducts = cache(async (): Promise<Product[]> => {
   try {
-    return await request<Product[]>("/products");
+    // Backend returns ProductListResponse {items,total,page,size}; legacy test
+    // mocks return a bare array. Honor either; pass through 204→null.
+    const raw = await request<Product[] | { items?: Product[] } | null>("/products");
+    if (raw == null) return raw as unknown as Product[];
+    const arr = Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : [];
+    return arr.map(adaptProduct);
   } catch (err) {
     markMock("products.list");
     console.info("[api-client] /products not available — using mock fixtures.", err);
@@ -120,7 +148,8 @@ export const getProducts = cache(async (): Promise<Product[]> => {
 
 export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
   try {
-    return await request<Product>(`/products/${idOrSlug}`);
+    const raw = await request<Product>(`/products/${idOrSlug}`);
+    return adaptProduct(raw);
   } catch (err) {
     markMock("products.get");
     console.info("[api-client] /products/:id not available — using mock fixture.", err);
@@ -130,8 +159,10 @@ export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
   }
 });
 
-// Audit §II DTO drift: createProduct used to take { price }; updateProduct took
-// { base_price }. Both now use base_price end-to-end.
+// Audit §II DTO drift: frontend keeps {sku, base_price, unit, allergens}; Go
+// CreateProductRequest only knows {name, category_id, price, sort_order}. We
+// translate base_price→price (string decimal) and drop fields the backend
+// doesn't accept. sku/unit/description/allergens remain client-side only.
 export async function createProduct(data: {
   sku: string;
   name: string;
@@ -141,8 +172,18 @@ export async function createProduct(data: {
   category_id?: string;
   allergens?: string[];
 }) {
+  const backendBody = {
+    name: data.name,
+    category_id: data.category_id,
+    price: String(data.base_price),
+    sort_order: 0,
+  };
   try {
-    return await request<Product>("/products", { method: "POST", body: JSON.stringify(data) });
+    const res = await request<Product>("/products", {
+      method: "POST",
+      body: JSON.stringify(backendBody),
+    });
+    return adaptProduct(res);
   } catch (err) {
     markMock("products.create");
     console.info("[api-client] /products POST not available — creating in mock.", err);
@@ -161,8 +202,16 @@ export async function updateProduct(
     allergens: string[];
   }>,
 ) {
+  const backendBody: Record<string, unknown> = {};
+  if (data.name !== undefined) backendBody.name = data.name;
+  if (data.base_price !== undefined) backendBody.price = String(data.base_price);
+  if (data.is_active !== undefined) backendBody.is_active = data.is_active;
   try {
-    return await request<Product>(`/products/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+    const res = await request<Product>(`/products/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(backendBody),
+    });
+    return adaptProduct(res);
   } catch (err) {
     markMock("products.update");
     console.info("[api-client] /products/:id PATCH not available — updating in mock.", err);
@@ -238,7 +287,9 @@ export async function deleteCategory(id: string) {
 
 export const getBranches = cache(async (): Promise<Branch[]> => {
   try {
-    return await request<Branch[]>("/branch");
+    const raw = await request<Branch[] | null>("/branch");
+    if (!Array.isArray(raw)) return raw as unknown as Branch[];
+    return raw.map(adaptBranch);
   } catch (err) {
     markMock("branches.list");
     console.info("[api-client] /branch not available — using mock fixtures.", err);
@@ -247,7 +298,8 @@ export const getBranches = cache(async (): Promise<Branch[]> => {
 });
 
 export const getBranch = cache(async (id: string): Promise<Branch> => {
-  return request<Branch>(`/branch/${id}`);
+  const raw = await request<Branch>(`/branch/${id}`);
+  return adaptBranch(raw);
 });
 
 export async function createBranch(data: { name: string; address: string; region: string; lat?: number; lng?: number }) {
@@ -260,6 +312,36 @@ export async function updateBranch(id: string, data: Partial<{ name: string; add
 
 export async function deleteBranch(id: string) {
   return request<void>(`/branch/${id}`, { method: "DELETE" });
+}
+
+// ===== BRANCH MEMBERSHIP (REAL) =====
+
+export interface BranchMember {
+  user_id: string;
+  display_name: string;
+  email: string;
+  roles: string[];
+}
+
+interface BranchMembersResponse {
+  branch_id: string;
+  members: BranchMember[];
+}
+
+export async function getBranchMembers(branchId: string): Promise<BranchMember[]> {
+  const res = await request<BranchMembersResponse | null>(`/branch/${branchId}/members`);
+  return res?.members ?? [];
+}
+
+export async function assignBranchMember(branchId: string, userId: string): Promise<BranchMember> {
+  return request<BranchMember>(`/branch/${branchId}/members`, {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId }),
+  });
+}
+
+export async function removeBranchMember(branchId: string, userId: string): Promise<void> {
+  return request<void>(`/branch/${branchId}/members/${userId}`, { method: "DELETE" });
 }
 
 // ===== SUPPLIERS (MOCK — audit §I: no backend module) =====
