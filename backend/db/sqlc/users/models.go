@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AuthAuthCredential struct {
@@ -78,14 +79,51 @@ type BranchBranchMembership struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type ProductBranchProduct struct {
+	ID        uuid.UUID  `json:"id"`
+	ProductID uuid.UUID  `json:"product_id"`
+	BranchID  uuid.UUID  `json:"branch_id"`
+	IsActive  bool       `json:"is_active"`
+	CreatedAt time.Time  `json:"created_at"`
+	CreatedBy *uuid.UUID `json:"created_by"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	UpdatedBy *uuid.UUID `json:"updated_by"`
+}
+
 type ProductCategory struct {
 	ID        uuid.UUID  `json:"id"`
 	Name      string     `json:"name"`
 	Slug      string     `json:"slug"`
-	ParentID  *uuid.UUID `json:"parent_id"`
 	SortOrder int32      `json:"sort_order"`
 	IsActive  bool       `json:"is_active"`
 	DeletedAt *time.Time `json:"deleted_at"`
+	CreatedAt time.Time  `json:"created_at"`
+	CreatedBy *uuid.UUID `json:"created_by"`
+	UpdatedAt time.Time  `json:"updated_at"`
+	UpdatedBy *uuid.UUID `json:"updated_by"`
+}
+
+type ProductProduct struct {
+	ID         uuid.UUID      `json:"id"`
+	Name       string         `json:"name"`
+	Slug       string         `json:"slug"`
+	CategoryID uuid.UUID      `json:"category_id"`
+	Price      pgtype.Numeric `json:"price"`
+	SortOrder  int32          `json:"sort_order"`
+	IsActive   bool           `json:"is_active"`
+	DeletedAt  *time.Time     `json:"deleted_at"`
+	CreatedAt  time.Time      `json:"created_at"`
+	CreatedBy  *uuid.UUID     `json:"created_by"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+	UpdatedBy  *uuid.UUID     `json:"updated_by"`
+}
+
+type ProductProductImage struct {
+	ID        uuid.UUID  `json:"id"`
+	ProductID uuid.UUID  `json:"product_id"`
+	ImageUrl  string     `json:"image_url"`
+	AltText   *string    `json:"alt_text"`
+	SortOrder int32      `json:"sort_order"`
 	CreatedAt time.Time  `json:"created_at"`
 	CreatedBy *uuid.UUID `json:"created_by"`
 	UpdatedAt time.Time  `json:"updated_at"`

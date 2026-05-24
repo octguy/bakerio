@@ -1,8 +1,8 @@
 -- name: CreateCategory :one
 INSERT INTO product.categories (
-    name, slug, parent_id, sort_order, created_by, updated_by
+    name, slug, sort_order, created_by, updated_by
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5
 ) RETURNING *;
 
 -- name: GetCategoryByID :one
@@ -23,11 +23,10 @@ UPDATE product.categories
 SET 
     name = $2,
     slug = $3,
-    parent_id = $4,
-    sort_order = $5,
-    is_active = $6,
+    sort_order = $4,
+    is_active = $5,
     updated_at = NOW(),
-    updated_by = $7
+    updated_by = $6
 WHERE id = $1 AND deleted_at IS NULL
 RETURNING *;
 

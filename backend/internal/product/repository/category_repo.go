@@ -13,11 +13,11 @@ import (
 )
 
 type CategoryRepository interface {
-	Create(ctx context.Context, name, slug string, parentID *uuid.UUID, sortOrder int32) (*domain.Category, error)
+	Create(ctx context.Context, name, slug string, sortOrder int32) (*domain.Category, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Category, error)
 	GetBySlug(ctx context.Context, slug string) (*domain.Category, error)
 	List(ctx context.Context) ([]*domain.Category, error)
-	Update(ctx context.Context, id uuid.UUID, name, slug string, parentID *uuid.UUID, sortOrder int32, isActive bool) (*domain.Category, error)
+	Update(ctx context.Context, id uuid.UUID, name, slug string, sortOrder int32, isActive bool) (*domain.Category, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
@@ -36,13 +36,12 @@ func (r *categoryRepo) queries(ctx context.Context) *productdb.Queries {
 	return r.db
 }
 
-func (r *categoryRepo) Create(ctx context.Context, name, slug string, parentID *uuid.UUID, sortOrder int32) (*domain.Category, error) {
+func (r *categoryRepo) Create(ctx context.Context, name, slug string, sortOrder int32) (*domain.Category, error) {
 	callerID, _ := authcontext.CallerID(ctx)
 
 	row, err := r.queries(ctx).CreateCategory(ctx, productdb.CreateCategoryParams{
 		Name:      name,
 		Slug:      slug,
-		ParentID:  parentID,
 		SortOrder: sortOrder,
 		CreatedBy: nullableUUID(callerID),
 		UpdatedBy: nullableUUID(callerID),
@@ -88,14 +87,13 @@ func (r *categoryRepo) List(ctx context.Context) ([]*domain.Category, error) {
 	return result, nil
 }
 
-func (r *categoryRepo) Update(ctx context.Context, id uuid.UUID, name, slug string, parentID *uuid.UUID, sortOrder int32, isActive bool) (*domain.Category, error) {
+func (r *categoryRepo) Update(ctx context.Context, id uuid.UUID, name, slug string, sortOrder int32, isActive bool) (*domain.Category, error) {
 	callerID, _ := authcontext.CallerID(ctx)
 
 	row, err := r.queries(ctx).UpdateCategory(ctx, productdb.UpdateCategoryParams{
 		ID:        id,
 		Name:      name,
 		Slug:      slug,
-		ParentID:  parentID,
 		SortOrder: sortOrder,
 		IsActive:  isActive,
 		UpdatedBy: nullableUUID(callerID),
@@ -119,7 +117,6 @@ func toCategoryEntity(c *productdb.ProductCategory) *domain.Category {
 		ID:        c.ID,
 		Name:      c.Name,
 		Slug:      c.Slug,
-		ParentID:  c.ParentID,
 		SortOrder: c.SortOrder,
 		IsActive:  c.IsActive,
 		DeletedAt: c.DeletedAt,

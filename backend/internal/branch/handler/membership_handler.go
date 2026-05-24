@@ -61,8 +61,7 @@ func (h *MembershipHandler) ensureBranchScope(c *gin.Context, target uuid.UUID) 
 
 	mb, err := h.svc.GetMembership(c.Request.Context(), callerID)
 	if err != nil {
-		var ae *apperrors.AppError
-		if errors.As(err, &ae) && ae.Code == apperrors.CodeNotFound {
+		if ae, ok2 := errors.AsType[*apperrors.AppError](err); ok2 && ae.Code == apperrors.CodeNotFound {
 			return apperrors.Forbidden("you do not belong to any branch")
 		}
 		return err
