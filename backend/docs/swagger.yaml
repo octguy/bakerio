@@ -1,5 +1,17 @@
 basePath: /api/v1
 definitions:
+  AddItemRequest:
+    properties:
+      product_id:
+        type: string
+      quantity:
+        maximum: 99
+        minimum: 1
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
   AssignMemberRequest:
     properties:
       user_id:
@@ -50,6 +62,32 @@ definitions:
         type: string
       status:
         type: string
+    type: object
+  CartItemResponse:
+    properties:
+      available:
+        type: boolean
+      line_total:
+        type: number
+      name:
+        type: string
+      price:
+        type: number
+      product_id:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  CartResponse:
+    properties:
+      count:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/CartItemResponse'
+        type: array
+      total:
+        type: number
     type: object
   CategoryResponse:
     properties:
@@ -336,6 +374,14 @@ definitions:
         type: integer
     required:
     - name
+    type: object
+  UpdateItemRequest:
+    properties:
+      quantity:
+        description: 0 removes the item; 1..99 sets the quantity.
+        maximum: 99
+        minimum: 0
+        type: integer
     type: object
   UpdateProductRequest:
     properties:
@@ -850,6 +896,93 @@ paths:
       summary: Update branch status
       tags:
       - branch
+  /cart:
+    delete:
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Empty the cart
+      tags:
+      - cart
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CartResponse'
+      security:
+      - BearerAuth: []
+      summary: Get the current user's cart
+      tags:
+      - cart
+  /cart/items:
+    post:
+      consumes:
+      - application/json
+      description: Upserts; quantity sums on conflict (capped at 99).
+      parameters:
+      - description: Item
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AddItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CartResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add an item to the cart
+      tags:
+      - cart
+  /cart/items/{productId}:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Product ID
+        in: path
+        name: productId
+        required: true
+        type: string
+      - description: Quantity
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CartResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set an item's quantity (0 removes it)
+      tags:
+      - cart
   /categories:
     get:
       produces:
