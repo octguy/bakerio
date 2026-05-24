@@ -175,7 +175,7 @@ describe("ProductsPage CRUD flow", () => {
         sku: "CAKE001",
         name: "Sponge Cake",
         unit: "piece",
-        price: 150000,
+        base_price: 150000,
         description: "Tasty cake",
         category_id: "cat-1",
       });

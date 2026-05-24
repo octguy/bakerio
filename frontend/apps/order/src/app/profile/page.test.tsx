@@ -10,6 +10,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
 
+vi.mock("@repo/api-client", () => ({
+  getOrderStats: vi.fn().mockResolvedValue({ lifetime: 47 }),
+}));
+
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
     user: { id: "1", email: "test@example.com", display_name: "John Doe", full_name: "John Doe" },

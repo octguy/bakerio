@@ -6,12 +6,11 @@ import { Menu } from "lucide-react";
 import MobileMenu from "./MobileMenu";
 
 const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/menu", label: "Menu" },
+  { href: "/menu", label: "Bánh" },
+  { href: "/menu", label: "Pâtisserie" },
+  { href: "/menu", label: "Cà phê" },
   { href: "/locations", label: "Locations" },
-  { href: "/about", label: "About" },
-  { href: "/blog", label: "Blog" },
-  { href: "/contact", label: "Contact" },
+  { href: "/blog", label: "Journal" },
 ];
 
 export default function Navbar() {
@@ -29,42 +28,68 @@ export default function Navbar() {
       <header
         className={`fixed top-0 left-0 right-0 z-30 transition-all duration-300 ease-[ease] ${
           scrolled
-            ? "bg-cream shadow-[0_2px_10px_rgba(44,24,16,0.08)]"
+            ? "bg-cream/95 backdrop-blur border-b border-crust shadow-[0_1px_0_rgba(44,24,16,0.04)]"
             : "bg-transparent"
         }`}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link
             href="/"
-            className={`font-[family-name:var(--font-script)] text-[2.5rem] leading-none transition-colors duration-300 ease-[ease] ${
+            className={`flex items-baseline gap-3 transition-colors duration-300 ${
               scrolled ? "text-espresso" : "text-white"
             }`}
           >
-            Bakerio
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <path d="M12 22V8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <path d="M12 8c-2-1.5-3.5-3.2-3.5-5C8.5 1.5 10 1 12 1s3.5.5 3.5 2c0 1.8-1.5 3.5-3.5 5z" stroke="currentColor" strokeWidth="1.3" />
+              <path d="M12 12c-2.5-.5-4.5-1.7-4.5-3.5 0-1 .5-1.7 1.5-2 1.5 1 2.5 2.7 3 5.5z" stroke="currentColor" strokeWidth="1.2" />
+              <path d="M12 12c2.5-.5 4.5-1.7 4.5-3.5 0-1-.5-1.7-1.5-2-1.5 1-2.5 2.7-3 5.5z" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+            <span className="font-display text-[1.4rem] leading-none tracking-tight">Bakerio</span>
+            <span
+              className={`hidden md:inline font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                scrolled ? "text-caramel" : "text-white/70"
+              }`}
+            >
+              est. mmxxiv · saigon
+            </span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <a
-                key={link.href}
+          <nav className="hidden md:flex items-center gap-9">
+            {navLinks.map((link, i) => (
+              <Link
+                key={link.label}
                 href={link.href}
-                className={`text-sm font-medium tracking-wide transition-colors duration-300 ease-[ease] ${
+                className={`text-[13px] font-medium tracking-wide transition-colors duration-300 ${
                   scrolled
-                    ? "text-espresso hover:text-golden"
-                    : "text-white/90 hover:text-white"
+                    ? i === 0
+                      ? "text-espresso border-b border-espresso pb-0.5"
+                      : "text-caramel hover:text-espresso"
+                    : "text-white/85 hover:text-white"
                 }`}
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </nav>
 
           <div className="flex items-center gap-4">
-            <a
-              href="/menu"
-              className="btn-primary hidden md:inline-block rounded-[8px] px-5 py-2.5 text-xs font-semibold uppercase tracking-widest"
+            <span
+              className={`hidden md:inline font-mono text-[10.5px] tracking-[0.12em] transition-colors ${
+                scrolled ? "text-caramel" : "text-white/70"
+              }`}
             >
-              Order
+              vi · en
+            </span>
+            <a
+              href="https://order.bakerio.vn"
+              className={`hidden md:inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors bkr-press ${
+                scrolled
+                  ? "bg-espresso text-cream hover:bg-cocoa"
+                  : "bg-white text-espresso hover:bg-cream"
+              }`}
+            >
+              Order online <span aria-hidden>→</span>
             </a>
             <button
               className={`md:hidden transition-all duration-300 ease-[ease] ${

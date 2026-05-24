@@ -4,27 +4,21 @@ test.describe("Web — Branding Site", () => {
   test("homepage loads with hero and navigation", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/Bakerio/);
-    await expect(page.locator("h1")).toContainText("Every Bite Tells a Story");
+    await expect(page.locator("h1")).toContainText(/Every\s+bite tells\s+a story\./);
     await expect(page.locator("header")).toBeVisible();
   });
 
   test("navigation links work", async ({ page }) => {
     await page.goto("/");
 
-    await page.locator("header nav a", { hasText: "Menu" }).first().click();
+    await page.locator("header nav a", { hasText: "Bánh" }).first().click();
     await expect(page).toHaveURL(/\/menu/);
 
     await page.locator("header nav a", { hasText: "Locations" }).first().click();
     await expect(page).toHaveURL(/\/locations/);
 
-    await page.locator("header nav a", { hasText: "About" }).first().click();
-    await expect(page).toHaveURL(/\/about/);
-
-    await page.locator("header nav a", { hasText: "Blog" }).first().click();
+    await page.locator("header nav a", { hasText: "Journal" }).first().click();
     await expect(page).toHaveURL(/\/blog/);
-
-    await page.locator("header nav a", { hasText: "Contact" }).first().click();
-    await expect(page).toHaveURL(/\/contact/);
   });
 
   test("menu page renders content", async ({ page }) => {
@@ -62,7 +56,7 @@ test.describe("Web — Branding Site", () => {
 
   test("404 page renders for unknown routes", async ({ page }) => {
     await page.goto("/this-page-does-not-exist");
-    await expect(page.getByText("Page Not Found")).toBeVisible();
+    await expect(page.getByText(/loaf not found/i)).toBeVisible();
   });
 
   test("footer is present on all pages", async ({ page }) => {

@@ -22,19 +22,20 @@ afterEach(() => {
 describe("RegisterPage", () => {
   it("renders the register heading", () => {
     render(<RegisterPage />);
-    expect(screen.getByRole("heading", { name: /create account/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /let's set you/i })).toBeInTheDocument();
   });
 
-  it("renders name, email, and password inputs with labels", () => {
+  it("renders name, email, phone, and password inputs with labels", () => {
     render(<RegisterPage />);
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/phone/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
   });
 
   it("shows validation errors when submitting empty fields", async () => {
     render(<RegisterPage />);
-    const form = screen.getByRole("button", { name: /create account/i });
+    const form = screen.getByRole("button", { name: /send verification code/i });
     const formEl = form.closest("form")!;
     fireEvent.submit(formEl);
 
@@ -47,7 +48,7 @@ describe("RegisterPage", () => {
 
   it("has a submit button and a link to login", () => {
     render(<RegisterPage />);
-    expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /send verification code/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /sign in/i })).toHaveAttribute("href", "/login");
   });
 
@@ -55,8 +56,13 @@ describe("RegisterPage", () => {
     render(<RegisterPage />);
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jane Doe" } });
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "jane@test.com" } });
+    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "0901234567" } });
     fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "secret123" } });
-    fireEvent.submit(screen.getByRole("button", { name: /create account/i }));
+    
+    // Check agreed checkbox
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    fireEvent.submit(screen.getByRole("button", { name: /send verification code/i }));
 
     await waitFor(() => {
       expect(mockRegister).toHaveBeenCalledWith("jane@test.com", "secret123", "Jane Doe");
@@ -67,8 +73,13 @@ describe("RegisterPage", () => {
     render(<RegisterPage />);
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jane Doe" } });
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "jane@test.com" } });
+    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "0901234567" } });
     fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "secret123" } });
-    fireEvent.submit(screen.getByRole("button", { name: /create account/i }));
+    
+    // Check agreed checkbox
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    fireEvent.submit(screen.getByRole("button", { name: /send verification code/i }));
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/login");
@@ -80,8 +91,13 @@ describe("RegisterPage", () => {
     render(<RegisterPage />);
     fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jane Doe" } });
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "jane@test.com" } });
+    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "0901234567" } });
     fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "secret123" } });
-    fireEvent.submit(screen.getByRole("button", { name: /create account/i }));
+    
+    // Check agreed checkbox
+    fireEvent.click(screen.getByRole("checkbox"));
+
+    fireEvent.submit(screen.getByRole("button", { name: /send verification code/i }));
 
     await waitFor(() => {
       expect(screen.getByText("Email already taken")).toBeInTheDocument();

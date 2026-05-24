@@ -1,12 +1,14 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 vi.mock('next/image', () => ({
   default: (props: Record<string, unknown>) => <img {...props} />,
 }));
 
 vi.mock('next/link', () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
+  default: ({ children, href, 'aria-label': ariaLabel }: { children: React.ReactNode; href: string; 'aria-label'?: string }) => (
+    <a href={href} aria-label={ariaLabel}>{children}</a>
+  ),
 }));
 
 vi.mock('gsap', () => ({
@@ -50,13 +52,17 @@ vi.mock('@/components/cards/TestimonialCard', () => ({
   default: ({ name }: { name: string }) => <div data-testid="testimonial-card">{name}</div>,
 }));
 
-vi.mock('@/data/products', () => ({
-  products: [
-    { name: 'Test Cake', price: 100, image: '/cake.jpg', category: 'Cakes', slug: 'test-cake' },
-    { name: 'Test Bread', price: 50, image: '/bread.jpg', category: 'Bread', slug: 'test-bread' },
-    { name: 'Test Pastry', price: 75, image: '/pastry.jpg', category: 'Pastries', slug: 'test-pastry' },
-    { name: 'Test Cookie', price: 30, image: '/cookie.jpg', category: 'Cookies', slug: 'test-cookie' },
-  ],
+vi.mock('@repo/api-client', () => ({
+  getProducts: vi.fn().mockResolvedValue([
+    {
+      id: 'p-1',
+      name: 'Bánh Mì Sài Gòn',
+      base_price: 35000,
+      is_active: true,
+      category: { id: 'c-1', name: 'Bread' },
+      images: [{ url: '/img/banhmi.jpg' }],
+    },
+  ]),
 }));
 
 vi.mock('@/data/locations', () => ({
@@ -87,6 +93,8 @@ vi.mock('lucide-react', () => ({
 
 import Home from './page';
 
+afterEach(cleanup);
+
 describe('Homepage', () => {
   it('renders without crashing', () => {
     const { container } = render(<Home />);
@@ -112,24 +120,24 @@ describe('Homepage', () => {
     const main = container.querySelector('main');
     expect(main).toBeInTheDocument();
     const sections = main!.querySelectorAll('section');
-    expect(sections.length).toBeGreaterThanOrEqual(5);
+    expect(sections.length).toBeGreaterThanOrEqual(4);
   });
 
   it('renders section headings for products, testimonials, and locations', () => {
     render(<Home />);
-    expect(screen.getAllByText("From Our Kitchen").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("What Our Customers Say").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Our Locations").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/what we baked/i)).toBeInTheDocument();
+    expect(screen.getByText(/the trick isn't the crust/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /eleven shops, one city/i })).toBeInTheDocument();
   });
 
   it('displays stats counters with values', () => {
     render(<Home />);
-    expect(screen.getAllByText("Branches").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Products").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Happy Customers").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Cửa hàng")).toBeInTheDocument();
+    expect(screen.getByText("Mở cửa")).toBeInTheDocument();
+    expect(screen.getByText("Lên men")).toBeInTheDocument();
   });
 
-  it('has footer CTA links for navigation', () => {
+  it('has CTA links for navigation', () => {
     render(<Home />);
     const locationLinks = screen.getAllByRole('link', { name: /view all locations/i });
     expect(locationLinks[0]).toHaveAttribute('href', '/locations');

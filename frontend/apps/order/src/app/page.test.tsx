@@ -17,7 +17,7 @@ vi.mock("@repo/api-client", () => ({
 vi.mock("next/image", () => ({ default: (props: any) => <img {...props} /> }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
-vi.mock("@/store/cart", () => ({ useCartStore: (selector: any) => mockSetBranch }));
+vi.mock("@/store/cart", () => ({ useCartStore: (_selector: any) => mockSetBranch }));
 
 afterEach(cleanup);
 
@@ -29,7 +29,7 @@ describe("HomePage (branch selection)", () => {
 
   it("shows branch selection heading", async () => {
     render(await Page());
-    expect(screen.getByRole("heading", { level: 1, name: /order from bakerio/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: /where shall/i })).toBeInTheDocument();
   });
 
   it("displays branch names from API", async () => {

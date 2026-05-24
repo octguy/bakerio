@@ -9,34 +9,6 @@ vi.mock("next/link", () => ({
   default: ({ children, ...props }: { children: React.ReactNode; href: string }) => <a {...props}>{children}</a>,
 }));
 
-vi.mock("@/components/ui/ScrollReveal", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}));
-
-vi.mock("@/components/ui/SectionHeader", () => ({
-  default: ({ title, script }: { title: string; script?: string }) => (
-    <div>
-      {script && <p>{script}</p>}
-      <h2>{title}</h2>
-    </div>
-  ),
-}));
-
-vi.mock("@/components/cards/TeamMemberCard", () => ({
-  default: ({ name, role }: { name: string; role: string }) => (
-    <div>
-      <p>{name}</p>
-      <p>{role}</p>
-    </div>
-  ),
-}));
-
-vi.mock("@/data/team", () => ({
-  team: [
-    { name: "Test Baker", role: "Head Baker", initials: "TB", bio: "Bio" },
-  ],
-}));
-
 import AboutPage from "./page";
 
 afterEach(cleanup);
@@ -50,40 +22,32 @@ describe("AboutPage", () => {
   it("displays the hero heading about the bakery", () => {
     render(<AboutPage />);
     expect(
-      screen.getByRole("heading", { level: 1, name: /baked with heart since 2024/i })
+      screen.getByRole("heading", { level: 1, name: /we started/i })
     ).toBeInTheDocument();
   });
 
   it("renders the origin story section", () => {
     render(<AboutPage />);
-    expect(
-      screen.getByRole("heading", { name: /how it all began/i })
-    ).toBeInTheDocument();
-    expect(screen.getByText(/small kitchen in saigon/i)).toBeInTheDocument();
+    expect(screen.getByText(/Linh and Khoa opened a 14m² shop/i)).toBeInTheDocument();
   });
 
-  it("renders core values", () => {
+  it("renders core pillars", () => {
     render(<AboutPage />);
-    expect(screen.getByText("Craft")).toBeInTheDocument();
-    expect(screen.getByText("Freshness")).toBeInTheDocument();
-    expect(screen.getByText("Community")).toBeInTheDocument();
+    expect(screen.getByText("Sourdough")).toBeInTheDocument();
+    expect(screen.getByText("Pâtisserie")).toBeInTheDocument();
+    expect(screen.getByText("Bánh mì")).toBeInTheDocument();
   });
 
   it("renders company stats", () => {
     render(<AboutPage />);
-    expect(screen.getByText("10+")).toBeInTheDocument();
-    expect(screen.getByText("Branches")).toBeInTheDocument();
-    expect(screen.getByText("50+")).toBeInTheDocument();
+    expect(screen.getByText("mmxxiv")).toBeInTheDocument();
+    expect(screen.getByText("11")).toBeInTheDocument();
+    expect(screen.getByText("46")).toBeInTheDocument();
   });
 
-  it("renders the join our team CTA with contact link", () => {
+  it("renders the pull-quote section", () => {
     render(<AboutPage />);
-    expect(
-      screen.getByRole("heading", { name: /join our team/i })
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /get in touch/i })).toHaveAttribute(
-      "href",
-      "/contact"
-    );
+    expect(screen.getByText(/the trick isn't the crust/i)).toBeInTheDocument();
+    expect(screen.getByText("Linh Phạm")).toBeInTheDocument();
   });
 });

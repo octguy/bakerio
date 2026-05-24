@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { setToken } from "@repo/api-client";
 
@@ -24,9 +24,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const authRevision = useRef(0);
   const router = useRouter();
 
   const fetchUser = useCallback(async () => {
+    const revision = authRevision.current;
     try {
       const res = await fetch("/api/auth", {
         method: "POST",
@@ -34,12 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ action: "me" }),
       });
       const data = await res.json();
+      if (revision !== authRevision.current) return;
       setUser(data.user ?? null);
       if (data.token) setToken(data.token);
     } catch {
+      if (revision !== authRevision.current) return;
       setUser(null);
     } finally {
-      setLoading(false);
+      if (revision === authRevision.current) setLoading(false);
     }
   }, []);
 
@@ -52,13 +56,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ action: "login", email, password }),
     });
     const data = await res.json();
-    if (data.error) return data.error;
+    if (data.error) {
+      setLoading(false);
+      return data.error;
+    }
+    authRevision.current += 1;
     setUser(data.user);
     if (data.token) setToken(data.token);
+    setLoading(false);
     return null;
   };
 
   const logout = async () => {
+    authRevision.current += 1;
     await fetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -66,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setUser(null);
     setToken("");
+    setLoading(false);
     router.push("/login");
   };
 

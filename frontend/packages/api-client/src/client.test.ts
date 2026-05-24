@@ -36,6 +36,8 @@ describe("API Client tests", () => {
   };
 
   describe("Request helper edge cases", () => {
+    const requestProbe = () => client.login("test@bakerio.com", "password");
+
     it("handles 204 No Content response", async () => {
       mockResponse(204, "", true);
       const res = await client.getBranches();
@@ -44,22 +46,22 @@ describe("API Client tests", () => {
 
     it("handles non-ok response with plain text error", async () => {
       mockResponse(500, "Database Error", false);
-      await expect(client.getBranches()).rejects.toThrow("Database Error");
+      await expect(requestProbe()).rejects.toThrow("Database Error");
     });
 
     it("handles non-ok response with no text/body gracefully", async () => {
       mockResponse(500, "", false);
-      await expect(client.getBranches()).rejects.toThrow("HTTP error 500 from /branch");
+      await expect(requestProbe()).rejects.toThrow("HTTP error 500 from /auth/login");
     });
 
     it("handles non-ok response with json error message", async () => {
       mockResponse(400, { error: { message: "Bad Payload" } }, false);
-      await expect(client.getBranches()).rejects.toThrow("Bad Payload");
+      await expect(requestProbe()).rejects.toThrow("Bad Payload");
     });
 
     it("handles non-ok response with alternate message field", async () => {
       mockResponse(403, { message: "Forbidden Access" }, false);
-      await expect(client.getBranches()).rejects.toThrow("Forbidden Access");
+      await expect(requestProbe()).rejects.toThrow("Forbidden Access");
     });
 
     it("handles empty non-204 responses gracefully", async () => {
@@ -70,12 +72,12 @@ describe("API Client tests", () => {
 
     it("handles response with invalid JSON content", async () => {
       mockResponse(200, "{invalid-json}", true);
-      await expect(client.getBranches()).rejects.toThrow("Invalid JSON from");
+      await expect(requestProbe()).rejects.toThrow("Invalid JSON from");
     });
 
     it("handles standard JSON response containing api-level error field", async () => {
       mockResponse(200, { error: { message: "Internal logic failed" } }, true);
-      await expect(client.getBranches()).rejects.toThrow("Internal logic failed");
+      await expect(requestProbe()).rejects.toThrow("Internal logic failed");
     });
   });
 
@@ -114,7 +116,7 @@ describe("API Client tests", () => {
       fetchMock.mockRejectedValue(new Error("Network disconnect"));
       const res = await client.getProducts();
       expect(res.length).toBeGreaterThan(0);
-      expect(res[0].id).toBe(mockProducts[0].id);
+      expect(res[0]?.id).toBe(mockProducts[0]?.id);
     });
 
     it("fetches single product from backend", async () => {
@@ -126,8 +128,8 @@ describe("API Client tests", () => {
 
     it("falls back to mock product when getProduct backend fails and item is in mock database", async () => {
       fetchMock.mockRejectedValue(new Error("Backend not found"));
-      const res = await client.getProduct("p-1");
-      expect(res.id).toBe("p-1");
+      const res = await client.getProduct("p-bmi-1");
+      expect(res.id).toBe("p-bmi-1");
     });
 
     it("throws if getProduct backend fails and item is not in mock database", async () => {
@@ -136,7 +138,7 @@ describe("API Client tests", () => {
     });
 
     it("creates product on backend", async () => {
-      const input = { sku: "SKU1", name: "New Prod", unit: "piece", price: 100 };
+      const input = { sku: "SKU1", name: "New Prod", unit: "piece", base_price: 100 };
       const output = { id: "p-new", ...input, base_price: 100, is_active: true, created_at: "" };
       mockResponse(201, { data: output });
       const res = await client.createProduct(input);
@@ -145,7 +147,7 @@ describe("API Client tests", () => {
 
     it("falls back to mock product creation when backend fails", async () => {
       fetchMock.mockRejectedValue(new Error("Creation forbidden"));
-      const input = { sku: "SKU-MOCK", name: "Mock Prod Name", unit: "piece", price: 50 };
+      const input = { sku: "SKU-MOCK", name: "Mock Prod Name", unit: "piece", base_price: 50 };
       const res = await client.createProduct(input);
       expect(res.sku).toBe("SKU-MOCK");
       expect(res.name).toBe("Mock Prod Name");
@@ -160,7 +162,7 @@ describe("API Client tests", () => {
 
     it("falls back to mock product update when backend fails", async () => {
       fetchMock.mockRejectedValue(new Error("Update failed"));
-      const res = await client.updateProduct("p-1", { name: "Updated Via Mock", base_price: 180000 });
+      const res = await client.updateProduct("p-bmi-1", { name: "Updated Via Mock", base_price: 180000 });
       expect(res.name).toBe("Updated Via Mock");
       expect(res.base_price).toBe(180000);
     });
@@ -205,9 +207,9 @@ describe("API Client tests", () => {
 
     it("falls back to mock category list if single category request fails", async () => {
       fetchMock.mockRejectedValue(new Error("Category fetch failed"));
-      const res = await client.getCategory("cat-1");
-      expect(res.id).toBe("cat-1");
-      expect(res.slug).toBe("cakes");
+      const res = await client.getCategory("cat-banhmi");
+      expect(res.id).toBe("cat-banhmi");
+      expect(res.slug).toBe("banh-mi");
     });
 
     it("throws if single category request fails and category slug is not in mock", async () => {
@@ -258,29 +260,28 @@ describe("API Client tests", () => {
 
   describe("Supplier operations", () => {
     it("gets and creates suppliers", async () => {
-      mockResponse(200, { data: [{ id: "sup-1", name: "Wheat Corp" }] });
-      let res = await client.getSuppliers("south");
-      expect(res[0].name).toBe("Wheat Corp");
+      let res = await client.getSuppliers();
+      expect(res.length).toBeGreaterThan(0);
+      expect(res[0]?.name).toBe("Lê & Sons");
 
-      mockResponse(201, { data: { id: "sup-2", name: "Sugar Inc" } });
-      res = await client.createSupplier({ name: "Sugar Inc", region: "south" });
-      expect(res.name).toBe("Sugar Inc");
+      const created = await client.createSupplier({ name: "Sugar Inc", region: "south" });
+      expect(created.name).toBe("Sugar Inc");
     });
   });
 
   describe("Procurement operations", () => {
     it("handles procurement operations", async () => {
-      mockResponse(200, { data: [{ id: "po-1", status: "PENDING" }] });
       let res = await client.getProcurementOrders();
-      expect(res[0].status).toBe("PENDING");
+      expect(res).toEqual([]);
 
-      mockResponse(201, { data: { id: "po-2", supplier_id: "sup-1" } });
-      res = await client.createProcurementOrder({ supplier_id: "sup-1", items: [] });
-      expect(res.id).toBe("po-2");
+      const created = await client.createProcurementOrder({ supplier_id: "sup-1", items: [] });
+      expect(created.id).toBe("po-1001");
 
-      mockResponse(200, { data: { id: "po-2", status: "APPROVED" } });
-      res = await client.updateProcurementStatus("po-2", "APPROVED");
-      expect(res.status).toBe("APPROVED");
+      res = await client.getProcurementOrders();
+      expect(res[0]?.id).toBe("po-1001");
+
+      const updated = await client.updateProcurementStatus("po-1001", "DELIVERED");
+      expect(updated!.status).toBe("DELIVERED");
     });
   });
 
@@ -315,7 +316,7 @@ describe("API Client tests", () => {
 
   describe("Index entrypoint exports", () => {
     it("verifies all index re-exports are accessible", async () => {
-      const indexEntrypoint = await import("./index");
+      const indexEntrypoint = await import("./index.js");
       expect(indexEntrypoint.getProducts).toBeDefined();
       expect(indexEntrypoint.mockProducts).toBeDefined();
       expect(indexEntrypoint.VERSION).toBe("1.0.0");

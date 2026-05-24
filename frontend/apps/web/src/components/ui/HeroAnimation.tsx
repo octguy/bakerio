@@ -8,7 +8,7 @@ export default function HeroAnimation({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (!ref.current || prefersReducedMotion()) return;
     let isMounted = true;
-    let ctx: any;
+    let ctx: { revert: () => void } | undefined;
     loadGsap().then(({ gsap }) => {
       if (!isMounted) return;
       ctx = gsap.context(() => {

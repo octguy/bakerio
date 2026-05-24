@@ -1,6 +1,6 @@
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { createBranch, updateBranch, deleteBranch } from '@repo/api-client';
 
 const mockToast = vi.fn();

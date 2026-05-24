@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
-  const { action, email, password, full_name: _fullName } = body;
+  const { action, email, password } = body;
 
   try {
     if (action === "login") {

@@ -37,7 +37,7 @@ test.describe("Admin — Authentication", () => {
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
     // Verify dashboard loaded (use heading to be specific)
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Good morning, baker/i })).toBeVisible();
 
     // Logout
     await page.getByRole("button", { name: /sign out/i }).click();

@@ -17,7 +17,7 @@ export default function CounterAnimation({ target, suffix = '', duration = 2 }: 
       return;
     }
     let tween: { kill: () => void } | undefined;
-    loadGsap().then(({ gsap, ScrollTrigger }) => {
+    loadGsap().then(({ gsap }) => {
       const obj = { val: 0 };
       tween = gsap.to(obj, {
         val: target,

@@ -2,13 +2,26 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <section className="flex-1 flex items-center justify-center px-6 py-24">
+    <section className="flex flex-1 items-center justify-center px-6 py-32">
       <div className="text-center">
-        <p className="font-[family-name:var(--font-script)] text-4xl text-golden mb-2">oops</p>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold text-espresso mb-4">Page Not Found</h1>
-        <p className="text-cocoa mb-8">The page you&apos;re looking for doesn&apos;t exist or has been moved.</p>
-        <Link href="/" className="inline-block bg-golden text-white px-8 py-3 rounded-[8px] font-medium hover:bg-cinnamon transition-colors">
-          Back to Home
+        <div className="mb-4 font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
+          ◆ fig. 404 · loaf not found
+        </div>
+        <h1
+          className="font-display tracking-tight text-espresso"
+          style={{ fontSize: "clamp(60px,10vw,120px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
+        >
+          We searched <span className="font-editorial text-cinnamon">every shelf.</span>
+        </h1>
+        <p className="mx-auto mt-5 max-w-md font-news text-[16px] leading-[1.55] text-cocoa">
+          The page you&apos;re looking for has sold out — or perhaps it never came out of the oven. The dough
+          rests; the journey continues.
+        </p>
+        <Link
+          href="/"
+          className="bkr-press mt-9 inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-cream"
+        >
+          Back to the counter <span>→</span>
         </Link>
       </div>
     </section>

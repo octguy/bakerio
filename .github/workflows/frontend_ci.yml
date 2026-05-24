@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - "frontend/**"
+      - "backend/**"
       - ".github/workflows/frontend_ci.yml"
   pull_request:
     branches: [main]
     paths:
       - "frontend/**"
+      - "backend/**"
       - ".github/workflows/frontend_ci.yml"
       - ".github/workflows/frontend_cd.yml"
   workflow_dispatch:
@@ -58,7 +60,28 @@ jobs:
 
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+
+      - name: Start backend test stack
+        run: docker compose -f ../backend/deployments/docker-compose.test.yml up -d --build app
+
+      - name: Wait for backend test stack
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:8080/health > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose -f ../backend/deployments/docker-compose.test.yml ps
+          docker compose -f ../backend/deployments/docker-compose.test.yml logs --tail=200 app
+          exit 1
+
+      - run: npm run build
       - run: npm run test:e2e
+
+      - name: Stop backend test stack
+        if: always()
+        run: docker compose -f ../backend/deployments/docker-compose.test.yml down -v --remove-orphans
 
       - name: Upload test results
         if: failure()

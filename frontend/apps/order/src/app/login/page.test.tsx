@@ -32,19 +32,19 @@ afterEach(() => {
 describe("LoginPage", () => {
   it("renders without crashing and shows login heading", () => {
     render(<LoginPage />);
-    expect(screen.getByRole("heading", { name: /welcome back/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /pick up your/i })).toBeInTheDocument();
   });
 
   it("renders email and password inputs with labels", () => {
     render(<LoginPage />);
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
   });
 
   it("shows validation error for invalid email format", async () => {
     render(<LoginPage />);
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "notanemail" } });
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "123456" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "123456" } });
     fireEvent.submit(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
@@ -60,7 +60,7 @@ describe("LoginPage", () => {
   it("calls login with correct email and password on valid submit", async () => {
     render(<LoginPage />);
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "user@test.com" } });
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
     fireEvent.submit(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
@@ -71,7 +71,7 @@ describe("LoginPage", () => {
   it("redirects to / after successful login", async () => {
     render(<LoginPage />);
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "user@test.com" } });
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
     fireEvent.submit(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
@@ -83,7 +83,7 @@ describe("LoginPage", () => {
     mockLogin.mockResolvedValue("Invalid credentials");
     render(<LoginPage />);
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "user@test.com" } });
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "wrongpass" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "wrongpass" } });
     fireEvent.submit(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
@@ -95,13 +95,12 @@ describe("LoginPage", () => {
     mockLogin.mockImplementation(() => new Promise(() => {}));
     render(<LoginPage />);
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "user@test.com" } });
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
     fireEvent.submit(screen.getByRole("button", { name: /sign in/i }));
 
     await waitFor(() => {
-      const button = screen.getByRole("button");
+      const button = screen.getByRole("button", { name: /signing in/i });
       expect(button).toBeDisabled();
-      expect(button).toHaveTextContent(/signing in/i);
     });
   });
 });

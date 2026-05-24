@@ -17,8 +17,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/format", () => ({
-  formatVND: (amount: number) =>
-    new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount),
+  formatVND: (amount: number) => `${amount.toLocaleString("vi-VN")}₫`,
 }));
 
 const mockItems = [
@@ -54,7 +53,7 @@ afterEach(cleanup);
 describe("CartPage", () => {
   it("renders without crashing", () => {
     render(<CartPage />);
-    expect(screen.getByText("Your Cart")).toBeDefined();
+    expect(screen.getByText("Your basket")).toBeDefined();
   });
 
   it("shows cart items with names and quantities", () => {
@@ -65,30 +64,30 @@ describe("CartPage", () => {
 
   it("shows total price formatted as VND", () => {
     render(<CartPage />);
-    expect(screen.getAllByText(/50\.000.*₫/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/47\.500.*₫/).length).toBeGreaterThan(0);
   });
 
   it("has a checkout link", () => {
     render(<CartPage />);
-    const link = screen.getByText("Proceed to Checkout");
-    expect(link.closest("a")?.getAttribute("href")).toBe("/checkout");
+    const link = screen.getByRole("link", { name: /Pay 47\.500/i });
+    expect(link.getAttribute("href")).toBe("/checkout");
   });
 
-  it("calls removeItem with correct id when remove button clicked", () => {
+  it("calls removeItem when Clear button clicked", () => {
     render(<CartPage />);
-    fireEvent.click(screen.getByText("×"));
+    fireEvent.click(screen.getByRole("button", { name: /clear/i }));
     expect(mockRemoveItem).toHaveBeenCalledWith("1");
   });
 
   it("calls updateQuantity with incremented value when + clicked", () => {
     render(<CartPage />);
-    fireEvent.click(screen.getByText("+"));
+    fireEvent.click(screen.getByRole("button", { name: "+" }));
     expect(mockUpdateQuantity).toHaveBeenCalledWith("1", 3);
   });
 
   it("calls updateQuantity with decremented value when − clicked", () => {
     render(<CartPage />);
-    fireEvent.click(screen.getByText("−"));
+    fireEvent.click(screen.getByRole("button", { name: "−" }));
     expect(mockUpdateQuantity).toHaveBeenCalledWith("1", 1);
   });
 
@@ -105,7 +104,7 @@ describe("CartPage", () => {
     });
 
     render(<CartPage />);
-    expect(screen.getByText("Your cart is empty")).toBeDefined();
-    expect(screen.getByText("Browse Menu").closest("a")?.getAttribute("href")).toBe("/menu");
+    expect(screen.getByText(/Nothing in the basket/i)).toBeDefined();
+    expect(screen.getByRole("link", { name: /browse menu/i }).getAttribute("href")).toBe("/menu");
   });
 });

@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 test.describe("Admin — Users Management", () => {
   test("users page loads with heading", async ({ page }) => {
     await page.goto("/users");
-    await expect(page.getByRole("heading", { name: /users/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: /staff/i })).toBeVisible({ timeout: 10000 });
   });
 
   test.skip("create staff user via dialog form", async ({ page }) => {

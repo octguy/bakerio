@@ -3,20 +3,20 @@ import { test, expect } from "@playwright/test";
 test.describe("Order — Customer Ordering App", () => {
   test("homepage shows branch selection", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("h1")).toContainText("Order from Bakerio");
-    await expect(page.getByText("Bakerio Quận 1")).toBeVisible();
-    await expect(page.getByText("Bakerio Hoàn Kiếm")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Bakerio Quận 1/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Bakerio Hoàn Kiếm/ })).toBeVisible();
   });
 
   test("selecting a branch navigates to menu", async ({ page }) => {
     await page.goto("/");
-    await page.getByText("Bakerio Quận 1").click();
+    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
     await expect(page).toHaveURL(/\/menu/);
   });
 
   test("menu page shows products", async ({ page }) => {
     await page.goto("/");
-    await page.getByText("Bakerio Quận 1").click();
+    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
     await expect(page).toHaveURL(/\/menu/);
     await expect(page.locator("main")).toBeVisible();
   });
@@ -33,7 +33,7 @@ test.describe("Order — Customer Ordering App", () => {
 
   test("full ordering flow: branch → menu → product detail", async ({ page }) => {
     await page.goto("/");
-    await page.getByText("Bakerio Quận 1").click();
+    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
     await expect(page).toHaveURL(/\/menu/);
 
     const productLink = page.locator("a[href*='/menu/']").first();

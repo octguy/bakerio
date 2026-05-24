@@ -17,6 +17,6 @@ export function useScrollReveal<T extends HTMLElement>(options?: { y?: number; d
       cleanup = () => { ScrollTrigger.getAll().forEach(t => t.kill()); };
     }).catch(err => console.error('Failed to load GSAP for useScrollReveal:', err));
     return () => { cleanup?.(); };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return ref;
 }

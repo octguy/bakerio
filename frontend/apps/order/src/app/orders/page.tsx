@@ -1,70 +1,232 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOrders } from "@repo/api-client";
+import { getOrders, getOrderStats, getProduct, reorderItems } from "@repo/api-client";
+import type { Order, OrderStatus } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCartStore } from "@/store/cart";
 
-const statusColors: Record<string, string> = {
-  PENDING_PAYMENT: "bg-yellow-100 text-yellow-800",
-  PAID: "bg-blue-100 text-blue-800",
-  CONFIRMED: "bg-blue-100 text-blue-800",
-  PREPARING: "bg-orange-100 text-orange-800",
-  READY: "bg-green-100 text-green-800",
-  DELIVERED: "bg-green-100 text-green-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  CANCELLED: "bg-red-100 text-red-800",
+const STATUS_LABEL: Record<OrderStatus, { l: string; c: string; live?: boolean }> = {
+  DRAFT: { l: "Draft", c: "var(--caramel)" },
+  PENDING_PAYMENT: { l: "Pending pay", c: "var(--golden)" },
+  PAID: { l: "Paid", c: "var(--cinnamon)" },
+  CONFIRMED: { l: "Confirmed", c: "var(--cinnamon)" },
+  PREPARING: { l: "In kitchen", c: "var(--cinnamon)", live: true },
+  READY: { l: "Ready", c: "var(--cinnamon)" },
+  OUT_FOR_DELIVERY: { l: "On its way", c: "var(--cinnamon)", live: true },
+  DELIVERED: { l: "Delivered", c: "var(--sage)" },
+  COMPLETED: { l: "Picked up", c: "var(--sage)" },
+  CANCELLED: { l: "Cancelled", c: "var(--sienna)" },
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const router = useRouter();
+  const addItem = useCartStore((s) => s.addItem);
+
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"All" | "In progress" | "Delivered" | "Cancelled">("All");
+  const [stats, setStats] = useState({ lifetime: 0, inProgress: 0, delivered: 0, cancelled: 0 });
+
+  const fetchOrdersData = async () => {
+    try {
+      const data = await getOrders();
+      setOrders(data);
+      const counts = await getOrderStats();
+      setStats(counts);
+    } catch (err) {
+      console.error("Failed to load orders:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    getOrders()
-      .then((data) => {
-        setOrders(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
+    fetchOrdersData(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleReorder = async (orderId: string) => {
+    setLoading(true);
+    try {
+      const itemsList = await reorderItems(orderId);
+      const addedItems = await Promise.all(
+        itemsList.map(async (item) => {
+          const product = await getProduct(item.product_id);
+          if (!product) return null;
+          return {
+            product: {
+              id: product.id,
+              name: product.name,
+              slug: product.slug,
+              description: product.description || "",
+              basePrice: product.base_price,
+              image: product.images?.[0]?.url || "",
+              category: product.category?.name || "",
+              options: [],
+            },
+            choices: [],
+            quantity: item.quantity,
+            unitPrice: product.base_price,
+          };
+        })
+      );
+
+      addedItems.forEach((it) => {
+        if (it) addItem(it);
       });
-  }, []);
+      router.push("/cart");
+    } catch (err) {
+      console.error("Reorder failed:", err);
+      setLoading(false);
+    }
+  };
+
+  const filtered = orders.filter((o) => {
+    if (activeTab === "All") return true;
+    if (activeTab === "In progress") {
+      return ["PENDING_PAYMENT", "PAID", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status);
+    }
+    if (activeTab === "Delivered") {
+      return ["DELIVERED", "COMPLETED"].includes(o.status);
+    }
+    if (activeTab === "Cancelled") {
+      return o.status === "CANCELLED";
+    }
+    return true;
+  });
+
+  const tabs = [
+    { l: "All", k: "All" as const, count: stats.lifetime },
+    { l: "In progress", k: "In progress" as const, count: stats.inProgress },
+    { l: "Delivered", k: "Delivered" as const, count: stats.delivered },
+    { l: "Cancelled", k: "Cancelled" as const, count: stats.cancelled },
+  ];
 
   return (
-    <main className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="font-heading text-2xl font-bold mb-6">My Orders</h1>
+    <main className="mx-auto max-w-md px-6 pt-4 pb-32">
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between">
+        <Link href="/profile" className="text-[22px] text-espresso">‹</Link>
+        <div className="font-display text-[16px] leading-none text-espresso">Orders</div>
+        <span className="font-mono text-[11px] tracking-[0.1em] text-caramel">Filter</span>
+      </div>
+
+      <div className="mt-2">
+        <h1
+          className="font-display tracking-tight"
+          style={{ fontSize: "clamp(32px,9vw,40px)", lineHeight: 0.95, letterSpacing: "-0.02em" }}
+        >
+          Your basket, <span className="font-editorial text-cinnamon">over time.</span>
+        </h1>
+        <p className="mt-2 font-editorial text-[14px] italic leading-[1.45] text-caramel">
+          You&apos;ve had {stats.lifetime} orders with us. That&apos;s a lot of bánh mì.
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="-mx-1 mt-4 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-2">
+        {tabs.map((tab) => {
+          const active = activeTab === tab.k;
+          return (
+            <button
+              key={tab.l}
+              onClick={() => setActiveTab(tab.k)}
+              className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[11px] tracking-[0.1em] transition-colors ${
+                active ? "bg-espresso font-bold text-white" : "border border-crust bg-white text-cocoa"
+              }`}
+            >
+              {tab.l} <span className="text-[10px] opacity-70">{tab.count}</span>
+            </button>
+          );
+        })}
+      </div>
 
       {loading ? (
-        <div className="text-center py-12">
-          <p className="text-espresso/50">Loading orders...</p>
+        <div className="py-12 text-center font-editorial text-[14px] italic text-caramel">
+          Reading the order book…
         </div>
-      ) : orders.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-espresso/50 mb-2">No orders yet</p>
-          <Link href="/menu" className="text-golden font-medium">Start ordering →</Link>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-crust-deep bg-butter py-10 text-center">
+          <p className="font-editorial text-[14px] italic text-cocoa">No orders to show.</p>
+          <Link
+            href="/menu"
+            className="mt-3 inline-block font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-cinnamon"
+          >
+            Start ordering →
+          </Link>
         </div>
       ) : (
-        <div className="space-y-4">
-          {orders.map((order) => (
-            <div key={order.id} className="bg-white border border-crust rounded-[10px] p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-mono text-xs text-espresso/50">{order.id}</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[order.status] || "bg-gray-100 text-gray-800"}`}>
-                  {order.status.replace(/_/g, " ")}
-                </span>
+        <div className="flex flex-col gap-2.5">
+          {filtered.map((o) => {
+            const st = STATUS_LABEL[o.status] ?? { l: o.status, c: "var(--caramel)" };
+            const itemsCount = o.items.reduce((s, i) => s + i.quantity, 0);
+            const displayId = o.id.replace("order-", "#");
+            return (
+              <div
+                key={o.id}
+                className={`relative overflow-hidden rounded-2xl bg-white p-4 ${
+                  st.live ? "border-2 border-cinnamon" : "border border-crust"
+                }`}
+              >
+                {st.live && (
+                  <div className="absolute right-0 top-0 rounded-bl-[10px] bg-cinnamon px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-white">
+                    <span className="bkr-pulse mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-white align-middle" />
+                    Live
+                  </div>
+                )}
+                <div className="mb-2 flex items-center gap-2.5">
+                  <span className="font-mono text-[11.5px] font-bold tracking-[0.04em] text-espresso">
+                    {displayId}
+                  </span>
+                  <span className="font-mono text-[10px] tracking-wider text-caramel">
+                    · {o.branch_id === "br-le-loi" ? "Lê Lợi" : o.branch_id === "br-pasteur" ? "Pasteur" : o.branch_id === "br-thao-dien" ? "Thảo Điền" : "Phú Mỹ Hưng"}
+                  </span>
+                  <span
+                    className="ml-auto font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]"
+                    style={{ color: st.c }}
+                  >
+                    {st.l}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-butter font-display text-[16px] text-cinnamon">
+                    {itemsCount}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-editorial text-[13px] text-cocoa">
+                      {itemsCount} items · {new Date(o.created_at).toLocaleDateString("vi-VN")}
+                    </div>
+                    <div className="mt-0.5 font-display text-[18px] text-espresso">
+                      {formatVND(o.total_amount).replace("₫", "")}
+                      <span className="ml-0.5 text-[11px] text-caramel">₫</span>
+                    </div>
+                  </div>
+                  <Link href={st.live ? `/orders/${o.id}` : "#"}>
+                    <span className="text-[18px] text-caramel">›</span>
+                  </Link>
+                </div>
+
+                <div className="mt-2.5 flex justify-between border-t border-dashed border-crust pt-2.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-cinnamon">
+                  {st.live ? (
+                    <Link href={`/orders/${o.id}`} className="hover:text-espresso transition-colors">
+                      Track →
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={() => handleReorder(o.id)}
+                      className="font-bold text-cinnamon hover:text-espresso transition-colors"
+                    >
+                      Reorder
+                    </button>
+                  )}
+                  <span className="text-caramel cursor-pointer">Receipt ↗</span>
+                </div>
               </div>
-              <div className="space-y-1 mb-2">
-                {order.items.map((item: any) => (
-                  <p key={item.id} className="text-sm">{item.product_name} × {item.quantity}</p>
-                ))}
-              </div>
-              <div className="flex items-center justify-between border-t border-crust pt-2">
-                <span className="text-xs text-espresso/50">{new Date(order.created_at).toLocaleDateString("vi-VN")}</span>
-                <span className="font-semibold text-golden">{formatVND(order.total_amount)}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </main>
