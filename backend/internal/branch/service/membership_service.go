@@ -4,18 +4,19 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/branch/repository"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 )
 
-// MembershipService is the public interface other modules use to read or
-// write a user's branch assignment. The user module (orchestrator) calls
-// Set/Remove. Handlers that need to enforce branch ownership call Get and
-// compare against the target branch.
+// MembershipService is the data layer for a user's branch assignment.
+// It performs no authorization — callers (handlers) enforce who may touch
+// which branch. The user module also consumes this interface to write a
+// membership row right after creating a staff account.
 type MembershipService interface {
-	Get(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error)
-	Set(ctx context.Context, userID, branchID uuid.UUID) error
-	Remove(ctx context.Context, userID uuid.UUID) error
+	GetMembership(ctx context.Context, userID uuid.UUID) (dto.MembershipResponse, error)
+	SetMembership(ctx context.Context, userID, branchID uuid.UUID) error
+	RemoveMembership(ctx context.Context, userID uuid.UUID) error
 	ListUsersByBranch(ctx context.Context, branchID uuid.UUID) ([]uuid.UUID, error)
 }
 
@@ -28,25 +29,36 @@ func NewMembershipService(repo repository.MembershipRepository, branchRepo repos
 	return &membershipService{repo: repo, branchRepo: branchRepo}
 }
 
-func (s *membershipService) Get(ctx context.Context, userID uuid.UUID) (*uuid.UUID, error) {
-	return s.repo.Get(ctx, userID)
+// GetMembership returns the user's branch assignment, or NotFound if the user
+// belongs to no branch.
+func (m *membershipService) GetMembership(ctx context.Context, userID uuid.UUID) (dto.MembershipResponse, error) {
+	branchID, err := m.repo.GetMembership(ctx, userID)
+	if err != nil {
+		return dto.MembershipResponse{}, apperrors.Internal("database error", err)
+	}
+	if branchID == nil {
+		return dto.MembershipResponse{}, apperrors.NotFound("membership not found")
+	}
+	return dto.MembershipResponse{UserID: userID, BranchID: *branchID}, nil
 }
 
-func (s *membershipService) Set(ctx context.Context, userID, branchID uuid.UUID) error {
-	br, err := s.branchRepo.GetBranchByID(ctx, branchID)
+// SetMembership assigns (or moves) a user to a branch. Validates that the
+// branch exists first.
+func (m *membershipService) SetMembership(ctx context.Context, userID, branchID uuid.UUID) error {
+	br, err := m.branchRepo.GetBranchByID(ctx, branchID)
 	if err != nil {
 		return apperrors.Internal("database error", err)
 	}
 	if br == nil {
 		return apperrors.NotFound("branch not found")
 	}
-	return s.repo.Upsert(ctx, userID, branchID)
+	return m.repo.UpdateMembership(ctx, userID, branchID)
 }
 
-func (s *membershipService) Remove(ctx context.Context, userID uuid.UUID) error {
-	return s.repo.Delete(ctx, userID)
+func (m *membershipService) RemoveMembership(ctx context.Context, userID uuid.UUID) error {
+	return m.repo.DeleteMembership(ctx, userID)
 }
 
-func (s *membershipService) ListUsersByBranch(ctx context.Context, branchID uuid.UUID) ([]uuid.UUID, error) {
-	return s.repo.ListUsersByBranch(ctx, branchID)
+func (m *membershipService) ListUsersByBranch(ctx context.Context, branchID uuid.UUID) ([]uuid.UUID, error) {
+	return m.repo.ListUsersByBranch(ctx, branchID)
 }

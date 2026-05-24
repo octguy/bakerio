@@ -33,7 +33,7 @@ func NewCategoryService(tx *txmanager.TxManager, repo repository.CategoryReposit
 func (s *categoryService) CreateCategory(ctx context.Context, req dto.CreateCategoryRequest) (dto.CategoryResponse, error) {
 	slug := slugify(req.Name)
 
-	category, err := s.repo.Create(ctx, req.Name, slug, req.ParentID, req.SortOrder)
+	category, err := s.repo.Create(ctx, req.Name, slug, req.SortOrder)
 	if err != nil {
 		return dto.CategoryResponse{}, apperrors.Internal("failed to create category", err)
 	}
@@ -66,13 +66,8 @@ func (s *categoryService) ListCategories(ctx context.Context) ([]dto.CategoryRes
 }
 
 func (s *categoryService) UpdateCategory(ctx context.Context, id uuid.UUID, req dto.UpdateCategoryRequest) (dto.CategoryResponse, error) {
-	// 1. Prevent circular parent reference
-	if req.ParentID != nil && *req.ParentID == id {
-		return dto.CategoryResponse{}, apperrors.Validation("category cannot be its own parent")
-	}
-
 	slug := slugify(req.Name)
-	category, err := s.repo.Update(ctx, id, req.Name, slug, req.ParentID, req.SortOrder, req.IsActive)
+	category, err := s.repo.Update(ctx, id, req.Name, slug, req.SortOrder, req.IsActive)
 	if err != nil {
 		return dto.CategoryResponse{}, apperrors.Internal("failed to update category", err)
 	}
@@ -89,7 +84,6 @@ func toCategoryResponse(c *domain.Category) dto.CategoryResponse {
 		ID:        c.ID,
 		Name:      c.Name,
 		Slug:      c.Slug,
-		ParentID:  c.ParentID,
 		SortOrder: c.SortOrder,
 		IsActive:  c.IsActive,
 		CreatedAt: c.CreatedAt,

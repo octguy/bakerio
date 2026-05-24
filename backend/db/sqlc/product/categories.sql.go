@@ -13,16 +13,15 @@ import (
 
 const createCategory = `-- name: CreateCategory :one
 INSERT INTO product.categories (
-    name, slug, parent_id, sort_order, created_by, updated_by
+    name, slug, sort_order, created_by, updated_by
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
-) RETURNING id, name, slug, parent_id, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by
+    $1, $2, $3, $4, $5
+) RETURNING id, name, slug, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by
 `
 
 type CreateCategoryParams struct {
 	Name      string     `json:"name"`
 	Slug      string     `json:"slug"`
-	ParentID  *uuid.UUID `json:"parent_id"`
 	SortOrder int32      `json:"sort_order"`
 	CreatedBy *uuid.UUID `json:"created_by"`
 	UpdatedBy *uuid.UUID `json:"updated_by"`
@@ -32,7 +31,6 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 	row := q.db.QueryRow(ctx, createCategory,
 		arg.Name,
 		arg.Slug,
-		arg.ParentID,
 		arg.SortOrder,
 		arg.CreatedBy,
 		arg.UpdatedBy,
@@ -42,7 +40,6 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 		&i.ID,
 		&i.Name,
 		&i.Slug,
-		&i.ParentID,
 		&i.SortOrder,
 		&i.IsActive,
 		&i.DeletedAt,
@@ -55,7 +52,7 @@ func (q *Queries) CreateCategory(ctx context.Context, arg CreateCategoryParams) 
 }
 
 const getCategoryByID = `-- name: GetCategoryByID :one
-SELECT id, name, slug, parent_id, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.categories
+SELECT id, name, slug, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.categories
 WHERE id = $1 AND deleted_at IS NULL
 `
 
@@ -66,7 +63,6 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id uuid.UUID) (ProductCat
 		&i.ID,
 		&i.Name,
 		&i.Slug,
-		&i.ParentID,
 		&i.SortOrder,
 		&i.IsActive,
 		&i.DeletedAt,
@@ -79,7 +75,7 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id uuid.UUID) (ProductCat
 }
 
 const getCategoryBySlug = `-- name: GetCategoryBySlug :one
-SELECT id, name, slug, parent_id, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.categories
+SELECT id, name, slug, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.categories
 WHERE slug = $1 AND deleted_at IS NULL
 `
 
@@ -90,7 +86,6 @@ func (q *Queries) GetCategoryBySlug(ctx context.Context, slug string) (ProductCa
 		&i.ID,
 		&i.Name,
 		&i.Slug,
-		&i.ParentID,
 		&i.SortOrder,
 		&i.IsActive,
 		&i.DeletedAt,
@@ -103,7 +98,7 @@ func (q *Queries) GetCategoryBySlug(ctx context.Context, slug string) (ProductCa
 }
 
 const listCategories = `-- name: ListCategories :many
-SELECT id, name, slug, parent_id, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.categories
+SELECT id, name, slug, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by FROM product.categories
 WHERE deleted_at IS NULL
 ORDER BY sort_order ASC, name ASC
 `
@@ -121,7 +116,6 @@ func (q *Queries) ListCategories(ctx context.Context) ([]ProductCategory, error)
 			&i.ID,
 			&i.Name,
 			&i.Slug,
-			&i.ParentID,
 			&i.SortOrder,
 			&i.IsActive,
 			&i.DeletedAt,
@@ -163,20 +157,18 @@ UPDATE product.categories
 SET 
     name = $2,
     slug = $3,
-    parent_id = $4,
-    sort_order = $5,
-    is_active = $6,
+    sort_order = $4,
+    is_active = $5,
     updated_at = NOW(),
-    updated_by = $7
+    updated_by = $6
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, name, slug, parent_id, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by
+RETURNING id, name, slug, sort_order, is_active, deleted_at, created_at, created_by, updated_at, updated_by
 `
 
 type UpdateCategoryParams struct {
 	ID        uuid.UUID  `json:"id"`
 	Name      string     `json:"name"`
 	Slug      string     `json:"slug"`
-	ParentID  *uuid.UUID `json:"parent_id"`
 	SortOrder int32      `json:"sort_order"`
 	IsActive  bool       `json:"is_active"`
 	UpdatedBy *uuid.UUID `json:"updated_by"`
@@ -187,7 +179,6 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		arg.ID,
 		arg.Name,
 		arg.Slug,
-		arg.ParentID,
 		arg.SortOrder,
 		arg.IsActive,
 		arg.UpdatedBy,
@@ -197,7 +188,6 @@ func (q *Queries) UpdateCategory(ctx context.Context, arg UpdateCategoryParams) 
 		&i.ID,
 		&i.Name,
 		&i.Slug,
-		&i.ParentID,
 		&i.SortOrder,
 		&i.IsActive,
 		&i.DeletedAt,

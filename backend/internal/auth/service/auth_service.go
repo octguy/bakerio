@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/octguy/bakerio/backend/internal/auth/dto"
 	"github.com/octguy/bakerio/backend/internal/auth/repository"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
@@ -57,6 +58,10 @@ type AuthService interface {
 	// Branch assignment is the user module's responsibility — call
 	// branch.MembershipService.Set(userID, branchID) after this returns.
 	CreateStaff(ctx context.Context, email, fullName, password, roleName string) (dto.RegisterResponse, error)
+
+	// GetEmailByUserID returns the account email for a user. Other modules use
+	// this to enrich responses instead of reading auth.users directly.
+	GetEmailByUserID(ctx context.Context, id uuid.UUID) (string, error)
 }
 
 type authService struct {
@@ -322,6 +327,17 @@ func (s *authService) CreateStaff(ctx context.Context, email, fullName, password
 		FullName:  fullName,
 		CreatedAt: user.CreatedAt,
 	}, nil
+}
+
+func (s *authService) GetEmailByUserID(ctx context.Context, id uuid.UUID) (string, error) {
+	user, err := s.repo.FindUserByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", UserNotFound
+		}
+		return "", apperrors.Internal("database error", err)
+	}
+	return user.Email, nil
 }
 
 func (s *authService) generateToken(userID uuid.UUID, roles []string) (string, error) {

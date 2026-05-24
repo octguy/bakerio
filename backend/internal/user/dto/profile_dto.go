@@ -18,4 +18,8 @@ type ProfileResponse struct {
 	Address     *string   `json:"address"`
 	AvatarURL   *string   `json:"avatar_url"`
 	Bio         *string   `json:"bio"`
+	// Staff-only enrichment. Omitted for plain customers so their response
+	// stays unchanged.
+	Roles  []string     `json:"roles,omitempty"`
+	Branch *BranchBrief `json:"branch,omitempty"`
 } // @name ProfileResponse

@@ -15,13 +15,20 @@ type CreateUserRequest struct {
 } // @name CreateUserRequest
 
 type CreateUserResponse struct {
-	ID        uuid.UUID  `json:"id"`
-	Email     string     `json:"email"`
-	FullName  string     `json:"full_name"`
-	Role      string     `json:"role"`
-	BranchID  *uuid.UUID `json:"branch_id"`
-	CreatedAt time.Time  `json:"created_at"`
+	ID        uuid.UUID    `json:"id"`
+	Email     string       `json:"email"`
+	FullName  string       `json:"full_name"`
+	Role      string       `json:"role"`
+	Branch    *BranchBrief `json:"branch,omitempty"`
+	CreatedAt time.Time    `json:"created_at"`
 } // @name CreateUserResponse
+
+// BranchBrief is the slice of branch info joined into user-facing responses.
+type BranchBrief struct {
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	Address string    `json:"address"`
+} // @name BranchBrief
 
 type SetPasswordRequest struct {
 	Password string `json:"password" binding:"required,min=6"`

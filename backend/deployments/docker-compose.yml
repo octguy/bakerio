@@ -105,6 +105,27 @@ services:
       - bakerio_network
     restart: unless-stopped
 
+  minio:
+    image: minio/minio:latest
+    container_name: bakerio-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
   app:
     build:
       context: ..
@@ -118,6 +139,8 @@ services:
       redis:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     environment:
       SERVER_ENV: ${SERVER_ENV}
@@ -139,6 +162,12 @@ services:
       EMAIL_USER: ""
       EMAIL_PASSWORD: ""
       EMAIL_FROM: bakerio@example.com
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      MINIO_USE_SSL: "false"
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL}
     ports:
       - "${SERVER_PORT}:${SERVER_PORT}"
     networks:

@@ -10,7 +10,6 @@ type Category struct {
 	ID        uuid.UUID
 	Name      string
 	Slug      string
-	ParentID  *uuid.UUID
 	SortOrder int32
 	IsActive  bool
 	DeletedAt *time.Time
