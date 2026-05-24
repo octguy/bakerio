@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { Menu } from "lucide-react";
 import MobileMenu from "./MobileMenu";
 
@@ -33,14 +34,14 @@ export default function Navbar() {
         }`}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <a
+          <Link
             href="/"
             className={`font-[family-name:var(--font-script)] text-[2.5rem] leading-none transition-colors duration-300 ease-[ease] ${
               scrolled ? "text-espresso" : "text-white"
             }`}
           >
             Bakerio
-          </a>
+          </Link>
 
           <nav className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (

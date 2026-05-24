@@ -29,7 +29,7 @@ export default function CounterAnimation({ target, suffix = '', duration = 2 }: 
           if (ref.current) ref.current.innerText = obj.val.toLocaleString() + suffix;
         },
       });
-    });
+    }).catch(err => console.error('Failed to load GSAP for CounterAnimation:', err));
     return () => { tween?.kill(); };
   }, [target, suffix, duration]);
 

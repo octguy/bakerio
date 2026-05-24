@@ -22,31 +22,36 @@ import OrdersPage from "./page";
 afterEach(cleanup);
 
 describe("OrdersPage", () => {
-  it("renders without crashing", async () => {
-    const { container } = render(await OrdersPage());
+  it("renders without crashing", () => {
+    const { container } = render(<OrdersPage />);
     expect(container).toBeTruthy();
   });
 
-  it("shows orders heading", async () => {
-    render(await OrdersPage());
+  it("shows orders heading", () => {
+    render(<OrdersPage />);
     expect(screen.getByText("My Orders")).toBeInTheDocument();
   });
 
-  it("displays order status and total", async () => {
-    render(await OrdersPage());
-    expect(screen.getByText("COMPLETED")).toBeInTheDocument();
-    expect(screen.getByText("75,000 ₫")).toBeInTheDocument();
+  it("displays loading state initially", () => {
+    render(<OrdersPage />);
+    expect(screen.getByText("Loading orders...")).toBeInTheDocument();
   });
 
-  it("displays order item info", async () => {
-    render(await OrdersPage());
-    expect(screen.getByText("Bread × 3")).toBeInTheDocument();
+  it("displays order status and total after load", async () => {
+    render(<OrdersPage />);
+    expect(await screen.findByText("COMPLETED")).toBeInTheDocument();
+    expect(await screen.findByText("75,000 ₫")).toBeInTheDocument();
+  });
+
+  it("displays order item info after load", async () => {
+    render(<OrdersPage />);
+    expect(await screen.findByText("Bread × 3")).toBeInTheDocument();
   });
 
   it("shows empty state when no orders", async () => {
     const { getOrders } = await import("@repo/api-client");
     vi.mocked(getOrders).mockResolvedValueOnce([]);
-    render(await OrdersPage());
-    expect(screen.getByText("No orders yet")).toBeInTheDocument();
+    render(<OrdersPage />);
+    expect(await screen.findByText("No orders yet")).toBeInTheDocument();
   });
 });

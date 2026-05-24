@@ -51,12 +51,35 @@ vi.mock("recharts", () => ({
   BarChart: ({ children }: any) => <div>{children}</div>,
   Bar: () => null,
   XAxis: () => null,
-  YAxis: () => null,
+  YAxis: ({ tickFormatter }: any) => {
+    if (tickFormatter) {
+      try {
+        tickFormatter(12000000);
+      } catch {}
+    }
+    return null;
+  },
   CartesianGrid: () => null,
-  Tooltip: () => null,
+  Tooltip: ({ formatter }: any) => {
+    if (formatter) {
+      try {
+        formatter(5000000);
+      } catch {}
+    }
+    return null;
+  },
   ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
   PieChart: ({ children }: any) => <div>{children}</div>,
-  Pie: () => null,
+  Pie: ({ label }: any) => {
+    if (label) {
+      if (typeof label === "function") {
+        try {
+          label({ name: "PENDING_PAYMENT", percent: 0.25 });
+        } catch {}
+      }
+    }
+    return null;
+  },
   Cell: () => null,
 }));
 

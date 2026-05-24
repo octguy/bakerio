@@ -63,9 +63,11 @@ export function Sidebar() {
   const pathname = usePathname();
 
   // Close mobile sidebar on navigation
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <>

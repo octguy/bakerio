@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 vi.mock("next/image", () => ({
@@ -74,5 +74,46 @@ describe("LocationsPage", () => {
     // Locations show addresses as contact info
     expect(screen.getByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).toBeInTheDocument();
     expect(screen.getByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).toBeInTheDocument();
+  });
+
+  it("filters locations when a region button is clicked", () => {
+    render(<LocationsPage />);
+    
+    // Click District 1 filter
+    fireEvent.click(screen.getByRole("button", { name: "District 1" }));
+    expect(screen.getByText("Bakerio Nguyễn Huệ")).toBeInTheDocument();
+    expect(screen.queryByText("Bakerio Phú Mỹ Hưng")).not.toBeInTheDocument();
+
+    // Click All filter
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(screen.getByText("Bakerio Nguyễn Huệ")).toBeInTheDocument();
+    expect(screen.getByText("Bakerio Phú Mỹ Hưng")).toBeInTheDocument();
+  });
+
+  it("selects and deselects a location card when clicked", () => {
+    render(<LocationsPage />);
+    
+    const card = screen.getByText("Bakerio Nguyễn Huệ").closest(".cursor-pointer")!;
+    
+    // Click to select
+    fireEvent.click(card);
+    expect(card.className).toContain("ring-2 ring-golden");
+
+    // Click to deselect
+    fireEvent.click(card);
+    expect(card.className).not.toContain("ring-2 ring-golden");
+  });
+
+  it("stops propagation when clicking the directions link", () => {
+    render(<LocationsPage />);
+    
+    const card = screen.getByText("Bakerio Nguyễn Huệ").closest(".cursor-pointer")!;
+    const link = screen.getAllByRole("link", { name: /get directions/i })[0];
+    
+    // Click directions link
+    fireEvent.click(link);
+    
+    // Expect card is NOT selected because propagation was stopped
+    expect(card.className).not.toContain("ring-2 ring-golden");
   });
 });

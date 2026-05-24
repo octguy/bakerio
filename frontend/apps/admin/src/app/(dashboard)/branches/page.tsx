@@ -52,7 +52,7 @@ export default function BranchesPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
-  const columns: ColumnDef<Branch, any>[] = [
+  const columns: ColumnDef<Branch, unknown>[] = [
     { accessorKey: "name", header: "Name" },
     { accessorKey: "address", header: "Address" },
     { accessorKey: "region", header: "Region" },

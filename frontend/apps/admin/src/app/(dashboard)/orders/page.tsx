@@ -5,7 +5,6 @@ import { getMockRecentOrders } from "@repo/api-client/mock/analytics";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/utils";
 
@@ -35,7 +34,7 @@ export default function OrdersPage() {
 
   const filtered = statusFilter === "ALL" ? allOrders : allOrders.filter((o) => o.status === statusFilter);
 
-  const columns: ColumnDef<OrderRow, any>[] = [
+  const columns: ColumnDef<OrderRow, unknown>[] = [
     { accessorKey: "id", header: "Order ID", cell: ({ row }) => <span className="font-mono text-xs">{row.original.id}</span> },
     { accessorKey: "customer", header: "Customer" },
     { accessorKey: "total", header: "Total", cell: ({ row }) => formatCurrency(row.original.total) },

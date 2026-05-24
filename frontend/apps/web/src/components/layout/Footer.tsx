@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Camera, Globe, Video, Send } from "lucide-react";
 
 const quickLinks = [
@@ -28,9 +29,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div>
-            <a href="/" className="font-[family-name:var(--font-script)] text-3xl text-cream">
+            <Link href="/" className="font-[family-name:var(--font-script)] text-3xl text-cream">
               Bakerio
-            </a>
+            </Link>
             <p className="mt-4 text-sm leading-relaxed text-[var(--vanilla)]/80">
               Artisan bakery crafting fresh bread, pastries &amp; cakes daily with love and tradition.
             </p>

@@ -15,9 +15,32 @@ function headers(): HeadersInit {
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { headers: headers(), ...opts });
-  const json = await res.json();
+  if (res.status === 204) {
+    return null as unknown as T;
+  }
+  const text = await res.text();
+  if (!res.ok) {
+    if (!text) {
+      throw new Error(`HTTP error ${res.status} from ${path}`);
+    }
+    let errorMsg = text;
+    try {
+      const json = JSON.parse(text);
+      errorMsg = json.error?.message || json.message || text;
+    } catch {}
+    throw new Error(errorMsg);
+  }
+  if (!text) {
+    return null as unknown as T;
+  }
+  let json: { data?: T; error?: { message: string } };
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid JSON from ${path}: ${text.slice(0, 100)}`);
+  }
   if (json.error) throw new Error(json.error.message);
-  return json.data;
+  return json.data as T;
 }
 
 // ===== AUTH (REAL) =====
@@ -50,34 +73,85 @@ export function getToken() { return token; }
 
 import { cache } from "react";
 
+import { 
+  getProducts as mockGetProducts, 
+  getProduct as mockGetProduct, 
+  createProduct as mockCreateProduct, 
+  updateProduct as mockUpdateProduct, 
+  deleteProduct as mockDeleteProduct,
+  getCategories as mockGetCategories
+} from "./mock";
+
 export const getProducts = cache(async (): Promise<Product[]> => {
-  return request<Product[]>("/products");
+  try {
+    return await request<Product[]>("/products");
+  } catch (err) {
+    console.warn("getProducts backend failed, falling back to mock:", err);
+    return mockGetProducts();
+  }
 });
 
-export const getProduct = cache(async (id: string): Promise<Product> => {
-  return request<Product>(`/products/${id}`);
+export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
+  try {
+    return await request<Product>(`/products/${idOrSlug}`);
+  } catch (err) {
+    console.warn("getProduct backend failed, falling back to mock:", err);
+    const found = await mockGetProduct(idOrSlug);
+    if (found) return found;
+    throw err;
+  }
 });
 
 export async function createProduct(data: { sku: string; name: string; unit: string; price: number; description?: string; category_id?: string }) {
-  return request<Product>("/products", { method: "POST", body: JSON.stringify(data) });
+  try {
+    return await request<Product>("/products", { method: "POST", body: JSON.stringify(data) });
+  } catch (err) {
+    console.warn("createProduct backend failed, falling back to mock:", err);
+    return mockCreateProduct(data);
+  }
 }
 
 export async function updateProduct(id: string, data: Partial<{ name: string; description: string; unit: string; is_active: boolean; base_price: number }>) {
-  return request<Product>(`/products/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+  try {
+    return await request<Product>(`/products/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+  } catch (err) {
+    console.warn("updateProduct backend failed, falling back to mock:", err);
+    return mockUpdateProduct(id, data);
+  }
 }
 
 export async function deleteProduct(id: string) {
-  return request<void>(`/products/${id}`, { method: "DELETE" });
+  try {
+    return await request<void>(`/products/${id}`, { method: "DELETE" });
+  } catch (err) {
+    console.warn("deleteProduct backend failed, falling back to mock:", err);
+    return mockDeleteProduct(id);
+  }
 }
 
 // ===== CATEGORIES (REAL) =====
 
 export const getCategories = cache(async (): Promise<Category[]> => {
-  return request<Category[]>("/categories");
+  try {
+    const cats = await request<Category[]>("/categories");
+    if (!cats || cats.length === 0) return mockGetCategories();
+    return cats;
+  } catch (err) {
+    console.warn("getCategories backend failed, falling back to mock:", err);
+    return mockGetCategories();
+  }
 });
 
 export const getCategory = cache(async (id: string): Promise<Category> => {
-  return request<Category>(`/categories/${id}`);
+  try {
+    return await request<Category>(`/categories/${id}`);
+  } catch (err) {
+    console.warn("getCategory backend failed, falling back to mock:", err);
+    const { mockCategories } = await import("./mock");
+    const found = mockCategories.find((c) => c.id === id || c.slug === id);
+    if (found) return found;
+    throw err;
+  }
 });
 
 export async function createCategory(data: { name: string; parent_id?: string; sort_order?: number }) {

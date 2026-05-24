@@ -28,22 +28,110 @@ export const mockBranches: Branch[] = [
   { id: "br-3", name: "Bakerio Phú Mỹ Hưng", address: "Crescent Mall, District 7", lat: 10.7295, lng: 106.7186, status: "active", region: "south" },
 ];
 
-let mockOrders: Order[] = [];
-let orderCounter = 0;
+function getSavedProducts(): Product[] {
+  if (typeof window !== "undefined" && window.localStorage) {
+    const saved = localStorage.getItem("bakerio-mock-products");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+  }
+  return mockProducts;
+}
+
+function saveProducts(products: Product[]) {
+  if (typeof window !== "undefined" && window.localStorage) {
+    localStorage.setItem("bakerio-mock-products", JSON.stringify(products));
+  }
+}
+
+function getSavedOrders(): Order[] {
+  if (typeof window !== "undefined" && window.localStorage) {
+    const saved = localStorage.getItem("bakerio-mock-orders");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {}
+    }
+  }
+  return [];
+}
+
+function saveOrders(orders: Order[]) {
+  if (typeof window !== "undefined" && window.localStorage) {
+    localStorage.setItem("bakerio-mock-orders", JSON.stringify(orders));
+  }
+}
 
 // --- Mock API functions ---
 
 export async function getProducts(categorySlug?: string): Promise<Product[]> {
   await delay(300);
+  const products = getSavedProducts();
   if (categorySlug) {
-    return mockProducts.filter((p) => p.category?.slug === categorySlug);
+    return products.filter((p) => p.category?.slug === categorySlug);
   }
-  return mockProducts;
+  return products;
 }
 
-export async function getProduct(slug: string): Promise<Product | null> {
+export async function getProduct(slugOrId: string): Promise<Product | null> {
   await delay(200);
-  return mockProducts.find((p) => p.slug === slug) ?? null;
+  const products = getSavedProducts();
+  return products.find((p) => p.slug === slugOrId || p.id === slugOrId) ?? null;
+}
+
+export async function createProduct(data: { sku: string; name: string; unit: string; price: number; description?: string; category_id?: string }): Promise<Product> {
+  await delay(300);
+  const products = getSavedProducts();
+  
+  let category: Category | undefined;
+  if (data.category_id) {
+    category = mockCategories.find((c) => c.id === data.category_id);
+  }
+  
+  const newProduct: Product = {
+    id: `p-${Date.now()}`,
+    sku: data.sku,
+    name: data.name,
+    slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    description: data.description,
+    base_price: data.price,
+    unit: data.unit,
+    is_active: true,
+    category,
+    images: [{ id: `img-${Date.now()}`, url: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80", is_primary: true, sort_order: 0 }],
+    created_at: new Date().toISOString(),
+  };
+  
+  products.push(newProduct);
+  saveProducts(products);
+  return newProduct;
+}
+
+export async function updateProduct(id: string, data: Partial<{ name: string; description: string; unit: string; is_active: boolean; base_price: number }>): Promise<Product> {
+  await delay(300);
+  const products = getSavedProducts();
+  const index = products.findIndex((p) => p.id === id);
+  if (index === -1) throw new Error("Product not found");
+  
+  const updated = {
+    ...products[index],
+    ...data,
+    slug: data.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : products[index].slug,
+    base_price: data.base_price !== undefined ? data.base_price : products[index].base_price,
+  };
+  
+  products[index] = updated;
+  saveProducts(products);
+  return updated;
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  await delay(300);
+  let products = getSavedProducts();
+  products = products.filter((p) => p.id !== id);
+  saveProducts(products);
 }
 
 export async function getCategories(): Promise<Category[]> {
@@ -58,11 +146,14 @@ export async function getBranches(): Promise<Branch[]> {
 
 export async function createOrder(items: { product_id: string; quantity: number }[], branchId: string, note?: string): Promise<Order> {
   await delay(500);
-  orderCounter++;
+  const products = getSavedProducts();
+  const savedOrders = getSavedOrders();
+  const orderIdCounter = savedOrders.length + 1;
+  
   const orderItems: OrderItem[] = items.map((item, i) => {
-    const product = mockProducts.find((p) => p.id === item.product_id)!;
+    const product = products.find((p) => p.id === item.product_id) || mockProducts.find((p) => p.id === item.product_id)!;
     return {
-      id: `oi-${orderCounter}-${i}`,
+      id: `oi-${orderIdCounter}-${i}`,
       product_id: item.product_id,
       product_name: product.name,
       quantity: item.quantity,
@@ -72,7 +163,7 @@ export async function createOrder(items: { product_id: string; quantity: number 
   });
 
   const order: Order = {
-    id: `order-${orderCounter}`,
+    id: `order-${1000 + orderIdCounter}`,
     branch_id: branchId,
     status: "PENDING_PAYMENT",
     items: orderItems,
@@ -82,27 +173,32 @@ export async function createOrder(items: { product_id: string; quantity: number 
     updated_at: new Date().toISOString(),
   };
 
-  mockOrders.push(order);
+  savedOrders.push(order);
+  saveOrders(savedOrders);
   return order;
 }
 
 export async function getOrders(): Promise<Order[]> {
   await delay(300);
-  return [...mockOrders].reverse();
+  const savedOrders = getSavedOrders();
+  return [...savedOrders].reverse();
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
   await delay(200);
-  return mockOrders.find((o) => o.id === id) ?? null;
+  const savedOrders = getSavedOrders();
+  return savedOrders.find((o) => o.id === id) ?? null;
 }
 
 export async function updateOrderStatus(id: string, status: Order["status"]): Promise<Order | null> {
   await delay(300);
-  const order = mockOrders.find((o) => o.id === id);
-  if (!order) return null;
-  order.status = status;
-  order.updated_at = new Date().toISOString();
-  return order;
+  const savedOrders = getSavedOrders();
+  const index = savedOrders.findIndex((o) => o.id === id);
+  if (index === -1) return null;
+  savedOrders[index].status = status;
+  savedOrders[index].updated_at = new Date().toISOString();
+  saveOrders(savedOrders);
+  return savedOrders[index];
 }
 
 export async function login(email: string, _password: string): Promise<{ access_token: string; user: { id: string; email: string; full_name: string; roles: string[] } }> {
