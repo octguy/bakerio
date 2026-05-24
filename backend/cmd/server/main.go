@@ -115,6 +115,12 @@ func main() {
 	userModule.Wire(authModule.Service(), authModule.RBACService, branchModule.MembershipService(), branchModule.BranchService())
 	branchModule.WireDirectory(userModule.UserDirectory())
 
+	// Product <-> branch fan-out wiring (eager opt-in availability):
+	//   product reads the branch list when creating a product;
+	//   branch asks product to seed rows when a branch is created.
+	productModule.Wire(branchModule.BranchService(), branchModule.MembershipService())
+	branchModule.BranchService().SetProductSeeder(productModule.Service())
+
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
 		logger.Log.Fatal("rbac: failed to warm permission cache", zap.Error(err))
 	}

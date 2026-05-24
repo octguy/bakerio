@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/shopspring/decimal"
 )
 
 type AuthAuthCredential struct {
@@ -104,18 +104,18 @@ type ProductCategory struct {
 }
 
 type ProductProduct struct {
-	ID         uuid.UUID      `json:"id"`
-	Name       string         `json:"name"`
-	Slug       string         `json:"slug"`
-	CategoryID uuid.UUID      `json:"category_id"`
-	Price      pgtype.Numeric `json:"price"`
-	SortOrder  int32          `json:"sort_order"`
-	IsActive   bool           `json:"is_active"`
-	DeletedAt  *time.Time     `json:"deleted_at"`
-	CreatedAt  time.Time      `json:"created_at"`
-	CreatedBy  *uuid.UUID     `json:"created_by"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	UpdatedBy  *uuid.UUID     `json:"updated_by"`
+	ID         uuid.UUID       `json:"id"`
+	Name       string          `json:"name"`
+	Slug       string          `json:"slug"`
+	CategoryID uuid.UUID       `json:"category_id"`
+	Price      decimal.Decimal `json:"price"`
+	SortOrder  int32           `json:"sort_order"`
+	IsActive   bool            `json:"is_active"`
+	DeletedAt  *time.Time      `json:"deleted_at"`
+	CreatedAt  time.Time       `json:"created_at"`
+	CreatedBy  *uuid.UUID      `json:"created_by"`
+	UpdatedAt  time.Time       `json:"updated_at"`
+	UpdatedBy  *uuid.UUID      `json:"updated_by"`
 }
 
 type ProductProductImage struct {

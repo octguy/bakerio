@@ -61,10 +61,19 @@ sqlc:
 run:
 	go run ./cmd/server
 
-# Stop the server
+# Stop the server (kills whatever listens on SERVER_PORT + the `go run` wrapper).
+# `go run` spawns a compiled child binary; killing only the wrapper leaves it
+# bound to the port, so we kill the port listener directly.
 #   make stop
 stop:
-	pkill -f "go run ./cmd/server" || true
+	@pids=$$(lsof -ti tcp:$(SERVER_PORT) 2>/dev/null); \
+	if [ -z "$$pids" ]; then echo "no listener on port $(SERVER_PORT)"; else \
+		kill $$pids 2>/dev/null; sleep 1; \
+		alive=$$(lsof -ti tcp:$(SERVER_PORT) 2>/dev/null); \
+		if [ -n "$$alive" ]; then kill -9 $$alive 2>/dev/null; fi; \
+		echo "stopped listener on port $(SERVER_PORT)"; \
+	fi
+	@pkill -f "go run ./cmd/server" 2>/dev/null || true
 
 # ============================================================
 #  DOCKER
