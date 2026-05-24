@@ -20,10 +20,14 @@ func NewBranchHandler(svc service.BranchService) *BranchHandler {
 	return &BranchHandler{svc: svc}
 }
 
-func (h *BranchHandler) RegisterRoutes(protected *gin.RouterGroup) {
+func (h *BranchHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
+	// Public: customers can view branches without auth
+	pub := public.Group("/branch")
+	pub.GET("", h.GetBranchList)
+	pub.GET("/:id", h.GetBranchByID)
+
+	// Protected: management operations require auth
 	g := protected.Group("/branch")
-	g.GET("", middleware.RequirePermission("branch:view:all"), h.GetBranchList)
-	g.GET("/:id", middleware.RequirePermission("branch:view:all"), h.GetBranchByID)
 	g.POST("", middleware.RequirePermission("branch:manage:all"), h.CreateBranch)
 	g.PATCH("/:id", middleware.RequirePermission("branch:manage:all"), h.UpdateBranch)
 	g.PATCH("/:id/status", middleware.RequirePermission("branch:manage:all"), h.UpdateStatus)

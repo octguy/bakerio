@@ -20,10 +20,14 @@ func NewCategoryHandler(svc service.CategoryService) *CategoryHandler {
 	return &CategoryHandler{svc: svc}
 }
 
-func (h *CategoryHandler) RegisterRoutes(protected *gin.RouterGroup) {
+func (h *CategoryHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
+	// Public: customers can view categories
+	pub := public.Group("/categories")
+	pub.GET("", h.ListCategories)
+	pub.GET("/:id", h.GetCategory)
+
+	// Protected: management operations require auth
 	g := protected.Group("/categories")
-	g.GET("", middleware.RequirePermission("product:view:all"), h.ListCategories)
-	g.GET("/:id", middleware.RequirePermission("product:view:all"), h.GetCategory)
 	g.POST("", middleware.RequirePermission("product:manage:all"), h.CreateCategory)
 	g.PATCH("/:id", middleware.RequirePermission("product:manage:all"), h.UpdateCategory)
 	g.DELETE("/:id", middleware.RequirePermission("product:manage:all"), h.DeleteCategory)

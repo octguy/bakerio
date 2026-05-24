@@ -15,8 +15,10 @@ package main
 import (
 	"context"
 	"os/signal"
+	"strings"
 	"syscall"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth"
 	"github.com/octguy/bakerio/backend/internal/branch"
@@ -146,6 +148,20 @@ func main() {
 
 	// 8. HTTP server
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOriginFunc: func(origin string) bool {
+			return strings.HasPrefix(origin, "http://localhost:")
+		},
+		AllowMethods:     []string{"GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}))
+
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
+
 	v1 := r.Group("/api/v1")
 
 	// Public group
@@ -159,8 +175,8 @@ func main() {
 
 	authModule.RegisterRoutes(public, authed)
 	userModule.RegisterRoutes(authed)
-	branchModule.RegisterRoutes(authed)
-	productModule.RegisterRoutes(authed)
+	branchModule.RegisterRoutes(public, authed)
+	productModule.RegisterRoutes(public, authed)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
