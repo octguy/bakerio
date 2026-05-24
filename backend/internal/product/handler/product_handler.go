@@ -2,9 +2,12 @@ package handler
 
 import (
 	"errors"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
 	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -33,6 +36,11 @@ func (h *ProductHandler) RegisterRoutes(protected *gin.RouterGroup) {
 	g.POST("", middleware.RequirePermission("product:manage:all"), h.CreateProduct)
 	g.PATCH("/:id", middleware.RequirePermission("product:manage:all"), h.UpdateProduct)
 	g.DELETE("/:id", middleware.RequirePermission("product:manage:all"), h.DeleteProduct)
+
+	// Images
+	g.GET("/:id/images", middleware.RequirePermission("product:view:all"), h.ListImages)
+	g.POST("/:id/images", middleware.RequirePermission("product:manage:all"), h.AddImages)
+	g.DELETE("/:id/images/:imageId", middleware.RequirePermission("product:manage:all"), h.DeleteImage)
 
 	// Per-branch availability toggle. Admin (product:manage:all) any branch;
 	// branch_manager (branch:manage:own) only their own — checked in the handler.
@@ -216,6 +224,136 @@ func (h *ProductHandler) SetAvailability(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, res)
+}
+
+const maxImageSize = 5 << 20 // 5 MB
+
+// AddImages godoc
+// @Summary      Upload one or more product images
+// @Description  Send one or more files under the "files" form field. Optional
+// @Description  repeated "alt_text" fields are matched to files by position.
+// @Tags         product
+// @Security     BearerAuth
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id        path      string  true   "Product ID"
+// @Param        files     formData  file    true   "Image files (repeatable)"
+// @Param        alt_text  formData  string  false  "Alt text per file (repeatable)"
+// @Success      201  {array}   dto.ProductImageResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Failure      422  {object}  response.ErrorResponse
+// @Router       /products/{id}/images [post]
+func (h *ProductHandler) AddImages(c *gin.Context) {
+	productID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, apperrors.Validation("invalid product id"))
+		return
+	}
+
+	form, err := c.MultipartForm()
+	if err != nil {
+		response.Error(c, apperrors.Validation("invalid multipart form"))
+		return
+	}
+	headers := form.File["files"]
+	if len(headers) == 0 {
+		headers = form.File["file"] // tolerate the single-field name too
+	}
+	if len(headers) == 0 {
+		response.Error(c, apperrors.Validation("at least one file is required"))
+		return
+	}
+	altTexts := form.Value["alt_text"]
+
+	uploads := make([]service.ImageUpload, 0, len(headers))
+	var opened []multipart.File
+	defer func() {
+		for _, f := range opened {
+			_ = f.Close()
+		}
+	}()
+
+	for i, fh := range headers {
+		if fh.Size > maxImageSize {
+			response.Error(c, apperrors.Validation("each image must be 5MB or smaller"))
+			return
+		}
+		contentType := fh.Header.Get("Content-Type")
+		if !strings.HasPrefix(contentType, "image/") {
+			response.Error(c, apperrors.Validation("all files must be images"))
+			return
+		}
+		f, err := fh.Open()
+		if err != nil {
+			response.Error(c, apperrors.Internal("failed to read upload", err))
+			return
+		}
+		opened = append(opened, f)
+
+		var altText *string
+		if i < len(altTexts) && altTexts[i] != "" {
+			v := altTexts[i]
+			altText = &v
+		}
+		uploads = append(uploads, service.ImageUpload{
+			Reader:      f,
+			Size:        fh.Size,
+			ContentType: contentType,
+			Ext:         strings.ToLower(filepath.Ext(fh.Filename)),
+			AltText:     altText,
+		})
+	}
+
+	res, err := h.svc.AddImages(c.Request.Context(), productID, uploads)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, http.StatusCreated, res)
+}
+
+// ListImages godoc
+// @Summary      List product images
+// @Tags         product
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path      string  true  "Product ID"
+// @Success      200  {array}   dto.ProductImageResponse
+// @Router       /products/{id}/images [get]
+func (h *ProductHandler) ListImages(c *gin.Context) {
+	productID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, apperrors.Validation("invalid product id"))
+		return
+	}
+	res, err := h.svc.ListImages(c.Request.Context(), productID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, http.StatusOK, res)
+}
+
+// DeleteImage godoc
+// @Summary      Delete a product image
+// @Tags         product
+// @Security     BearerAuth
+// @Param        id        path  string  true  "Product ID"
+// @Param        imageId   path  string  true  "Image ID"
+// @Success      204
+// @Failure      404  {object}  response.ErrorResponse
+// @Router       /products/{id}/images/{imageId} [delete]
+func (h *ProductHandler) DeleteImage(c *gin.Context) {
+	imageID, err := uuid.Parse(c.Param("imageId"))
+	if err != nil {
+		response.Error(c, apperrors.Validation("invalid image id"))
+		return
+	}
+	if err := h.svc.DeleteImage(c.Request.Context(), imageID); err != nil {
+		response.Error(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 // ensureBranchScope: admin (wildcard or product:manage:all) may touch any

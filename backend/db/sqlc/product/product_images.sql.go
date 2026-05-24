@@ -60,6 +60,28 @@ func (q *Queries) DeleteProductImage(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getProductImage = `-- name: GetProductImage :one
+SELECT id, product_id, image_url, alt_text, sort_order, created_at, created_by, updated_at, updated_by FROM product.product_images
+WHERE id = $1
+`
+
+func (q *Queries) GetProductImage(ctx context.Context, id uuid.UUID) (ProductProductImage, error) {
+	row := q.db.QueryRow(ctx, getProductImage, id)
+	var i ProductProductImage
+	err := row.Scan(
+		&i.ID,
+		&i.ProductID,
+		&i.ImageUrl,
+		&i.AltText,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.CreatedBy,
+		&i.UpdatedAt,
+		&i.UpdatedBy,
+	)
+	return i, err
+}
+
 const listImagesByProduct = `-- name: ListImagesByProduct :many
 SELECT id, product_id, image_url, alt_text, sort_order, created_at, created_by, updated_at, updated_by FROM product.product_images
 WHERE product_id = $1

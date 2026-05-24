@@ -9,12 +9,13 @@ import (
 )
 
 type Config struct {
-	Server ServerConfig
-	JWT    JWTConfig
-	DB     DatabaseConfig
-	MQ     RabbitMQConfig
-	Redis  RedisConfig
-	Email  SMTPConfig
+	Server  ServerConfig
+	JWT     JWTConfig
+	DB      DatabaseConfig
+	MQ      RabbitMQConfig
+	Redis   RedisConfig
+	Email   SMTPConfig
+	Storage StorageConfig
 }
 
 type ServerConfig struct {
@@ -45,6 +46,15 @@ type RedisConfig struct {
 	Address  string
 	Password string
 	DB       int
+}
+
+type StorageConfig struct {
+	Endpoint  string // host:port for the S3 SDK, e.g. localhost:9000
+	AccessKey string
+	SecretKey string
+	Bucket    string
+	UseSSL    bool
+	PublicURL string // base URL for building public object links, e.g. http://localhost:9000
 }
 
 type SMTPConfig struct {
@@ -95,6 +105,14 @@ func Load() *Config {
 			User:     os.Getenv("EMAIL_USER"),
 			Password: os.Getenv("EMAIL_PASSWORD"),
 			From:     os.Getenv("EMAIL_FROM"),
+		},
+		Storage: StorageConfig{
+			Endpoint:  os.Getenv("MINIO_ENDPOINT"),
+			AccessKey: os.Getenv("MINIO_ACCESS_KEY"),
+			SecretKey: os.Getenv("MINIO_SECRET_KEY"),
+			Bucket:    os.Getenv("MINIO_BUCKET"),
+			UseSSL:    os.Getenv("MINIO_USE_SSL") == "true",
+			PublicURL: os.Getenv("MINIO_PUBLIC_URL"),
 		},
 	}
 }

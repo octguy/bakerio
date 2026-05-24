@@ -5,6 +5,10 @@ INSERT INTO product.product_images (
     $1, $2, $3, $4, $5, $5
 ) RETURNING *;
 
+-- name: GetProductImage :one
+SELECT * FROM product.product_images
+WHERE id = $1;
+
 -- name: ListImagesByProduct :many
 SELECT * FROM product.product_images
 WHERE product_id = $1

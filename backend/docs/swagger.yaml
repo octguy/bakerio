@@ -198,6 +198,19 @@ definitions:
       user_id:
         type: string
     type: object
+  ProductImageResponse:
+    properties:
+      alt_text:
+        type: string
+      id:
+        type: string
+      product_id:
+        type: string
+      sort_order:
+        type: integer
+      url:
+        type: string
+    type: object
   ProductListResponse:
     properties:
       items:
@@ -1058,6 +1071,96 @@ paths:
       security:
       - BearerAuth: []
       summary: Update product
+      tags:
+      - product
+  /products/{id}/images:
+    get:
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ProductImageResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List product images
+      tags:
+      - product
+    post:
+      consumes:
+      - multipart/form-data
+      description: |-
+        Send one or more files under the "files" form field. Optional
+        repeated "alt_text" fields are matched to files by position.
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Image files (repeatable)
+        in: formData
+        name: files
+        required: true
+        type: file
+      - description: Alt text per file (repeatable)
+        in: formData
+        name: alt_text
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/ProductImageResponse'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Upload one or more product images
+      tags:
+      - product
+  /products/{id}/images/{imageId}:
+    delete:
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Image ID
+        in: path
+        name: imageId
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a product image
       tags:
       - product
   /profile:

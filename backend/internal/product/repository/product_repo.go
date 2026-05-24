@@ -31,6 +31,12 @@ type ProductRepository interface {
 	GetBranchProduct(ctx context.Context, productID, branchID uuid.UUID) (*domain.BranchProduct, error)
 	SetBranchProductActive(ctx context.Context, productID, branchID uuid.UUID, active bool) (*domain.BranchProduct, error)
 	ListActiveProductsByBranch(ctx context.Context, branchID uuid.UUID) ([]*domain.Product, error)
+
+	// product_images
+	CreateImage(ctx context.Context, productID uuid.UUID, key string, altText *string, sortOrder int32) (*domain.ProductImage, error)
+	ListImages(ctx context.Context, productID uuid.UUID) ([]*domain.ProductImage, error)
+	GetImage(ctx context.Context, id uuid.UUID) (*domain.ProductImage, error)
+	DeleteImage(ctx context.Context, id uuid.UUID) error
 }
 
 type productRepo struct {
@@ -205,6 +211,59 @@ func (r *productRepo) ListActiveProductsByBranch(ctx context.Context, branchID u
 		return nil, err
 	}
 	return toProductEntities(rows), nil
+}
+
+func (r *productRepo) CreateImage(ctx context.Context, productID uuid.UUID, key string, altText *string, sortOrder int32) (*domain.ProductImage, error) {
+	callerID, _ := authcontext.CallerID(ctx)
+	row, err := r.queries(ctx).CreateProductImage(ctx, productdb.CreateProductImageParams{
+		ProductID: productID,
+		ImageUrl:  key,
+		AltText:   altText,
+		SortOrder: sortOrder,
+		CreatedBy: nullableUUID(callerID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toImageEntity(&row), nil
+}
+
+func (r *productRepo) ListImages(ctx context.Context, productID uuid.UUID) ([]*domain.ProductImage, error) {
+	rows, err := r.queries(ctx).ListImagesByProduct(ctx, productID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.ProductImage, 0, len(rows))
+	for i := range rows {
+		out = append(out, toImageEntity(&rows[i]))
+	}
+	return out, nil
+}
+
+func (r *productRepo) GetImage(ctx context.Context, id uuid.UUID) (*domain.ProductImage, error) {
+	row, err := r.queries(ctx).GetProductImage(ctx, id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return toImageEntity(&row), nil
+}
+
+func (r *productRepo) DeleteImage(ctx context.Context, id uuid.UUID) error {
+	return r.queries(ctx).DeleteProductImage(ctx, id)
+}
+
+func toImageEntity(i *productdb.ProductProductImage) *domain.ProductImage {
+	return &domain.ProductImage{
+		ID:        i.ID,
+		ProductID: i.ProductID,
+		ImageKey:  i.ImageUrl,
+		AltText:   i.AltText,
+		SortOrder: i.SortOrder,
+		CreatedAt: i.CreatedAt,
+	}
 }
 
 func toProductEntity(p *productdb.ProductProduct) *domain.Product {

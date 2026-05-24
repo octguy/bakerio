@@ -108,3 +108,8 @@ docker-logs:
 #	make docker-mail
 docker-mail:
 	cd deployments && docker compose --env-file ../.env up -d mailhog
+
+# Start MinIO (object storage for product images)
+#	make docker-minio
+docker-minio:
+	cd deployments && docker compose --env-file ../.env up -d minio

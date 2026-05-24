@@ -20,13 +20,14 @@ import (
 type Module struct {
 	tx          *txmanager.TxManager
 	productRepo repository.ProductRepository
+	store       service.ObjectStore
 
 	categoryH  *handler.CategoryHandler
 	productSvc service.ProductService
 	productH   *handler.ProductHandler
 }
 
-func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
+func New(pool *pgxpool.Pool, tx *txmanager.TxManager, store service.ObjectStore) *Module {
 	queries := productdb.New(pool)
 
 	catRepo := repository.NewCategoryRepository(queries)
@@ -35,13 +36,14 @@ func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
 	return &Module{
 		tx:          tx,
 		productRepo: repository.NewProductRepository(queries),
+		store:       store,
 		categoryH:   handler.NewCategoryHandler(catSvc),
 	}
 }
 
 // Wire finishes construction once the branch module's services exist.
 func (m *Module) Wire(branchLister service.BranchLister, membership branchSvc.MembershipService) {
-	m.productSvc = service.NewProductService(m.tx, m.productRepo, branchLister)
+	m.productSvc = service.NewProductService(m.tx, m.productRepo, branchLister, m.store)
 	m.productH = handler.NewProductHandler(m.productSvc, membership)
 }
 

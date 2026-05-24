@@ -29,6 +29,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/mq"
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 	"github.com/octguy/bakerio/backend/internal/platform/outbox"
+	"github.com/octguy/bakerio/backend/internal/platform/storage"
 	"github.com/octguy/bakerio/backend/internal/product"
 	"github.com/octguy/bakerio/backend/internal/user"
 	"github.com/octguy/bakerio/backend/pkg/config"
@@ -99,6 +100,15 @@ func main() {
 		return
 	}
 
+	// 4.4. Object storage (MinIO). The client is lazy — it doesn't connect
+	// here, and the bucket is ensured on first image upload — so the app boots
+	// fine without MinIO running. Start it with `make docker-minio` when testing
+	// product images.
+	objectStore, err := storage.New(cfg.Storage)
+	if err != nil {
+		logger.Log.Fatal("storage init failed", zap.Error(err))
+	}
+
 	// 5. Services
 	tx := txmanager.New(pool)
 	publisher := mq.NewPublisher(rmq)
@@ -109,7 +119,7 @@ func main() {
 	// 6. Modules
 	userModule := user.New(pool, tx)
 	branchModule := branch.New(pool, tx)
-	productModule := product.New(pool, tx)
+	productModule := product.New(pool, tx, objectStore)
 	notifModule := notification.New(email.NewMailService(cfg.Email, cfg.Server), otpService)
 	authModule := auth.NewModule(pool, redisClient, tx, userModule.ProfileService(), authOutbox, otpService, cfg.JWT.SecretKey, cfg.JWT.Expiry)
 	userModule.Wire(authModule.Service(), authModule.RBACService, branchModule.MembershipService(), branchModule.BranchService())

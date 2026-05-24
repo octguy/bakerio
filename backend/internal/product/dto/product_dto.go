@@ -41,6 +41,14 @@ type ProductListResponse struct {
 	Size  int32             `json:"size"`
 } // @name ProductListResponse
 
+type ProductImageResponse struct {
+	ID        uuid.UUID `json:"id"`
+	ProductID uuid.UUID `json:"product_id"`
+	URL       string    `json:"url"`
+	AltText   *string   `json:"alt_text,omitempty"`
+	SortOrder int32     `json:"sort_order"`
+} // @name ProductImageResponse
+
 type SetAvailabilityRequest struct {
 	IsActive bool `json:"is_active"`
 } // @name SetAvailabilityRequest
