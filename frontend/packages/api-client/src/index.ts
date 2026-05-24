@@ -42,6 +42,10 @@ export {
   createBranch,
   updateBranch,
   deleteBranch,
+  // Branch membership (REAL)
+  getBranchMembers,
+  assignBranchMember,
+  removeBranchMember,
   // Suppliers / Procurement — backend has no module, audit §I flagged this.
   // These now hit a local mock with the same shape.
   getSuppliers,
@@ -49,7 +53,7 @@ export {
   getProcurementOrders,
   createProcurementOrder,
   updateProcurementStatus,
-  // Users (REAL apart from list — see staff mock)
+  // Users (REAL — list is composed from /branch + /branch/:id/members)
   createUser,
   getUserProfile,
   getMyProfile,
@@ -65,3 +69,5 @@ export {
 
 // Mock data for seeding/testing
 export { mockProducts, mockCategories, mockBranches } from "./mock";
+
+export type { BranchMember } from "./client";
