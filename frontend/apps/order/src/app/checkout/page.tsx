@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createOrder } from "@repo/api-client";
 import { getLoyalty, maxRedeemableFor, redeemCrumbs } from "@repo/api-client/mock/loyalty";
 import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
 
@@ -31,6 +32,14 @@ const PAY_METHODS = [
 ];
 
 export default function CheckoutPage() {
+  return (
+    <ProtectedRoute>
+      <CheckoutPageInner />
+    </ProtectedRoute>
+  );
+}
+
+function CheckoutPageInner() {
   const router = useRouter();
   const items = useCartStore((s) => s.items);
   const branchId = useCartStore((s) => s.branchId);
@@ -103,14 +112,23 @@ export default function CheckoutPage() {
     }
     setSubmitting(true);
     try {
-      if (useCrumbs && potentialCrumbsNeeded > 0) {
-        await redeemCrumbs(potentialCrumbsNeeded);
-      }
+      // Place the order first. If this fails, the customer keeps their crumbs.
+      // Redeeming before the order creates a money-out-no-goods race when the
+      // backend call fails.
       await createOrder(
         items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
         branchId!,
         undefined,
       );
+      if (useCrumbs && potentialCrumbsNeeded > 0) {
+        try {
+          await redeemCrumbs(potentialCrumbsNeeded);
+        } catch (err) {
+          // Order is already placed — log and continue so the customer isn't
+          // blocked at the success screen. Loyalty can be reconciled async.
+          console.error("Failed to redeem crumbs after order placement:", err);
+        }
+      }
       clearCart();
       setOrdered(true);
     } catch {
