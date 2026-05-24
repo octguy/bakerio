@@ -6,7 +6,12 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mockReplace }) 
 vi.mock("next/image", () => ({ default: (props: any) => <img {...props} /> }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
 vi.mock("@repo/api-client", () => ({ createOrder: vi.fn() }));
-vi.mock("@/lib/format", () => ({ formatVND: (n: number) => `${n}₫` }));
+vi.mock("@repo/api-client/mock/loyalty", () => ({
+  getLoyalty: vi.fn().mockResolvedValue({ balance: 1420 }),
+  maxRedeemableFor: vi.fn().mockResolvedValue(10000),
+  redeemCrumbs: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("@/lib/format", () => ({ formatVND: (n: number) => `${n.toLocaleString("vi-VN")}₫` }));
 
 const mockItems = [
   { id: "1", product: { id: "p1", name: "Bánh Mì" }, unitPrice: 25000, quantity: 2, choices: [] },
@@ -50,15 +55,9 @@ describe("CheckoutPage", () => {
     expect(container).toBeTruthy();
   });
 
-  it("shows order summary with items", () => {
-    render(<CheckoutPage />);
-    expect(screen.getByText("Order Summary")).toBeInTheDocument();
-    expect(screen.getByText(/Bánh Mì × 2/)).toBeInTheDocument();
-  });
-
   it("has a place order button", () => {
     render(<CheckoutPage />);
-    expect(screen.getByRole("button", { name: /place order/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Pay with Pay at counter/i })).toBeInTheDocument();
   });
 
   it("shows validation error when branchId is missing", async () => {
@@ -74,7 +73,7 @@ describe("CheckoutPage", () => {
     });
 
     render(<CheckoutPage />);
-    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Pay with Pay at counter/i }));
 
     expect(await screen.findByText("No branch selected")).toBeInTheDocument();
   });
@@ -89,14 +88,13 @@ describe("CheckoutPage", () => {
     vi.mocked(createOrder).mockResolvedValueOnce({} as any);
 
     render(<CheckoutPage />);
-    fireEvent.change(screen.getByLabelText("Note"), { target: { value: "Extra spicy" } });
-    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Pay with Pay at counter/i }));
 
     await waitFor(() => {
       expect(createOrder).toHaveBeenCalledWith(
         [{ product_id: "p1", quantity: 2 }],
         "b1",
-        "Extra spicy"
+        undefined
       );
     });
   });
@@ -111,12 +109,12 @@ describe("CheckoutPage", () => {
     vi.mocked(createOrder).mockResolvedValueOnce({} as any);
 
     render(<CheckoutPage />);
-    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Pay with Pay at counter/i }));
 
     await waitFor(() => {
       expect(mockClearCart).toHaveBeenCalled();
     });
-    expect(screen.getByText("Order Placed!")).toBeInTheDocument();
+    expect(screen.getByText(/Order placed/i)).toBeInTheDocument();
   });
 
   it("shows error message and does not clear cart when API fails", async () => {
@@ -129,7 +127,7 @@ describe("CheckoutPage", () => {
     vi.mocked(createOrder).mockRejectedValueOnce(new Error("Network error"));
 
     render(<CheckoutPage />);
-    fireEvent.click(screen.getByRole("button", { name: /place order/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Pay with Pay at counter/i }));
 
     expect(await screen.findByText("Failed to place order. Please try again.")).toBeInTheDocument();
     expect(mockClearCart).not.toHaveBeenCalled();

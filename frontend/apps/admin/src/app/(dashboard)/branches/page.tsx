@@ -52,7 +52,7 @@ export default function BranchesPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
-  const columns: ColumnDef<Branch, any>[] = [
+  const columns: ColumnDef<Branch, unknown>[] = [
     { accessorKey: "name", header: "Name" },
     { accessorKey: "address", header: "Address" },
     { accessorKey: "region", header: "Region" },
@@ -74,8 +74,21 @@ export default function BranchesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Branches</h1>
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="mb-1.5 flex items-center gap-3">
+            <span className="block h-px w-6 bg-golden" />
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
+              {branches.length} shops · 3 opening soon
+            </span>
+          </div>
+          <h1
+            className="font-display tracking-tight"
+            style={{ fontSize: "clamp(26px,3.6vw,32px)", lineHeight: 1, letterSpacing: "-0.02em" }}
+          >
+            Branches <span className="font-editorial text-cinnamon">· the network</span>
+          </h1>
+        </div>
         <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4" /> Add Branch</Button>
       </div>
 

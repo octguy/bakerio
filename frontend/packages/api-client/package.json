@@ -7,7 +7,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./mock": "./src/mock/index.ts",
-    "./mock/analytics": "./src/mock/analytics.ts"
+    "./mock/analytics": "./src/mock/analytics.ts",
+    "./mock/inventory": "./src/mock/inventory.ts",
+    "./mock/kitchen": "./src/mock/kitchen.ts",
+    "./mock/staff": "./src/mock/staff.ts",
+    "./mock/loyalty": "./src/mock/loyalty.ts",
+    "./mock/addresses": "./src/mock/addresses.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"

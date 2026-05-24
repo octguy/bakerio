@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  useEffect(() => { fetchUser(); }, [fetchUser]);
+  useEffect(() => { void fetchUser(); }, [fetchUser]); // eslint-disable-line react-hooks/set-state-in-effect
 
   const login = async (email: string, password: string): Promise<string | null> => {
     const res = await fetch("/api/auth", {

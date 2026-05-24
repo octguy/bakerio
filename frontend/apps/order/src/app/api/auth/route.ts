@@ -4,7 +4,12 @@ import { NextRequest, NextResponse } from "next/server";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  let body: Record<string, string>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
   const { action, email, password, full_name } = body;
 
   try {

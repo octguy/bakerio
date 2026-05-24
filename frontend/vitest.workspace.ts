@@ -1,6 +1,10 @@
 import { defineWorkspace } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineWorkspace([
   {
@@ -31,6 +35,21 @@ export default defineWorkspace([
       environment: 'jsdom',
       setupFiles: ['./vitest.setup.ts'],
       include: ['apps/web/src/**/*.test.{ts,tsx}'],
+    },
+  },
+  {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'apps/admin/src'),
+        '@repo/api-client': path.resolve(__dirname, 'packages/api-client/src'),
+      },
+    },
+    test: {
+      name: 'admin',
+      environment: 'jsdom',
+      setupFiles: ['./vitest.setup.ts'],
+      include: ['apps/admin/src/**/*.test.{ts,tsx}'],
     },
   },
   {

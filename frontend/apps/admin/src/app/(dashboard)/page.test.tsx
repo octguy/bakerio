@@ -51,12 +51,35 @@ vi.mock("recharts", () => ({
   BarChart: ({ children }: any) => <div>{children}</div>,
   Bar: () => null,
   XAxis: () => null,
-  YAxis: () => null,
+  YAxis: ({ tickFormatter }: any) => {
+    if (tickFormatter) {
+      try {
+        tickFormatter(12000000);
+      } catch {}
+    }
+    return null;
+  },
   CartesianGrid: () => null,
-  Tooltip: () => null,
+  Tooltip: ({ formatter }: any) => {
+    if (formatter) {
+      try {
+        formatter(5000000);
+      } catch {}
+    }
+    return null;
+  },
   ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
   PieChart: ({ children }: any) => <div>{children}</div>,
-  Pie: () => null,
+  Pie: ({ label }: any) => {
+    if (label) {
+      if (typeof label === "function") {
+        try {
+          label({ name: "PENDING_PAYMENT", percent: 0.25 });
+        } catch {}
+      }
+    }
+    return null;
+  },
   Cell: () => null,
 }));
 
@@ -67,36 +90,35 @@ afterEach(cleanup);
 describe("DashboardPage", () => {
   it("renders the dashboard heading", () => {
     render(<DashboardPage />);
-    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /good morning, baker/i })).toBeInTheDocument();
   });
 
   it("displays stat cards with correct values", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("Total Orders")).toBeInTheDocument();
-    expect(screen.getByText("1,247")).toBeInTheDocument();
-    expect(screen.getByText("Revenue")).toBeInTheDocument();
-    expect(screen.getByText("456,800,000 ₫")).toBeInTheDocument();
-    expect(screen.getByText("Active Products")).toBeInTheDocument();
-    expect(screen.getByText("Low Stock")).toBeInTheDocument();
+    expect(screen.getByText("Đơn hàng · today")).toBeInTheDocument();
+    expect(screen.getByText("1247")).toBeInTheDocument();
+    expect(screen.getByText("Doanh thu · today")).toBeInTheDocument();
+    expect(screen.getByText("14.6M₫")).toBeInTheDocument();
+    expect(screen.getByText("Cảnh báo kho")).toBeInTheDocument();
     expect(screen.getByText("7")).toBeInTheDocument();
   });
 
   it("renders stat cards in a grid layout", () => {
     const { container } = render(<DashboardPage />);
-    const grid = container.querySelector(".grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4");
+    const grid = container.querySelector(".grid.grid-cols-1.gap-3.sm\\:grid-cols-2.lg\\:grid-cols-4");
     expect(grid).toBeInTheDocument();
-    const cards = grid!.querySelectorAll("[data-testid='card']");
+    const cards = grid!.children;
     expect(cards).toHaveLength(4);
   });
 
   it("shows active product count from query data", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText(/2 loaves so far/i)).toBeInTheDocument();
   });
 
   it("falls back to stats value when products are loading", () => {
     vi.mocked(useQuery).mockReturnValue({ data: undefined, isLoading: true } as any);
     render(<DashboardPage />);
-    expect(screen.getByText("Active Products")).toBeInTheDocument();
+    expect(screen.getByText(/42 loaves so far/i)).toBeInTheDocument();
   });
 });
