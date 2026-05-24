@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { createUser } from "@repo/api-client";
-import { getStaff, getStaffCounts } from "@repo/api-client/mock/staff";
-import type { StaffMember } from "@repo/api-client/mock/staff";
+import { getStaff, getStaffCounts } from "@repo/api-client/staff";
+import type { StaffMember } from "@repo/api-client/staff";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
