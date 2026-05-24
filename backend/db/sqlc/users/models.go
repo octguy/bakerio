@@ -79,22 +79,6 @@ type BranchBranchMembership struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type CartCart struct {
-	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-type CartCartItem struct {
-	ID            uuid.UUID       `json:"id"`
-	CartID        uuid.UUID       `json:"cart_id"`
-	ProductID     uuid.UUID       `json:"product_id"`
-	Quantity      int32           `json:"quantity"`
-	UnitPriceSnap decimal.Decimal `json:"unit_price_snap"`
-	AddedAt       time.Time       `json:"added_at"`
-}
-
 type ProductBranchProduct struct {
 	ID        uuid.UUID  `json:"id"`
 	ProductID uuid.UUID  `json:"product_id"`

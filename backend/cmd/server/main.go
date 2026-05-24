@@ -20,7 +20,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth"
 	"github.com/octguy/bakerio/backend/internal/branch"
-	"github.com/octguy/bakerio/backend/internal/cart"
 	"github.com/octguy/bakerio/backend/internal/notification"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/database"
@@ -132,9 +131,6 @@ func main() {
 	productModule.Wire(branchModule.BranchService(), branchModule.MembershipService())
 	branchModule.BranchService().SetProductSeeder(productModule.Service())
 
-	// Cart depends on the product catalog (read-only) to validate items + prices.
-	cartModule := cart.New(pool, productModule.Service())
-
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
 		logger.Log.Fatal("rbac: failed to warm permission cache", zap.Error(err))
 	}
@@ -165,7 +161,6 @@ func main() {
 	userModule.RegisterRoutes(authed)
 	branchModule.RegisterRoutes(authed)
 	productModule.RegisterRoutes(authed)
-	cartModule.RegisterRoutes(authed)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
