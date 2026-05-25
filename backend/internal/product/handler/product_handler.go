@@ -29,16 +29,18 @@ func NewProductHandler(svc service.ProductService, membershipSvc branchSvc.Membe
 	return &ProductHandler{svc: svc, membershipSvc: membershipSvc}
 }
 
-func (h *ProductHandler) RegisterRoutes(protected *gin.RouterGroup) {
+func (h *ProductHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
+	publicProducts := public.Group("/products")
+	publicProducts.GET("", h.ListProducts)
+	publicProducts.GET("/:id", h.GetProduct)
+	publicProducts.GET("/:id/images", h.ListImages)
+
 	g := protected.Group("/products")
-	g.GET("", middleware.RequirePermission("product:view:all"), h.ListProducts)
-	g.GET("/:id", middleware.RequirePermission("product:view:all"), h.GetProduct)
 	g.POST("", middleware.RequirePermission("product:manage:all"), h.CreateProduct)
 	g.PATCH("/:id", middleware.RequirePermission("product:manage:all"), h.UpdateProduct)
 	g.DELETE("/:id", middleware.RequirePermission("product:manage:all"), h.DeleteProduct)
 
 	// Images
-	g.GET("/:id/images", middleware.RequirePermission("product:view:all"), h.ListImages)
 	g.POST("/:id/images", middleware.RequirePermission("product:manage:all"), h.AddImages)
 	g.DELETE("/:id/images/:imageId", middleware.RequirePermission("product:manage:all"), h.DeleteImage)
 
@@ -77,7 +79,6 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 // ListProducts godoc
 // @Summary      List products
 // @Tags         product
-// @Security     BearerAuth
 // @Produce      json
 // @Param        category  query     string  false  "Filter by category ID"
 // @Param        page      query     int     false  "Page (default 1)"
@@ -108,7 +109,6 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 // GetProduct godoc
 // @Summary      Get product by ID or slug
 // @Tags         product
-// @Security     BearerAuth
 // @Produce      json
 // @Param        id   path      string  true  "Product ID or slug"
 // @Success      200  {object}  dto.ProductResponse
@@ -315,7 +315,6 @@ func (h *ProductHandler) AddImages(c *gin.Context) {
 // ListImages godoc
 // @Summary      List product images
 // @Tags         product
-// @Security     BearerAuth
 // @Produce      json
 // @Param        id   path      string  true  "Product ID"
 // @Success      200  {array}   dto.ProductImageResponse

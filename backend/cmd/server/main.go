@@ -188,8 +188,8 @@ func main() {
 
 	authModule.RegisterRoutes(public, authed)
 	userModule.RegisterRoutes(authed)
-	branchModule.RegisterRoutes(authed)
-	productModule.RegisterRoutes(authed)
+	branchModule.RegisterRoutes(public, authed)
+	productModule.RegisterRoutes(public, authed)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 

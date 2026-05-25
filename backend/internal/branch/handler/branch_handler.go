@@ -20,10 +20,12 @@ func NewBranchHandler(svc service.BranchService) *BranchHandler {
 	return &BranchHandler{svc: svc}
 }
 
-func (h *BranchHandler) RegisterRoutes(protected *gin.RouterGroup) {
+func (h *BranchHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
+	publicBranches := public.Group("/branch")
+	publicBranches.GET("", h.GetBranchList)
+	publicBranches.GET("/:id", h.GetBranchByID)
+
 	g := protected.Group("/branch")
-	g.GET("", middleware.RequirePermission("branch:view:all"), h.GetBranchList)
-	g.GET("/:id", middleware.RequirePermission("branch:view:all"), h.GetBranchByID)
 	g.POST("", middleware.RequirePermission("branch:manage:all"), h.CreateBranch)
 	g.PATCH("/:id", middleware.RequirePermission("branch:manage:all"), h.UpdateBranch)
 	g.PATCH("/:id/status", middleware.RequirePermission("branch:manage:all"), h.UpdateStatus)
@@ -34,9 +36,7 @@ func (h *BranchHandler) RegisterRoutes(protected *gin.RouterGroup) {
 // @Description  Retrieve all branches
 // @Tags         branch
 // @Produce      json
-// @Security     BearerAuth
 // @Success      200  {array}   dto.BranchResponse
-// @Failure      401  {object}  response.ErrorResponse
 // @Router       /branch [get]
 func (h *BranchHandler) GetBranchList(c *gin.Context) {
 	branches, err := h.svc.GetAllBranches(c.Request.Context())
@@ -53,7 +53,6 @@ func (h *BranchHandler) GetBranchList(c *gin.Context) {
 // @Tags         branch
 // @Produce      json
 // @Param        id   path      string  true  "Branch ID"
-// @Security     BearerAuth
 // @Success      200  {object}  dto.BranchResponse
 // @Failure      400  {object}  response.ErrorResponse
 // @Failure      404  {object}  response.ErrorResponse
