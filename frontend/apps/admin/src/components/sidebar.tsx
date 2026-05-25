@@ -79,7 +79,7 @@ function SidebarContent() {
               Cửa hàng chính · D.1
             </div>
           </div>
-          <span className="text-[12px] text-[var(--admin-muted-dark)]">⇅</span>
+          <span className="text-[12px] text-[var(--admin-muted-dark)]" aria-hidden="true">⇅</span>
         </div>
       </div>
 
@@ -109,6 +109,7 @@ function SidebarContent() {
                       "w-3.5 font-mono text-[11px]",
                       active ? "text-honey" : "text-[var(--admin-muted-dark)]",
                     )}
+                    aria-hidden="true"
                   >
                     {it.glyph}
                   </span>
@@ -150,7 +151,7 @@ function SidebarContent() {
           </div>
         </div>
         <button onClick={logout} aria-label="Sign out" className="text-[11px] text-[var(--admin-muted-dark)]">
-          <LogOut className="h-4 w-4" />
+          <LogOut aria-hidden="true" className="h-4 w-4" />
         </button>
       </div>
     </>
@@ -174,7 +175,7 @@ export function Sidebar() {
         className="fixed left-3 top-3 z-40 rounded-md border border-border bg-white p-2 shadow-sm md:hidden"
         aria-label="Open menu"
       >
-        <Menu className="h-5 w-5" />
+        <Menu aria-hidden="true" className="h-5 w-5" />
       </button>
 
       <aside className="hidden h-full w-[232px] flex-col bg-[var(--admin-ink)] text-[var(--admin-ink-text)] md:flex">
@@ -190,7 +191,7 @@ export function Sidebar() {
               className="absolute right-3 top-3 rounded-md p-1 hover:bg-white/10"
               aria-label="Close menu"
             >
-              <X className="h-5 w-5" />
+              <X aria-hidden="true" className="h-5 w-5" />
             </button>
             <SidebarContent />
           </aside>
