@@ -2,7 +2,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 vi.mock("next/image", () => ({
-  default: ({ fill, priority, ...props }: Record<string, unknown>) => <img {...props} />,
+  default: ({ fill: _fill, priority: _priority, ...props }: Record<string, unknown>) => <img {...props} />,
 }));
 
 vi.mock("next/link", () => ({
@@ -40,7 +40,7 @@ describe("MenuPage", () => {
   it("displays the menu heading", () => {
     render(<MenuPage />);
     expect(
-      screen.getByRole("heading", { level: 1, name: /our menu/i })
+      screen.getByRole("heading", { level: 1, name: /menu/i })
     ).toBeInTheDocument();
   });
 
@@ -68,12 +68,11 @@ describe("MenuPage", () => {
 
   it("renders the hero section with description text", () => {
     render(<MenuPage />);
-    expect(screen.getByText("what we offer")).toBeInTheDocument();
+    expect(screen.getByText(/refreshed daily/i)).toBeInTheDocument();
   });
 
   it("has a link or CTA related to ordering", () => {
     render(<MenuPage />);
-    // The menu page has category filter buttons as the primary CTA interaction
     expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
   });
 });

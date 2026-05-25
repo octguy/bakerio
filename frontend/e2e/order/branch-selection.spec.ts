@@ -9,18 +9,18 @@ import { test, expect } from "@playwright/test";
  */
 
 test.describe("Branch Selection — Homepage", () => {
-  test("renders the branch selection heading and subtitle", async ({ page }) => {
+  test("renders the branch selection heading and ordering modes", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Order from Bakerio" })).toBeVisible();
-    await expect(page.getByText("Select a branch to start your order")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i })).toBeVisible();
+    await expect(page.getByRole("main").getByText("Pickup").first()).toBeVisible();
   });
 
   test("handles API failure gracefully with error message", async ({ page }) => {
     // SSR fetch will fail if backend is unavailable — page should show error text, not crash
     await page.goto("/");
 
-    const heading = page.getByRole("heading", { name: "Order from Bakerio" });
+    const heading = page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i });
     await expect(heading).toBeVisible();
 
     // Page either shows branches or an error message — never a blank crash
@@ -43,7 +43,7 @@ test.describe("Branch Selection — Homepage", () => {
     // Each card has a heading (name), address text, and region badge
     await expect(firstBranch.locator("h2")).toBeVisible();
     await expect(firstBranch.locator("p")).toBeVisible();
-    await expect(firstBranch.locator("span")).toBeVisible();
+    await expect(firstBranch.getByText(/Open|Selected/).first()).toBeVisible();
   });
 
   test("clicking a branch navigates to /menu", async ({ page }) => {

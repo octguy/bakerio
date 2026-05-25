@@ -11,6 +11,10 @@ export interface Product {
   is_active: boolean;
   category?: Category;
   images?: ProductImage[];
+  /** Optional client-side field; not yet on the backend DTO — see API audit § III. */
+  allergens?: string[];
+  /** Optional client-side field for "★ / New / ✦" badges on cards. */
+  tag?: string;
   created_at: string;
 }
 

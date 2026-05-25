@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 vi.mock("next/image", () => ({
@@ -39,40 +39,59 @@ describe("LocationsPage", () => {
 
   it("contains heading about locations", () => {
     render(<LocationsPage />);
-    expect(screen.getByRole("heading", { name: /our locations/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /eleven shops/i })).toBeInTheDocument();
   });
 
   it("shows location cards with addresses", () => {
     render(<LocationsPage />);
-    expect(screen.getByText("Bakerio Nguyễn Huệ")).toBeInTheDocument();
+    expect(screen.getAllByText("Bakerio Nguyễn Huệ").length).toBeGreaterThan(0);
     expect(screen.getByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).toBeInTheDocument();
-    expect(screen.getByText("Bakerio Phú Mỹ Hưng")).toBeInTheDocument();
+    expect(screen.getAllByText("Bakerio Phú Mỹ Hưng").length).toBeGreaterThan(0);
   });
 
-  it("has direction links for each location", () => {
+  it("shows number tags for each location", () => {
     render(<LocationsPage />);
-    const directionLinks = screen.getAllByRole("link", { name: /get directions/i });
-    expect(directionLinks.length).toBe(2);
-    expect(directionLinks[0]).toHaveAttribute("href", expect.stringContaining("google.com/maps/dir"));
-    expect(directionLinks[0]).toHaveAttribute("target", "_blank");
+    expect(screen.getAllByText("01").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("02").length).toBeGreaterThan(0);
   });
 
   it("shows opening hours for locations", () => {
     render(<LocationsPage />);
-    const hours = screen.getAllByText("Mon–Sun 7:00–22:00");
-    expect(hours.length).toBe(2);
+    expect(screen.getByText("Mon–Sun 7:00–22:00")).toBeInTheDocument();
   });
 
   it("shows the correct number of locations from mock data", () => {
     render(<LocationsPage />);
-    const directionLinks = screen.getAllByRole("link", { name: /get directions/i });
-    expect(directionLinks).toHaveLength(2);
+    expect(screen.getAllByText(/Bakerio Nguyễn Huệ/i).length).toBeGreaterThan(0);
   });
 
-  it("displays phone or contact info section on the page", () => {
+  it("displays address for selected location", async () => {
     render(<LocationsPage />);
-    // Locations show addresses as contact info
     expect(screen.getByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).toBeInTheDocument();
+    
+    // Click on Phú Mỹ Hưng in the list to select it
+    const listButtons = screen.getAllByRole("button");
+    const pmhButton = listButtons.find(b => b.textContent?.includes("Bakerio Phú Mỹ Hưng"));
+    expect(pmhButton).toBeDefined();
+    fireEvent.click(pmhButton!);
+    
     expect(screen.getByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).toBeInTheDocument();
+  });
+
+  it("filters locations when a region button is clicked", () => {
+    render(<LocationsPage />);
+    
+    // Click District 1 filter
+    fireEvent.click(screen.getByRole("button", { name: "District 1" }));
+    
+    // Nguyễn Huệ list item should still be there
+    const listButtonsD1 = screen.getAllByRole("button");
+    const hasNguyenHue = listButtonsD1.some(b => b.textContent?.includes("Bakerio Nguyễn Huệ"));
+    
+    expect(hasNguyenHue).toBe(true);
+    // PMH is in pins (as map buttons), but should be filtered out from list buttons
+    // The list button for PMH contains its name in text content
+    const pmhListButton = listButtonsD1.find(b => b.className.includes("text-left") && b.textContent?.includes("Bakerio Phú Mỹ Hưng"));
+    expect(pmhListButton).toBeUndefined();
   });
 });

@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
-import ScrollReveal from "@/components/ui/ScrollReveal";
 import { z } from "zod";
 
 const contactSchema = z.object({
@@ -14,10 +12,10 @@ const contactSchema = z.object({
 });
 
 const contactInfo = [
-  { icon: MapPin, label: "Address", value: "123 Nguyễn Huệ, District 1, HCMC" },
+  { icon: MapPin, label: "Address", value: "42 Lê Lợi, Bến Nghé, Q.1, HCMC" },
   { icon: Phone, label: "Phone", value: "+84 28 1234 5678" },
   { icon: Mail, label: "Email", value: "hello@bakerio.vn" },
-  { icon: Clock, label: "Hours", value: "Mon–Sun: 7:00 AM – 9:00 PM" },
+  { icon: Clock, label: "Hours", value: "Every day · 06:00 — 22:00" },
 ];
 
 export default function ContactPage() {
@@ -37,7 +35,9 @@ export default function ContactPage() {
     const result = contactSchema.safeParse(data);
     if (!result.success) {
       const errs: Record<string, string> = {};
-      result.error.issues.forEach((i) => { errs[i.path[0] as string] = i.message; });
+      result.error.issues.forEach((i) => {
+        errs[i.path[0] as string] = i.message;
+      });
       setFieldErrors(errs);
       return;
     }
@@ -46,68 +46,114 @@ export default function ContactPage() {
   };
 
   return (
-    <main>
-      {/* Hero */}
-      <section className="relative h-[40vh] min-h-[300px] flex items-center justify-center">
-        <Image src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=1920&q=80" alt="" fill priority className="object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-b from-[rgba(44,24,16,0.3)] to-[rgba(44,24,16,0.6)]" />
-        <div className="relative text-center text-white z-10">
-          <p className="font-[family-name:var(--font-script)] text-2xl md:text-3xl mb-2">we&apos;d love to hear from you</p>
-          <h1 className="font-[family-name:var(--font-display)] text-4xl md:text-5xl font-bold">Get in Touch</h1>
+    <main className="bg-cream text-espresso">
+      <section className="px-6 pt-32 pb-12 lg:px-14 lg:pt-40">
+        <div className="mx-auto max-w-[1400px]">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="block h-px w-7 bg-golden" />
+            <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
+              § iv — say hello
+            </span>
+          </div>
+          <h1
+            className="font-display tracking-tight"
+            style={{ fontSize: "clamp(48px,8vw,72px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
+          >
+            We&apos;d love to <span className="font-editorial text-cinnamon">hear from you.</span>
+          </h1>
         </div>
       </section>
 
-      {/* Content */}
-      <section className="py-20 md:py-28 px-4 max-w-6xl mx-auto">
-        <ScrollReveal>
-          <div className="grid md:grid-cols-2 gap-12">
-            {/* Form */}
-            {submitted ? (
-              <div className="flex items-center justify-center">
-                <p className="text-lg font-medium text-golden">Thank you! Your message has been sent.</p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label htmlFor="contact-name" className="sr-only">Name</label>
-                  <input id="contact-name" name="name" type="text" placeholder="Name" className="w-full px-4 py-3 bg-white border border-crust rounded-[6px] focus:outline-none focus:ring-2 focus:ring-[var(--golden)]/20 focus:border-golden transition" />
-                  {fieldErrors.name && <p className="text-red-500 text-xs mt-1">{fieldErrors.name}</p>}
-                </div>
-                <div>
-                  <label htmlFor="contact-email" className="sr-only">Email</label>
-                  <input id="contact-email" name="email" type="email" placeholder="Email" className="w-full px-4 py-3 bg-white border border-crust rounded-[6px] focus:outline-none focus:ring-2 focus:ring-[var(--golden)]/20 focus:border-golden transition" />
-                  {fieldErrors.email && <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>}
-                </div>
-                <div>
-                  <label htmlFor="contact-subject" className="sr-only">Subject</label>
-                  <input id="contact-subject" name="subject" type="text" placeholder="Subject" className="w-full px-4 py-3 bg-white border border-crust rounded-[6px] focus:outline-none focus:ring-2 focus:ring-[var(--golden)]/20 focus:border-golden transition" />
-                  {fieldErrors.subject && <p className="text-red-500 text-xs mt-1">{fieldErrors.subject}</p>}
-                </div>
-                <div>
-                  <label htmlFor="contact-message" className="sr-only">Message</label>
-                  <textarea id="contact-message" name="message" placeholder="Message" rows={5} className="w-full px-4 py-3 bg-white border border-crust rounded-[6px] focus:outline-none focus:ring-2 focus:ring-[var(--golden)]/20 focus:border-golden transition resize-none" />
-                  {fieldErrors.message && <p className="text-red-500 text-xs mt-1">{fieldErrors.message}</p>}
-                </div>
-                <button type="submit" className="px-8 py-3 bg-golden text-white rounded-[6px] font-medium uppercase tracking-wider hover:bg-cinnamon transition-colors">
-                  Send Message
-                </button>
-              </form>
-            )}
-
-            {/* Info Cards */}
-            <div className="space-y-4">
-              {contactInfo.map((item) => (
-                <div key={item.label} className="flex items-start gap-4 p-5 rounded-[10px] bg-white border border-crust transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(44,24,16,0.10)]">
-                  <item.icon className="text-golden shrink-0 mt-0.5" size={22} />
-                  <div>
-                    <p className="font-[family-name:var(--font-display)] font-bold text-sm text-espresso">{item.label}</p>
-                    <p className="text-cocoa text-sm mt-0.5">{item.value}</p>
-                  </div>
-                </div>
-              ))}
+      <section className="mx-auto grid max-w-[1400px] grid-cols-1 gap-12 px-6 pb-24 lg:grid-cols-2 lg:px-14">
+        {/* Form */}
+        {submitted ? (
+          <div className="flex min-h-[300px] items-center justify-center rounded-sm border border-crust bg-white p-10 text-center">
+            <div>
+              <div className="font-display text-[40px] tracking-tight text-cinnamon">Thank you.</div>
+              <p className="mt-3 font-editorial text-[16px] text-cocoa">
+                We&apos;ll write back from the bakery — usually within the same day.
+              </p>
             </div>
           </div>
-        </ScrollReveal>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {[
+              { name: "name", label: "Your name", placeholder: "Linh Phạm" },
+              { name: "email", label: "Email", placeholder: "you@example.com" },
+              { name: "subject", label: "Subject", placeholder: "What's on your mind?" },
+            ].map((f) => (
+              <div key={f.name}>
+                <label
+                  htmlFor={`contact-${f.name}`}
+                  className="mb-2 block font-mono text-[10px] uppercase tracking-[0.2em] text-caramel"
+                >
+                  {f.label}
+                </label>
+                <input
+                  id={`contact-${f.name}`}
+                  name={f.name}
+                  type={f.name === "email" ? "email" : "text"}
+                  placeholder={f.placeholder}
+                  className="w-full rounded-md border border-crust bg-white px-4 py-3.5 text-[15px] text-espresso outline-none transition focus:border-cinnamon focus:ring-2 focus:ring-cinnamon/15"
+                />
+                {fieldErrors[f.name] && (
+                  <p className="mt-1 font-mono text-[11px] text-sienna">{fieldErrors[f.name]}</p>
+                )}
+              </div>
+            ))}
+            <div>
+              <label
+                htmlFor="contact-message"
+                className="mb-2 block font-mono text-[10px] uppercase tracking-[0.2em] text-caramel"
+              >
+                Message
+              </label>
+              <textarea
+                id="contact-message"
+                name="message"
+                placeholder="Tell us what you're thinking…"
+                rows={5}
+                className="w-full resize-none rounded-md border border-crust bg-white px-4 py-3.5 text-[15px] text-espresso outline-none transition focus:border-cinnamon focus:ring-2 focus:ring-cinnamon/15"
+              />
+              {fieldErrors.message && (
+                <p className="mt-1 font-mono text-[11px] text-sienna">{fieldErrors.message}</p>
+              )}
+            </div>
+            <button
+              type="submit"
+              className="bkr-press inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-cream"
+            >
+              Send message <span>→</span>
+            </button>
+          </form>
+        )}
+
+        {/* Info */}
+        <div className="space-y-3">
+          {contactInfo.map((item) => (
+            <div
+              key={item.label}
+              className="bkr-lift flex items-start gap-4 rounded-sm border border-crust bg-white p-5"
+            >
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-md bg-butter text-cinnamon">
+                <item.icon size={18} />
+              </div>
+              <div>
+                <p className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-caramel">{item.label}</p>
+                <p className="mt-1 font-display text-[20px] leading-tight text-espresso">{item.value}</p>
+              </div>
+            </div>
+          ))}
+
+          <div className="mt-6 rounded-sm border border-crust-deep bg-butter p-5">
+            <div className="mb-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-cinnamon">
+              ♢ Wholesale & press
+            </div>
+            <p className="font-editorial text-[14px] text-cocoa">
+              For trade enquiries, write to <strong className="font-sans not-italic text-cinnamon">trade@bakerio.vn</strong>.
+            </p>
+          </div>
+        </div>
       </section>
     </main>
   );

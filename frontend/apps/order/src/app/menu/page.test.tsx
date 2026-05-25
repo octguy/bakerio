@@ -29,9 +29,10 @@ describe("MenuPage", () => {
     expect(container).toBeTruthy();
   });
 
-  it("shows menu heading", async () => {
+  it("shows menu details and banner", async () => {
     render(await MenuPage());
-    expect(screen.getByRole("heading", { name: /menu/i })).toBeInTheDocument();
+    expect(screen.getByText(/today's batch/i)).toBeInTheDocument();
+    expect(screen.getByText(/sourdough/i)).toBeInTheDocument();
   });
 
   it("displays product names", async () => {

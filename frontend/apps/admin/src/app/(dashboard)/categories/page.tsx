@@ -47,7 +47,7 @@ export default function CategoriesPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
-  const columns: ColumnDef<Category, any>[] = [
+  const columns: ColumnDef<Category, unknown>[] = [
     { accessorKey: "name", header: "Name" },
     { accessorKey: "slug", header: "Slug" },
     { accessorKey: "sort_order", header: "Order" },
@@ -69,8 +69,21 @@ export default function CategoriesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Categories</h1>
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="mb-1.5 flex items-center gap-3">
+            <span className="block h-px w-6 bg-golden" />
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
+              How the menu is shelved
+            </span>
+          </div>
+          <h1
+            className="font-display tracking-tight"
+            style={{ fontSize: "clamp(26px,3.6vw,32px)", lineHeight: 1, letterSpacing: "-0.02em" }}
+          >
+            Categories <span className="font-editorial text-cinnamon">· {categories.length} sections</span>
+          </h1>
+        </div>
         <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4" /> Add Category</Button>
       </div>
 
