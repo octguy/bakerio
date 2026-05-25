@@ -69,7 +69,9 @@ function CheckoutPageInner() {
         const disc = await maxRedeemableFor(subtotal);
         setMaxDiscount(disc);
       } catch (err) {
-        console.error("Failed to load loyalty:", err);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to load loyalty:", err);
+        }
       }
     };
     loadLoyaltyData();
@@ -79,7 +81,7 @@ function CheckoutPageInner() {
     return (
       <main className="mx-auto max-w-md px-6 pt-16 pb-32 text-center">
         <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-cinnamon font-display text-[40px] text-white">
-          ✓
+          <span aria-hidden="true">✓</span>
         </div>
         <h1 className="font-display text-[36px] leading-[0.95] tracking-tight text-espresso">
           Order placed. <span className="font-editorial text-cinnamon">Out of the oven soon.</span>
@@ -91,7 +93,7 @@ function CheckoutPageInner() {
           href="/orders"
           className="bkr-press mt-8 inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream"
         >
-          Track my order <span>→</span>
+          Track my order <span aria-hidden="true">→</span>
         </Link>
       </main>
     );
@@ -126,7 +128,9 @@ function CheckoutPageInner() {
         } catch (err) {
           // Order is already placed — log and continue so the customer isn't
           // blocked at the success screen. Loyalty can be reconciled async.
-          console.error("Failed to redeem crumbs after order placement:", err);
+          if (process.env.NODE_ENV !== "production") {
+            console.error("Failed to redeem crumbs after order placement:", err);
+          }
         }
       }
       clearCart();
@@ -142,7 +146,7 @@ function CheckoutPageInner() {
     <main className="mx-auto max-w-md px-6 pt-4 pb-44">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <Link href="/cart" className="text-[22px] text-espresso">‹</Link>
+        <Link href="/cart" className="text-[22px] text-espresso" aria-label="Back to cart">‹</Link>
         <div className="text-center">
           <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">step 3 / 3</div>
           <div className="font-display text-[16px] leading-none text-espresso">Checkout</div>
@@ -162,6 +166,8 @@ function CheckoutPageInner() {
         {(["Pickup", "Delivery"] as const).map((tab) => (
           <button
             key={tab}
+            type="button"
+            aria-pressed={mode === tab}
             onClick={() => setMode(tab)}
             className={`flex-1 rounded-full py-2.5 text-center text-[13px] font-bold tracking-wide transition-colors ${
               mode === tab ? "bg-espresso text-white" : "text-cocoa"
@@ -201,6 +207,8 @@ function CheckoutPageInner() {
             return (
               <button
                 key={i}
+                type="button"
+                aria-pressed={active}
                 onClick={() => setSelectedTime(i)}
                 className={`min-w-[78px] flex-shrink-0 rounded-lg px-3 py-2 text-center transition-colors ${
                   active ? "bg-espresso text-white" : "border border-crust bg-butter text-espresso"
@@ -224,6 +232,8 @@ function CheckoutPageInner() {
             return (
               <button
                 key={p.l}
+                type="button"
+                aria-pressed={active}
                 disabled={isStub}
                 onClick={() => setPayMethod(i)}
                 className={`flex items-center gap-3 rounded-xl p-3.5 text-left ${
@@ -261,15 +271,17 @@ function CheckoutPageInner() {
 
       {/* Loyalty */}
       <button
+        type="button"
+        aria-pressed={useCrumbs}
         onClick={() => setUseCrumbs((s) => !s)}
         className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-golden/30 bg-butter p-3 text-left"
       >
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-honey font-display text-[15px] text-espresso">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-honey font-display text-[15px] text-espresso" aria-hidden="true">
           ✦
         </div>
         <div className="flex-1">
           <div className="text-[13px] font-semibold text-espresso">
-            Use {potentialCrumbsNeeded} crumbs (−{formatVND(crumbsDiscount).replace("₫", "")}₫)
+            Use {potentialCrumbsNeeded} crumbs (−{formatVND(crumbsDiscount)})
           </div>
           <div className="font-editorial text-[11.5px] italic text-caramel">
             You have {loyalty?.balance.toLocaleString() ?? "1,420"} in your jar.
@@ -302,25 +314,24 @@ function CheckoutPageInner() {
         <div className="mb-3 rounded-2xl border border-crust bg-white p-3.5">
           <div className="flex justify-between py-0.5 text-[12px] text-cocoa">
             <span>Subtotal</span>
-            <span className="font-mono">{formatVND(subtotal).replace("₫", "")}₫</span>
+            <span className="font-mono">{formatVND(subtotal)}</span>
           </div>
           {crumbsDiscount > 0 && (
             <div className="flex justify-between py-0.5 text-[12px] font-semibold text-sage">
               <span>Crumbs · {potentialCrumbsNeeded}</span>
-              <span className="font-mono">−{formatVND(crumbsDiscount).replace("₫", "")}₫</span>
+              <span className="font-mono">−{formatVND(crumbsDiscount)}</span>
             </div>
           )}
           {deliveryFee > 0 && (
             <div className="flex justify-between py-0.5 text-[12px] text-cocoa">
               <span>Delivery</span>
-              <span className="font-mono">{formatVND(deliveryFee).replace("₫", "")}₫</span>
+              <span className="font-mono">{formatVND(deliveryFee)}</span>
             </div>
           )}
           <div className="mt-2 flex justify-between border-t border-crust pt-2">
             <span className="font-display text-[18px]">Total</span>
             <span className="font-display text-[22px] text-espresso">
-              {formatVND(total).replace("₫", "")}
-              <span className="ml-0.5 text-[12px] text-cinnamon">₫</span>
+              {formatVND(total)}
             </span>
           </div>
         </div>
@@ -331,7 +342,7 @@ function CheckoutPageInner() {
           className="bkr-press flex w-full items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream disabled:opacity-50"
         >
           <span>{submitting ? "Placing…" : `Pay with ${PAY_METHODS[payMethod].l}`}</span>
-          <span>→</span>
+          <span aria-hidden="true">→</span>
         </button>
       </div>
     </main>

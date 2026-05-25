@@ -57,6 +57,13 @@ describe("LoginPage", () => {
     expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
   });
 
+  it("has a disabled forgot password button with accessible description", () => {
+    render(<LoginPage />);
+    const forgotBtn = screen.getByRole("button", { name: "Forgot password? Reset is unavailable/coming soon." });
+    expect(forgotBtn).toBeInTheDocument();
+    expect(forgotBtn).toBeDisabled();
+  });
+
   it("calls login with correct email and password on valid submit", async () => {
     render(<LoginPage />);
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "user@test.com" } });

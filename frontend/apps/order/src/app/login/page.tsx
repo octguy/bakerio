@@ -94,11 +94,12 @@ export default function LoginPage() {
             />
             <button
               type="button"
+              aria-pressed={showPw}
               onClick={() => setShowPw((s) => !s)}
               className="text-caramel"
               aria-label={showPw ? "Hide password" : "Show password"}
             >
-              👁
+              <span aria-hidden="true">👁</span>
             </button>
           </div>
           {fieldErrors.password && (
@@ -107,7 +108,14 @@ export default function LoginPage() {
         </div>
 
         <div className="text-right">
-          <a className="font-mono text-[11px] font-bold tracking-[0.16em] text-cinnamon">FORGOT?</a>
+          <button
+            type="button"
+            disabled
+            aria-label="Forgot password? Reset is unavailable/coming soon."
+            className="font-mono text-[11px] font-bold tracking-[0.16em] text-cinnamon cursor-default"
+          >
+            FORGOT?
+          </button>
         </div>
 
         {error && (
@@ -152,7 +160,7 @@ export default function LoginPage() {
       <p className="mt-7 text-center font-editorial text-[13px] text-caramel">
         New here?{" "}
         <Link href="/register" className="font-sans font-semibold text-cinnamon not-italic">
-          Create an account →
+          Create an account <span aria-hidden="true">→</span>
         </Link>
       </p>
     </main>

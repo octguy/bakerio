@@ -149,4 +149,9 @@ describe("CheckoutPage", () => {
       expect(mockReplace).toHaveBeenCalledWith("/menu");
     });
   });
+
+  it("displays the correct checkout total price formatted as VND", async () => {
+    render(<CheckoutPage />);
+    expect(await screen.findByText("40.000₫")).toBeInTheDocument();
+  });
 });
