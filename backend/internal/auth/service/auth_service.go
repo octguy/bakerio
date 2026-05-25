@@ -47,6 +47,7 @@ type ProfileCreator interface {
 type AuthService interface {
 	Register(ctx context.Context, req dto.RegisterRequest) (dto.RegisterResponse, error)
 	Login(ctx context.Context, req dto.LoginRequest) (dto.LoginResponse, error)
+	GuestLogin(ctx context.Context) (dto.LoginResponse, error)
 	ValidateToken(tokenStr string) (*Claims, error)
 	VerifyEmail(ctx context.Context, req dto.VerifyEmailRequest) (dto.VerifyEmailResponse, error)
 	Logout(ctx context.Context, jti string, expiresAt time.Time) error
@@ -184,6 +185,18 @@ func (s *authService) Login(ctx context.Context, req dto.LoginRequest) (dto.Logi
 	token, err := s.generateToken(user.ID, roles)
 	if err != nil {
 		logger.Log.Error("login: failed to generate token", zap.String("email", req.Email), zap.Error(err))
+		return dto.LoginResponse{}, err
+	}
+
+	return dto.LoginResponse{
+		AccessToken: token,
+	}, nil
+}
+
+func (s *authService) GuestLogin(_ context.Context) (dto.LoginResponse, error) {
+	token, err := s.generateToken(uuid.New(), []string{"guest"})
+	if err != nil {
+		logger.Log.Error("guest login: failed to generate token", zap.Error(err))
 		return dto.LoginResponse{}, err
 	}
 

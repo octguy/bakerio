@@ -27,6 +27,7 @@ func (h *AuthHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
 	pub := public.Group("/auth")
 	pub.POST("/register", h.Register)
 	pub.POST("/login", h.Login)
+	pub.POST("/guest", h.GuestLogin)
 	pub.POST("/verify", h.VerifyEmail)
 
 	prot := protected.Group("/auth")
@@ -94,6 +95,26 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	logger.Log.Info("register: success", zap.String("email", req.Email))
+	response.Success(c, http.StatusOK, res)
+}
+
+// GuestLogin godoc
+// @Summary      Guest login
+// @Description  Mints a JWT access token for the seeded guest role
+// @Tags         auth
+// @Produce      json
+// @Success      200     {object} dto.LoginResponse
+// @Failure      500     {object} response.ErrorResponse "Internal server error"
+// @Router       /auth/guest [post]
+func (h *AuthHandler) GuestLogin(c *gin.Context) {
+	res, err := h.svc.GuestLogin(c.Request.Context())
+	if err != nil {
+		logger.Log.Warn("guest login: failed", zap.Error(err))
+		response.Error(c, err)
+		return
+	}
+
+	logger.Log.Info("guest login: success")
 	response.Success(c, http.StatusOK, res)
 }
 
