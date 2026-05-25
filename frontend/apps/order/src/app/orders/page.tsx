@@ -27,17 +27,22 @@ export default function OrdersPage() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"All" | "In progress" | "Delivered" | "Cancelled">("All");
   const [stats, setStats] = useState({ lifetime: 0, inProgress: 0, delivered: 0, cancelled: 0 });
 
   const fetchOrdersData = async () => {
     try {
+      setError(null);
       const data = await getOrders();
       setOrders(data);
       const counts = await getOrderStats();
       setStats(counts);
     } catch (err) {
-      console.error("Failed to load orders:", err);
+      setError("Could not load orders. Please try again.");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to load orders:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -45,11 +50,12 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrdersData(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleReorder = async (orderId: string) => {
     setLoading(true);
     try {
+      setError(null);
       const itemsList = await reorderItems(orderId);
       const addedItems = await Promise.all(
         itemsList.map(async (item) => {
@@ -78,7 +84,10 @@ export default function OrdersPage() {
       });
       router.push("/cart");
     } catch (err) {
-      console.error("Reorder failed:", err);
+      setError("Could not reorder those items. Please try again.");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Reorder failed:", err);
+      }
       setLoading(false);
     }
   };
@@ -108,7 +117,7 @@ export default function OrdersPage() {
     <main className="mx-auto max-w-md px-6 pt-4 pb-32">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <Link href="/profile" className="text-[22px] text-espresso">‹</Link>
+        <Link href="/profile" aria-label="Back to profile" className="text-[22px] text-espresso">‹</Link>
         <div className="font-display text-[16px] leading-none text-espresso">Orders</div>
         <span className="font-mono text-[11px] tracking-[0.1em] text-caramel">Filter</span>
       </div>
@@ -132,6 +141,8 @@ export default function OrdersPage() {
           return (
             <button
               key={tab.l}
+              type="button"
+              aria-pressed={active}
               onClick={() => setActiveTab(tab.k)}
               className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 font-mono text-[11px] tracking-[0.1em] transition-colors ${
                 active ? "bg-espresso font-bold text-white" : "border border-crust bg-white text-cocoa"
@@ -142,6 +153,19 @@ export default function OrdersPage() {
           );
         })}
       </div>
+
+      {error && (
+        <div role="alert" className="mb-3 rounded-2xl border border-cinnamon/30 bg-cinnamon/10 p-3 text-[13px] text-sienna">
+          {error}
+          <button
+            type="button"
+            onClick={fetchOrdersData}
+            className="ml-3 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cinnamon"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="py-12 text-center font-editorial text-[14px] italic text-caramel">
@@ -172,7 +196,7 @@ export default function OrdersPage() {
               >
                 {st.live && (
                   <div className="absolute right-0 top-0 rounded-bl-[10px] bg-cinnamon px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-white">
-                    <span className="bkr-pulse mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-white align-middle" />
+                    <span className="bkr-pulse mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-white align-middle" aria-hidden="true" />
                     Live
                   </div>
                 )}
@@ -200,13 +224,16 @@ export default function OrdersPage() {
                       {itemsCount} items · {new Date(o.created_at).toLocaleDateString("vi-VN")}
                     </div>
                     <div className="mt-0.5 font-display text-[18px] text-espresso">
-                      {formatVND(o.total_amount).replace("₫", "")}
-                      <span className="ml-0.5 text-[11px] text-caramel">₫</span>
+                      {formatVND(o.total_amount)}
                     </div>
                   </div>
-                  <Link href={st.live ? `/orders/${o.id}` : "#"}>
-                    <span className="text-[18px] text-caramel">›</span>
-                  </Link>
+                  {st.live ? (
+                    <Link href={`/orders/${o.id}`} aria-label={`Track order ${displayId}`}>
+                      <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
+                    </Link>
+                  ) : (
+                    <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
+                  )}
                 </div>
 
                 <div className="mt-2.5 flex justify-between border-t border-dashed border-crust pt-2.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-cinnamon">
@@ -216,13 +243,16 @@ export default function OrdersPage() {
                     </Link>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => handleReorder(o.id)}
                       className="font-bold text-cinnamon hover:text-espresso transition-colors"
                     >
                       Reorder
                     </button>
                   )}
-                  <span className="text-caramel cursor-pointer">Receipt ↗</span>
+                  <button type="button" disabled className="text-caramel opacity-60">
+                    Receipt ↗
+                  </button>
                 </div>
               </div>
             );
