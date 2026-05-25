@@ -23,6 +23,7 @@ describe("API Client tests", () => {
   afterEach(() => {
     global.fetch = originalFetch;
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   const mockResponse = (status: number, data: any, ok = true) => {
@@ -119,6 +120,17 @@ describe("API Client tests", () => {
       expect(res[0]?.id).toBe(mockProducts[0]?.id);
     });
 
+    it("tracks mock product fallback without console noise in production", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+      fetchMock.mockRejectedValue(new Error("Network disconnect"));
+
+      await client.getProducts();
+
+      expect(client.getApiHealth().mockServed).toContain("products.list");
+      expect(infoSpy).not.toHaveBeenCalled();
+    });
+
     it("fetches single product from backend", async () => {
       const mockProd = { id: "p-1", name: "Vanilla Sponge Cake" };
       mockResponse(200, { data: mockProd });
@@ -190,12 +202,14 @@ describe("API Client tests", () => {
       mockResponse(200, { data: [] });
       const res = await client.getCategories();
       expect(res).toEqual(mockCategories);
+      expect(client.getApiHealth().mockServed).toContain("categories.empty");
     });
 
     it("falls back to mock categories if backend fails", async () => {
       fetchMock.mockRejectedValue(new Error("Backend offline"));
       const res = await client.getCategories();
       expect(res).toEqual(mockCategories);
+      expect(client.getApiHealth().mockServed).toContain("categories.list");
     });
 
     it("fetches single category from backend", async () => {
