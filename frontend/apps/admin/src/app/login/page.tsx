@@ -69,7 +69,7 @@ export default function LoginPage() {
                 Work email
               </label>
               <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-crust bg-white px-4 py-3.5">
-                <span className="text-caramel">✉</span>
+                <span className="text-caramel" aria-hidden="true">✉</span>
                 <input
                   id="email"
                   type="email"
@@ -87,12 +87,17 @@ export default function LoginPage() {
                 <label htmlFor="password" className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">
                   Password
                 </label>
-                <button type="button" className="font-mono text-[10.5px] font-bold tracking-[0.16em] text-cinnamon">
+                <button
+                  type="button"
+                  disabled
+                  aria-label="Forgot password? Reset is unavailable/coming soon."
+                  className="cursor-default font-mono text-[10.5px] font-bold tracking-[0.16em] text-cinnamon"
+                >
                   FORGOT?
                 </button>
               </div>
               <div className="mt-2 flex items-center gap-2.5 rounded-xl border-2 border-cinnamon bg-white px-4 py-3.5">
-                <span className="text-caramel">🔑</span>
+                <span className="text-caramel" aria-hidden="true">🔑</span>
                 <input
                   id="password"
                   type={showPw ? "text" : "password"}
@@ -107,10 +112,11 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPw((s) => !s)}
-                  aria-label="Toggle visibility"
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                  aria-pressed={showPw}
                   className="text-caramel"
                 >
-                  👁
+                  <span aria-hidden="true">👁</span>
                 </button>
               </div>
             </div>
@@ -136,12 +142,12 @@ export default function LoginPage() {
               disabled={loading}
               className="bkr-press inline-flex items-center justify-center gap-2 rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream disabled:opacity-50"
             >
-              {loading ? "Signing in…" : "Sign in to ops →"}
+              {loading ? "Signing in…" : <>Sign in to ops <span aria-hidden="true">→</span></>}
             </button>
 
             <div className="rounded-lg border border-dashed border-crust-deep bg-butter px-4 py-3.5">
               <div className="flex gap-2.5 font-editorial text-[13px] italic text-cocoa">
-                <span className="not-italic text-cinnamon">♢</span>
+                <span className="not-italic text-cinnamon" aria-hidden="true">♢</span>
                 <span>
                   If you&apos;re a customer, you want the{" "}
                   <strong className="font-sans not-italic text-cinnamon">order app</strong>, not this.{" "}
