@@ -6,7 +6,7 @@ import { createUser } from "@repo/api-client";
 import { getStaff, getStaffCounts } from "@repo/api-client/staff";
 import type { StaffMember } from "@repo/api-client/staff";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -191,7 +191,10 @@ export default function UsersPage() {
 
       <Dialog open={open} onOpenChange={(v) => { if (!v) { setOpen(false); reset(); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Create User</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Create User</DialogTitle>
+            <DialogDescription>Create a staff account with a name, email, password, and role.</DialogDescription>
+          </DialogHeader>
           <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4 mt-4">
             <div><Label>Full Name</Label><Input {...register("full_name")} />{errors.full_name && <p className="text-xs text-destructive mt-1">{errors.full_name.message}</p>}</div>
             <div><Label>Email</Label><Input type="email" {...register("email")} />{errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}</div>
