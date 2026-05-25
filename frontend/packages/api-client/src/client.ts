@@ -147,7 +147,7 @@ export const getProducts = cache(async (): Promise<Product[]> => {
     const arr = Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : [];
     return arr.map(adaptProduct);
   } catch (err) {
-    useMockFallback("products.list", "[api-client] /products not available — using mock fixtures.", err);
+    useMockFallback("products.list", "[api-client] /products unavailable — using mock fixtures.", err);
     return mockGetProducts();
   }
 });
