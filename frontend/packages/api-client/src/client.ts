@@ -105,6 +105,13 @@ export async function login(email: string, password: string) {
   return data;
 }
 
+export async function loginAsGuest(): Promise<void> {
+  const data = await request<{ access_token: string }>("/auth/guest", {
+    method: "POST",
+  });
+  token = data.access_token;
+}
+
 export async function register(email: string, password: string, full_name: string) {
   return request<{ id: string; email: string }>("/auth/register", {
     method: "POST",
@@ -147,7 +154,7 @@ export const getProducts = cache(async (): Promise<Product[]> => {
     const arr = Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : [];
     return arr.map(adaptProduct);
   } catch (err) {
-    useMockFallback("products.list", "[api-client] /products not available — using mock fixtures.", err);
+    useMockFallback("products.list", "[api-client] /products unavailable even after guest auth — using mock fixtures.", err);
     return mockGetProducts();
   }
 });

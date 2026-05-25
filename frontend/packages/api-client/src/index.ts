@@ -19,12 +19,13 @@ export const VERSION = "1.0.0";
 export {
   // Auth (REAL)
   login,
+  loginAsGuest,
   register,
   logout,
   setToken,
   getToken,
-  // Products — silent-fallback to mock when the Go product handler isn't there.
-  // Audit §I: the real /products endpoint is *missing* in the current backend.
+  // Products — real backend path, authenticated via member or guest token.
+  // Keep the mock fallback as a safety net when auth or product fetches fail.
   getProducts,
   getProduct,
   createProduct,

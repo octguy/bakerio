@@ -90,6 +90,12 @@ describe("API Client tests", () => {
       expect(client.getToken()).toBe("my-jwt-token");
     });
 
+    it("sets token after successful guest login", async () => {
+      mockResponse(200, { data: { access_token: "guest-jwt-token" } });
+      await client.loginAsGuest();
+      expect(client.getToken()).toBe("guest-jwt-token");
+    });
+
     it("registers new user successfully", async () => {
       mockResponse(201, { data: { id: "123", email: "test@bakerio.com" } });
       const res = await client.register("test@bakerio.com", "pass123", "Test User");
@@ -331,6 +337,7 @@ describe("API Client tests", () => {
   describe("Index entrypoint exports", () => {
     it("verifies all index re-exports are accessible", async () => {
       const indexEntrypoint = await import("./index.js");
+      expect(indexEntrypoint.loginAsGuest).toBeDefined();
       expect(indexEntrypoint.getProducts).toBeDefined();
       expect(indexEntrypoint.mockProducts).toBeDefined();
       expect(indexEntrypoint.VERSION).toBe("1.0.0");
