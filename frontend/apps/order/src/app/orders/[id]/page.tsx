@@ -42,9 +42,11 @@ export default function OrderTrackingPage({ params }: PageProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchOrderDetails = async () => {
     try {
+      setError(null);
       const data = await getOrder(id);
       setOrder(data);
       if (branches.length === 0) {
@@ -52,7 +54,10 @@ export default function OrderTrackingPage({ params }: PageProps) {
         setBranches(branchList);
       }
     } catch (err) {
-      console.error("Failed to load tracking data:", err);
+      setError("Could not refresh tracking details.");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to load tracking data:", err);
+      }
     } finally {
       setLoading(false);
     }
@@ -100,13 +105,25 @@ export default function OrderTrackingPage({ params }: PageProps) {
     <main className="mx-auto max-w-md px-6 pt-4 pb-32 bg-cream min-h-screen flex flex-col">
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
-        <Link href="/orders" className="text-[22px] text-espresso">‹</Link>
+        <Link href="/orders" aria-label="Back to orders" className="text-[22px] text-espresso">‹</Link>
         <div className="text-center">
           <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">Live tracking</div>
           <div className="font-display text-[16px] leading-none text-espresso">{order.id.replace("order-", "#")}</div>
         </div>
-        <span className="font-mono text-[11px] tracking-[0.1em] text-caramel cursor-pointer" onClick={fetchOrderDetails}>Reload</span>
+        <button
+          type="button"
+          className="font-mono text-[11px] tracking-[0.1em] text-caramel"
+          onClick={fetchOrderDetails}
+        >
+          Reload
+        </button>
       </div>
+
+      {error && (
+        <div role="alert" className="mb-4 rounded-2xl border border-cinnamon/30 bg-cinnamon/10 p-3 text-[13px] text-sienna">
+          {error}
+        </div>
+      )}
 
       {/* Honest visual badge */}
       <div className="mb-4 text-center">
@@ -118,7 +135,7 @@ export default function OrderTrackingPage({ params }: PageProps) {
       {/* Map visual section */}
       <div className="relative mb-5 overflow-hidden rounded-2xl border border-crust bg-[#fbf6ef] p-4 h-[220px]">
         {/* Animated Rider Map */}
-        <svg className="w-full h-full" viewBox="0 0 340 200" fill="none">
+        <svg className="w-full h-full" viewBox="0 0 340 200" fill="none" aria-hidden="true">
           {/* Abstract roads */}
           <path d="M 20 180 L 320 80" stroke="#ebdcb9" strokeWidth="1.5" strokeDasharray="3 3" />
           <path d="M 60 40 L 280 190" stroke="#ebdcb9" strokeWidth="1.5" strokeDasharray="3 3" />
@@ -218,16 +235,13 @@ export default function OrderTrackingPage({ params }: PageProps) {
                 <span className="font-mono text-[12px] font-bold text-cinnamon mr-2">{it.quantity}x</span>
                 {it.product_name}
               </span>
-              <span className="font-mono">{formatVND(it.total_price).replace("₫", "")}₫</span>
+              <span className="font-mono">{formatVND(it.total_price)}</span>
             </div>
           ))}
         </div>
         <div className="flex justify-between items-center">
           <span className="font-display text-[16px] text-espresso">Total amount</span>
-          <span className="font-display text-[20px] text-espresso">
-            {formatVND(order.total_amount).replace("₫", "")}
-            <span className="ml-0.5 text-[11px] text-cinnamon">₫</span>
-          </span>
+          <span className="font-display text-[20px] text-espresso">{formatVND(order.total_amount)}</span>
         </div>
       </div>
     </main>

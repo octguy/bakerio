@@ -28,19 +28,28 @@ function ProfileContent() {
   const [lifetimeOrders, setLifetimeOrders] = useState<number>(47);
 
   useEffect(() => {
+    let active = true;
     const loadProfileData = async () => {
       try {
         const loy = await getLoyalty();
+        if (!active) return;
         setLoyalty(loy);
         const addrs = await getAddresses();
+        if (!active) return;
         setAddresses(addrs);
         const stats = await getOrderStats();
+        if (!active) return;
         setLifetimeOrders(stats.lifetime);
       } catch (err) {
-        console.error("Failed to load profile data:", err);
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to load profile data:", err);
+        }
       }
     };
     loadProfileData();
+    return () => {
+      active = false;
+    };
   }, []);
 
   return (
@@ -49,7 +58,7 @@ function ProfileContent() {
       <div className="mb-2 flex items-center justify-between">
         <span className="font-mono text-[11px] font-bold tracking-[0.16em] text-cinnamon">EDIT</span>
         <div className="font-display text-[16px] leading-none">Profile</div>
-        <span className="text-[16px] text-caramel">⚙</span>
+        <span className="text-[16px] text-caramel" aria-hidden="true">⚙</span>
       </div>
 
       {/* Avatar */}
@@ -72,7 +81,7 @@ function ProfileContent() {
         />
         <div className="relative">
           <div className="mb-3.5 flex items-center gap-2">
-            <span className="text-[14px] text-honey">✦</span>
+            <span className="text-[14px] text-honey" aria-hidden="true">✦</span>
             <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-honey">
               Bakerio crumbs
             </span>
@@ -82,7 +91,7 @@ function ProfileContent() {
               {loyalty?.balance.toLocaleString() ?? "0"}
             </span>
             <span className="font-editorial text-[14px] italic text-honey">
-              = {formatVND(loyalty?.asMoney ?? 0).replace("₫", "")}₫ off
+              = {formatVND(loyalty?.asMoney ?? 0)} off
             </span>
           </div>
           <div className="mt-3.5 h-1.5 overflow-hidden rounded-sm bg-white/15">
@@ -145,10 +154,11 @@ function ProfileContent() {
         <Row icon="🥄" label="Dietary" sub="no peanut" badge="soon" />
         <Row icon="🔒" label="Privacy & data" badge="soon" last />
         <button
+          type="button"
           onClick={logout}
           className="flex w-full items-center gap-3 px-4 py-3.5 text-left border-t border-crust hover:bg-butter/25 transition-colors"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-butter text-[14px] text-sienna">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-butter text-[14px] text-sienna" aria-hidden="true">
             ⏻
           </div>
           <div className="text-[13.5px] font-semibold text-sienna">Sign out</div>
@@ -163,7 +173,7 @@ function Section({ title, cta, children }: { title: string; cta?: string; childr
     <div className="mb-4">
       <div className="mb-2 flex items-center justify-between font-mono text-[9.5px] uppercase tracking-[0.22em] text-caramel">
         <span>{title}</span>
-        {cta && <span className="font-bold text-cinnamon cursor-pointer">{cta}</span>}
+        {cta && <span className="font-bold text-cinnamon opacity-60">{cta}</span>}
       </div>
       <div className="overflow-hidden rounded-2xl border border-crust bg-white">{children}</div>
     </div>
@@ -193,7 +203,7 @@ function Row({
         badge ? "opacity-60" : ""
       }`}
     >
-      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-butter text-[14px] text-cinnamon">
+      <div className="flex h-8 w-8 items-center justify-center rounded-md bg-butter text-[14px] text-cinnamon" aria-hidden="true">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -206,6 +216,7 @@ function Row({
         </span>
       ) : toggle ? (
         <div
+          aria-hidden="true"
           className="relative h-[22px] w-[38px] rounded-full"
           style={{ background: on ? "var(--sage)" : "var(--crust-deep)" }}
         >
@@ -215,7 +226,7 @@ function Row({
           />
         </div>
       ) : (
-        <span className="text-[18px] text-caramel">›</span>
+        <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
       )}
     </div>
   );

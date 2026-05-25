@@ -17,7 +17,7 @@ vi.mock("@repo/api-client", () => ({
 vi.mock("next/image", () => ({ default: (props: any) => <img {...props} /> }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
-vi.mock("@/store/cart", () => ({ useCartStore: (_selector: any) => mockSetBranch }));
+vi.mock("@/store/cart", () => ({ useCartStore: () => mockSetBranch }));
 
 afterEach(cleanup);
 
