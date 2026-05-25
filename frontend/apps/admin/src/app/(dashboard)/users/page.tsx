@@ -29,21 +29,30 @@ export default function UsersPage() {
   const [open, setOpen] = useState(false);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [counts, setCounts] = useState<{ total: number; onShift: number }>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const fetchStaffData = async () => {
+  const fetchStaffData = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    setError("");
     try {
       const staffList = await getStaff();
       const countsData = await getStaffCounts();
       setStaff(staffList);
       setCounts(countsData);
     } catch (err) {
-      console.error("Failed to fetch staff:", err);
+      setError("Could not load staff data. Retry when the API is reachable.");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to fetch staff:", err);
+      }
+    } finally {
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStaffData(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    fetchStaffData(true); // eslint-disable-line react-hooks/set-state-in-effect
+  }, []);
 
   const createMut = useMutation({
     mutationFn: (d: FormData) => createUser({ email: d.email, full_name: d.full_name, password: d.password, role: d.role }),
@@ -57,6 +66,10 @@ export default function UsersPage() {
   });
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
+  const handleCreateUser = (data: FormData) => {
+    if (createMut.isPending) return;
+    createMut.mutate(data);
+  };
 
   return (
     <div className="space-y-4">
@@ -66,7 +79,11 @@ export default function UsersPage() {
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              {counts?.total ?? 46} on the payroll · {counts?.onShift ?? 28} on shift now
+              {loading && !counts
+                ? "Loading staff..."
+                : error && !counts
+                  ? "Staff data unavailable"
+                  : `${counts?.total ?? 46} on the payroll · ${counts?.onShift ?? 28} on shift now`}
             </span>
           </div>
           <h1
@@ -148,12 +165,34 @@ export default function UsersPage() {
             </div>
           );
         })}
+        {loading && (
+          <div className="px-4 py-6 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
+            Loading staff...
+          </div>
+        )}
+        {!loading && error && (
+          <div role="alert" className="px-4 py-6 text-center">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-sienna">{error}</p>
+            <button
+              type="button"
+              onClick={() => fetchStaffData(true)}
+              className="mt-3 rounded-full border border-sienna/30 px-3 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-sienna"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!loading && !error && staff.length === 0 && (
+          <div className="px-4 py-6 text-center font-editorial text-[14px] italic text-caramel">
+            No staff records found.
+          </div>
+        )}
       </div>
 
       <Dialog open={open} onOpenChange={(v) => { if (!v) { setOpen(false); reset(); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Create User</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmit((d) => createMut.mutate(d))} className="space-y-4 mt-4">
+          <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4 mt-4">
             <div><Label>Full Name</Label><Input {...register("full_name")} />{errors.full_name && <p className="text-xs text-destructive mt-1">{errors.full_name.message}</p>}</div>
             <div><Label>Email</Label><Input type="email" {...register("email")} />{errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}</div>
             <div><Label>Password</Label><Input type="password" {...register("password")} />{errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}</div>
