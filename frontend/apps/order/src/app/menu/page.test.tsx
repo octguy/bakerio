@@ -9,6 +9,10 @@ vi.mock("@repo/api-client", () => ({
   getCategories: vi.fn().mockResolvedValue([{ id: "c1", name: "Bread" }]),
 }));
 
+vi.mock("@/lib/guest-session", () => ({
+  ensureGuestSession: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("./_components/menu-grid", () => ({
   MenuGrid: ({ products }: { products: { id: string; name: string }[] }) => (
     <div data-testid="menu-grid">

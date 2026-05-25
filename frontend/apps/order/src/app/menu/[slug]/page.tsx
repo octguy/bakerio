@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Croissant } from "lucide-react";
 import { getProduct } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
+import { ensureGuestSession } from "@/lib/guest-session";
 import { AddToCartSection } from "../_components/add-to-cart";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -9,6 +10,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   let product;
 
   try {
+    await ensureGuestSession();
     product = await getProduct(slug);
   } catch {
     return <p className="p-8 text-center">Product not found</p>;

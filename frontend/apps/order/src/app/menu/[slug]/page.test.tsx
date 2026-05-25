@@ -18,6 +18,10 @@ vi.mock("@repo/api-client", () => ({
   }),
 }));
 
+vi.mock("@/lib/guest-session", () => ({
+  ensureGuestSession: vi.fn().mockResolvedValue(undefined),
+}));
+
 import Page from "./page";
 
 vi.mock("next/image", () => ({ default: (props: any) => <img {...props} /> }));

@@ -1,6 +1,7 @@
 import { getProducts, getCategories, type Product, type Category } from "@repo/api-client";
 import { MenuGrid } from "./_components/menu-grid";
 import Link from "next/link";
+import { ensureGuestSession } from "@/lib/guest-session";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ export default async function MenuPage() {
   let categories: Category[] = [];
 
   try {
+    await ensureGuestSession();
     [products, categories] = await Promise.all([getProducts(), getCategories()]);
   } catch {
     // Backend may not have products endpoint yet
