@@ -23,20 +23,29 @@ export default function KitchenPage() {
     late: number;
     byStation: Record<KitchenStation | "All", number>;
   }>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const fetchKitchenData = async () => {
+  const fetchKitchenData = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    setError("");
     try {
       const ticketsData = await getKitchenTickets(station === "All" ? undefined : station);
       const countsData = await getKitchenCounts();
       setTickets(ticketsData);
       setCounts(countsData);
     } catch (err) {
-      console.error("Failed to fetch kitchen data:", err);
+      setError("Could not load kitchen tickets. Retry when the API is reachable.");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to fetch kitchen data:", err);
+      }
+    } finally {
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchKitchenData(); // eslint-disable-line react-hooks/set-state-in-effect
+    fetchKitchenData(true); // eslint-disable-line react-hooks/set-state-in-effect
     const interval = setInterval(fetchKitchenData, 3000); // 3s auto-refresh
     return () => clearInterval(interval);
   }, [station]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -106,9 +115,34 @@ export default function KitchenPage() {
         </span>
       </div>
 
+      {error && (
+        <div role="alert" className="mx-8 mt-4 rounded-lg border border-sienna/30 bg-sienna/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-sienna">{error}</p>
+            <button
+              type="button"
+              onClick={() => fetchKitchenData(true)}
+              className="rounded-full border border-sienna/30 px-3 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-sienna"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Cards grid */}
       <div className="grid grid-flow-row-dense grid-cols-1 gap-4 overflow-y-auto p-8 lg:grid-cols-3">
-        {tickets.map((o) => {
+        {loading && (
+          <div className="col-span-full flex min-h-[260px] items-center justify-center rounded-xl border border-dashed border-crust bg-white font-mono text-[11px] uppercase tracking-[0.16em] text-caramel">
+            Loading kitchen tickets...
+          </div>
+        )}
+        {!loading && !error && tickets.length === 0 && (
+          <div className="col-span-full rounded-xl border border-dashed border-crust bg-white p-8 text-center font-editorial text-[15px] italic text-caramel">
+            No tickets for this station.
+          </div>
+        )}
+        {!loading && tickets.map((o) => {
           const sev = SEV_PAL[o.sev];
           const frac = Math.min(1, o.mins / o.target);
           return (
