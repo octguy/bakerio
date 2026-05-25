@@ -20,6 +20,13 @@ function markMock(key: string) {
   MOCK_SERVED.add(key);
 }
 
+function useMockFallback(key: string, message?: string, err?: unknown) {
+  markMock(key);
+  if (message && process.env.NODE_ENV !== "production") {
+    console.info(message, err);
+  }
+}
+
 // adaptProduct maps the Go ProductResponse shape (price as decimal, category_id)
 // onto the frontend Product type (base_price, optional category). It is a no-op
 // for already-frontend-shaped payloads (mocks and tests).
@@ -140,8 +147,7 @@ export const getProducts = cache(async (): Promise<Product[]> => {
     const arr = Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : [];
     return arr.map(adaptProduct);
   } catch (err) {
-    markMock("products.list");
-    console.info("[api-client] /products not available — using mock fixtures.", err);
+    useMockFallback("products.list", "[api-client] /products not available — using mock fixtures.", err);
     return mockGetProducts();
   }
 });
@@ -151,8 +157,7 @@ export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
     const raw = await request<Product>(`/products/${idOrSlug}`);
     return adaptProduct(raw);
   } catch (err) {
-    markMock("products.get");
-    console.info("[api-client] /products/:id not available — using mock fixture.", err);
+    useMockFallback("products.get", "[api-client] /products/:id not available — using mock fixture.", err);
     const found = await mockGetProduct(idOrSlug);
     if (found) return found;
     throw err;
@@ -185,8 +190,7 @@ export async function createProduct(data: {
     });
     return adaptProduct(res);
   } catch (err) {
-    markMock("products.create");
-    console.info("[api-client] /products POST not available — creating in mock.", err);
+    useMockFallback("products.create", "[api-client] /products POST not available — creating in mock.", err);
     return mockCreateProduct(data);
   }
 }
@@ -213,8 +217,7 @@ export async function updateProduct(
     });
     return adaptProduct(res);
   } catch (err) {
-    markMock("products.update");
-    console.info("[api-client] /products/:id PATCH not available — updating in mock.", err);
+    useMockFallback("products.update", "[api-client] /products/:id PATCH not available — updating in mock.", err);
     return mockUpdateProduct(id, data);
   }
 }
@@ -223,8 +226,7 @@ export async function deleteProduct(id: string) {
   try {
     return await request<void>(`/products/${id}`, { method: "DELETE" });
   } catch (err) {
-    markMock("products.delete");
-    console.info("[api-client] /products/:id DELETE not available — removing from mock.", err);
+    useMockFallback("products.delete", "[api-client] /products/:id DELETE not available — removing from mock.", err);
     return mockDeleteProduct(id);
   }
 }
@@ -234,10 +236,13 @@ export async function deleteProduct(id: string) {
 export const getCategories = cache(async (): Promise<Category[]> => {
   try {
     const cats = await request<Category[]>("/categories");
-    if (!cats || cats.length === 0) return mockGetCategories();
+    if (!cats || cats.length === 0) {
+      useMockFallback("categories.empty");
+      return mockGetCategories();
+    }
     return cats;
   } catch (err) {
-    console.warn("getCategories backend failed, falling back to mock:", err);
+    useMockFallback("categories.list", "[api-client] /categories not available — using mock fixtures.", err);
     return mockGetCategories();
   }
 });
@@ -246,7 +251,7 @@ export const getCategory = cache(async (id: string): Promise<Category> => {
   try {
     return await request<Category>(`/categories/${id}`);
   } catch (err) {
-    console.warn("getCategory backend failed, falling back to mock:", err);
+    useMockFallback("categories.get", "[api-client] /categories/:id not available — using mock fixture.", err);
     const found = mockCategories.find((c) => c.id === id || c.slug === id);
     if (found) return found;
     throw err;
@@ -257,8 +262,7 @@ export async function createCategory(data: { name: string; parent_id?: string; s
   try {
     return await request<Category>("/categories", { method: "POST", body: JSON.stringify(data) });
   } catch (err) {
-    markMock("categories.create");
-    console.info("[api-client] /categories POST not available — creating in mock.", err);
+    useMockFallback("categories.create", "[api-client] /categories POST not available — creating in mock.", err);
     return mockCreateCategory(data);
   }
 }
@@ -267,8 +271,7 @@ export async function updateCategory(id: string, data: { name: string; parent_id
   try {
     return await request<Category>(`/categories/${id}`, { method: "PATCH", body: JSON.stringify(data) });
   } catch (err) {
-    markMock("categories.update");
-    console.info("[api-client] /categories/:id PATCH not available — updating in mock.", err);
+    useMockFallback("categories.update", "[api-client] /categories/:id PATCH not available — updating in mock.", err);
     return mockUpdateCategory(id, data);
   }
 }
@@ -277,8 +280,7 @@ export async function deleteCategory(id: string) {
   try {
     return await request<void>(`/categories/${id}`, { method: "DELETE" });
   } catch (err) {
-    markMock("categories.delete");
-    console.info("[api-client] /categories/:id DELETE not available — deleting in mock.", err);
+    useMockFallback("categories.delete", "[api-client] /categories/:id DELETE not available — deleting in mock.", err);
     return mockDeleteCategory(id);
   }
 }
@@ -291,8 +293,7 @@ export const getBranches = cache(async (): Promise<Branch[]> => {
     if (!Array.isArray(raw)) return raw as unknown as Branch[];
     return raw.map(adaptBranch);
   } catch (err) {
-    markMock("branches.list");
-    console.info("[api-client] /branch not available — using mock fixtures.", err);
+    useMockFallback("branches.list", "[api-client] /branch not available — using mock fixtures.", err);
     return mockGetBranches();
   }
 });
