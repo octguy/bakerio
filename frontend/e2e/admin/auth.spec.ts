@@ -4,7 +4,7 @@ test.describe("Admin — Authentication", () => {
   test("login with valid credentials redirects to dashboard", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill("superadmin@bakerio.com");
-    await page.getByLabel("Password").fill("123456");
+    await page.getByLabel("Password", { exact: true }).fill("123456");
     await page.getByRole("button", { name: "Sign In" }).click();
 
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
@@ -13,7 +13,7 @@ test.describe("Admin — Authentication", () => {
   test("login with invalid credentials shows error message", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill("wrong@example.com");
-    await page.getByLabel("Password").fill("wrongpass");
+    await page.getByLabel("Password", { exact: true }).fill("wrongpass");
     await page.getByRole("button", { name: "Sign In" }).click();
 
     await expect(page.getByText(/invalid|error|denied/i)).toBeVisible({ timeout: 10000 });
@@ -32,7 +32,7 @@ test.describe("Admin — Authentication", () => {
     // Login first
     await page.goto("/login");
     await page.getByLabel("Email").fill("superadmin@bakerio.com");
-    await page.getByLabel("Password").fill("123456");
+    await page.getByLabel("Password", { exact: true }).fill("123456");
     await page.getByRole("button", { name: "Sign In" }).click();
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 
