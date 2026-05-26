@@ -285,9 +285,6 @@ function OrdersPageInner() {
                       Reorder
                     </button>
                   )}
-                  <button type="button" disabled className="text-caramel opacity-60">
-                    Receipt ↗
-                  </button>
                 </div>
               </div>
             );

@@ -42,7 +42,7 @@ const renderMenuPage = async () => render(await MenuPage());
 describe("MenuPage", () => {
   it("renders without crashing", async () => {
     const { container } = await renderMenuPage();
-    expect(container.querySelector("main")).toBeInTheDocument();
+    expect(container.firstChild).toBeInTheDocument();
   });
 
   it("displays the menu heading", async () => {

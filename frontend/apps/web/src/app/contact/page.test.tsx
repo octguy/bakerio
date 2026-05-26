@@ -30,8 +30,8 @@ afterEach(() => {
 
 describe("ContactPage", () => {
   it("renders without crashing", () => {
-    render(<ContactPage />);
-    expect(screen.getByRole("main")).toBeInTheDocument();
+    const { container } = render(<ContactPage />);
+    expect(container.firstChild).toBeInTheDocument();
     expect(screen.getByText(/hear from you/i)).toBeInTheDocument();
   });
 

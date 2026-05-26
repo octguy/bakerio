@@ -16,7 +16,7 @@ afterEach(cleanup);
 describe("AboutPage", () => {
   it("renders without crashing", () => {
     const { container } = render(<AboutPage />);
-    expect(container.querySelector("main")).toBeInTheDocument();
+    expect(container.firstChild).toBeInTheDocument();
   });
 
   it("displays the hero heading about the bakery", () => {

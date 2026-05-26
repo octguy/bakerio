@@ -32,7 +32,7 @@ const PILLARS = [
 
 export default function AboutPage() {
   return (
-    <main className="bg-cream text-espresso">
+    <div className="bg-cream text-espresso">
       {/* Hero — split */}
       <section className="px-6 pt-32 pb-12 lg:px-14 lg:pt-40">
         <div className="mx-auto grid max-w-[1400px] grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
@@ -157,6 +157,6 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

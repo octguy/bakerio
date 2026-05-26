@@ -43,7 +43,7 @@ export default function Home() {
   const featuredPosts = posts.slice(0, 3);
 
   return (
-    <main className="relative bg-cream text-espresso">
+    <div className="relative bg-cream text-espresso">
       {/* ──────────────────────────────────────────────────────
          1. EDITORIAL HERO
          ────────────────────────────────────────────────────── */}
@@ -479,6 +479,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

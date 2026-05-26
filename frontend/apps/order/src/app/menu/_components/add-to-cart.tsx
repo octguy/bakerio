@@ -39,9 +39,23 @@ export function AddToCartSection({ product }: { product: Product }) {
       <div className="flex items-center gap-4 mb-6">
         <span className="text-sm font-medium">Quantity</span>
         <div className="flex items-center border border-crust rounded-full">
-          <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="px-3 py-1 text-lg">−</button>
+          <button
+            type="button"
+            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            className="px-3 py-1 text-lg"
+            aria-label="Decrease quantity"
+          >
+            −
+          </button>
           <span className="px-3 font-semibold">{quantity}</span>
-          <button onClick={() => setQuantity(quantity + 1)} className="px-3 py-1 text-lg">+</button>
+          <button
+            type="button"
+            onClick={() => setQuantity(quantity + 1)}
+            className="px-3 py-1 text-lg"
+            aria-label="Increase quantity"
+          >
+            +
+          </button>
         </div>
       </div>
 
