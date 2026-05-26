@@ -29,7 +29,7 @@ test.describe("Admin — Users Management", () => {
     await inputs.nth(0).fill("Staff Member");       // Full Name
     await inputs.nth(1).fill(`staff-${Date.now()}@bakerio.vn`); // Email
     await inputs.nth(2).fill("secure123");           // Password
-    await dialog.locator("select").selectOption("staff"); // Role
+    await dialog.locator("select").selectOption("product_manager"); // Role (non-branch-scoped)
 
     await page.getByRole("button", { name: /create user/i }).click();
     await expect(page.getByText("User created")).toBeVisible({ timeout: 10000 });
