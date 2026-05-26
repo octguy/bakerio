@@ -46,7 +46,7 @@ export default function ContactPage() {
   };
 
   return (
-    <main className="bg-cream text-espresso">
+    <div className="bg-cream text-espresso">
       <section className="px-6 pt-32 pb-12 lg:px-14 lg:pt-40">
         <div className="mx-auto max-w-[1400px]">
           <div className="mb-4 flex items-center gap-3">
@@ -155,6 +155,6 @@ export default function ContactPage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

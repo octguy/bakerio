@@ -32,9 +32,24 @@ function useMockFallback(key: string, message?: string, err?: unknown) {
 // for already-frontend-shaped payloads (mocks and tests).
 function adaptProduct(p: any): Product {
   if (!p || typeof p !== "object") return p as Product;
-  if (p.base_price !== undefined || p.price === undefined) return p as Product;
-  const priceNum = typeof p.price === "string" ? parseFloat(p.price) : Number(p.price);
-  return { ...p, base_price: Number.isFinite(priceNum) ? priceNum : 0 };
+  let adapted = p;
+  if (p.base_price === undefined && p.price !== undefined) {
+    const priceNum = typeof p.price === "string" ? parseFloat(p.price) : Number(p.price);
+    adapted = { ...p, base_price: Number.isFinite(priceNum) ? priceNum : 0 };
+  }
+  if (adapted.category_id && !adapted.category) {
+    adapted = {
+      ...adapted,
+      category: {
+        id: adapted.category_id,
+        name: "",
+        slug: "",
+        sort_order: 0,
+        is_active: true,
+      },
+    };
+  }
+  return adapted as Product;
 }
 
 // adaptBranch fills the frontend Branch.region field — the Go BranchResponse

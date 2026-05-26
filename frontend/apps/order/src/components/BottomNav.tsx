@@ -13,7 +13,7 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  const itemCount = useCartStore((s) => s.items.length);
+  const itemCount = useCartStore((s) => s.items.reduce((sum, item) => sum + item.quantity, 0));
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-crust bg-white md:hidden">

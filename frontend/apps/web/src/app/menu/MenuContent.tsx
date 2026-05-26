@@ -36,7 +36,8 @@ export default function MenuContent() {
   };
 
   const filtered = productsList.filter((p) => {
-    const categoryMatch = active === "All" || p.category?.slug === active;
+    const pCategory = p.category?.slug ? p.category : categoriesList.find((c) => c.id === (p.category?.id || (p as any).category_id)) || p.category;
+    const categoryMatch = active === "All" || pCategory?.slug === active;
     const allergenMatch =
       selectedAllergens.length === 0 ||
       selectedAllergens.every((a) => p.allergens?.includes(a));
@@ -71,7 +72,10 @@ export default function MenuContent() {
           </button>
 
           {categoriesList.map((c) => {
-            const count = productsList.filter((p) => p.category?.slug === c.slug).length;
+            const count = productsList.filter((p) => {
+              const pCategory = p.category?.slug ? p.category : categoriesList.find((cat) => cat.id === (p.category?.id || (p as any).category_id)) || p.category;
+              return pCategory?.slug === c.slug;
+            }).length;
             const isActive = active === c.slug;
             return (
               <button
@@ -140,7 +144,9 @@ export default function MenuContent() {
                   FIG. {String(i + 1).padStart(2, "0")}
                 </span>
                 <h3 className="mt-1 font-display text-[17px] leading-[1.1] tracking-tight text-espresso">{p.name}</h3>
-                <div className="font-editorial text-[12.5px] text-cinnamon">{p.category?.name || "Bakes"}</div>
+                <div className="font-editorial text-[12.5px] text-cinnamon">
+                  {(p.category?.name || categoriesList.find((c) => c.id === (p.category?.id || (p as any).category_id))?.name) || "Bakes"}
+                </div>
                 <div className="mt-auto flex items-baseline justify-between border-t border-dashed border-crust pt-2.5">
                   <span className="font-display text-[16px] text-espresso">
                     {p.base_price.toLocaleString("vi-VN")}

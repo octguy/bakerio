@@ -158,17 +158,6 @@ function CartPageInner() {
         ))}
       </div>
 
-      {/* Promo */}
-      <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-dashed border-crust-deep bg-butter p-3">
-        <span className="text-[16px]" aria-hidden="true">🎟️</span>
-        <div className="flex-1">
-          <div className="text-[12.5px] text-cocoa">Add a promo code</div>
-        </div>
-        <span className="font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-cinnamon">
-          Apply
-        </span>
-      </div>
-
       {/* Totals */}
       <div className="mt-3 rounded-2xl border border-crust bg-white p-4">
         {[

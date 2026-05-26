@@ -14,7 +14,7 @@ export default function BlogPage() {
   const [featured, ...rest] = posts;
 
   return (
-    <main className="bg-cream text-espresso">
+    <div className="bg-cream text-espresso">
       <section className="px-6 pt-32 pb-2 lg:px-14 lg:pt-40">
         <div className="mx-auto flex max-w-[1400px] items-end justify-between">
           <div>
@@ -133,6 +133,6 @@ export default function BlogPage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

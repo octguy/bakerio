@@ -34,7 +34,7 @@ afterEach(cleanup);
 describe("MenuPage", () => {
   it("renders without crashing", () => {
     const { container } = render(<MenuPage />);
-    expect(container.querySelector("main")).toBeInTheDocument();
+    expect(container.firstChild).toBeInTheDocument();
   });
 
   it("displays the menu heading", () => {

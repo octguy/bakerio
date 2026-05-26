@@ -18,7 +18,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
   const filtered =
     activeCategory === "all"
       ? products
-      : products.filter((p) => p.category?.id === activeCategory);
+      : products.filter((p) => (p.category?.id || (p as any).category_id) === activeCategory);
 
   return (
     <>
@@ -37,7 +37,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
           All <span className="font-mono text-[10px] opacity-70">{products.length}</span>
         </button>
         {categories.map((cat) => {
-          const count = products.filter((p) => p.category?.id === cat.id).length;
+          const count = products.filter((p) => (p.category?.id || (p as any).category_id) === cat.id).length;
           const isActive = activeCategory === cat.id;
           return (
             <button
@@ -73,7 +73,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
                 description: product.description || "",
                 basePrice: product.base_price,
                 image: product.images?.[0]?.url || "",
-                category: product.category?.name || "",
+                category: product.category?.name || categories.find((c) => c.id === (product.category?.id || (product as any).category_id))?.name || "",
                 options: [],
               },
               choices: [],
@@ -114,7 +114,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
                   {product.name}
                 </h3>
                 <div className="mt-0.5 font-editorial text-[11px] text-cinnamon line-clamp-1">
-                  {product.category?.name ?? "Bakerio"}
+                  {product.category?.name || categories.find((c) => c.id === (product.category?.id || (product as any).category_id))?.name || "Bakerio"}
                 </div>
                 <div className="mt-1.5 font-display text-[15px] text-espresso">
                   {formatVND(product.base_price)}
