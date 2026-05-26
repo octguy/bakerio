@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 vi.mock("next/image", () => ({
@@ -22,7 +22,11 @@ vi.mock("@/hooks/useScrollReveal", () => ({
 
 import ContactPage from "./page";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("ContactPage", () => {
   it("renders without crashing", () => {
@@ -53,15 +57,14 @@ describe("ContactPage", () => {
     expect(screen.getByText("Message is required")).toBeInTheDocument();
   });
 
-  it("shows success message after valid form submission", () => {
+  it("shows a configuration error when no contact endpoint is configured", () => {
     render(<ContactPage />);
     fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Hello" } });
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
-    expect(screen.getByText("Thank you.")).toBeInTheDocument();
-    expect(screen.getByText(/we'll write back/i)).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/contact form is not configured yet/i);
   });
 
   it("shows email-specific error for invalid email format", () => {
@@ -76,13 +79,21 @@ describe("ContactPage", () => {
     expect(screen.queryByText("Message is required")).not.toBeInTheDocument();
   });
 
-  it("hides the form after successful submission", () => {
+  it("hides the form after successful submission", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CONTACT_ENDPOINT", "https://example.com/contact");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
     render(<ContactPage />);
     fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Hello" } });
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Thank you.")).toBeInTheDocument();
+    });
+    expect(screen.getByText(/we'll write back/i)).toBeInTheDocument();
     expect(screen.queryByLabelText("Your name")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /send message/i })).not.toBeInTheDocument();
   });

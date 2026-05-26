@@ -1,12 +1,22 @@
 import type { Metadata } from "next";
+import { getProducts, getCategories, type Product, type Category } from "@repo/api-client";
 import MenuContent from "./MenuContent";
 
 export const metadata: Metadata = {
   title: "Menu — du jour",
-  description: "52 items refreshed daily at 06:00. Bánh mì, croissant, sourdough, cake, coffee — the full Bakerio carte.",
+  description: "Bánh mì, croissant, sourdough, cake, coffee — the full Bakerio carte, refreshed daily at 06:00.",
 };
 
-export default function MenuPage() {
+export default async function MenuPage() {
+  let products: Product[] = [];
+  let categories: Category[] = [];
+
+  try {
+    [products, categories] = await Promise.all([getProducts(), getCategories()]);
+  } catch {
+    // The menu still renders with an empty state if upstream data is unavailable.
+  }
+
   return (
     <main className="bg-cream text-espresso">
       <section className="px-6 pt-32 pb-8 lg:px-14 lg:pt-40">
@@ -25,14 +35,9 @@ export default function MenuPage() {
               Menu <span className="font-editorial text-cinnamon">du jour.</span>
             </h1>
           </div>
-          <div className="hidden items-center gap-3 md:flex">
-            <span className="font-mono text-[10.5px] uppercase tracking-[0.16em] text-caramel">
-              SHOWING 52 OF 52
-            </span>
-          </div>
         </div>
       </section>
-      <MenuContent />
+      <MenuContent initialProducts={products} initialCategories={categories} />
     </main>
   );
 }

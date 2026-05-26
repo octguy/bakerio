@@ -123,12 +123,9 @@ export default function BlogPage() {
                   </div>
                 </Link>
               ))}
-              <a
-                href="#"
-                className="mt-1.5 self-start font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-cinnamon"
-              >
-                Browse all 47 stories →
-              </a>
+              <p className="mt-1.5 self-start font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-cinnamon">
+                {posts.length} stories in the journal
+              </p>
             </div>
           </div>
         </div>

@@ -9,6 +9,11 @@ vi.mock("next/link", () => ({
   default: ({ children, ...props }: { children: React.ReactNode; href: string }) => <a {...props}>{children}</a>,
 }));
 
+vi.mock("@repo/api-client", () => ({
+  getProducts: async () => [],
+  getCategories: async () => [],
+}));
+
 vi.mock("./MenuContent", () => ({
   default: () => (
     <section>
@@ -31,28 +36,30 @@ import MenuPage from "./page";
 
 afterEach(cleanup);
 
+const renderMenuPage = async () => render(await MenuPage());
+
 describe("MenuPage", () => {
-  it("renders without crashing", () => {
-    const { container } = render(<MenuPage />);
+  it("renders without crashing", async () => {
+    const { container } = await renderMenuPage();
     expect(container.querySelector("main")).toBeInTheDocument();
   });
 
-  it("displays the menu heading", () => {
-    render(<MenuPage />);
+  it("displays the menu heading", async () => {
+    await renderMenuPage();
     expect(
       screen.getByRole("heading", { level: 1, name: /menu/i })
     ).toBeInTheDocument();
   });
 
-  it("shows product items with names", () => {
-    render(<MenuPage />);
+  it("shows product items with names", async () => {
+    await renderMenuPage();
     expect(screen.getByText("Vanilla Sponge")).toBeInTheDocument();
     expect(screen.getByText("Butter Croissant")).toBeInTheDocument();
     expect(screen.getByText("Sourdough Loaf")).toBeInTheDocument();
   });
 
-  it("renders category filter buttons", () => {
-    render(<MenuPage />);
+  it("renders category filter buttons", async () => {
+    await renderMenuPage();
     expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cakes" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pastries" })).toBeInTheDocument();
@@ -60,19 +67,19 @@ describe("MenuPage", () => {
     expect(screen.getByRole("button", { name: "Drinks" })).toBeInTheDocument();
   });
 
-  it("displays product images with alt text", () => {
-    render(<MenuPage />);
+  it("displays product images with alt text", async () => {
+    await renderMenuPage();
     expect(screen.getByAltText("Vanilla Sponge")).toBeInTheDocument();
     expect(screen.getByAltText("Iced Latte")).toBeInTheDocument();
   });
 
-  it("renders the hero section with description text", () => {
-    render(<MenuPage />);
+  it("renders the hero section with description text", async () => {
+    await renderMenuPage();
     expect(screen.getByText(/refreshed daily/i)).toBeInTheDocument();
   });
 
-  it("has a link or CTA related to ordering", () => {
-    render(<MenuPage />);
+  it("has a link or CTA related to ordering", async () => {
+    await renderMenuPage();
     expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
   });
 });

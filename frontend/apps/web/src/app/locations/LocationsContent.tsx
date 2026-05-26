@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { locations, regions } from "@/data/locations";
 
 // Editorial atlas: SVG abstract HCMC map + tabular shop list.
@@ -18,8 +18,17 @@ const PIN_LAYOUT = [
 
 export default function LocationsContent() {
   const [active, setActive] = useState<string>("All");
-  const [selectedIdx, setSelectedIdx] = useState<number>(0);
-  const filtered = active === "All" ? locations : locations.filter((l) => l.region === active);
+  const [selectedLocationName, setSelectedLocationName] = useState<string>(locations[0]?.name ?? "");
+  const filtered = useMemo(
+    () => (active === "All" ? locations : locations.filter((l) => l.region === active)),
+    [active],
+  );
+  const selectedLocation = filtered.find((location) => location.name === selectedLocationName) ?? filtered[0] ?? null;
+  const selectedIdx = selectedLocation ? filtered.findIndex((location) => location.name === selectedLocation.name) : -1;
+
+  useEffect(() => {
+    setSelectedLocationName(filtered[0]?.name ?? "");
+  }, [filtered]);
 
   return (
     <section className="px-6 pb-24 lg:px-14">
@@ -87,17 +96,18 @@ export default function LocationsContent() {
               </g>
             </svg>
 
-            {locations.map((s, i) => {
-              const p = PIN_LAYOUT[i] ?? { x: 0.5, y: 0.5 };
+            {filtered.map((location, i) => {
+              const locationIndex = locations.findIndex((item) => item.name === location.name);
+              const p = PIN_LAYOUT[locationIndex] ?? { x: 0.5, y: 0.5 };
               const num = String(i + 1).padStart(2, "0");
-              const isSel = i === selectedIdx;
+              const isSel = location.name === selectedLocation?.name;
               return (
                 <button
-                  key={s.name}
-                  onClick={() => setSelectedIdx(i)}
+                  key={location.name}
+                  onClick={() => setSelectedLocationName(location.name)}
                   className="absolute"
                   style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%`, transform: "translate(-50%, -100%)" }}
-                  aria-label={s.name}
+                  aria-label={location.name}
                 >
                   <span
                     className="flex items-center justify-center border-2 border-white shadow-[0_4px_12px_rgba(44,24,16,0.3)]"
@@ -122,22 +132,24 @@ export default function LocationsContent() {
             })}
 
             {/* Callout */}
-            <div className="absolute bottom-6 left-6 w-[280px] rounded-sm border border-crust bg-white p-4 shadow-[0_12px_30px_-10px_rgba(44,24,16,0.3)]">
-              <div className="mb-2 flex items-center gap-2.5">
-                <span className="flex h-[22px] w-[22px] items-center justify-center rounded bg-golden font-mono text-[10px] font-bold text-white">
-                  {String(selectedIdx + 1).padStart(2, "0")}
-                </span>
-                <span className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-cinnamon">
-                  ★ {PIN_LAYOUT[selectedIdx]?.tag ?? "Bakerio shop"}
-                </span>
+            {selectedLocation && (
+              <div className="absolute bottom-6 left-6 w-[280px] rounded-sm border border-crust bg-white p-4 shadow-[0_12px_30px_-10px_rgba(44,24,16,0.3)]">
+                <div className="mb-2 flex items-center gap-2.5">
+                  <span className="flex h-[22px] w-[22px] items-center justify-center rounded bg-golden font-mono text-[10px] font-bold text-white">
+                    {String(selectedIdx + 1).padStart(2, "0")}
+                  </span>
+                  <span className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-cinnamon">
+                    ★ {PIN_LAYOUT[locations.findIndex((item) => item.name === selectedLocation.name)]?.tag ?? "Bakerio shop"}
+                  </span>
+                </div>
+                <h4 className="font-display text-[22px] tracking-tight text-espresso">{selectedLocation.name}</h4>
+                <div className="mb-2 font-editorial text-[13px] text-cinnamon">{selectedLocation.address}</div>
+                <div className="flex gap-3 font-mono text-[11px] text-cocoa">
+                  <span>● OPEN</span>
+                  <span>{selectedLocation.hours}</span>
+                </div>
               </div>
-              <h4 className="font-display text-[22px] tracking-tight text-espresso">{locations[selectedIdx].name}</h4>
-              <div className="mb-2 font-editorial text-[13px] text-cinnamon">{locations[selectedIdx].address}</div>
-              <div className="flex gap-3 font-mono text-[11px] text-cocoa">
-                <span>● OPEN</span>
-                <span>{locations[selectedIdx].hours}</span>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Shop list */}
@@ -150,12 +162,11 @@ export default function LocationsContent() {
             </div>
             <div className="flex-1 overflow-y-auto">
               {filtered.map((s, i) => {
-                const globalIdx = locations.indexOf(s);
-                const isSel = globalIdx === selectedIdx;
+                const isSel = s.name === selectedLocation?.name;
                 return (
                   <button
                     key={s.name}
-                    onClick={() => setSelectedIdx(globalIdx)}
+                    onClick={() => setSelectedLocationName(s.name)}
                     className={`flex w-full items-center py-3.5 text-left ${
                       i < filtered.length - 1 ? "border-b border-crust" : ""
                     } ${isSel ? "-mx-3 rounded bg-vanilla px-3" : ""}`}
@@ -164,7 +175,7 @@ export default function LocationsContent() {
                       className="w-7 font-mono text-[11px] font-bold"
                       style={{ color: isSel ? "var(--golden)" : "var(--espresso)" }}
                     >
-                      {String(globalIdx + 1).padStart(2, "0")}
+                      {String(i + 1).padStart(2, "0")}
                     </span>
                     <div className="flex-1 pl-4">
                       <div className="font-display text-[18px] leading-tight tracking-tight text-espresso">

@@ -39,7 +39,7 @@ describe("LocationsPage", () => {
 
   it("contains heading about locations", () => {
     render(<LocationsPage />);
-    expect(screen.getByRole("heading", { name: /eleven shops/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /2 shops/i })).toBeInTheDocument();
   });
 
   it("shows location cards with addresses", () => {

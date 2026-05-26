@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { z } from "zod";
+import { getContactEndpoint } from "@/lib/public-config";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -20,11 +21,13 @@ const contactInfo = [
 
 export default function ContactPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
+  const [submitState, setSubmitState] = useState<"idle" | "pending" | "success" | "error">("idle");
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
     const data = {
       name: formData.get("name") as string,
       email: formData.get("email") as string,
@@ -39,10 +42,56 @@ export default function ContactPage() {
         errs[i.path[0] as string] = i.message;
       });
       setFieldErrors(errs);
+      setSubmitError(null);
+      setSubmitState("idle");
       return;
     }
+
+    const endpoint = getContactEndpoint();
     setFieldErrors({});
-    setSubmitted(true);
+    setSubmitError(null);
+
+    if (!endpoint) {
+      setSubmitState("error");
+      setSubmitError("Contact form is not configured yet. Please email hello@bakerio.vn directly.");
+      return;
+    }
+
+    setSubmitState("pending");
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(result.data),
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        let message = "We couldn't send your message. Please try again in a moment.";
+
+        if (contentType.includes("application/json")) {
+          const body = await response.json().catch(() => null);
+          message = body?.error?.message || body?.message || message;
+        } else {
+          const text = await response.text().catch(() => "");
+          message = text.trim() || message;
+        }
+
+        throw new Error(message);
+      }
+
+      form.reset();
+      setSubmitState("success");
+    } catch (error) {
+      setSubmitState("error");
+      setSubmitError(
+        error instanceof Error ? error.message : "We couldn't send your message. Please try again in a moment.",
+      );
+    }
   };
 
   return (
@@ -66,7 +115,7 @@ export default function ContactPage() {
 
       <section className="mx-auto grid max-w-[1400px] grid-cols-1 gap-12 px-6 pb-24 lg:grid-cols-2 lg:px-14">
         {/* Form */}
-        {submitted ? (
+        {submitState === "success" ? (
           <div className="flex min-h-[300px] items-center justify-center rounded-sm border border-crust bg-white p-10 text-center">
             <div>
               <div className="font-display text-[40px] tracking-tight text-cinnamon">Thank you.</div>
@@ -76,7 +125,7 @@ export default function ContactPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" aria-busy={submitState === "pending"}>
             {[
               { name: "name", label: "Your name", placeholder: "Linh Phạm" },
               { name: "email", label: "Email", placeholder: "you@example.com" },
@@ -94,6 +143,7 @@ export default function ContactPage() {
                   name={f.name}
                   type={f.name === "email" ? "email" : "text"}
                   placeholder={f.placeholder}
+                  disabled={submitState === "pending"}
                   className="w-full rounded-md border border-crust bg-white px-4 py-3.5 text-[15px] text-espresso outline-none transition focus:border-cinnamon focus:ring-2 focus:ring-cinnamon/15"
                 />
                 {fieldErrors[f.name] && (
@@ -113,17 +163,27 @@ export default function ContactPage() {
                 name="message"
                 placeholder="Tell us what you're thinking…"
                 rows={5}
+                disabled={submitState === "pending"}
                 className="w-full resize-none rounded-md border border-crust bg-white px-4 py-3.5 text-[15px] text-espresso outline-none transition focus:border-cinnamon focus:ring-2 focus:ring-cinnamon/15"
               />
               {fieldErrors.message && (
                 <p className="mt-1 font-mono text-[11px] text-sienna">{fieldErrors.message}</p>
               )}
             </div>
+            {submitError && (
+              <p
+                role="alert"
+                className="rounded-md border border-sienna/20 bg-sienna/10 px-4 py-3 font-news text-[14px] text-sienna"
+              >
+                {submitError}
+              </p>
+            )}
             <button
               type="submit"
+              disabled={submitState === "pending"}
               className="bkr-press inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-cream"
             >
-              Send message <span>→</span>
+              {submitState === "pending" ? "Sending..." : "Send message"} <span>→</span>
             </button>
           </form>
         )}
