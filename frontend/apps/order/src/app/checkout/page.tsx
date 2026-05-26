@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { z } from "zod";
-import { createOrder, type CreateOrderRequest } from "@repo/api-client";
+import { createOrder, type CreateOrderRequest, getMockOrderSessionUser } from "@repo/api-client";
 import { getLoyalty, maxRedeemableFor, redeemCrumbs } from "@repo/api-client/mock/loyalty";
 import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
+import { useOrderDetailsStore } from "@/store/orderDetails";
 import { formatVND } from "@/lib/format";
 
 const checkoutSchema = z.object({
@@ -140,7 +141,25 @@ function CheckoutPageInner() {
       // Place the order first. If this fails, the customer keeps their crumbs.
       // Redeeming before the order creates a money-out-no-goods race when the
       // backend call fails.
-      await createOrder(confirmedOrder);
+      const order = await createOrder(confirmedOrder);
+      
+      // Save rich details locally keyed by order id and scoped by session user
+      const sessionUser = getMockOrderSessionUser();
+      if (order && order.id) {
+        useOrderDetailsStore.getState().saveOrderDetail(sessionUser, order.id, {
+          fulfillment_mode: confirmedOrder.fulfillment_mode,
+          delivery_address: confirmedOrder.delivery_address,
+          requested_time: confirmedOrder.requested_time,
+          payment_method: confirmedOrder.payment_method,
+          delivery_fee_amount: confirmedOrder.delivery_fee_amount,
+          loyalty_discount_amount: confirmedOrder.loyalty_discount_amount,
+          crumbs_redeemed: confirmedOrder.crumbs_redeemed,
+          subtotal_amount: confirmedOrder.subtotal_amount,
+          total_amount: confirmedOrder.total_amount,
+          note: confirmedOrder.note,
+          items: order.items || [],
+        });
+      }
       if (useCrumbs && potentialCrumbsNeeded > 0) {
         try {
           await redeemCrumbs(potentialCrumbsNeeded);

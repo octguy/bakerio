@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOrders, getOrderStats, getProduct, reorderItems } from "@repo/api-client";
+import { getOrders, getOrderStats, getProduct, reorderItems, getMockOrderSessionUser } from "@repo/api-client";
 import type { Order, OrderStatus } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
+import { useOrderDetailsStore } from "@/store/orderDetails";
 
 const STATUS_LABEL: Record<OrderStatus, { l: string; c: string; live?: boolean }> = {
   DRAFT: { l: "Draft", c: "var(--caramel)" },
@@ -45,7 +46,26 @@ function OrdersPageInner() {
     try {
       setError(null);
       const data = await getOrders();
-      setOrders(data);
+      const sessionUser = getMockOrderSessionUser();
+      const store = useOrderDetailsStore.getState();
+      const mergedOrders = data.map((o) => {
+        const localDetail = store.getOrderDetail(sessionUser, o.id);
+        if (!localDetail) return o;
+        return {
+          ...o,
+          fulfillment_mode: localDetail.fulfillment_mode,
+          delivery_address: localDetail.delivery_address,
+          requested_time: localDetail.requested_time,
+          payment_method: localDetail.payment_method,
+          delivery_fee_amount: localDetail.delivery_fee_amount,
+          loyalty_discount_amount: localDetail.loyalty_discount_amount,
+          crumbs_redeemed: localDetail.crumbs_redeemed,
+          subtotal_amount: localDetail.subtotal_amount,
+          total_amount: localDetail.total_amount ?? o.total_amount,
+          note: localDetail.note,
+        };
+      });
+      setOrders(mergedOrders);
       const counts = await getOrderStats();
       setStats(counts);
     } catch (err) {

@@ -237,7 +237,7 @@ function getScopedOrdersStorageKey(userId: string): string {
   return `${ORDERS_STORAGE_KEY}:${userId}`;
 }
 
-function getMockOrderSessionUser(): string | null {
+export function getMockOrderSessionUser(): string | null {
   if (typeof window === "undefined" || !window.localStorage) {
     return null;
   }

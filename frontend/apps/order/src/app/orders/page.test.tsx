@@ -17,6 +17,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@repo/api-client", () => ({
+  getMockOrderSessionUser: vi.fn().mockReturnValue("user-1"),
   getOrders: vi.fn().mockResolvedValue([
     {
       id: "order-1",

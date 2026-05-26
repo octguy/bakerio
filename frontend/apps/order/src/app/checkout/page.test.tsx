@@ -5,7 +5,10 @@ const mockReplace = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mockReplace }) }));
 vi.mock("next/image", () => ({ default: (props: any) => <img {...props} /> }));
 vi.mock("next/link", () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
-vi.mock("@repo/api-client", () => ({ createOrder: vi.fn() }));
+vi.mock("@repo/api-client", () => ({
+  createOrder: vi.fn(),
+  getMockOrderSessionUser: vi.fn().mockReturnValue("user-1"),
+}));
 vi.mock("@repo/api-client/mock/loyalty", () => ({
   getLoyalty: vi.fn().mockResolvedValue({ balance: 1420 }),
   maxRedeemableFor: vi.fn().mockResolvedValue(10000),
