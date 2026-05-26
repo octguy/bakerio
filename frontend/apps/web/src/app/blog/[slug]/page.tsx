@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { posts } from "@/data/posts";
+import BlogPostActions from "./BlogPostActions";
 
 export function generateStaticParams() {
   return posts.map((post) => ({ slug: post.slug }));
@@ -49,17 +50,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             <Link href="/blog" className="rounded-full border border-crust bg-white px-3 py-1.5 font-mono text-[11px] text-cocoa">
               <span className="mr-2 text-cinnamon">↩</span> Back to journal
             </Link>
-            {[
-              { i: "↗", l: "Share" },
-              { i: "★", l: "Save" },
-            ].map((a) => (
-              <span
-                key={a.l}
-                className="inline-flex items-center gap-2 rounded-full border border-crust bg-white px-3 py-1.5 font-mono text-[11px] text-cocoa"
-              >
-                <span className="text-cinnamon">{a.i}</span> {a.l}
-              </span>
-            ))}
+            <BlogPostActions slug={post.slug} title={post.title} />
           </div>
         </aside>
 

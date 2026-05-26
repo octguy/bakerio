@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Camera, Globe, Video } from "lucide-react";
+import { locations } from "@/data/locations";
+import { getOrderUrl } from "@/lib/public-config";
 
 const navLinks = [
   { href: "/menu", label: "Menu" },
@@ -18,6 +20,9 @@ const socialLinks = [
 ];
 
 export default function Footer() {
+  const orderUrl = getOrderUrl();
+  const locationCount = locations.length;
+
   return (
     <footer className="bg-espresso text-cream">
       <div className="mx-auto max-w-[1400px] px-6 py-16 lg:px-14 lg:py-20">
@@ -82,9 +87,9 @@ export default function Footer() {
           <div>
             <h3 className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-honey/70">Hours · Saigon</h3>
             <div className="font-display text-[28px] leading-none text-cream">06:00 — 22:00</div>
-            <div className="mt-2 font-editorial text-[14px] text-honey">every day, eleven shops</div>
+            <div className="mt-2 font-editorial text-[14px] text-honey">every day, {locationCount} shops</div>
             <a
-              href="https://order.bakerio.vn"
+              href={orderUrl}
               className="bkr-press mt-5 inline-flex items-center gap-2 rounded-full border border-honey px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-honey"
             >
               Order online <span>→</span>
@@ -93,7 +98,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col justify-between gap-3 border-t border-cocoa/40 pt-6 font-mono text-[10.5px] uppercase tracking-[0.16em] text-cream/50 sm:flex-row">
-          <span>© Bakerio mmxxiv–mmxxvi · 11 shops · Saigon</span>
+          <span>© Bakerio mmxxiv–mmxxvi · {locationCount} shops · Saigon</span>
           <span>10°45′N · 106°40′E</span>
         </div>
       </div>

@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
+import { getOrderUrl } from "@/lib/public-config";
 import MobileMenu from "./MobileMenu";
 
 const navLinks = [
@@ -16,12 +18,16 @@ const navLinks = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const orderUrl = getOrderUrl();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const isActiveLink = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   return (
     <>
@@ -58,14 +64,17 @@ export default function Navbar() {
           <nav className="hidden md:flex items-center gap-9">
             {navLinks.map((link, i) => (
               <Link
-                key={link.label}
+                key={`${link.href}-${link.label}-${i}`}
                 href={link.href}
-                className={`text-[13px] font-medium tracking-wide transition-colors duration-300 ${
-                  scrolled
-                    ? i === 0
-                      ? "text-espresso border-b border-espresso pb-0.5"
-                      : "text-caramel hover:text-espresso"
-                    : "text-white/85 hover:text-white"
+                aria-current={isActiveLink(link.href) ? "page" : undefined}
+                className={`border-b pb-0.5 text-[13px] font-medium tracking-wide transition-colors duration-300 ${
+                  isActiveLink(link.href)
+                    ? scrolled
+                      ? "border-espresso text-espresso"
+                      : "border-white/80 text-white"
+                    : scrolled
+                      ? "border-transparent text-caramel hover:text-espresso"
+                      : "border-transparent text-white/85 hover:text-white"
                 }`}
               >
                 {link.label}
@@ -82,7 +91,7 @@ export default function Navbar() {
               vi · en
             </span>
             <a
-              href="https://order.bakerio.vn"
+              href={orderUrl}
               className={`hidden md:inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors bkr-press ${
                 scrolled
                   ? "bg-espresso text-cream hover:bg-cocoa"
