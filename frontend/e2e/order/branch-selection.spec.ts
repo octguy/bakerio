@@ -24,20 +24,20 @@ test.describe("Branch Selection — Homepage", () => {
     await expect(heading).toBeVisible();
 
     // Page either shows branches or an error message — never a blank crash
-    const hasBranches = await page.locator("button").count() > 0;
-    const hasError = await page.locator("text=Failed to load").isVisible().catch(() => false);
-
-    expect(hasBranches || hasError).toBe(true);
+    const branchButtons = page.locator("main button");
+    const count = await branchButtons.count();
+    if (count > 0) {
+      await expect(branchButtons.first()).toBeVisible();
+    } else {
+      await expect(page.locator("text=Failed to load")).toBeVisible();
+    }
   });
 
   test("branch cards display name, address, and region", async ({ page }) => {
     await page.goto("/");
 
     const branchButtons = page.locator("main button");
-    const count = await branchButtons.count();
-
-    // Skip if no branches loaded (backend unavailable)
-    test.skip(count === 0, "No branches loaded — backend unavailable");
+    await expect(branchButtons).not.toHaveCount(0);
 
     const firstBranch = branchButtons.first();
     // Each card has a heading (name), address text, and region badge
@@ -50,8 +50,7 @@ test.describe("Branch Selection — Homepage", () => {
     await page.goto("/");
 
     const branchButtons = page.locator("main button");
-    const count = await branchButtons.count();
-    test.skip(count === 0, "No branches loaded — backend unavailable");
+    await expect(branchButtons).not.toHaveCount(0);
 
     await branchButtons.first().click();
     await expect(page).toHaveURL(/\/menu/);
@@ -61,8 +60,7 @@ test.describe("Branch Selection — Homepage", () => {
     await page.goto("/");
 
     const branchButtons = page.locator("main button");
-    const count = await branchButtons.count();
-    test.skip(count === 0, "No branches loaded — backend unavailable");
+    await expect(branchButtons).not.toHaveCount(0);
 
     // Buttons are natively focusable and activatable via keyboard
     await branchButtons.first().focus();

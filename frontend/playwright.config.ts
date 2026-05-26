@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
   timeout: 30_000,
   retries: 0,
   use: {
@@ -31,7 +32,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: "npx -y serve -l 3000 apps/web/out",
+      command: "npm run build -w web && npx -y serve -l 3000 apps/web/out",
       port: 3000,
       reuseExistingServer: true,
       timeout: 60_000,
