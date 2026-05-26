@@ -18,7 +18,7 @@ test.describe("Admin — Users Management", () => {
     await expect(page.getByRole("heading", { name: /staff/i })).toBeVisible({ timeout: 10000 });
   });
 
-  test.skip("create staff user via dialog form", async ({ page }) => {
+  test("create staff user via dialog form", async ({ page }) => {
     await page.goto("/users");
     await expect(page.getByRole("button", { name: /add user/i })).toBeVisible({ timeout: 10000 });
     await page.getByRole("button", { name: /add user/i }).click();
@@ -29,7 +29,7 @@ test.describe("Admin — Users Management", () => {
     await inputs.nth(0).fill("Staff Member");       // Full Name
     await inputs.nth(1).fill(`staff-${Date.now()}@bakerio.vn`); // Email
     await inputs.nth(2).fill("secure123");           // Password
-    await dialog.locator("select").selectOption("staff"); // Role
+    await dialog.locator("select").selectOption("product_manager"); // Role (non-branch-scoped)
 
     await page.getByRole("button", { name: /create user/i }).click();
     await expect(page.getByText("User created")).toBeVisible({ timeout: 10000 });

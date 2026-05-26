@@ -18,17 +18,17 @@ test.describe("Order — Customer Ordering App", () => {
     await page.goto("/");
     await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
     await expect(page).toHaveURL(/\/menu/);
-    await expect(page.locator("main")).toBeVisible();
+    await expect(page.locator("a[href*='/menu/'] h3").first()).toBeVisible();
   });
 
-  test("can navigate to cart page", async ({ page }) => {
+  test("cart requires auth -> redirects to login", async ({ page }) => {
     await page.goto("/cart");
-    await expect(page.locator("main")).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
   });
 
-  test("can navigate to checkout page", async ({ page }) => {
+  test("checkout requires auth -> redirects to login", async ({ page }) => {
     await page.goto("/checkout");
-    await expect(page.locator("main")).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
   });
 
   test("full ordering flow: branch → menu → product detail", async ({ page }) => {
@@ -37,10 +37,8 @@ test.describe("Order — Customer Ordering App", () => {
     await expect(page).toHaveURL(/\/menu/);
 
     const productLink = page.locator("a[href*='/menu/']").first();
-    if (await productLink.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await productLink.click();
-      await expect(page).toHaveURL(/\/menu\/.+/);
-      await expect(page.locator("main")).toBeVisible();
-    }
+    await productLink.click();
+    await expect(page).toHaveURL(/\/menu\/.+/);
+    await expect(page.locator("main")).toBeVisible();
   });
 });

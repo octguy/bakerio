@@ -33,23 +33,21 @@ test.describe("Admin — Branches Management", () => {
     await expect(page.getByText(/branch created|success/i)).toBeVisible({ timeout: 10000 });
   });
 
-  test.skip("edit branch", async ({ page }) => {
+  test("edit branch", async ({ page }) => {
     await page.goto("/branches");
     await expect(page.getByText("Bakerio Quận 1")).toBeVisible({ timeout: 10000 });
 
-    // Click the first edit (pencil) icon button in the table
-    await page.locator("table button").first().click();
+    // Click the edit pencil icon button of the first row in the table body
+    await page.locator("table tbody tr").first().locator("button").first().click();
     await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Edit Branch" })).toBeVisible();
 
     const nameInput = page.getByRole("dialog").locator("input").first();
     await nameInput.clear();
-    await nameInput.fill("Bakerio District 1");
+    await nameInput.fill("Bakerio Quận 1 Edited");
     await page.getByRole("button", { name: /save/i }).click();
 
-    await expect(page.getByText(/branch updated|success/i)).toBeVisible({ timeout: 10000 });
-  });
-
-  test.skip("toggle branch status", async () => {
-    // TODO: implement status toggle UI
+    await expect(page.getByText("Branch updated")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Bakerio Quận 1 Edited")).toBeVisible();
   });
 });
