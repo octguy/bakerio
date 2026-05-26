@@ -6,6 +6,9 @@ export type {
   Order,
   OrderItem,
   OrderStatus,
+  OrderFulfillmentMode,
+  CreateOrderItemInput,
+  CreateOrderRequest,
   CartItem,
   User,
   LoginRequest,
@@ -68,6 +71,7 @@ export {
 } from "./client";
 
 // Mock data for seeding/testing
-export { mockProducts, mockCategories, mockBranches } from "./mock";
+export { mockProducts, mockCategories, mockBranches, getMockOrderSessionUser, setMockOrderSessionUser } from "./mock";
+
 
 export type { BranchMember } from "./client";

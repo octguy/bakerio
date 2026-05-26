@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { getOrder, getBranches } from "@repo/api-client";
+import { getOrder, getBranches, getMockOrderSessionUser } from "@repo/api-client";
 import type { Order, Branch } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import Link from "next/link";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { useOrderDetailsStore } from "@/store/orderDetails";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -37,6 +39,14 @@ const STATUS_TEXT: Record<Order["status"], { title: string; desc: string }> = {
 };
 
 export default function OrderTrackingPage({ params }: PageProps) {
+  return (
+    <ProtectedRoute>
+      <OrderTrackingPageInner params={params} />
+    </ProtectedRoute>
+  );
+}
+
+function OrderTrackingPageInner({ params }: PageProps) {
   const { id } = use(params);
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -48,7 +58,29 @@ export default function OrderTrackingPage({ params }: PageProps) {
     try {
       setError(null);
       const data = await getOrder(id);
-      setOrder(data);
+      if (data) {
+        const sessionUser = getMockOrderSessionUser();
+        const localDetail = useOrderDetailsStore.getState().getOrderDetail(sessionUser, data.id);
+        if (localDetail) {
+          setOrder({
+            ...data,
+            fulfillment_mode: localDetail.fulfillment_mode,
+            delivery_address: localDetail.delivery_address,
+            requested_time: localDetail.requested_time,
+            payment_method: localDetail.payment_method,
+            delivery_fee_amount: localDetail.delivery_fee_amount,
+            loyalty_discount_amount: localDetail.loyalty_discount_amount,
+            crumbs_redeemed: localDetail.crumbs_redeemed,
+            subtotal_amount: localDetail.subtotal_amount,
+            total_amount: localDetail.total_amount ?? data.total_amount,
+            note: localDetail.note,
+          });
+        } else {
+          setOrder(data);
+        }
+      } else {
+        setOrder(null);
+      }
       if (branches.length === 0) {
         const branchList = await getBranches();
         setBranches(branchList);
@@ -91,7 +123,9 @@ export default function OrderTrackingPage({ params }: PageProps) {
 
   const progress = STATUS_PROGRESS[order.status] ?? 0;
   const currentStatus = STATUS_TEXT[order.status] ?? { title: order.status, desc: "" };
-  const isDelivery = !order.delivery_address?.toLowerCase().includes("pickup");
+  const isDelivery =
+    order.fulfillment_mode === "DELIVERY" ||
+    (order.fulfillment_mode == null && !order.delivery_address?.toLowerCase().includes("pickup"));
   const branch = branches.find((b) => b.id === order.branch_id);
 
   // SVG coordinates for animating path
@@ -239,9 +273,67 @@ export default function OrderTrackingPage({ params }: PageProps) {
             </div>
           ))}
         </div>
+
+        {/* Price Breakdown */}
+        {order.subtotal_amount !== undefined && (
+          <div className="flex flex-col gap-1.5 border-b border-crust pb-3 mb-3 text-[12.5px] text-cocoa">
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span className="font-mono">{formatVND(order.subtotal_amount)}</span>
+            </div>
+            {order.loyalty_discount_amount ? (
+              <div className="flex justify-between text-sage font-semibold">
+                <span>Crumbs Discount {order.crumbs_redeemed ? `(${order.crumbs_redeemed})` : ""}</span>
+                <span className="font-mono">−{formatVND(order.loyalty_discount_amount)}</span>
+              </div>
+            ) : null}
+            {order.delivery_fee_amount ? (
+              <div className="flex justify-between">
+                <span>Delivery Fee</span>
+                <span className="font-mono">{formatVND(order.delivery_fee_amount)}</span>
+              </div>
+            ) : null}
+          </div>
+        )}
+
         <div className="flex justify-between items-center">
           <span className="font-display text-[16px] text-espresso">Total amount</span>
           <span className="font-display text-[20px] text-espresso">{formatVND(order.total_amount)}</span>
+        </div>
+      </div>
+
+      {/* Fulfillment & Payment Details */}
+      <div className="mt-4 rounded-2xl border border-crust bg-white p-5">
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-caramel mb-3">Fulfillment & Payment</div>
+        <div className="flex flex-col gap-2.5 text-[13.5px] text-espresso">
+          <div className="flex justify-between">
+            <span className="text-cocoa">Mode</span>
+            <span className="font-semibold">{order.fulfillment_mode ?? "PICKUP"}</span>
+          </div>
+          {order.delivery_address && (
+            <div className="flex flex-col gap-1 border-t border-crust/50 pt-2">
+              <span className="text-cocoa text-left">Address</span>
+              <span className="text-[12.5px] italic text-cinnamon text-left">{order.delivery_address}</span>
+            </div>
+          )}
+          {order.requested_time && (
+            <div className="flex justify-between border-t border-crust/50 pt-2">
+              <span className="text-cocoa">Requested Time</span>
+              <span>{order.requested_time}</span>
+            </div>
+          )}
+          {order.payment_method && (
+            <div className="flex justify-between border-t border-crust/50 pt-2">
+              <span className="text-cocoa">Payment Method</span>
+              <span className="font-mono text-[12px]">{order.payment_method}</span>
+            </div>
+          )}
+          {order.note && (
+            <div className="flex flex-col gap-1 border-t border-crust/50 pt-2">
+              <span className="text-cocoa text-left">Note</span>
+              <span className="text-[12.5px] italic text-caramel text-left">{order.note}</span>
+            </div>
+          )}
         </div>
       </div>
     </main>

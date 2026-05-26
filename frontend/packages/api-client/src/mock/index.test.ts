@@ -1,6 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as mockClient from "./index";
 
+const makeOrderRequest = (overrides: Record<string, unknown> = {}) => ({
+  branch_id: "br-1",
+  items: [{ product_id: "p-bmi-1", quantity: 1 }],
+  fulfillment_mode: "PICKUP" as const,
+  delivery_address: "65 Lê Lợi, Quận 1, HCMC (Pickup)",
+  requested_time: "ASAP · 15–25m",
+  payment_method: "PAY_AT_COUNTER",
+  delivery_fee_amount: 0,
+  loyalty_discount_amount: 0,
+  subtotal_amount: 65000,
+  total_amount: 65000,
+  ...overrides,
+});
+
 describe("Mock API client logic and localStorage persistence", () => {
   const originalWindow = global.window;
 
@@ -54,9 +68,12 @@ describe("Mock API client logic and localStorage persistence", () => {
 
     it("saves and loads orders via localStorage", async () => {
       const order = await mockClient.createOrder(
-        [{ product_id: "p-bmi-1", quantity: 2 }],
-        "br-1",
-        "Deliver at 5pm"
+        makeOrderRequest({
+          items: [{ product_id: "p-bmi-1", quantity: 2 }],
+          note: "Deliver at 5pm",
+          subtotal_amount: 130000,
+          total_amount: 130000,
+        }),
       );
       expect(order.id).toBeDefined();
       expect(order.total_amount).toBeGreaterThan(0);
@@ -84,10 +101,7 @@ describe("Mock API client logic and localStorage persistence", () => {
       const prods = await mockClient.getProducts();
       expect(prods.length).toBe(mockClient.mockProducts.length);
 
-      const order = await mockClient.createOrder(
-        [{ product_id: "p-bmi-1", quantity: 1 }],
-        "br-1"
-      );
+      const order = await mockClient.createOrder(makeOrderRequest());
       expect(order.id).toBeDefined();
     });
 
@@ -162,7 +176,7 @@ describe("Mock API client logic and localStorage persistence", () => {
 
   describe("Order operations", () => {
     it("gets order by ID", async () => {
-      const order = await mockClient.createOrder([{ product_id: "p-bmi-1", quantity: 1 }], "br-1");
+      const order = await mockClient.createOrder(makeOrderRequest());
       const found = await mockClient.getOrder(order.id);
       expect(found).not.toBeNull();
       expect(found!.id).toBe(order.id);
@@ -172,7 +186,7 @@ describe("Mock API client logic and localStorage persistence", () => {
     });
 
     it("updates order status", async () => {
-      const order = await mockClient.createOrder([{ product_id: "p-bmi-1", quantity: 1 }], "br-1");
+      const order = await mockClient.createOrder(makeOrderRequest());
       const updated = await mockClient.updateOrderStatus(order.id, "COMPLETED");
       expect(updated).not.toBeNull();
       expect(updated!.status).toBe("COMPLETED");
@@ -185,10 +199,32 @@ describe("Mock API client logic and localStorage persistence", () => {
       // Set local storage products to exclude p-bmi-2
       localStorage.setItem("bakerio-mock-products", JSON.stringify([{ id: "p-bmi-1", name: "Custom Cake", base_price: 100 }]));
       
-      const order = await mockClient.createOrder([{ product_id: "p-bmi-2", quantity: 3 }], "br-1");
+      const order = await mockClient.createOrder(
+        makeOrderRequest({
+          items: [{ product_id: "p-bmi-2", quantity: 3 }],
+          subtotal_amount: 216000,
+          total_amount: 216000,
+        }),
+      );
       expect(order.items.length).toBe(1);
       expect(order.items[0]?.product_name).toBe("Bánh mì heo quay");
       expect(order.items[0]?.unit_price).toBe(72000);
+    });
+
+    it("scopes persisted orders by the active mock session user and hides them when logged out", async () => {
+      mockClient.setMockOrderSessionUser("user-1");
+      const order = await mockClient.createOrder(makeOrderRequest());
+
+      expect(JSON.parse(localStorage.getItem("bakerio-mock-orders:user-1") || "[]")).toHaveLength(1);
+
+      mockClient.setMockOrderSessionUser(null);
+      await expect(mockClient.getOrders()).resolves.toEqual([]);
+
+      mockClient.setMockOrderSessionUser("user-2");
+      await expect(mockClient.getOrders()).resolves.toEqual([]);
+
+      mockClient.setMockOrderSessionUser("user-1");
+      await expect(mockClient.getOrder(order.id)).resolves.toMatchObject({ id: order.id });
     });
   });
 

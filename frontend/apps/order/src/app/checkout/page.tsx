@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { z } from "zod";
-import { createOrder } from "@repo/api-client";
+import { createOrder, type CreateOrderRequest, getMockOrderSessionUser } from "@repo/api-client";
 import { getLoyalty, maxRedeemableFor, redeemCrumbs } from "@repo/api-client/mock/loyalty";
 import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
+import { useOrderDetailsStore } from "@/store/orderDetails";
 import { formatVND } from "@/lib/format";
 
 const checkoutSchema = z.object({
@@ -25,10 +26,10 @@ const TIMES = [
 ];
 
 const PAY_METHODS = [
-  { l: "Apple Pay", s: "Touch ID · ★", color: "#000" },
-  { l: "Momo wallet", s: "•••• 4421", color: "#a50064", letters: "M" },
-  { l: "Visa", s: "•••• 7011", color: "#1a1f71", letters: "VISA" },
-  { l: "Pay at counter", s: "cash or QR", color: "var(--crust)", letters: "$" },
+  { l: "Apple Pay", s: "Touch ID · ★", color: "#000", value: "APPLE_PAY" },
+  { l: "Momo wallet", s: "•••• 4421", color: "#a50064", letters: "M", value: "MOMO_WALLET" },
+  { l: "Visa", s: "•••• 7011", color: "#1a1f71", letters: "VISA", value: "VISA" },
+  { l: "Pay at counter", s: "cash or QR", color: "var(--crust)", letters: "$", value: "PAY_AT_COUNTER" },
 ];
 
 export default function CheckoutPage() {
@@ -102,9 +103,15 @@ function CheckoutPageInner() {
   if (items.length === 0) return null;
 
   const crumbsDiscount = useCrumbs ? maxDiscount : 0;
-  const potentialCrumbsNeeded = Math.ceil(maxDiscount / 50);
+  const potentialCrumbsNeeded = useCrumbs ? Math.ceil(maxDiscount / 50) : 0;
   const deliveryFee = mode === "Delivery" ? 30000 : 0;
   const total = Math.max(0, subtotal + deliveryFee - crumbsDiscount);
+  const selectedRequestedTime = TIMES[selectedTime] ?? TIMES[0];
+  const selectedPaymentMethod = PAY_METHODS[payMethod] ?? PAY_METHODS[3];
+  const deliveryAddress =
+    mode === "Pickup"
+      ? "42 Lê Lợi, Bến Nghé, Quận 1, HCMC (Pickup)"
+      : "24 Nguyễn Đình Chiểu, Phường Đa Kao, Quận 1, HCMC";
 
   const handlePlaceOrder = async () => {
     const validation = checkoutSchema.safeParse({ items, branchId });
@@ -114,14 +121,45 @@ function CheckoutPageInner() {
     }
     setSubmitting(true);
     try {
+      const confirmedOrder: CreateOrderRequest = {
+        branch_id: branchId!,
+        items: items.map((item) => ({
+          product_id: item.product.id,
+          quantity: item.quantity,
+        })),
+        fulfillment_mode: mode === "Delivery" ? "DELIVERY" : "PICKUP",
+        delivery_address: deliveryAddress,
+        requested_time: `${selectedRequestedTime.l} · ${selectedRequestedTime.s}`,
+        payment_method: selectedPaymentMethod.value,
+        delivery_fee_amount: deliveryFee,
+        loyalty_discount_amount: crumbsDiscount,
+        crumbs_redeemed: potentialCrumbsNeeded,
+        subtotal_amount: subtotal,
+        total_amount: total,
+      };
+
       // Place the order first. If this fails, the customer keeps their crumbs.
       // Redeeming before the order creates a money-out-no-goods race when the
       // backend call fails.
-      await createOrder(
-        items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
-        branchId!,
-        undefined,
-      );
+      const order = await createOrder(confirmedOrder);
+      
+      // Save rich details locally keyed by order id and scoped by session user
+      const sessionUser = getMockOrderSessionUser();
+      if (order && order.id) {
+        useOrderDetailsStore.getState().saveOrderDetail(sessionUser, order.id, {
+          fulfillment_mode: confirmedOrder.fulfillment_mode,
+          delivery_address: confirmedOrder.delivery_address,
+          requested_time: confirmedOrder.requested_time,
+          payment_method: confirmedOrder.payment_method,
+          delivery_fee_amount: confirmedOrder.delivery_fee_amount,
+          loyalty_discount_amount: confirmedOrder.loyalty_discount_amount,
+          crumbs_redeemed: confirmedOrder.crumbs_redeemed,
+          subtotal_amount: confirmedOrder.subtotal_amount,
+          total_amount: confirmedOrder.total_amount,
+          note: confirmedOrder.note,
+          items: order.items || [],
+        });
+      }
       if (useCrumbs && potentialCrumbsNeeded > 0) {
         try {
           await redeemCrumbs(potentialCrumbsNeeded);

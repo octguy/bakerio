@@ -1,4 +1,11 @@
-import type { Product, Category, Branch, Order, OrderItem } from "../types";
+import type {
+  Branch,
+  Category,
+  CreateOrderRequest,
+  Order,
+  OrderItem,
+  Product,
+} from "../types";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -59,6 +66,9 @@ export const mockBranches: Branch[] = [
   { id: "br-phunhuan", name: "Bakerio Phú Nhuận",   address: "100 Phan Xích Long",      lat: 10.8007, lng: 106.6805, status: "active", region: "south" },
 ];
 
+const ORDERS_STORAGE_KEY = "bakerio-mock-orders";
+const ORDER_SESSION_USER_KEY = "bakerio-mock-order-session-user";
+
 // ── localStorage helpers ────────────────────────────────────
 function getSavedProducts(): Product[] {
   if (typeof window !== "undefined" && window.localStorage) {
@@ -105,9 +115,14 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
       { id: "oi-11055-0", product_id: "p-bmi-1", product_name: "Bánh mì Sài Gòn", quantity: 2, unit_price: 65000, total_price: 130000 },
       { id: "oi-11055-1", product_id: "p-cof-1", product_name: "Cà phê sữa đá", quantity: 1, unit_price: 38000, total_price: 38000 },
     ],
+    subtotal_amount: 168000,
     total_amount: 168000,
+    fulfillment_mode: "DELIVERY",
     payment_method: "MOMO",
     delivery_address: "123 Nguyễn Huệ, Bến Nghé, Quận 1, HCMC",
+    requested_time: "ASAP",
+    delivery_fee_amount: 0,
+    loyalty_discount_amount: 0,
     note: "Call on arrival",
     created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -120,9 +135,14 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
       { id: "oi-11056-0", product_id: "p-pas-1", product_name: "Tart Quýt Hồng", quantity: 1, unit_price: 95000, total_price: 95000 },
       { id: "oi-11056-1", product_id: "p-cof-2", product_name: "Cà phê đen", quantity: 1, unit_price: 42000, total_price: 42000 },
     ],
+    subtotal_amount: 137000,
     total_amount: 137000,
+    fulfillment_mode: "PICKUP",
     payment_method: "VNPAY",
     delivery_address: "188 Pasteur, Quận 3, HCMC (Pickup)",
+    requested_time: "ASAP",
+    delivery_fee_amount: 0,
+    loyalty_discount_amount: 0,
     note: "No sugar",
     created_at: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
@@ -135,9 +155,14 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
       { id: "oi-11051-0", product_id: "p-sdh-1", product_name: "Sourdough loaf", quantity: 1, unit_price: 110000, total_price: 110000 },
       { id: "oi-11051-1", product_id: "p-bmi-2", product_name: "Bánh mì heo quay", quantity: 1, unit_price: 72000, total_price: 72000 },
     ],
+    subtotal_amount: 182000,
     total_amount: 182000,
+    fulfillment_mode: "DELIVERY",
     payment_method: "COD",
     delivery_address: "15 Xuân Thủy, Thảo Điền, Quận 2, HCMC",
+    requested_time: "ASAP",
+    delivery_fee_amount: 0,
+    loyalty_discount_amount: 0,
     created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 1.5 * 3600 * 1000).toISOString(),
   },
@@ -149,9 +174,14 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
       { id: "oi-11052-0", product_id: "p-cro-1", product_name: "Croissant au beurre", quantity: 2, unit_price: 48000, total_price: 96000 },
       { id: "oi-11052-1", product_id: "p-cro-2", product_name: "Pain au chocolat", quantity: 2, unit_price: 55000, total_price: 110000 },
     ],
+    subtotal_amount: 206000,
     total_amount: 206000,
+    fulfillment_mode: "PICKUP",
     payment_method: "MOMO",
     delivery_address: "42 Lê Lợi, Bến Nghé, Quận 1, HCMC (Pickup)",
+    requested_time: "ASAP",
+    delivery_fee_amount: 0,
+    loyalty_discount_amount: 0,
     created_at: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
   },
@@ -162,9 +192,14 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
     items: [
       { id: "oi-11053-0", product_id: "p-cak-1", product_name: "Bánh kem dâu", quantity: 1, unit_price: 165000, total_price: 165000 },
     ],
+    subtotal_amount: 165000,
     total_amount: 165000,
+    fulfillment_mode: "PICKUP",
     payment_method: "VNPAY",
     delivery_address: "Crescent Mall, Quận 7, HCMC (Pickup)",
+    requested_time: "ASAP",
+    delivery_fee_amount: 0,
+    loyalty_discount_amount: 0,
     created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
   },
@@ -176,20 +211,82 @@ export const INITIAL_MOCK_ORDERS: Order[] = [
       { id: "oi-11054-0", product_id: "p-sdh-2", product_name: "Pain de campagne", quantity: 1, unit_price: 125000, total_price: 125000 },
       { id: "oi-11054-1", product_id: "p-cro-3", product_name: "Almond croissant", quantity: 1, unit_price: 62000, total_price: 62000 },
     ],
+    subtotal_amount: 187000,
     total_amount: 187000,
+    fulfillment_mode: "DELIVERY",
     payment_method: "CARD",
     delivery_address: "200 Điện Biên Phủ, Quận 3, HCMC",
+    requested_time: "ASAP",
+    delivery_fee_amount: 0,
+    loyalty_discount_amount: 0,
     created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
   }
 ];
 
+function parseOrders(raw: string | null): Order[] | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as Order[];
+  } catch {
+    return [];
+  }
+}
+
+function getScopedOrdersStorageKey(userId: string): string {
+  return `${ORDERS_STORAGE_KEY}:${userId}`;
+}
+
+export function getMockOrderSessionUser(): string | null {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return null;
+  }
+  return localStorage.getItem(ORDER_SESSION_USER_KEY);
+}
+
+export function setMockOrderSessionUser(userId: string | null) {
+  if (typeof window === "undefined" || !window.localStorage) {
+    return;
+  }
+  if (userId) {
+    localStorage.setItem(ORDER_SESSION_USER_KEY, userId);
+    return;
+  }
+  localStorage.removeItem(ORDER_SESSION_USER_KEY);
+}
+
 function getSavedOrders(): Order[] {
   if (typeof window !== "undefined" && window.localStorage) {
-    const saved = localStorage.getItem("bakerio-mock-orders");
-    if (saved) {
-      try { return JSON.parse(saved); } catch {}
+    const sessionUser = getMockOrderSessionUser();
+    if (sessionUser) {
+      const scopedSaved = parseOrders(localStorage.getItem(getScopedOrdersStorageKey(sessionUser)));
+      if (scopedSaved) {
+        return scopedSaved;
+      }
+
+      const legacySaved = parseOrders(localStorage.getItem(ORDERS_STORAGE_KEY));
+      if (legacySaved) {
+        localStorage.setItem(getScopedOrdersStorageKey(sessionUser), JSON.stringify(legacySaved));
+        localStorage.removeItem(ORDERS_STORAGE_KEY);
+        return legacySaved;
+      }
+
+      if (process.env.NODE_ENV === "test") {
+        return [];
+      }
+
+      return INITIAL_MOCK_ORDERS;
     }
+
+    if (process.env.NODE_ENV === "test") {
+      const saved = parseOrders(localStorage.getItem(ORDERS_STORAGE_KEY));
+      if (saved) {
+        return saved;
+      }
+      return [];
+    }
+
+    return [];
   }
   if (process.env.NODE_ENV === "test") {
     return [];
@@ -199,7 +296,13 @@ function getSavedOrders(): Order[] {
 
 function saveOrders(orders: Order[]) {
   if (typeof window !== "undefined" && window.localStorage) {
-    localStorage.setItem("bakerio-mock-orders", JSON.stringify(orders));
+    const sessionUser = getMockOrderSessionUser();
+    if (sessionUser) {
+      localStorage.setItem(getScopedOrdersStorageKey(sessionUser), JSON.stringify(orders));
+      localStorage.removeItem(ORDERS_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
   }
 }
 
@@ -366,17 +469,13 @@ export async function getBranches(): Promise<Branch[]> {
 }
 
 // ── Orders ──────────────────────────────────────────────────
-export async function createOrder(
-  items: { product_id: string; quantity: number }[],
-  branchId: string,
-  note?: string,
-): Promise<Order> {
+export async function createOrder(data: CreateOrderRequest): Promise<Order> {
   await delay(400);
   const products = getSavedProducts();
   const savedOrders = getSavedOrders();
   const orderIdCounter = savedOrders.length + 1;
 
-  const orderItems: OrderItem[] = items.map((item, i) => {
+  const orderItems: OrderItem[] = data.items.map((item, i) => {
     const product =
       products.find((p) => p.id === item.product_id) ||
       mockProducts.find((p) => p.id === item.product_id);
@@ -393,11 +492,19 @@ export async function createOrder(
 
   const order: Order = {
     id: `order-${1000 + orderIdCounter}`,
-    branch_id: branchId,
+    branch_id: data.branch_id,
     status: "PENDING_PAYMENT",
     items: orderItems,
-    total_amount: orderItems.reduce((s, i) => s + i.total_price, 0),
-    note,
+    subtotal_amount: data.subtotal_amount,
+    total_amount: data.total_amount,
+    fulfillment_mode: data.fulfillment_mode,
+    payment_method: data.payment_method,
+    delivery_address: data.delivery_address,
+    requested_time: data.requested_time,
+    delivery_fee_amount: data.delivery_fee_amount,
+    loyalty_discount_amount: data.loyalty_discount_amount,
+    crumbs_redeemed: data.crumbs_redeemed,
+    note: data.note,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

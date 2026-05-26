@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getOrders, getOrderStats, getProduct, reorderItems } from "@repo/api-client";
+import { getOrders, getOrderStats, getProduct, reorderItems, getMockOrderSessionUser } from "@repo/api-client";
 import type { Order, OrderStatus } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
+import { useOrderDetailsStore } from "@/store/orderDetails";
 
 const STATUS_LABEL: Record<OrderStatus, { l: string; c: string; live?: boolean }> = {
   DRAFT: { l: "Draft", c: "var(--caramel)" },
@@ -22,8 +24,17 @@ const STATUS_LABEL: Record<OrderStatus, { l: string; c: string; live?: boolean }
 };
 
 export default function OrdersPage() {
+  return (
+    <ProtectedRoute>
+      <OrdersPageInner />
+    </ProtectedRoute>
+  );
+}
+
+function OrdersPageInner() {
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
+  const setBranch = useCartStore((s) => s.setBranch);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +46,26 @@ export default function OrdersPage() {
     try {
       setError(null);
       const data = await getOrders();
-      setOrders(data);
+      const sessionUser = getMockOrderSessionUser();
+      const store = useOrderDetailsStore.getState();
+      const mergedOrders = data.map((o) => {
+        const localDetail = store.getOrderDetail(sessionUser, o.id);
+        if (!localDetail) return o;
+        return {
+          ...o,
+          fulfillment_mode: localDetail.fulfillment_mode,
+          delivery_address: localDetail.delivery_address,
+          requested_time: localDetail.requested_time,
+          payment_method: localDetail.payment_method,
+          delivery_fee_amount: localDetail.delivery_fee_amount,
+          loyalty_discount_amount: localDetail.loyalty_discount_amount,
+          crumbs_redeemed: localDetail.crumbs_redeemed,
+          subtotal_amount: localDetail.subtotal_amount,
+          total_amount: localDetail.total_amount ?? o.total_amount,
+          note: localDetail.note,
+        };
+      });
+      setOrders(mergedOrders);
       const counts = await getOrderStats();
       setStats(counts);
     } catch (err) {
@@ -56,6 +86,10 @@ export default function OrdersPage() {
     setLoading(true);
     try {
       setError(null);
+      const sourceOrder = orders.find((order) => order.id === orderId);
+      if (!sourceOrder) {
+        throw new Error(`Order ${orderId} not found`);
+      }
       const itemsList = await reorderItems(orderId);
       const addedItems = await Promise.all(
         itemsList.map(async (item) => {
@@ -79,6 +113,7 @@ export default function OrdersPage() {
         })
       );
 
+      setBranch(sourceOrder.branch_id);
       addedItems.forEach((it) => {
         if (it) addItem(it);
       });

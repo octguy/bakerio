@@ -13,7 +13,7 @@
 //   import { getApiHealth } from "@repo/api-client";
 //   const { mockServed } = getApiHealth();
 
-import type { Branch, Category, Product } from "./types";
+import type { Branch, Category, CreateOrderRequest, Order, Product } from "./types";
 
 const MOCK_SERVED = new Set<string>();
 function markMock(key: string) {
@@ -459,7 +459,9 @@ import {
   reorderItems as mockReorderItems
 } from "./mock";
 
-export const createOrder = mockCreateOrder;
+export async function createOrder(data: CreateOrderRequest): Promise<Order> {
+  return mockCreateOrder(data);
+}
 export const getOrders = mockGetOrders;
 export const getOrder = mockGetOrder;
 export const updateOrderStatus = mockUpdateOrderStatus;
