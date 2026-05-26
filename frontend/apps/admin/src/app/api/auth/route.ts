@@ -2,16 +2,16 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
-const STAFF_ROLES = new Set(["super_admin", "product_manager", "branch_manager", "branch_staff"]);
+export const STAFF_ROLES = new Set(["super_admin", "product_manager", "branch_manager", "branch_staff"]);
 
-function getTokenRoles(token: string): string[] {
+export function getTokenRoles(token: string): string[] {
   const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()) as { roles?: unknown };
   return Array.isArray(payload.roles)
     ? payload.roles.filter((role): role is string => typeof role === "string")
     : [];
 }
 
-function hasStaffAccess(roles: string[]): boolean {
+export function hasStaffAccess(roles: string[]): boolean {
   return roles.some((role) => STAFF_ROLES.has(role));
 }
 
