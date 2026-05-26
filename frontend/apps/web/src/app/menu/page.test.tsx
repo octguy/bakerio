@@ -45,6 +45,7 @@ describe("MenuPage", () => {
     expect(container.firstChild).toBeInTheDocument();
   });
 
+
   it("displays the menu heading", async () => {
     await renderMenuPage();
     expect(
