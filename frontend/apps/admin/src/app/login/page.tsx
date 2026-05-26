@@ -1,31 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 
-export default function LoginPage() {
+function LoginContent() {
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const nextParam = searchParams.get("next");
+  const redirectTo =
+    nextParam?.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const err = await login(email, password);
-    setLoading(false);
-    if (err) {
-      setError(err);
-      return;
+    try {
+      const err = await login(email, password);
+      if (err) {
+        setError(err);
+        return;
+      }
+      router.push(redirectTo);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not sign in. Please retry.",
+      );
+    } finally {
+      setLoading(false);
     }
-    router.push("/");
   };
 
   return (
@@ -33,13 +43,38 @@ export default function LoginPage() {
       {/* Form */}
       <section className="flex flex-1 min-w-0 flex-col justify-between px-12 py-16 lg:px-20">
         <div className="flex items-baseline gap-2">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-            <path d="M12 22V8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            <path d="M12 8c-2-1.5-3.5-3.2-3.5-5C8.5 1.5 10 1 12 1s3.5.5 3.5 2c0 1.8-1.5 3.5-3.5 5z" stroke="currentColor" strokeWidth="1.3" />
-            <path d="M12 12c-2.5-.5-4.5-1.7-4.5-3.5 0-1 .5-1.7 1.5-2 1.5 1 2.5 2.7 3 5.5z" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M12 12c2.5-.5 4.5-1.7 4.5-3.5 0-1-.5-1.7-1.5-2-1.5 1-2.5 2.7-3 5.5z" stroke="currentColor" strokeWidth="1.2" />
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden
+          >
+            <path
+              d="M12 22V8"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            />
+            <path
+              d="M12 8c-2-1.5-3.5-3.2-3.5-5C8.5 1.5 10 1 12 1s3.5.5 3.5 2c0 1.8-1.5 3.5-3.5 5z"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+            <path
+              d="M12 12c-2.5-.5-4.5-1.7-4.5-3.5 0-1 .5-1.7 1.5-2 1.5 1 2.5 2.7 3 5.5z"
+              stroke="currentColor"
+              strokeWidth="1.2"
+            />
+            <path
+              d="M12 12c2.5-.5 4.5-1.7 4.5-3.5 0-1-.5-1.7-1.5-2-1.5 1-2.5 2.7-3 5.5z"
+              stroke="currentColor"
+              strokeWidth="1.2"
+            />
           </svg>
-          <span className="font-display text-[22px] tracking-tight">Bakerio</span>
+          <span className="font-display text-[22px] tracking-tight">
+            Bakerio
+          </span>
         </div>
 
         <div className="max-w-[440px]">
@@ -51,13 +86,18 @@ export default function LoginPage() {
           </div>
           <h1
             className="bkr-rise-1 font-display tracking-tight"
-            style={{ fontSize: "clamp(48px,7vw,72px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
+            style={{
+              fontSize: "clamp(48px,7vw,72px)",
+              lineHeight: 0.9,
+              letterSpacing: "-0.025em",
+            }}
           >
-            Welcome back, <span className="font-editorial text-cinnamon">baker.</span>
+            Welcome back,{" "}
+            <span className="font-editorial text-cinnamon">baker.</span>
           </h1>
           <p className="mt-5 font-news text-[16px] leading-[1.5] text-cocoa">
-            The counter is waiting. Sign in with your work email to pick up where you left off — pending orders,
-            kitchen queue, inventory.
+            The counter is waiting. Sign in with your work email to pick up
+            where you left off — pending orders, kitchen queue, inventory.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-9 flex flex-col gap-4">
@@ -69,7 +109,9 @@ export default function LoginPage() {
                 Work email
               </label>
               <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-crust bg-white px-4 py-3.5">
-                <span className="text-caramel" aria-hidden="true">✉</span>
+                <span className="text-caramel" aria-hidden="true">
+                  ✉
+                </span>
                 <input
                   id="email"
                   type="email"
@@ -84,7 +126,10 @@ export default function LoginPage() {
 
             <div>
               <div className="flex items-baseline justify-between">
-                <label htmlFor="password" className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">
+                <label
+                  htmlFor="password"
+                  className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel"
+                >
                   Password
                 </label>
                 <button
@@ -97,7 +142,9 @@ export default function LoginPage() {
                 </button>
               </div>
               <div className="mt-2 flex items-center gap-2.5 rounded-xl border-2 border-cinnamon bg-white px-4 py-3.5">
-                <span className="text-caramel" aria-hidden="true">🔑</span>
+                <span className="text-caramel" aria-hidden="true">
+                  🔑
+                </span>
                 <input
                   id="password"
                   type={showPw ? "text" : "password"}
@@ -121,16 +168,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <label className="flex items-center gap-2 text-[12.5px] text-cocoa">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-                className="h-4 w-4 accent-cinnamon"
-              />
-              Remember this device for 30 days
-            </label>
-
             {error && (
               <p className="rounded-md border border-sienna/30 bg-sienna/10 px-3 py-2 font-mono text-[11px] text-sienna">
                 {error}
@@ -142,16 +179,29 @@ export default function LoginPage() {
               disabled={loading}
               className="bkr-press inline-flex items-center justify-center gap-2 rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream disabled:opacity-50"
             >
-              {loading ? "Signing in…" : <>Sign in to ops <span aria-hidden="true">→</span></>}
+              {loading ? (
+                "Signing in…"
+              ) : (
+                <>
+                  Sign in to ops <span aria-hidden="true">→</span>
+                </>
+              )}
             </button>
 
             <div className="rounded-lg border border-dashed border-crust-deep bg-butter px-4 py-3.5">
               <div className="flex gap-2.5 font-editorial text-[13px] italic text-cocoa">
-                <span className="not-italic text-cinnamon" aria-hidden="true">♢</span>
+                <span className="not-italic text-cinnamon" aria-hidden="true">
+                  ♢
+                </span>
                 <span>
                   If you&apos;re a customer, you want the{" "}
-                  <strong className="font-sans not-italic text-cinnamon">order app</strong>, not this.{" "}
-                  <span className="font-sans not-italic font-bold text-cinnamon">order.bakerio.vn ↗</span>
+                  <strong className="font-sans not-italic text-cinnamon">
+                    order app
+                  </strong>
+                  , not this.{" "}
+                  <span className="font-sans not-italic font-bold text-cinnamon">
+                    order.bakerio.vn ↗
+                  </span>
                 </span>
               </div>
             </div>
@@ -164,7 +214,10 @@ export default function LoginPage() {
       </section>
 
       {/* Photo */}
-      <section className="relative hidden flex-1 overflow-hidden lg:block" style={{ flex: 1.05 }}>
+      <section
+        className="relative hidden flex-1 overflow-hidden lg:block"
+        style={{ flex: 1.05 }}
+      >
         <Image
           src="https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=1600&q=85&auto=format"
           alt="Baker at work"
@@ -176,7 +229,10 @@ export default function LoginPage() {
         <div
           aria-hidden
           className="absolute inset-0"
-          style={{ background: "linear-gradient(180deg, rgba(44,24,16,0.15) 0%, rgba(44,24,16,0.5) 100%)" }}
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(44,24,16,0.15) 0%, rgba(44,24,16,0.5) 100%)",
+          }}
         />
 
         <div
@@ -184,17 +240,28 @@ export default function LoginPage() {
           style={{ ["--rot" as string]: "-8deg", transform: "rotate(-8deg)" }}
         >
           <span className="font-script text-[38px] leading-[0.9]">baked</span>
-          <span className="font-script text-[30px] leading-[0.9] text-honey">fresh</span>
-          <span className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.2em]">since mmxxiv</span>
+          <span className="font-script text-[30px] leading-[0.9] text-honey">
+            fresh
+          </span>
+          <span className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.2em]">
+            since mmxxiv
+          </span>
         </div>
 
         <div className="absolute inset-x-20 bottom-20 max-w-[480px] text-white">
           <div
             className="font-display tracking-tight"
-            style={{ fontSize: "clamp(28px,3.6vw,36px)", lineHeight: 1.15, letterSpacing: "-0.01em" }}
+            style={{
+              fontSize: "clamp(28px,3.6vw,36px)",
+              lineHeight: 1.15,
+              letterSpacing: "-0.01em",
+            }}
           >
             &ldquo;The dough does its work in the dark.{" "}
-            <span className="font-editorial text-honey">Our job is only to come back.</span>&rdquo;
+            <span className="font-editorial text-honey">
+              Our job is only to come back.
+            </span>
+            &rdquo;
           </div>
           <div className="mt-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] opacity-85">
             <span className="block h-px w-6 bg-honey" />
@@ -203,5 +270,21 @@ export default function LoginPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-full items-center justify-center bg-cream text-espresso">
+          <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
+            Loading auth...
+          </div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

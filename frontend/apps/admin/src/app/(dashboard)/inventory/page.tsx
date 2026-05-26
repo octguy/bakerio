@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getInventory, getInventoryHealth } from "@repo/api-client/mock/inventory";
+import {
+  getInventory,
+  getInventoryHealth,
+} from "@repo/api-client/mock/inventory";
 import type { InventoryItem } from "@repo/api-client/mock/inventory";
 import { formatCurrency } from "@/lib/utils";
 
@@ -13,7 +16,15 @@ const LVL: Record<InventoryItem["lvl"], { c: string; l: string }> = {
 
 type InventoryGroupFilter = "All" | InventoryItem["group"];
 
-const groups: InventoryGroupFilter[] = ["All", "Flour", "Dairy", "Banh mi", "Coffee", "Filling", "Other"];
+const groups: InventoryGroupFilter[] = [
+  "All",
+  "Flour",
+  "Dairy",
+  "Banh mi",
+  "Coffee",
+  "Filling",
+  "Other",
+];
 
 export default function InventoryPage() {
   const [group, setGroup] = useState<InventoryGroupFilter>("All");
@@ -36,7 +47,9 @@ export default function InventoryPage() {
       setItems(itemsData);
       setHealth(healthData);
     } catch (err) {
-      setError("Could not load inventory data. Retry when the API is reachable.");
+      setError(
+        "Could not load inventory data. Retry when the API is reachable.",
+      );
       if (process.env.NODE_ENV !== "production") {
         console.error("Failed to fetch inventory:", err);
       }
@@ -56,7 +69,12 @@ export default function InventoryPage() {
       d: "+1.8%",
       dc: "var(--sage)",
     },
-    { l: "Items tracked", v: health?.itemsTracked.toString() ?? "0", d: "+4", dc: "var(--sage)" },
+    {
+      l: "Items tracked",
+      v: health?.itemsTracked.toString() ?? "0",
+      d: "+4",
+      dc: "var(--sage)",
+    },
     {
       l: "Low stock",
       v: health?.lowStock.toString() ?? "0",
@@ -86,19 +104,37 @@ export default function InventoryPage() {
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
               Cập nhật mỗi giờ · last count 06:00
             </span>
+            <span className="rounded-full bg-sienna/10 px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-sienna">
+              Demo inventory · mock data
+            </span>
           </div>
           <h1
             className="font-display tracking-tight"
-            style={{ fontSize: "clamp(26px,3.6vw,32px)", lineHeight: 1, letterSpacing: "-0.02em" }}
+            style={{
+              fontSize: "clamp(26px,3.6vw,32px)",
+              lineHeight: 1,
+              letterSpacing: "-0.02em",
+            }}
           >
-            Inventory <span className="font-editorial text-cinnamon">· what&apos;s in the larder</span>
+            Inventory{" "}
+            <span className="font-editorial text-cinnamon">
+              · what&apos;s in the larder
+            </span>
           </h1>
         </div>
         <div className="flex gap-2">
-          <button className="rounded-full border border-[var(--admin-line)] bg-white px-4 py-2 text-[12px] font-semibold">
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-full border border-[var(--admin-line)] bg-white px-4 py-2 text-[12px] font-semibold opacity-45"
+          >
             ↧ Stock-take CSV
           </button>
-          <button className="rounded-full bg-sienna px-4 py-2 font-mono text-[12px] font-bold uppercase tracking-[0.06em] text-white">
+          <button
+            type="button"
+            disabled
+            className="cursor-not-allowed rounded-full bg-sienna px-4 py-2 font-mono text-[12px] font-bold uppercase tracking-[0.06em] text-white opacity-45"
+          >
             ★ Create PO · {belowParCount} items
           </button>
         </div>
@@ -125,7 +161,10 @@ export default function InventoryPage() {
               >
                 {k.v}
               </span>
-              <span className="font-mono text-[10.5px] font-bold tracking-[0.06em]" style={{ color: k.dc }}>
+              <span
+                className="font-mono text-[10.5px] font-bold tracking-[0.06em]"
+                style={{ color: k.dc }}
+              >
                 {k.d}
               </span>
             </div>
@@ -140,7 +179,9 @@ export default function InventoryPage() {
             key={g}
             onClick={() => setGroup(g)}
             className={`rounded-full px-3 py-1.5 font-mono text-[11px] tracking-[0.06em] transition-colors ${
-              group === g ? "bg-espresso font-bold text-white" : "border border-[var(--admin-line)] bg-white text-espresso hover:bg-[var(--admin-panel)]"
+              group === g
+                ? "bg-espresso font-bold text-white"
+                : "border border-[var(--admin-line)] bg-white text-espresso hover:bg-[var(--admin-panel)]"
             }`}
           >
             {g}
@@ -153,9 +194,14 @@ export default function InventoryPage() {
       </div>
 
       {error && (
-        <div role="alert" className="mb-4 rounded-lg border border-sienna/30 bg-sienna/10 px-4 py-3">
+        <div
+          role="alert"
+          className="mb-4 rounded-lg border border-sienna/30 bg-sienna/10 px-4 py-3"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-sienna">{error}</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-sienna">
+              {error}
+            </p>
             <button
               type="button"
               onClick={() => fetchInventoryData(true)}
@@ -190,59 +236,74 @@ export default function InventoryPage() {
             No inventory items found.
           </div>
         )}
-        {!loading && items.map((it, i) => {
-          const pct = Math.min(1, it.stock / it.par);
-          const bar = LVL[it.lvl].c;
-          return (
-            <div
-              key={it.sku}
-              className="grid items-center px-4 py-3"
-              style={{
-                gridTemplateColumns: "2.4fr 0.7fr 1fr 1.4fr 1.2fr 1fr",
-                borderBottom: i === items.length - 1 ? undefined : "1px solid var(--admin-line)",
-                background: it.lvl === "critical" ? "rgba(196,91,74,0.06)" : undefined,
-              }}
-            >
-              <div>
-                <div className="text-[13.5px] font-semibold">{it.name}</div>
-                <div className="font-mono text-[10px] tracking-[0.06em] text-[var(--admin-muted)]">
-                  {it.sku} · last count {it.updated} ago
+        {!loading &&
+          items.map((it, i) => {
+            const pct = Math.min(1, it.stock / it.par);
+            const bar = LVL[it.lvl].c;
+            return (
+              <div
+                key={it.sku}
+                className="grid items-center px-4 py-3"
+                style={{
+                  gridTemplateColumns: "2.4fr 0.7fr 1fr 1.4fr 1.2fr 1fr",
+                  borderBottom:
+                    i === items.length - 1
+                      ? undefined
+                      : "1px solid var(--admin-line)",
+                  background:
+                    it.lvl === "critical" ? "rgba(196,91,74,0.06)" : undefined,
+                }}
+              >
+                <div>
+                  <div className="text-[13.5px] font-semibold">{it.name}</div>
+                  <div className="font-mono text-[10px] tracking-[0.06em] text-[var(--admin-muted)]">
+                    {it.sku} · last count {it.updated} ago
+                  </div>
                 </div>
-              </div>
-              <span className="font-mono text-[10px] font-bold tracking-[0.12em] text-cinnamon">{it.group}</span>
-              <span className="font-editorial text-[13px] italic text-caramel">{it.supplier}</span>
-              <div>
-                <div className="flex items-baseline gap-1 font-mono text-[12px] tracking-[0.04em]">
-                  <span className="font-bold" style={{ color: bar }}>
-                    {it.stock}
-                  </span>
-                  <span className="text-[var(--admin-muted)]">
-                    / {it.par} {it.unit}
-                  </span>
-                </div>
-                <div className="mt-1 h-1.5 rounded-sm bg-[var(--admin-panel)]">
-                  <div className="h-full rounded-sm" style={{ width: `${pct * 100}%`, background: bar }} />
-                </div>
-              </div>
-              <span className="text-right font-mono text-[12px] tracking-[0.04em]">
-                {(it.cost / 1000).toLocaleString("vi-VN")}K
-                <span className="ml-0.5 text-[10px] text-[var(--admin-muted)]">₫/{it.unit}</span>
-              </span>
-              <span>
-                <span
-                  className="rounded-full px-2.5 py-1 font-mono text-[10px] font-bold tracking-[0.12em]"
-                  style={{ background: `${bar}22`, color: bar }}
-                >
-                  ● {LVL[it.lvl].l}
+                <span className="font-mono text-[10px] font-bold tracking-[0.12em] text-cinnamon">
+                  {it.group}
                 </span>
-              </span>
-            </div>
-          );
-        })}
+                <span className="font-editorial text-[13px] italic text-caramel">
+                  {it.supplier}
+                </span>
+                <div>
+                  <div className="flex items-baseline gap-1 font-mono text-[12px] tracking-[0.04em]">
+                    <span className="font-bold" style={{ color: bar }}>
+                      {it.stock}
+                    </span>
+                    <span className="text-[var(--admin-muted)]">
+                      / {it.par} {it.unit}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 rounded-sm bg-[var(--admin-panel)]">
+                    <div
+                      className="h-full rounded-sm"
+                      style={{ width: `${pct * 100}%`, background: bar }}
+                    />
+                  </div>
+                </div>
+                <span className="text-right font-mono text-[12px] tracking-[0.04em]">
+                  {(it.cost / 1000).toLocaleString("vi-VN")}K
+                  <span className="ml-0.5 text-[10px] text-[var(--admin-muted)]">
+                    ₫/{it.unit}
+                  </span>
+                </span>
+                <span>
+                  <span
+                    className="rounded-full px-2.5 py-1 font-mono text-[10px] font-bold tracking-[0.12em]"
+                    style={{ background: `${bar}22`, color: bar }}
+                  >
+                    ● {LVL[it.lvl].l}
+                  </span>
+                </span>
+              </div>
+            );
+          })}
       </div>
 
       <p className="mt-3 text-right font-mono text-[10.5px] tracking-[0.06em] text-[var(--admin-muted)]">
-        {formatCurrency(items.reduce((s, i) => s + i.cost * i.stock, 0))} on hand · {items.length} items shown
+        {formatCurrency(items.reduce((s, i) => s + i.cost * i.stock, 0))} on
+        hand · {items.length} items shown
       </p>
     </div>
   );
