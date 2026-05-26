@@ -42,26 +42,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void fetchUser(); }, [fetchUser]); // eslint-disable-line react-hooks/set-state-in-effect
 
   const login = async (email: string, password: string): Promise<string | null> => {
-    const res = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "login", email, password }),
-    });
-    const data = await res.json();
-    if (data.error) return data.error;
-    await fetchUser();
-    return null;
+    try {
+      setLoading(true);
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "login", email, password }),
+      });
+      const data = await res.json().catch(() => ({ error: "Unexpected response from server" }));
+      if (!res.ok || data.error) return data.error ?? "Unable to sign in. Please try again.";
+      await fetchUser();
+      return null;
+    } catch {
+      return "Unable to reach Bakerio. Check your connection and try again.";
+    } finally {
+      setLoading(false);
+    }
   };
 
   const register = async (email: string, password: string, fullName: string): Promise<string | null> => {
-    const res = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "register", email, password, full_name: fullName }),
-    });
-    const data = await res.json();
-    if (data.error) return data.error;
-    return null;
+    try {
+      setLoading(true);
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "register", email, password, full_name: fullName }),
+      });
+      const data = await res.json().catch(() => ({ error: "Unexpected response from server" }));
+      if (!res.ok || data.error) return data.error ?? "Unable to create your account. Please try again.";
+      return null;
+    } catch {
+      return "Unable to reach Bakerio. Check your connection and try again.";
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = async () => {

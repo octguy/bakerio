@@ -46,7 +46,11 @@ export default function LoginPage() {
       <span className="block font-script text-[30px] leading-none text-cinnamon">welcome back,</span>
       <h1
         className="mt-1.5 font-display tracking-tight text-espresso"
-        style={{ fontSize: "clamp(36px,10vw,44px)", lineHeight: 0.95, letterSpacing: "-0.02em" }}
+        style={{
+          fontSize: "clamp(36px,10vw,44px)",
+          lineHeight: 0.95,
+          letterSpacing: "-0.02em",
+        }}
       >
         Pick up your
         <br />
@@ -55,11 +59,8 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="mt-9 space-y-4">
         <div>
-          <label
-            htmlFor="login-email"
-            className="block font-mono text-[10px] uppercase tracking-[0.18em] text-caramel"
-          >
-            Email or phone
+          <label htmlFor="login-email" className="block font-mono text-[10px] uppercase tracking-[0.18em] text-caramel">
+            Email
           </label>
           <input
             id="login-email"
@@ -74,10 +75,7 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label
-            htmlFor="login-password"
-            className="block font-mono text-[10px] uppercase tracking-[0.18em] text-caramel"
-          >
+          <label htmlFor="login-password" className="block font-mono text-[10px] uppercase tracking-[0.18em] text-caramel">
             Password
           </label>
           <div className="mt-2 flex items-center gap-2 rounded-xl border-2 border-cinnamon bg-white px-4 py-3.5">
@@ -88,9 +86,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="•••••••••"
-              className={`flex-1 bg-transparent text-[15px] text-espresso outline-none ${
-                showPw ? "" : "font-mono tracking-[0.3em]"
-              }`}
+              className={`flex-1 bg-transparent text-[15px] text-espresso outline-none ${showPw ? "" : "font-mono tracking-[0.3em]"}`}
             />
             <button
               type="button"
@@ -102,9 +98,7 @@ export default function LoginPage() {
               <span aria-hidden="true">👁</span>
             </button>
           </div>
-          {fieldErrors.password && (
-            <p className="mt-1 font-mono text-[11px] text-sienna">{fieldErrors.password}</p>
-          )}
+          {fieldErrors.password && <p className="mt-1 font-mono text-[11px] text-sienna">{fieldErrors.password}</p>}
         </div>
 
         <div className="text-right">
@@ -118,11 +112,7 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {error && (
-          <p className="rounded-md border border-sienna/30 bg-sienna/10 px-3 py-2 text-center font-mono text-[11px] text-sienna">
-            {error}
-          </p>
-        )}
+        {error && <p className="rounded-md border border-sienna/30 bg-sienna/10 px-3 py-2 text-center font-mono text-[11px] text-sienna">{error}</p>}
 
         <button
           disabled={loading}
@@ -139,10 +129,7 @@ export default function LoginPage() {
       </div>
 
       <div className="mt-4 flex flex-col gap-2">
-        {[
-          { l: "Continue with Apple" },
-          { l: "Continue with Google" },
-        ].map((b) => (
+        {[{ l: "Continue with Apple" }, { l: "Continue with Google" }].map((b) => (
           <button
             key={b.l}
             type="button"
@@ -150,9 +137,7 @@ export default function LoginPage() {
             className="flex items-center justify-between rounded-xl border border-crust bg-white/50 px-4 py-3.5 text-[13.5px] font-semibold text-espresso/40 cursor-not-allowed"
           >
             <span>{b.l}</span>
-            <span className="rounded bg-caramel/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-caramel">
-              coming soon
-            </span>
+            <span className="rounded bg-caramel/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-caramel">coming soon</span>
           </button>
         ))}
       </div>

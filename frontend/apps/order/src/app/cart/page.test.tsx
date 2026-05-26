@@ -2,9 +2,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/re
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 
 vi.mock("next/link", () => ({
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => (
-    <a href={href}>{children}</a>
-  ),
+  default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
 }));
 
 vi.mock("next/image", () => ({
@@ -33,7 +31,15 @@ const mockItems = [
     id: "1",
     product: { id: "p1", name: "Bánh Mì" },
     quantity: 2,
-    choices: [{ optionId: "o1", optionName: "Size", choiceId: "c1", choiceLabel: "Lớn", priceAdjust: 0 }],
+    choices: [
+      {
+        optionId: "o1",
+        optionName: "Size",
+        choiceId: "c1",
+        choiceLabel: "Lớn",
+        priceAdjust: 0,
+      },
+    ],
     unitPrice: 25000,
   },
 ];
@@ -124,6 +130,12 @@ describe("CartPage", () => {
   it("displays the correct loyalty discount total dynamically", async () => {
     render(<CartPage />);
     expect(await screen.findByText("−10.000₫")).toBeInTheDocument();
+  });
+
+  it("does not promise loyalty crumbs on checkout", () => {
+    render(<CartPage />);
+    expect(screen.queryByText(/you'll earn/i)).toBeNull();
+    expect(screen.getByText(/final pickup total is confirmed at checkout/i)).toBeTruthy();
   });
 
   it("falls back to no loyalty discount when the loyalty calculation fails", async () => {

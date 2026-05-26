@@ -8,6 +8,7 @@ import { ShoppingBag, LogOut } from "lucide-react";
 export function Header() {
   const { user, logout } = useAuth();
   const itemCount = useCartStore((s) => s.items.length);
+  const userInitial = user ? (user.full_name?.trim() || user.email?.trim() || "B").charAt(0).toUpperCase() : "";
 
   return (
     <header className="sticky top-0 z-50 border-b border-crust bg-cream/95 backdrop-blur">
@@ -41,21 +42,14 @@ export function Header() {
                 aria-label="Profile"
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-cinnamon font-display text-[13px] text-white"
               >
-                {user.full_name?.charAt(0) ?? user.email.charAt(0).toUpperCase()}
+                {userInitial}
               </Link>
-              <button
-                onClick={logout}
-                aria-label="Log out"
-                className="p-2 text-caramel transition-colors hover:text-espresso"
-              >
+              <button onClick={logout} aria-label="Log out" className="p-2 text-caramel transition-colors hover:text-espresso">
                 <LogOut size={16} />
               </button>
             </div>
           ) : (
-            <Link
-              href="/login"
-              className="rounded-full bg-espresso px-3.5 py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-cream"
-            >
+            <Link href="/login" className="rounded-full bg-espresso px-3.5 py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-cream">
               Sign in
             </Link>
           )}
