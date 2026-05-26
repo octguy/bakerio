@@ -8,7 +8,10 @@ const mockLogin = vi.fn();
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ login: mockLogin }) }));
 
 vi.mock("next/image", () => ({
-  default: (props: any) => <img {...props} />,
+  default: ({ alt = "", ...props }: any) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img alt={alt} {...props} />;
+  },
 }));
 
 import LoginPage from "./page";
@@ -31,6 +34,15 @@ describe("Admin Login Page", () => {
   it("has a sign in button", () => {
     render(<LoginPage />);
     expect(screen.getByRole("button", { name: /sign in to ops/i })).toBeInTheDocument();
+  });
+
+  it("has a disabled forgot password button with accessible description", () => {
+    render(<LoginPage />);
+    const forgotButton = screen.getByRole("button", {
+      name: "Forgot password? Reset is unavailable/coming soon.",
+    });
+
+    expect(forgotButton).toBeDisabled();
   });
 
   it("redirects to dashboard on successful login", async () => {

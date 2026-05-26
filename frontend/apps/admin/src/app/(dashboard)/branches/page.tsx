@@ -8,7 +8,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -96,7 +96,14 @@ export default function BranchesPage() {
 
       <Dialog open={open} onOpenChange={(v) => { if (!v) { setOpen(false); setEditing(null); reset(); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing ? "Edit Branch" : "New Branch"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit Branch" : "New Branch"}</DialogTitle>
+            <DialogDescription>
+              {editing
+                ? "Update this branch's name, address, and region."
+                : "Add a new branch with its name, address, and region."}
+            </DialogDescription>
+          </DialogHeader>
           <form onSubmit={handleSubmit((d) => editing ? updateMut.mutate(d) : createMut.mutate(d))} className="space-y-4 mt-4">
             <div><Label>Name</Label><Input {...register("name")} />{errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}</div>
             <div><Label>Address</Label><Input {...register("address")} />{errors.address && <p className="text-xs text-destructive mt-1">{errors.address.message}</p>}</div>
@@ -111,7 +118,10 @@ export default function BranchesPage() {
 
       <Dialog open={!!deleting} onOpenChange={() => setDeleting(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Delete Branch</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Delete Branch</DialogTitle>
+            <DialogDescription>Confirm that you want to permanently remove this branch.</DialogDescription>
+          </DialogHeader>
           <p className="text-sm text-muted-foreground">Delete &quot;{deleting?.name}&quot;?</p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button>

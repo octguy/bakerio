@@ -30,7 +30,10 @@ export function BottomNav() {
             >
               <span className="text-[16px]" aria-hidden>{icon}</span>
               {label === "Cart" && itemCount > 0 && (
-                <span className="absolute -right-2 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-cinnamon font-mono text-[9px] font-bold text-white">
+                <span
+                  className="absolute -right-2 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-cinnamon font-mono text-[9px] font-bold text-white"
+                  aria-label={`${itemCount} items in cart`}
+                >
                   {itemCount}
                 </span>
               )}

@@ -48,21 +48,30 @@ const getTag = (id: string) => {
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    setError("");
     try {
       const data = await getOrders();
       setOrders(data);
     } catch (err) {
-      console.error("Failed to fetch orders:", err);
+      setError("Could not load live orders. Retry when the API is reachable.");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to fetch orders:", err);
+      }
+    } finally {
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOrders(); // eslint-disable-line react-hooks/set-state-in-effect
+    fetchOrders(true); // eslint-disable-line react-hooks/set-state-in-effect
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleAction = async (orderId: string, colKey: string, mode: "pickup" | "delivery") => {
     let nextStatus: Order["status"];
@@ -79,7 +88,10 @@ export default function OrdersPage() {
       await updateOrderStatus(orderId, nextStatus);
       await fetchOrders();
     } catch (err) {
-      console.error("Failed to update status:", err);
+      setError("Could not update order status. Please retry.");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to update status:", err);
+      }
     }
   };
 
@@ -205,7 +217,27 @@ export default function OrdersPage() {
         </span>
       </div>
 
+      {error && (
+        <div role="alert" className="mb-3 rounded-lg border border-sienna/30 bg-sienna/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-sienna">{error}</p>
+            <button
+              type="button"
+              onClick={() => fetchOrders(true)}
+              className="rounded-full border border-sienna/30 px-3 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-sienna"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Board */}
+      {loading ? (
+        <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--admin-line)] bg-white font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
+          Loading orders...
+        </div>
+      ) : (
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         {COLS.map((col) => (
           <div
@@ -227,6 +259,11 @@ export default function OrdersPage() {
             </div>
 
             <div className="flex flex-1 flex-col gap-2 overflow-auto p-2.5">
+              {col.orders.length === 0 && (
+                <div className="rounded-lg border border-dashed border-[var(--admin-line)] bg-white/60 p-4 text-center font-editorial text-[13px] italic text-[var(--admin-muted)]">
+                  No orders here.
+                </div>
+              )}
               {col.orders.map((o) => {
                 const orderNum = o.id.replace("order-", "#");
                 const mins = Math.max(
@@ -337,6 +374,7 @@ export default function OrdersPage() {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 }

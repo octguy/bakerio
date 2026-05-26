@@ -1,17 +1,50 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Croissant } from "lucide-react";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
+import { maxRedeemableFor } from "@repo/api-client/mock/loyalty";
 
 export default function CartPage() {
+  return (
+    <ProtectedRoute>
+      <CartPageInner />
+    </ProtectedRoute>
+  );
+}
+
+function CartPageInner() {
   const items = useCartStore((s) => s.items);
   const removeItem = useCartStore((s) => s.removeItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const subtotal = useCartStore((s) => s.subtotal());
-  const loyalty = Math.round(subtotal * 0.05);
+
+  const [loyalty, setLoyalty] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const loadLoyalty = async () => {
+      try {
+        const disc = await maxRedeemableFor(subtotal);
+        if (active) {
+          setLoyalty(disc);
+        }
+      } catch {
+        if (active) {
+          setLoyalty(0);
+        }
+      }
+    };
+    loadLoyalty();
+    return () => {
+      active = false;
+    };
+  }, [subtotal]);
+
   const total = Math.max(0, subtotal - loyalty);
 
   if (items.length === 0) {
@@ -40,7 +73,7 @@ export default function CartPage() {
     <main className="mx-auto max-w-md px-6 pt-4 pb-40">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <Link href="/menu" className="text-[22px] text-espresso">‹</Link>
+        <Link href="/menu" className="text-[22px] text-espresso" aria-label="Back to menu">‹</Link>
         <div className="text-center">
           <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">step 2 / 3</div>
           <div className="font-display text-[16px] leading-none text-espresso">Your basket</div>
@@ -65,14 +98,14 @@ export default function CartPage() {
       {/* Pickup card */}
       <div className="mt-5 flex items-center gap-3 rounded-2xl border border-crust bg-white p-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-butter font-display text-[14px] text-cinnamon">
-          📍
+          <span aria-hidden="true">📍</span>
         </div>
         <div className="flex-1">
           <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">Pickup</div>
           <div className="text-[14px] font-semibold text-espresso">Lê Lợi Flagship — 0.8 km</div>
           <div className="mt-0.5 font-editorial text-[12px] text-cinnamon">Ready in 15–25 minutes</div>
         </div>
-        <span className="text-[18px] text-caramel">›</span>
+        <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
       </div>
 
       {/* Line items */}
@@ -101,13 +134,13 @@ export default function CartPage() {
             </div>
             <div className="text-right">
               <div className="font-display text-[14px] leading-none text-espresso">
-                {formatVND(item.unitPrice * item.quantity).replace("₫", "")}
-                <span className="ml-0.5 text-[10px] text-caramel">₫</span>
+                {formatVND(item.unitPrice * item.quantity)}
               </div>
               <div className="mt-2 inline-flex items-center rounded-full border border-crust font-mono text-[11px]">
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
                   className="flex h-[22px] w-[22px] items-center justify-center text-caramel"
+                  aria-label="Decrease quantity"
                 >
                   −
                 </button>
@@ -115,6 +148,7 @@ export default function CartPage() {
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
                   className="flex h-[22px] w-[22px] items-center justify-center text-espresso"
+                  aria-label="Increase quantity"
                 >
                   +
                 </button>
@@ -126,7 +160,7 @@ export default function CartPage() {
 
       {/* Promo */}
       <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-dashed border-crust-deep bg-butter p-3">
-        <span className="text-[16px]">🎟️</span>
+        <span className="text-[16px]" aria-hidden="true">🎟️</span>
         <div className="flex-1">
           <div className="text-[12.5px] text-cocoa">Add a promo code</div>
         </div>
@@ -138,9 +172,9 @@ export default function CartPage() {
       {/* Totals */}
       <div className="mt-3 rounded-2xl border border-crust bg-white p-4">
         {[
-          { l: "Subtotal", v: `${formatVND(subtotal).replace("₫", "")}₫` },
+          { l: "Subtotal", v: formatVND(subtotal) },
           { l: "Pickup", v: "Free" },
-          { l: "Loyalty (−5%)", v: `−${formatVND(loyalty).replace("₫", "")}₫`, accent: true },
+          { l: "Loyalty", v: `−${formatVND(loyalty)}`, accent: true },
         ].map((r) => (
           <div
             key={r.l}
@@ -154,8 +188,7 @@ export default function CartPage() {
         <div className="mt-3 flex items-baseline justify-between border-t border-crust pt-3">
           <span className="font-display text-[20px] text-espresso">Total</span>
           <span className="font-display text-[26px] tracking-tight text-espresso">
-            {formatVND(total).replace("₫", "")}
-            <span className="ml-0.5 text-[13px] text-cinnamon">₫</span>
+            {formatVND(total)}
           </span>
         </div>
       </div>
@@ -171,10 +204,10 @@ export default function CartPage() {
           href="/checkout"
           className="bkr-press flex items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream"
         >
-          <span>Pay {formatVND(total).replace("₫", "")}₫</span>
+          <span>Pay {formatVND(total)}</span>
           <span className="flex items-center gap-2">
             <span className="font-mono text-[11px] opacity-75">Continue</span>
-            →
+            <span aria-hidden="true">→</span>
           </span>
         </Link>
         <div className="mt-2 text-center font-editorial text-[12.5px] italic text-caramel">

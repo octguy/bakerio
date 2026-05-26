@@ -8,7 +8,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
@@ -91,7 +91,14 @@ export default function CategoriesPage() {
 
       <Dialog open={open} onOpenChange={(v) => { if (!v) { setOpen(false); setEditing(null); reset(); } }}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{editing ? "Edit Category" : "New Category"}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit Category" : "New Category"}</DialogTitle>
+            <DialogDescription>
+              {editing
+                ? "Update this category's name and display order."
+                : "Add a new category and choose its display order."}
+            </DialogDescription>
+          </DialogHeader>
           <form onSubmit={handleSubmit((d) => editing ? updateMut.mutate(d) : createMut.mutate(d))} className="space-y-4 mt-4">
             <div><Label>Name</Label><Input {...register("name")} />{errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}</div>
             <div><Label>Sort Order</Label><Input type="number" {...register("sort_order")} /></div>
@@ -105,7 +112,10 @@ export default function CategoriesPage() {
 
       <Dialog open={!!deleting} onOpenChange={() => setDeleting(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Delete Category</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Delete Category</DialogTitle>
+            <DialogDescription>Confirm that you want to permanently remove this category.</DialogDescription>
+          </DialogHeader>
           <p className="text-sm text-muted-foreground">Delete &quot;{deleting?.name}&quot;?</p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button>

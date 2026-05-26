@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 async function adminLogin(page: import("@playwright/test").Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill("superadmin@bakerio.com");
-  await page.getByLabel("Password").fill("123456");
+  await page.getByLabel("Password", { exact: true }).fill("123456");
   await page.getByRole("button", { name: "Sign In" }).click();
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 }

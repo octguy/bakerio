@@ -8,7 +8,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -109,7 +109,10 @@ export default function ProductsPage() {
       {/* Delete Confirmation */}
       <Dialog open={!!deleting} onOpenChange={() => setDeleting(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Delete Product</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>Confirm that you want to permanently remove this product from the catalog.</DialogDescription>
+          </DialogHeader>
           <p className="text-sm text-muted-foreground">Are you sure you want to delete &quot;{deleting?.name}&quot;? This action cannot be undone.</p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button>
@@ -133,7 +136,14 @@ function ProductFormDialog({ open, onClose, editing, categories, onSubmit, loadi
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) { onClose(); reset(); } }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{editing ? "Edit Product" : "New Product"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{editing ? "Edit Product" : "New Product"}</DialogTitle>
+          <DialogDescription>
+            {editing
+              ? "Update this product's name, unit, price, description, and category."
+              : "Add a new product with its SKU, unit, price, description, and category."}
+          </DialogDescription>
+        </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
           <div className="grid grid-cols-2 gap-4">
             <div><Label>SKU</Label><Input {...register("sku")} disabled={!!editing} />{errors.sku && <p className="text-xs text-destructive mt-1">{errors.sku.message}</p>}</div>

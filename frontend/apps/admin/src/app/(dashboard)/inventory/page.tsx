@@ -24,20 +24,29 @@ export default function InventoryPage() {
     lowStock: number;
     critical: number;
   }>();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const fetchInventoryData = async () => {
+  const fetchInventoryData = async (showLoading = false) => {
+    if (showLoading) setLoading(true);
+    setError("");
     try {
       const itemsData = await getInventory(group === "All" ? undefined : group);
       const healthData = await getInventoryHealth();
       setItems(itemsData);
       setHealth(healthData);
     } catch (err) {
-      console.error("Failed to fetch inventory:", err);
+      setError("Could not load inventory data. Retry when the API is reachable.");
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to fetch inventory:", err);
+      }
+    } finally {
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchInventoryData(); // eslint-disable-line react-hooks/set-state-in-effect
+    fetchInventoryData(true); // eslint-disable-line react-hooks/set-state-in-effect
   }, [group]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kpis = [
@@ -143,6 +152,21 @@ export default function InventoryPage() {
         </span>
       </div>
 
+      {error && (
+        <div role="alert" className="mb-4 rounded-lg border border-sienna/30 bg-sienna/10 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-sienna">{error}</p>
+            <button
+              type="button"
+              onClick={() => fetchInventoryData(true)}
+              className="rounded-full border border-sienna/30 px-3 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-sienna"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="rounded-lg border border-[var(--admin-line)] bg-white">
         <div
@@ -156,7 +180,17 @@ export default function InventoryPage() {
           <span className="text-right">Unit cost</span>
           <span>Status</span>
         </div>
-        {items.map((it, i) => {
+        {loading && (
+          <div className="px-4 py-8 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
+            Loading inventory...
+          </div>
+        )}
+        {!loading && !error && items.length === 0 && (
+          <div className="px-4 py-8 text-center font-editorial text-[14px] italic text-caramel">
+            No inventory items found.
+          </div>
+        )}
+        {!loading && items.map((it, i) => {
           const pct = Math.min(1, it.stock / it.par);
           const bar = LVL[it.lvl].c;
           return (
