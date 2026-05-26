@@ -16,22 +16,9 @@ test.describe("Branch Selection — Homepage", () => {
     await expect(page.getByRole("main").getByText("Pickup").first()).toBeVisible();
   });
 
-  test("handles API failure gracefully with error message", async ({ page }) => {
-    // SSR fetch will fail if backend is unavailable — page should show error text, not crash
-    await page.goto("/");
-
-    const heading = page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i });
-    await expect(heading).toBeVisible();
-
-    // Page either shows branches or an error message — never a blank crash
-    const branchButtons = page.locator("main button");
-    const count = await branchButtons.count();
-    if (count > 0) {
-      await expect(branchButtons.first()).toBeVisible();
-    } else {
-      await expect(page.locator("text=Failed to load")).toBeVisible();
-    }
-  });
+  // NOTE: The order home page fetches branches in an SSR server component and getBranches()
+  // falls back to mock data on error, so the "couldn't load branch availability" error path is
+  // not reachable via Playwright page.route. It is covered by the unit test apps/order/src/app/page.test.tsx.
 
   test("branch cards display name, address, and region", async ({ page }) => {
     await page.goto("/");

@@ -30,6 +30,7 @@ test.describe("Admin — Categories CRUD", () => {
     await page.getByRole("button", { name: /save/i }).click();
 
     await expect(page.getByText("Category created")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("table").getByText("Bread").first()).toBeVisible({ timeout: 10000 });
   });
 
   test("edits an existing category", async ({ page }) => {
@@ -46,6 +47,7 @@ test.describe("Admin — Categories CRUD", () => {
     await page.getByRole("button", { name: /save/i }).click();
 
     await expect(page.getByText("Category updated")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("table").getByText("Premium Cakes").first()).toBeVisible({ timeout: 10000 });
   });
 
   test("deletes a category", async ({ page }) => {
@@ -54,11 +56,14 @@ test.describe("Admin — Categories CRUD", () => {
 
     // Click the delete (trash) icon button — second button in first row's actions
     const firstRow = page.locator("tbody tr").first();
+    const categoryName = (await firstRow.locator("td").first().innerText()).trim();
+
     await firstRow.locator("button").nth(1).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
     await page.getByRole("button", { name: /delete/i }).last().click();
 
     await expect(page.getByText("Category deleted")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("table").getByText(categoryName, { exact: true })).not.toBeVisible({ timeout: 10000 });
   });
 });

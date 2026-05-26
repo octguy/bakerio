@@ -27,10 +27,10 @@ test.describe("Admin — Branches Management", () => {
 
     await page.getByRole("dialog").locator("input").first().fill("Bakerio Phú Nhuận");
     await page.getByRole("dialog").locator("input").nth(1).fill("100 Phan Xích Long");
-    await page.getByRole("dialog").locator("select").selectOption("south");
     await page.getByRole("button", { name: /save/i }).click();
 
     await expect(page.getByText(/branch created|success/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("table").getByText("Bakerio Phú Nhuận").first()).toBeVisible({ timeout: 10000 });
   });
 
   test("edit branch", async ({ page }) => {
@@ -48,6 +48,6 @@ test.describe("Admin — Branches Management", () => {
     await page.getByRole("button", { name: /save/i }).click();
 
     await expect(page.getByText("Branch updated")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("Bakerio Quận 1 Edited")).toBeVisible();
+    await expect(page.getByText("Bakerio Quận 1 Edited").first()).toBeVisible();
   });
 });

@@ -16,6 +16,10 @@ test.describe("Admin — Users Management", () => {
   test("users page loads with heading", async ({ page }) => {
     await page.goto("/users");
     await expect(page.getByRole("heading", { name: /staff/i })).toBeVisible({ timeout: 10000 });
+
+    // Assert that the staff list container renders at least one real user row (e.g. Super Admin)
+    const staffContainer = page.locator("div.rounded-lg.border.bg-white");
+    await expect(staffContainer.getByText("Super Admin").first()).toBeVisible({ timeout: 10000 });
   });
 
   test("create staff user via dialog form", async ({ page }) => {
@@ -33,6 +37,10 @@ test.describe("Admin — Users Management", () => {
 
     await page.getByRole("button", { name: /create user/i }).click();
     await expect(page.getByText("User created")).toBeVisible({ timeout: 10000 });
+
+    // Assert that the newly created user is visible in the staff list
+    const staffContainer = page.locator("div.rounded-lg.border.bg-white");
+    await expect(staffContainer.getByText("Staff Member").first()).toBeVisible({ timeout: 10000 });
   });
 
   test("create user with invalid data shows validation errors", async ({ page }) => {

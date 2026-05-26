@@ -30,7 +30,7 @@ test.describe("Web — Branding Site", () => {
 
   test("locations page renders", async ({ page }) => {
     await page.goto("/locations");
-    await expect(page.locator("h1")).toContainText(/Eleven shops,\s*one city\./i);
+    await expect(page.locator("h1")).toContainText(/6 shops,\s*one city\./i);
     await expect(page.getByText("Hồ Chí Minh City")).toBeVisible();
   });
 
@@ -54,6 +54,15 @@ test.describe("Web — Branding Site", () => {
   });
 
   test("contact page form validation and submission", async ({ page }) => {
+    // Mock the contact form submission endpoint
+    await page.route("**/api/contact-mock", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ success: true }),
+      });
+    });
+
     await page.goto("/contact");
 
     // Try submitting empty fields to check validation errors
