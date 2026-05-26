@@ -91,14 +91,24 @@ describe("CheckoutPage", () => {
     vi.mocked(createOrder).mockResolvedValueOnce({} as any);
 
     render(<CheckoutPage />);
+    expect(await screen.findByText(/Use 200 crumbs/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Delivery" }));
     fireEvent.click(screen.getByRole("button", { name: /Pay with Pay at counter/i }));
 
     await waitFor(() => {
-      expect(createOrder).toHaveBeenCalledWith(
-        [{ product_id: "p1", quantity: 2 }],
-        "b1",
-        undefined
-      );
+      expect(createOrder).toHaveBeenCalledWith({
+        branch_id: "b1",
+        items: [{ product_id: "p1", quantity: 2 }],
+        fulfillment_mode: "DELIVERY",
+        delivery_address: "24 Nguyễn Đình Chiểu, Phường Đa Kao, Quận 1, HCMC",
+        requested_time: "ASAP · 15–25m",
+        payment_method: "PAY_AT_COUNTER",
+        delivery_fee_amount: 30000,
+        loyalty_discount_amount: 10000,
+        crumbs_redeemed: 200,
+        subtotal_amount: 50000,
+        total_amount: 70000,
+      });
     });
   });
 

@@ -6,6 +6,7 @@ import type { Order, OrderStatus } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 
 const STATUS_LABEL: Record<OrderStatus, { l: string; c: string; live?: boolean }> = {
@@ -22,8 +23,17 @@ const STATUS_LABEL: Record<OrderStatus, { l: string; c: string; live?: boolean }
 };
 
 export default function OrdersPage() {
+  return (
+    <ProtectedRoute>
+      <OrdersPageInner />
+    </ProtectedRoute>
+  );
+}
+
+function OrdersPageInner() {
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
+  const setBranch = useCartStore((s) => s.setBranch);
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +66,10 @@ export default function OrdersPage() {
     setLoading(true);
     try {
       setError(null);
+      const sourceOrder = orders.find((order) => order.id === orderId);
+      if (!sourceOrder) {
+        throw new Error(`Order ${orderId} not found`);
+      }
       const itemsList = await reorderItems(orderId);
       const addedItems = await Promise.all(
         itemsList.map(async (item) => {
@@ -79,6 +93,7 @@ export default function OrdersPage() {
         })
       );
 
+      setBranch(sourceOrder.branch_id);
       addedItems.forEach((it) => {
         if (it) addItem(it);
       });

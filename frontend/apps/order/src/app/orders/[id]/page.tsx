@@ -5,6 +5,7 @@ import { getOrder, getBranches } from "@repo/api-client";
 import type { Order, Branch } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import Link from "next/link";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -37,6 +38,14 @@ const STATUS_TEXT: Record<Order["status"], { title: string; desc: string }> = {
 };
 
 export default function OrderTrackingPage({ params }: PageProps) {
+  return (
+    <ProtectedRoute>
+      <OrderTrackingPageInner params={params} />
+    </ProtectedRoute>
+  );
+}
+
+function OrderTrackingPageInner({ params }: PageProps) {
   const { id } = use(params);
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -91,7 +100,9 @@ export default function OrderTrackingPage({ params }: PageProps) {
 
   const progress = STATUS_PROGRESS[order.status] ?? 0;
   const currentStatus = STATUS_TEXT[order.status] ?? { title: order.status, desc: "" };
-  const isDelivery = !order.delivery_address?.toLowerCase().includes("pickup");
+  const isDelivery =
+    order.fulfillment_mode === "DELIVERY" ||
+    (order.fulfillment_mode == null && !order.delivery_address?.toLowerCase().includes("pickup"));
   const branch = branches.find((b) => b.id === order.branch_id);
 
   // SVG coordinates for animating path

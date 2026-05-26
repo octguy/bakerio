@@ -50,12 +50,20 @@ export interface Order {
   status: OrderStatus;
   items: OrderItem[];
   total_amount: number;
+  subtotal_amount?: number;
+  fulfillment_mode?: OrderFulfillmentMode;
   payment_method?: string;
   delivery_address?: string;
+  requested_time?: string;
+  delivery_fee_amount?: number;
+  loyalty_discount_amount?: number;
+  crumbs_redeemed?: number;
   note?: string;
   created_at: string;
   updated_at: string;
 }
+
+export type OrderFulfillmentMode = "PICKUP" | "DELIVERY";
 
 export type OrderStatus =
   | "DRAFT"
@@ -76,6 +84,26 @@ export interface OrderItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+}
+
+export interface CreateOrderItemInput {
+  product_id: string;
+  quantity: number;
+}
+
+export interface CreateOrderRequest {
+  branch_id: string;
+  items: CreateOrderItemInput[];
+  fulfillment_mode: OrderFulfillmentMode;
+  delivery_address?: string;
+  requested_time: string;
+  payment_method: string;
+  delivery_fee_amount: number;
+  loyalty_discount_amount: number;
+  crumbs_redeemed?: number;
+  subtotal_amount: number;
+  total_amount: number;
+  note?: string;
 }
 
 export interface CartItem {

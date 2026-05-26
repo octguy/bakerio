@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { setMockOrderSessionUser } from "@repo/api-client/mock";
 
 interface User {
   id: string;
@@ -31,8 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ action: "me" }),
       });
       const data = await res.json();
+      setMockOrderSessionUser(data.user?.id ?? null);
       setUser(data.user ?? null);
     } catch {
+      setMockOrderSessionUser(null);
       setUser(null);
     } finally {
       setLoading(false);
@@ -70,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "logout" }),
     });
+    setMockOrderSessionUser(null);
     setUser(null);
   };
 
