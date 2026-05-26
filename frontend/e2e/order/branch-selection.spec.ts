@@ -1,9 +1,10 @@
 import { test, expect } from "@playwright/test";
 
-// NOTE: The order homepage is a guest (unauthenticated) SSR page. The /branch and /products
-// endpoints require auth, so the api-client falls back to MOCK fixtures. Branch/product
-// NAME assertions below reflect mock data, not the live backend; the navigation,
-// card-structure and keyboard assertions remain valid UI behavior.
+// NOTE: branch/products/categories READS are PUBLIC (PR #24), so a backend built from current main
+// serves REAL branch/product data to the guest (unauthenticated) SSR homepage. The api-client
+// only falls back to MOCK fixtures if the backend is unreachable or running a STALE build that
+// predates PR #24. The name assertions below assume a current backend; navigation, structure,
+// and keyboard assertions remain valid regardless.
 
 /**
  * Branch Selection Flow — Order App Homepage

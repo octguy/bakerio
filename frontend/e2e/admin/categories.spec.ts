@@ -16,21 +16,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterAll(async () => {
-  const fs = require("fs");
-  const path = require("path");
-  const ts = require("typescript");
-  const source = fs.readFileSync(path.join(__dirname, "_cleanup.ts"), "utf8");
-  const js = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS }
-  }).outputText;
-  const tmpFile = path.join(process.env.RUNNER_TEMP || "/tmp", `cleanup-categories-${Date.now()}.js`);
-  fs.writeFileSync(tmpFile, js, "utf8");
-  try {
-    const { cleanupByPrefix } = require(tmpFile);
-    await cleanupByPrefix("categories", "E2E ");
-  } finally {
-    try { fs.unlinkSync(tmpFile); } catch (e) {}
-  }
+  const { cleanupByPrefix } = await import("./_cleanup");
+  await cleanupByPrefix("categories", "E2E ");
 });
 
 test.describe("Admin — Categories CRUD", () => {
