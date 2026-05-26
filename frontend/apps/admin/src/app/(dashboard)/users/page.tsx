@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { createUser } from "@repo/api-client";
+import { createUser, getBranches, type Branch } from "@repo/api-client";
 import { getStaff, getStaffCounts } from "@repo/api-client/staff";
 import type { StaffMember } from "@repo/api-client/staff";
 import { Button } from "@/components/ui/button";
@@ -16,11 +16,32 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+const STAFF_CREATION_ROLES = [
+  { value: "product_manager", label: "Product Manager" },
+  { value: "branch_manager", label: "Branch Manager" },
+  { value: "branch_staff", label: "Branch Staff" },
+] as const;
+const BRANCH_SCOPED_ROLES = new Set(["branch_manager", "branch_staff"]);
+
+function isBranchScopedRole(role?: string): boolean {
+  return !!role && BRANCH_SCOPED_ROLES.has(role);
+}
+
 const schema = z.object({
   email: z.string().email("Valid email required"),
   full_name: z.string().min(1, "Name required"),
   password: z.string().min(6, "Min 6 characters"),
   role: z.string().min(1, "Role required"),
+  branch_id: z.string().optional(),
+}).superRefine((data, ctx) => {
+  const branchId = data.branch_id?.trim();
+  if (isBranchScopedRole(data.role) && !branchId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Branch required for branch-scoped roles",
+      path: ["branch_id"],
+    });
+  }
 });
 type FormData = z.infer<typeof schema>;
 
@@ -28,6 +49,9 @@ export default function UsersPage() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchesLoading, setBranchesLoading] = useState(false);
+  const [branchError, setBranchError] = useState("");
   const [counts, setCounts] = useState<{ total: number; onShift: number }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -55,7 +79,13 @@ export default function UsersPage() {
   }, []);
 
   const createMut = useMutation({
-    mutationFn: (d: FormData) => createUser({ email: d.email, full_name: d.full_name, password: d.password, role: d.role }),
+    mutationFn: (d: FormData) => createUser({
+      email: d.email,
+      full_name: d.full_name,
+      password: d.password,
+      role: d.role,
+      branch_id: isBranchScopedRole(d.role) ? d.branch_id?.trim() : undefined,
+    }),
     onSuccess: () => {
       setOpen(false);
       toast("User created");
@@ -65,7 +95,50 @@ export default function UsersPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      email: "",
+      full_name: "",
+      password: "",
+      role: "",
+      branch_id: "",
+    },
+  });
+  const selectedRole = watch("role");
+
+  useEffect(() => {
+    if (!open) return;
+
+    let cancelled = false;
+    setBranchError("");
+    setBranchesLoading(true);
+
+    void getBranches()
+      .then((branchList) => {
+        if (!cancelled) {
+          setBranches(branchList);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setBranches([]);
+        setBranchError("Could not load branches. Retry when the API is reachable.");
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to fetch branches:", err);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setBranchesLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   const handleCreateUser = (data: FormData) => {
     if (createMut.isPending) return;
     createMut.mutate(data);
@@ -196,10 +269,50 @@ export default function UsersPage() {
             <DialogDescription>Create a staff account with a name, email, password, and role.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit(handleCreateUser)} className="space-y-4 mt-4">
-            <div><Label>Full Name</Label><Input {...register("full_name")} />{errors.full_name && <p className="text-xs text-destructive mt-1">{errors.full_name.message}</p>}</div>
-            <div><Label>Email</Label><Input type="email" {...register("email")} />{errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}</div>
-            <div><Label>Password</Label><Input type="password" {...register("password")} />{errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}</div>
-            <div><Label>Role</Label><Select {...register("role")}><option value="">Select role...</option><option value="admin">Admin</option><option value="manager">Manager</option><option value="staff">Staff</option><option value="member">Member</option></Select>{errors.role && <p className="text-xs text-destructive mt-1">{errors.role.message}</p>}</div>
+            <div>
+              <Label htmlFor="create-user-full-name">Full Name</Label>
+              <Input id="create-user-full-name" {...register("full_name")} />
+              {errors.full_name && <p className="text-xs text-destructive mt-1">{errors.full_name.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="create-user-email">Email</Label>
+              <Input id="create-user-email" type="email" {...register("email")} />
+              {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="create-user-password">Password</Label>
+              <Input id="create-user-password" type="password" {...register("password")} />
+              {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+            </div>
+            <div>
+              <Label htmlFor="create-user-role">Role</Label>
+              <Select id="create-user-role" {...register("role")}>
+                <option value="">Select role...</option>
+                {STAFF_CREATION_ROLES.map((role) => (
+                  <option key={role.value} value={role.value}>{role.label}</option>
+                ))}
+              </Select>
+              {errors.role && <p className="text-xs text-destructive mt-1">{errors.role.message}</p>}
+            </div>
+            {isBranchScopedRole(selectedRole) && (
+              <div>
+                <Label htmlFor="create-user-branch">Branch</Label>
+                <Select
+                  id="create-user-branch"
+                  {...register("branch_id")}
+                  disabled={branchesLoading || branches.length === 0}
+                >
+                  <option value="">
+                    {branchesLoading ? "Loading branches..." : "Select branch..."}
+                  </option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </Select>
+                {branchError && <p className="text-xs text-destructive mt-1">{branchError}</p>}
+                {errors.branch_id && <p className="text-xs text-destructive mt-1">{errors.branch_id.message}</p>}
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={createMut.isPending}>{createMut.isPending ? "Creating..." : "Create User"}</Button>

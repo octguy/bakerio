@@ -1,7 +1,7 @@
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-import { createUser } from '@repo/api-client';
+import { createUser, getBranches } from '@repo/api-client';
 
 const mockToast = vi.fn();
 
@@ -21,6 +21,10 @@ vi.mock('@tanstack/react-query', () => ({
 
 vi.mock('@repo/api-client', () => ({
   createUser: vi.fn(),
+  getBranches: vi.fn().mockResolvedValue([
+    { id: 'branch-1', name: 'Lê Lợi', address: '1 Lê Lợi', status: 'active', region: 'south' },
+    { id: 'branch-2', name: 'Pasteur', address: '2 Pasteur', status: 'active', region: 'south' },
+  ]),
 }));
 
 vi.mock('@repo/api-client/staff', () => ({
@@ -52,7 +56,7 @@ vi.mock('@/components/ui/input', () => ({
 }));
 
 vi.mock('@/components/ui/label', () => ({
-  Label: ({ children }: any) => <label>{children}</label>,
+  Label: ({ children, htmlFor }: any) => <label htmlFor={htmlFor}>{children}</label>,
 }));
 
 vi.mock('@/components/ui/select', () => ({
@@ -73,6 +77,10 @@ import UsersPage from './page';
 describe('UsersPage CRUD flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getBranches).mockResolvedValue([
+      { id: 'branch-1', name: 'Lê Lợi', address: '1 Lê Lợi', status: 'active', region: 'south' },
+      { id: 'branch-2', name: 'Pasteur', address: '2 Pasteur', status: 'active', region: 'south' },
+    ] as any);
   });
 
   afterEach(cleanup);
@@ -108,7 +116,7 @@ describe('UsersPage CRUD flow', () => {
     fireEvent.change(fullNameInput, { target: { value: 'Jane Doe' } });
     fireEvent.change(emailInput, { target: { value: 'jane@bakerio.com' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.change(roleSelect, { target: { value: 'manager' } });
+    fireEvent.change(roleSelect, { target: { value: 'product_manager' } });
 
     fireEvent.submit(container.querySelector('form')!);
 
@@ -117,10 +125,46 @@ describe('UsersPage CRUD flow', () => {
         full_name: 'Jane Doe',
         email: 'jane@bakerio.com',
         password: 'password123',
-        role: 'manager',
+        role: 'product_manager',
+        branch_id: undefined,
       });
       expect(mockToast).toHaveBeenCalledWith('User created');
       expect(screen.queryByText('Full Name')).not.toBeInTheDocument();
+    });
+  });
+
+  it('requires a branch for branch-scoped roles and sends branch_id when selected', async () => {
+    vi.mocked(createUser).mockResolvedValue({ id: 'u-456' } as any);
+    const { container } = render(<UsersPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /add user/i }));
+    fireEvent.change(container.querySelector('input[name="full_name"]')!, { target: { value: 'Branch User' } });
+    fireEvent.change(container.querySelector('input[name="email"]')!, { target: { value: 'branch@bakerio.com' } });
+    fireEvent.change(container.querySelector('input[name="password"]')!, { target: { value: 'password123' } });
+    fireEvent.change(container.querySelector('select[name="role"]')!, { target: { value: 'branch_staff' } });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Branch')).toBeInTheDocument();
+    });
+
+    fireEvent.submit(container.querySelector('form')!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Branch required for branch-scoped roles')).toBeInTheDocument();
+    });
+    expect(createUser).not.toHaveBeenCalled();
+
+    fireEvent.change(container.querySelector('select[name="branch_id"]')!, { target: { value: 'branch-2' } });
+    fireEvent.submit(container.querySelector('form')!);
+
+    await waitFor(() => {
+      expect(createUser).toHaveBeenCalledWith({
+        full_name: 'Branch User',
+        email: 'branch@bakerio.com',
+        password: 'password123',
+        role: 'branch_staff',
+        branch_id: 'branch-2',
+      });
     });
   });
 
@@ -132,7 +176,11 @@ describe('UsersPage CRUD flow', () => {
     fireEvent.change(container.querySelector('input[name="full_name"]')!, { target: { value: 'Err User' } });
     fireEvent.change(container.querySelector('input[name="email"]')!, { target: { value: 'err@bakerio.com' } });
     fireEvent.change(container.querySelector('input[name="password"]')!, { target: { value: 'password123' } });
-    fireEvent.change(container.querySelector('select[name="role"]')!, { target: { value: 'staff' } });
+    fireEvent.change(container.querySelector('select[name="role"]')!, { target: { value: 'branch_staff' } });
+    await waitFor(() => {
+      expect(screen.getByLabelText('Branch')).toBeInTheDocument();
+    });
+    fireEvent.change(container.querySelector('select[name="branch_id"]')!, { target: { value: 'branch-1' } });
 
     fireEvent.submit(container.querySelector('form')!);
 

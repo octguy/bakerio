@@ -2,6 +2,18 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+export const STAFF_ROLES = new Set(["super_admin", "product_manager", "branch_manager", "branch_staff"]);
+
+export function getTokenRoles(token: string): string[] {
+  const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()) as { roles?: unknown };
+  return Array.isArray(payload.roles)
+    ? payload.roles.filter((role): role is string => typeof role === "string")
+    : [];
+}
+
+export function hasStaffAccess(roles: string[]): boolean {
+  return roles.some((role) => STAFF_ROLES.has(role));
+}
 
 export async function POST(req: NextRequest) {
   let body: Record<string, string>;
@@ -26,11 +38,10 @@ export async function POST(req: NextRequest) {
 
       const token = json.data.access_token;
 
-      // Decode JWT payload to extract roles (no verification needed — backend already validated)
-      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
-      const roles: string[] = payload.roles || [];
-      if (!roles.some((r: string) => ["admin", "manager", "super_admin"].includes(r))) {
-        return NextResponse.json({ error: "Access denied. Admin or Manager role required." }, { status: 403 });
+      // Backend role IDs come from JWT claims; only staff roles may enter the admin app.
+      const roles = getTokenRoles(token);
+      if (!hasStaffAccess(roles)) {
+        return NextResponse.json({ error: "Access denied. Staff role required." }, { status: 403 });
       }
 
       // Fetch profile for user display info
@@ -64,9 +75,11 @@ export async function POST(req: NextRequest) {
       const token = cookieStore.get("admin_token")?.value;
       if (!token) return NextResponse.json({ user: null });
 
-      // Decode JWT for roles
-      const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
-      const roles: string[] = payload.roles || [];
+      const roles = getTokenRoles(token);
+      if (!hasStaffAccess(roles)) {
+        cookieStore.delete("admin_token");
+        return NextResponse.json({ user: null });
+      }
 
       const res = await fetch(`${API_BASE}/profile`, {
         headers: { Authorization: `Bearer ${token}` },
