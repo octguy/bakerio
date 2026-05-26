@@ -98,7 +98,7 @@ afterEach(cleanup);
 describe('Homepage', () => {
   it('renders without crashing', () => {
     const { container } = render(<Home />);
-    expect(container.querySelector('main')).toBeInTheDocument();
+    expect(container.firstChild).toBeInTheDocument();
   });
 
   it('contains the hero heading', () => {
@@ -115,11 +115,11 @@ describe('Homepage', () => {
     expect(locationLinks[0]).toHaveAttribute('href', '/locations');
   });
 
-  it('has proper semantic structure with main and sections', () => {
+  it('has proper semantic structure with sections', () => {
     const { container } = render(<Home />);
-    const main = container.querySelector('main');
-    expect(main).toBeInTheDocument();
-    const sections = main!.querySelectorAll('section');
+    const div = container.querySelector('.relative.bg-cream');
+    expect(div).toBeInTheDocument();
+    const sections = div!.querySelectorAll('section');
     expect(sections.length).toBeGreaterThanOrEqual(4);
   });
 

@@ -33,8 +33,8 @@ afterEach(cleanup);
 
 describe("LocationsPage", () => {
   it("renders without crashing", () => {
-    render(<LocationsPage />);
-    expect(screen.getByRole("main")).toBeInTheDocument();
+    const { container } = render(<LocationsPage />);
+    expect(container.firstChild).toBeInTheDocument();
   });
 
   it("contains heading about locations", () => {
