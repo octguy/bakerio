@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { locations, regions } from "@/data/locations";
 
 // Editorial atlas: SVG abstract HCMC map + tabular shop list.
@@ -18,17 +18,20 @@ const PIN_LAYOUT = [
 
 export default function LocationsContent() {
   const [active, setActive] = useState<string>("All");
+  const [prevActive, setPrevActive] = useState<string>("All");
   const [selectedLocationName, setSelectedLocationName] = useState<string>(locations[0]?.name ?? "");
   const filtered = useMemo(
     () => (active === "All" ? locations : locations.filter((l) => l.region === active)),
     [active],
   );
+
+  if (active !== prevActive) {
+    setPrevActive(active);
+    setSelectedLocationName(filtered[0]?.name ?? "");
+  }
+
   const selectedLocation = filtered.find((location) => location.name === selectedLocationName) ?? filtered[0] ?? null;
   const selectedIdx = selectedLocation ? filtered.findIndex((location) => location.name === selectedLocation.name) : -1;
-
-  useEffect(() => {
-    setSelectedLocationName(filtered[0]?.name ?? "");
-  }, [filtered]);
 
   return (
     <section className="px-6 pb-24 lg:px-14">

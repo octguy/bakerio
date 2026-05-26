@@ -2,6 +2,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 vi.mock("next/image", () => ({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   default: ({ fill: _fill, priority: _priority, ...props }: Record<string, unknown>) => <img {...props} />,
 }));
 

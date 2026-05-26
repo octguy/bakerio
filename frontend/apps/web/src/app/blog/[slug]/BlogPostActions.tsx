@@ -13,6 +13,7 @@ export default function BlogPostActions({ slug, title }: BlogPostActionsProps) {
   const [saved, setSaved] = useState(false);
   const [shareLabel, setShareLabel] = useState("Share");
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -23,6 +24,7 @@ export default function BlogPostActions({ slug, title }: BlogPostActionsProps) {
       setSaved(false);
     }
   }, [slug]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleShare = async () => {
     const url = window.location.href;
