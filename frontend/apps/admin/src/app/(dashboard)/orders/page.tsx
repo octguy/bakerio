@@ -5,8 +5,6 @@ import { getOrders, updateOrderStatus } from "@repo/api-client";
 import type { Order } from "@repo/api-client";
 import { formatCurrency } from "@/lib/utils";
 
-
-
 const CHANNEL: Record<string, { l: string; bg: string; c: string }> = {
   app: { l: "APP", bg: "rgba(212,148,58,0.16)", c: "var(--cinnamon)" },
   web: { l: "WEB", bg: "rgba(107,143,94,0.16)", c: "var(--sage)" },
@@ -46,8 +44,67 @@ const getTag = (id: string) => {
   return undefined;
 };
 
+type OrdersView = "list" | "board" | "map" | "timeline";
+type OrderColumnKey = "queued" | "baking" | "delivery" | "done";
+
+type OrderFilters = {
+  branch: string;
+  channel: "all" | keyof typeof CHANNEL;
+  mode: "all" | "pickup" | "delivery";
+  sla: "all" | "late";
+};
+
+const TERMINAL_STATUSES: Order["status"][] = [
+  "DELIVERED",
+  "COMPLETED",
+  "CANCELLED",
+];
+
+const isTerminalOrder = (status: Order["status"]) =>
+  TERMINAL_STATUSES.includes(status);
+
+const getOrderAgeMinutes = (order: Order) =>
+  Math.max(
+    0,
+    Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000),
+  );
+
+const getOrderMode = (order: Order): "pickup" | "delivery" => {
+  const explicitMode = (order as Order & { delivery_mode?: string })
+    .delivery_mode;
+  if (explicitMode === "pickup" || explicitMode === "delivery")
+    return explicitMode;
+  return order.delivery_address?.toLowerCase().includes("pickup")
+    ? "pickup"
+    : "delivery";
+};
+
+const getOrderChannel = (order: Order): keyof typeof CHANNEL => {
+  const explicitChannel = (order as Order & { channel?: keyof typeof CHANNEL })
+    .channel;
+  if (explicitChannel && CHANNEL[explicitChannel]) return explicitChannel;
+  return order.id === "order-11056" || order.id === "order-11052"
+    ? "web"
+    : "app";
+};
+
+const getOrderColumnKey = (status: Order["status"]): OrderColumnKey => {
+  if (["DRAFT", "PENDING_PAYMENT", "PAID", "CONFIRMED"].includes(status))
+    return "queued";
+  if (status === "PREPARING") return "baking";
+  if (["READY", "OUT_FOR_DELIVERY"].includes(status)) return "delivery";
+  return "done";
+};
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [view, setView] = useState<OrdersView>("board");
+  const [filters, setFilters] = useState<OrderFilters>({
+    branch: "all",
+    channel: "all",
+    mode: "all",
+    sla: "all",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -73,7 +130,11 @@ export default function OrdersPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleAction = async (orderId: string, colKey: string, mode: "pickup" | "delivery") => {
+  const handleAction = async (
+    orderId: string,
+    colKey: string,
+    mode: "pickup" | "delivery",
+  ) => {
     let nextStatus: Order["status"];
     if (colKey === "queued") {
       nextStatus = "PREPARING";
@@ -100,15 +161,56 @@ export default function OrdersPage() {
   // Baking: PREPARING
   // Delivery: READY, OUT_FOR_DELIVERY
   // Done: COMPLETED, DELIVERED, CANCELLED
-  const queuedOrders = orders.filter((o) =>
-    ["DRAFT", "PENDING_PAYMENT", "PAID", "CONFIRMED"].includes(o.status)
+  const branchOptions = Array.from(
+    new Map(
+      orders.map((order) => [order.branch_id, getBranchCode(order.branch_id)]),
+    ),
   );
-  const bakingOrders = orders.filter((o) => o.status === "PREPARING");
-  const deliveryOrders = orders.filter((o) =>
-    ["READY", "OUT_FOR_DELIVERY"].includes(o.status)
+  const branchValues = [
+    "all",
+    ...branchOptions.map(([id]) => id),
+  ] as OrderFilters["branch"][];
+  const channelValues = [
+    "all",
+    ...Object.keys(CHANNEL),
+  ] as OrderFilters["channel"][];
+  const modeValues: OrderFilters["mode"][] = ["all", "delivery", "pickup"];
+  const slaValues: OrderFilters["sla"][] = ["all", "late"];
+
+  const cycleFilter = <K extends keyof OrderFilters>(
+    key: K,
+    values: OrderFilters[K][],
+  ) => {
+    setFilters((current) => {
+      const idx = values.indexOf(current[key]);
+      return { ...current, [key]: values[(idx + 1) % values.length] };
+    });
+  };
+
+  const filteredOrders = orders.filter((order) => {
+    const mode = getOrderMode(order);
+    const late =
+      getOrderAgeMinutes(order) > 20 && !isTerminalOrder(order.status);
+    if (filters.branch !== "all" && order.branch_id !== filters.branch)
+      return false;
+    if (filters.channel !== "all" && getOrderChannel(order) !== filters.channel)
+      return false;
+    if (filters.mode !== "all" && mode !== filters.mode) return false;
+    if (filters.sla === "late" && !late) return false;
+    return true;
+  });
+
+  const queuedOrders = filteredOrders.filter(
+    (o) => getOrderColumnKey(o.status) === "queued",
   );
-  const completedOrders = orders.filter((o) =>
-    ["DELIVERED", "COMPLETED", "CANCELLED"].includes(o.status)
+  const bakingOrders = filteredOrders.filter(
+    (o) => getOrderColumnKey(o.status) === "baking",
+  );
+  const deliveryOrders = filteredOrders.filter(
+    (o) => getOrderColumnKey(o.status) === "delivery",
+  );
+  const completedOrders = filteredOrders.filter(
+    (o) => getOrderColumnKey(o.status) === "done",
   );
 
   const COLS = [
@@ -152,6 +254,38 @@ export default function OrdersPage() {
     },
   ];
 
+  const filterButtons = [
+    {
+      key: "branch" as const,
+      label:
+        filters.branch === "all"
+          ? "All branches"
+          : getBranchCode(filters.branch),
+      values: branchValues,
+    },
+    {
+      key: "channel" as const,
+      label:
+        filters.channel === "all" ? "All channels" : CHANNEL[filters.channel].l,
+      values: channelValues,
+    },
+    {
+      key: "mode" as const,
+      label:
+        filters.mode === "all"
+          ? "Mode any"
+          : filters.mode === "delivery"
+            ? "Mode delivery"
+            : "Mode pickup",
+      values: modeValues,
+    },
+    {
+      key: "sla" as const,
+      label: filters.sla === "all" ? "SLA all" : "SLA late",
+      values: slaValues,
+    },
+  ];
+
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -165,30 +299,45 @@ export default function OrdersPage() {
           </div>
           <h1
             className="font-display tracking-tight"
-            style={{ fontSize: "clamp(26px,3.6vw,34px)", lineHeight: 1, letterSpacing: "-0.02em" }}
+            style={{
+              fontSize: "clamp(26px,3.6vw,34px)",
+              lineHeight: 1,
+              letterSpacing: "-0.02em",
+            }}
           >
             Live orders.{" "}
             <span className="font-editorial text-cinnamon">
-              {orders.filter((o) => o.status !== "COMPLETED" && o.status !== "CANCELLED").length} in motion
+              {orders.filter((o) => !isTerminalOrder(o.status)).length} in
+              motion
             </span>
           </h1>
         </div>
         <div className="flex gap-2">
           <div className="flex overflow-hidden rounded-full border border-[var(--admin-line)] bg-white">
             {[
-              { l: "List" },
-              { l: "Board", a: true },
-              { l: "Map" },
-              { l: "Timeline" },
+              { l: "List", key: "list" as const, disabled: false },
+              { l: "Board", key: "board" as const, disabled: false },
+              { l: "Map", key: "map" as const, disabled: true },
+              { l: "Timeline", key: "timeline" as const, disabled: true },
             ].map((v) => (
-              <span
-                key={v.l}
-                className={`px-4 py-2 font-mono text-[10.5px] tracking-[0.12em] ${
-                  v.a ? "bg-espresso font-bold text-white" : "text-[var(--admin-muted)]"
+              <button
+                type="button"
+                key={v.key}
+                onClick={() => setView(v.key)}
+                disabled={v.disabled}
+                aria-pressed={view === v.key}
+                className={`px-4 py-2 font-mono text-[10.5px] tracking-[0.12em] transition-colors ${
+                  view === v.key
+                    ? "bg-espresso font-bold text-white"
+                    : "text-[var(--admin-muted)]"
+                } ${
+                  v.disabled
+                    ? "cursor-not-allowed opacity-45"
+                    : "hover:bg-[var(--admin-panel)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cinnamon"
                 }`}
               >
                 {v.l}
-              </span>
+              </button>
             ))}
           </div>
         </div>
@@ -199,15 +348,20 @@ export default function OrdersPage() {
         <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">
           Filter
         </span>
-        {["All branches ⌄", "All channels ⌄", "Mode · any ⌄", "SLA · all ⌄"].map((c, i) => (
-          <span
-            key={c}
+        {filterButtons.map((filter) => (
+          <button
+            type="button"
+            key={filter.key}
+            onClick={() => cycleFilter(filter.key, filter.values)}
+            aria-label={`Cycle ${filter.key} filter. Current: ${filter.label}`}
             className={`rounded-full border border-[var(--admin-line)] px-3 py-1.5 font-mono text-[11px] text-espresso ${
-              i === 0 ? "bg-[var(--admin-panel)]" : "bg-white"
+              filters[filter.key] !== "all"
+                ? "bg-[var(--admin-panel)] font-bold"
+                : "bg-white"
             }`}
           >
-            {c}
-          </span>
+            {filter.label} ⌄
+          </button>
         ))}
         <div className="flex-1" />
         <span className="font-mono text-[11px] tracking-[0.08em] text-[var(--admin-muted)]">
@@ -218,9 +372,14 @@ export default function OrdersPage() {
       </div>
 
       {error && (
-        <div role="alert" className="mb-3 rounded-lg border border-sienna/30 bg-sienna/10 px-4 py-3">
+        <div
+          role="alert"
+          className="mb-3 rounded-lg border border-sienna/30 bg-sienna/10 px-4 py-3"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-sienna">{error}</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-sienna">
+              {error}
+            </p>
             <button
               type="button"
               onClick={() => fetchOrders(true)}
@@ -237,143 +396,247 @@ export default function OrdersPage() {
         <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--admin-line)] bg-white font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
           Loading orders...
         </div>
-      ) : (
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {COLS.map((col) => (
+      ) : view === "list" ? (
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white">
           <div
-            key={col.key}
-            className="flex min-h-0 flex-col rounded-xl border border-[var(--admin-line)] bg-[var(--admin-panel)]"
+            className="grid items-center border-b border-[var(--admin-line)] px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--admin-muted)]"
+            style={{
+              gridTemplateColumns:
+                "1fr 1.3fr 0.7fr 0.7fr 0.8fr 0.7fr 0.9fr 1fr",
+            }}
           >
-            <div className="flex items-center gap-2.5 rounded-t-xl border-b border-[var(--admin-line)] bg-[#fffaf2] px-3.5 py-3">
-              <span
-                className={`block h-2 w-2 rounded-full ${col.pulse ? "bkr-pulse" : ""}`}
-                style={{ background: col.accent }}
-              />
-              <div className="flex-1">
-                <div className="font-display text-[16px] leading-none tracking-tight text-espresso">{col.title}</div>
-                <div className="mt-0.5 font-editorial text-[11.5px] italic text-[var(--admin-muted)]">{col.sub}</div>
+            <span>Order</span>
+            <span>Customer</span>
+            <span>Branch</span>
+            <span>Channel</span>
+            <span>Mode</span>
+            <span>Age</span>
+            <span>Status</span>
+            <span className="text-right">Next</span>
+          </div>
+          <div className="max-h-[calc(100vh-260px)] overflow-auto">
+            {filteredOrders.length === 0 && (
+              <div className="px-4 py-8 text-center font-editorial text-[14px] italic text-caramel">
+                No orders match these filters.
               </div>
-              <span className="rounded-full bg-espresso px-2.5 py-0.5 font-mono text-[11px] font-bold tracking-[0.06em] text-white">
-                {col.badge}
-              </span>
-            </div>
-
-            <div className="flex flex-1 flex-col gap-2 overflow-auto p-2.5">
-              {col.orders.length === 0 && (
-                <div className="rounded-lg border border-dashed border-[var(--admin-line)] bg-white/60 p-4 text-center font-editorial text-[13px] italic text-[var(--admin-muted)]">
-                  No orders here.
-                </div>
-              )}
-              {col.orders.map((o) => {
-                const orderNum = o.id.replace("order-", "#");
-                const mins = Math.max(
-                  0,
-                  Math.floor((Date.now() - new Date(o.created_at).getTime()) / 60000)
-                );
-                const mode = o.delivery_address?.toLowerCase().includes("pickup")
-                  ? ("pickup" as const)
-                  : ("delivery" as const);
-                const channel = o.id === "order-11056" || o.id === "order-11052" ? "web" : "app";
-                const ch = CHANNEL[channel];
-                const late = mins > 20 && o.status !== "COMPLETED" && o.status !== "CANCELLED";
-                const cust = getCustomerName(o.id);
-                const branch = getBranchCode(o.branch_id);
-                const rider = getRiderName(o.id);
-                const tag = getTag(o.id);
-                const itemsStr = o.items
-                  .map((item) => `${item.product_name.split(" ")[0]} × ${item.quantity}`)
-                  .join(" · ");
-
-                return (
-                  <div
-                    key={o.id}
-                    className="rounded-lg bg-white p-3.5"
-                    style={{
-                      border: `1px solid ${late ? "var(--sienna)" : "var(--admin-line)"}`,
-                      boxShadow: late ? "0 0 0 2px rgba(196,91,74,0.13)" : "none",
-                    }}
+            )}
+            {filteredOrders.map((o, i) => {
+              const mode = getOrderMode(o);
+              const channel = getOrderChannel(o);
+              const colKey = getOrderColumnKey(o.status);
+              const col = COLS.find((c) => c.key === colKey)!;
+              const mins = getOrderAgeMinutes(o);
+              const late = mins > 20 && !isTerminalOrder(o.status);
+              const cust = getCustomerName(o.id);
+              return (
+                <div
+                  key={o.id}
+                  className="grid items-center px-4 py-3 text-[12px]"
+                  style={{
+                    gridTemplateColumns:
+                      "1fr 1.3fr 0.7fr 0.7fr 0.8fr 0.7fr 0.9fr 1fr",
+                    borderBottom:
+                      i === filteredOrders.length - 1
+                        ? undefined
+                        : "1px solid var(--admin-line)",
+                    background: late ? "rgba(196,91,74,0.06)" : undefined,
+                  }}
+                >
+                  <span className="font-mono font-semibold text-espresso">
+                    {o.id.replace("order-", "#")}
+                  </span>
+                  <span className="truncate font-editorial italic text-cocoa">
+                    {cust}
+                  </span>
+                  <span className="font-mono text-[10.5px] font-bold tracking-[0.1em] text-cinnamon">
+                    {getBranchCode(o.branch_id)}
+                  </span>
+                  <span
+                    className="font-mono text-[10.5px] font-bold tracking-[0.14em]"
+                    style={{ color: CHANNEL[channel].c }}
                   >
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className="font-mono text-[11.5px] font-bold tracking-[0.04em] text-espresso">
-                        {orderNum}
+                    {CHANNEL[channel].l}
+                  </span>
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
+                    {mode}
+                  </span>
+                  <span
+                    className={`font-mono text-[10.5px] font-bold ${late ? "text-sienna" : "text-[var(--admin-muted)]"}`}
+                  >
+                    {mins}m
+                  </span>
+                  <span className="font-mono text-[10px] tracking-[0.08em] text-espresso">
+                    {o.status}
+                  </span>
+                  <span className="text-right">
+                    {col.key === "done" ? (
+                      <span className="rounded-full bg-[var(--admin-panel)] px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-[var(--admin-muted)]">
+                        {col.cta}
                       </span>
-                      <span
-                        className="rounded px-1.5 py-0.5 font-mono text-[8.5px] font-bold tracking-[0.18em]"
-                        style={{ background: ch.bg, color: ch.c }}
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleAction(o.id, col.key, mode)}
+                        className="rounded-full bg-espresso px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-white transition-colors hover:bg-cinnamon"
                       >
-                        {ch.l}
-                      </span>
-                      <span className="rounded border border-[var(--admin-line-2)] px-1.5 py-0.5 font-mono text-[8.5px] tracking-[0.18em] text-[var(--admin-muted)]">
-                        {mode === "delivery" ? "⏍ DEL" : "◧ PU"}
-                      </span>
-                      <span
-                        className="ml-auto font-mono text-[10.5px] font-bold tracking-[0.04em]"
-                        style={{
-                          color: late
-                            ? "var(--sienna)"
-                            : mins > 15
-                            ? "var(--cinnamon)"
-                            : "var(--admin-muted)",
-                        }}
-                      >
-                        {mins}m
-                      </span>
-                    </div>
+                        {col.cta}
+                      </button>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {COLS.map((col) => (
+            <div
+              key={col.key}
+              className="flex min-h-0 flex-col rounded-xl border border-[var(--admin-line)] bg-[var(--admin-panel)]"
+            >
+              <div className="flex items-center gap-2.5 rounded-t-xl border-b border-[var(--admin-line)] bg-[#fffaf2] px-3.5 py-3">
+                <span
+                  className={`block h-2 w-2 rounded-full ${col.pulse ? "bkr-pulse" : ""}`}
+                  style={{ background: col.accent }}
+                />
+                <div className="flex-1">
+                  <div className="font-display text-[16px] leading-none tracking-tight text-espresso">
+                    {col.title}
+                  </div>
+                  <div className="mt-0.5 font-editorial text-[11.5px] italic text-[var(--admin-muted)]">
+                    {col.sub}
+                  </div>
+                </div>
+                <span className="rounded-full bg-espresso px-2.5 py-0.5 font-mono text-[11px] font-bold tracking-[0.06em] text-white">
+                  {col.badge}
+                </span>
+              </div>
 
-                    <div className="mb-1.5 flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-cinnamon font-display text-[12px] text-white">
-                        {cust.charAt(0)}
+              <div className="flex flex-1 flex-col gap-2 overflow-auto p-2.5">
+                {col.orders.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-[var(--admin-line)] bg-white/60 p-4 text-center font-editorial text-[13px] italic text-[var(--admin-muted)]">
+                    No orders here.
+                  </div>
+                )}
+                {col.orders.map((o) => {
+                  const orderNum = o.id.replace("order-", "#");
+                  const mins = Math.max(0, getOrderAgeMinutes(o));
+                  const mode = getOrderMode(o);
+                  const channel = getOrderChannel(o);
+                  const ch = CHANNEL[channel];
+                  const late = mins > 20 && !isTerminalOrder(o.status);
+                  const cust = getCustomerName(o.id);
+                  const branch = getBranchCode(o.branch_id);
+                  const rider = getRiderName(o.id);
+                  const tag = getTag(o.id);
+                  const itemsStr = o.items
+                    .map(
+                      (item) =>
+                        `${item.product_name.split(" ")[0]} × ${item.quantity}`,
+                    )
+                    .join(" · ");
+
+                  return (
+                    <div
+                      key={o.id}
+                      className="rounded-lg bg-white p-3.5"
+                      style={{
+                        border: `1px solid ${late ? "var(--sienna)" : "var(--admin-line)"}`,
+                        boxShadow: late
+                          ? "0 0 0 2px rgba(196,91,74,0.13)"
+                          : "none",
+                      }}
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="font-mono text-[11.5px] font-bold tracking-[0.04em] text-espresso">
+                          {orderNum}
+                        </span>
+                        <span
+                          className="rounded px-1.5 py-0.5 font-mono text-[8.5px] font-bold tracking-[0.18em]"
+                          style={{ background: ch.bg, color: ch.c }}
+                        >
+                          {ch.l}
+                        </span>
+                        <span className="rounded border border-[var(--admin-line-2)] px-1.5 py-0.5 font-mono text-[8.5px] tracking-[0.18em] text-[var(--admin-muted)]">
+                          {mode === "delivery" ? "⏍ DEL" : "◧ PU"}
+                        </span>
+                        <span
+                          className="ml-auto font-mono text-[10.5px] font-bold tracking-[0.04em]"
+                          style={{
+                            color: late
+                              ? "var(--sienna)"
+                              : mins > 15
+                                ? "var(--cinnamon)"
+                                : "var(--admin-muted)",
+                          }}
+                        >
+                          {mins}m
+                        </span>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[12px] font-semibold leading-tight text-espresso">{cust}</div>
-                        <div className="font-mono text-[9.5px] tracking-[0.08em] text-[var(--admin-muted)]">
-                          {branch} {rider ? `· 🛵 ${rider}` : ""}
+
+                      <div className="mb-1.5 flex items-center gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-cinnamon font-display text-[12px] text-white">
+                          {cust.charAt(0)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[12px] font-semibold leading-tight text-espresso">
+                            {cust}
+                          </div>
+                          <div className="font-mono text-[9.5px] tracking-[0.08em] text-[var(--admin-muted)]">
+                            {branch} {rider ? `· 🛵 ${rider}` : ""}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-2.5 font-editorial text-[12.5px] italic leading-[1.35] text-cocoa">
+                        {itemsStr}
+                      </div>
+
+                      <div className="flex items-center justify-between border-t border-dashed border-[var(--admin-line)] pt-2.5">
+                        <span className="font-display text-[15px] text-espresso">
+                          {formatCurrency(o.total_amount).replace("₫", "")}
+                          <span className="ml-0.5 text-[11px] text-[var(--admin-muted)]">
+                            ₫
+                          </span>
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {tag && (
+                            <span
+                              className="rounded px-1.5 py-0.5 font-mono text-[8.5px] font-bold tracking-[0.18em]"
+                              style={{
+                                background: late
+                                  ? "rgba(196,91,74,0.15)"
+                                  : "rgba(212,148,58,0.15)",
+                                color: late
+                                  ? "var(--sienna)"
+                                  : "var(--cinnamon)",
+                              }}
+                            >
+                              {tag}
+                            </span>
+                          )}
+                          {col.key === "done" ? (
+                            <span className="rounded-full bg-[var(--admin-panel)] px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-[var(--admin-muted)]">
+                              {col.cta}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleAction(o.id, col.key, mode)}
+                              className="rounded-full bg-espresso px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-white hover:bg-cinnamon transition-colors"
+                            >
+                              {col.cta}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
-
-                    <div className="mb-2.5 font-editorial text-[12.5px] italic leading-[1.35] text-cocoa">
-                      {itemsStr}
-                    </div>
-
-                    <div className="flex items-center justify-between border-t border-dashed border-[var(--admin-line)] pt-2.5">
-                      <span className="font-display text-[15px] text-espresso">
-                        {formatCurrency(o.total_amount).replace("₫", "")}
-                        <span className="ml-0.5 text-[11px] text-[var(--admin-muted)]">₫</span>
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        {tag && (
-                          <span
-                            className="rounded px-1.5 py-0.5 font-mono text-[8.5px] font-bold tracking-[0.18em]"
-                            style={{
-                              background: late ? "rgba(196,91,74,0.15)" : "rgba(212,148,58,0.15)",
-                              color: late ? "var(--sienna)" : "var(--cinnamon)",
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        )}
-                        {col.key === "done" ? (
-                          <span className="rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] bg-var(--admin-panel) text-var(--admin-muted)">
-                            {col.cta}
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => handleAction(o.id, col.key, mode)}
-                            className="rounded-full bg-espresso px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-white hover:bg-cinnamon transition-colors"
-                          >
-                            {col.cta}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
       )}
     </div>
   );

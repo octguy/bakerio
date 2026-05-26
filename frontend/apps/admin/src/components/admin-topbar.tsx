@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { Search } from "lucide-react";
 
 const SEGMENT_LABEL: Record<string, string> = {
   "": "Counter",
@@ -30,7 +31,10 @@ export function AdminTopBar() {
   const label = SEGMENT_LABEL[segment] ?? segment;
   const group = SEGMENT_GROUP[segment] ?? "Bakerio";
 
-  const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  const today = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+  });
 
   return (
     <header className="flex h-[60px] flex-shrink-0 items-center gap-4 border-b border-[var(--admin-line)] bg-[var(--admin-bg)] px-7">
@@ -40,14 +44,23 @@ export function AdminTopBar() {
         <span className="text-espresso">{label}</span>
       </div>
 
-      <div className="mx-auto flex w-full max-w-[480px] items-center gap-2.5 rounded-md border border-[var(--admin-line)] bg-white px-3.5 py-2">
-        <span className="text-[13px] text-[var(--admin-muted)]">⌕</span>
-        <span className="flex-1 font-editorial text-[13px] italic text-[var(--admin-muted)]">
-          Jump to an order, product, branch…
-        </span>
-        <span className="rounded border border-[var(--admin-line)] bg-vanilla px-1.5 py-0.5 font-mono text-[10px] text-[var(--admin-muted)]">
+      <div className="mx-auto flex w-full max-w-[480px] items-center gap-2.5 rounded-md border border-[var(--admin-line)] bg-white px-3.5 py-2 focus-within:border-cinnamon">
+        <Search
+          aria-hidden="true"
+          className="h-3.5 w-3.5 text-[var(--admin-muted)]"
+        />
+        <label htmlFor="admin-global-search" className="sr-only">
+          Search orders, products, or branches
+        </label>
+        <input
+          id="admin-global-search"
+          type="search"
+          placeholder="Search orders, products, branches..."
+          className="min-w-0 flex-1 bg-transparent font-editorial text-[13px] italic text-espresso outline-none placeholder:text-[var(--admin-muted)]"
+        />
+        <kbd className="rounded border border-[var(--admin-line)] bg-vanilla px-1.5 py-0.5 font-mono text-[10px] text-[var(--admin-muted)]">
           ⌘K
-        </span>
+        </kbd>
       </div>
 
       <div className="flex items-center gap-3">

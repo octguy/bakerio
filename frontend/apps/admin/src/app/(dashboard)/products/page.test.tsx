@@ -1,4 +1,10 @@
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useQuery } from "@tanstack/react-query";
 import { createProduct, updateProduct, deleteProduct } from "@repo/api-client";
@@ -8,7 +14,17 @@ const mockInvalidate = vi.fn();
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(() => ({
-    data: [{ id: "p-1", name: "Bread", base_price: 25000, category: { id: "cat-1", name: "Bakery" }, sku: "BRD001", unit: "piece", is_active: true }],
+    data: [
+      {
+        id: "p-1",
+        name: "Bread",
+        base_price: 25000,
+        category: { id: "cat-1", name: "Bakery" },
+        sku: "BRD001",
+        unit: "piece",
+        is_active: true,
+      },
+    ],
     isLoading: false,
   })),
   useMutation: vi.fn(({ mutationFn, onSuccess, onError }: any) => ({
@@ -43,7 +59,9 @@ vi.mock("@/components/data-table", () => ({
           <tr key={row.id || rIdx}>
             {columns.map((col: any, cIdx: number) => (
               <td key={cIdx}>
-                {col.cell ? col.cell({ row: { original: row } }) : row[col.accessorKey]}
+                {col.cell
+                  ? col.cell({ row: { original: row } })
+                  : row[col.accessorKey]}
               </td>
             ))}
           </tr>
@@ -54,7 +72,11 @@ vi.mock("@/components/data-table", () => ({
 }));
 
 vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, onClick, ...props }: any) => <button onClick={onClick} {...props}>{children}</button>,
+  Button: ({ children, onClick, ...props }: any) => (
+    <button onClick={onClick} {...props}>
+      {children}
+    </button>
+  ),
 }));
 
 vi.mock("@/components/ui/badge", () => ({
@@ -62,12 +84,18 @@ vi.mock("@/components/ui/badge", () => ({
 }));
 
 vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ children, open, onOpenChange }: any) => open ? (
-    <div data-testid="dialog">
-      <button data-testid="close-dialog" onClick={() => onOpenChange?.(false)}>X</button>
-      {children}
-    </div>
-  ) : null,
+  Dialog: ({ children, open, onOpenChange }: any) =>
+    open ? (
+      <div data-testid="dialog">
+        <button
+          data-testid="close-dialog"
+          onClick={() => onOpenChange?.(false)}
+        >
+          X
+        </button>
+        {children}
+      </div>
+    ) : null,
   DialogContent: ({ children }: any) => <div>{children}</div>,
   DialogHeader: ({ children }: any) => <div>{children}</div>,
   DialogDescription: ({ children }: any) => <div>{children}</div>,
@@ -79,11 +107,13 @@ vi.mock("@/components/ui/input", () => ({
 }));
 
 vi.mock("@/components/ui/label", () => ({
-  Label: ({ children }: any) => <label>{children}</label>,
+  Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
 }));
 
 vi.mock("@/components/ui/select", () => ({
-  Select: ({ children, ...props }: any) => <select {...props}>{children}</select>,
+  Select: ({ children, ...props }: any) => (
+    <select {...props}>{children}</select>
+  ),
 }));
 
 vi.mock("@/components/ui/toast", () => ({
@@ -108,7 +138,17 @@ describe("ProductsPage CRUD flow", () => {
     vi.mocked(useQuery).mockImplementation((options: any) => {
       if (options.queryKey[0] === "products") {
         return {
-          data: [{ id: "p-1", name: "Bread", base_price: 25000, category: { id: "cat-1", name: "Bakery" }, sku: "BRD001", unit: "piece", is_active: true }],
+          data: [
+            {
+              id: "p-1",
+              name: "Bread",
+              base_price: 25000,
+              category: { id: "cat-1", name: "Bakery" },
+              sku: "BRD001",
+              unit: "piece",
+              is_active: true,
+            },
+          ],
           isLoading: false,
         } as any;
       }
@@ -123,7 +163,9 @@ describe("ProductsPage CRUD flow", () => {
 
   it("renders correctly and lists products", () => {
     render(<ProductsPage />);
-    expect(screen.getByRole("heading", { name: /products/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /products/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Bread")).toBeInTheDocument();
     expect(screen.getByText("Bakery")).toBeInTheDocument();
     expect(screen.getByText("25000 ₫")).toBeInTheDocument();
@@ -190,10 +232,18 @@ describe("ProductsPage CRUD flow", () => {
     const { container } = render(<ProductsPage />);
 
     fireEvent.click(screen.getByRole("button", { name: /add product/i }));
-    fireEvent.change(container.querySelector('input[name="sku"]')!, { target: { value: "SKUERR" } });
-    fireEvent.change(container.querySelector('input[name="name"]')!, { target: { value: "Error Prod" } });
-    fireEvent.change(container.querySelector('input[name="unit"]')!, { target: { value: "pc" } });
-    fireEvent.change(container.querySelector('input[name="price"]')!, { target: { value: "100" } });
+    fireEvent.change(container.querySelector('input[name="sku"]')!, {
+      target: { value: "SKUERR" },
+    });
+    fireEvent.change(container.querySelector('input[name="name"]')!, {
+      target: { value: "Error Prod" },
+    });
+    fireEvent.change(container.querySelector('input[name="unit"]')!, {
+      target: { value: "pc" },
+    });
+    fireEvent.change(container.querySelector('input[name="price"]')!, {
+      target: { value: "100" },
+    });
 
     fireEvent.submit(container.querySelector("form")!);
 
@@ -227,7 +277,9 @@ describe("ProductsPage CRUD flow", () => {
   });
 
   it("handles updateProduct failure", async () => {
-    vi.mocked(updateProduct).mockRejectedValue(new Error("Update network error"));
+    vi.mocked(updateProduct).mockRejectedValue(
+      new Error("Update network error"),
+    );
     const { container } = render(<ProductsPage />);
 
     fireEvent.click(screen.getByText("✎"));

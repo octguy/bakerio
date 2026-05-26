@@ -24,7 +24,7 @@ const GROUPS: NavGroup[] = [
     head: "Trong ngày · Today",
     items: [
       { href: "/", label: "Counter", glyph: "◆" },
-      { href: "/orders", label: "Orders", glyph: "○", badge: "12" },
+      { href: "/orders", label: "Orders", glyph: "○" },
       { href: "/kitchen", label: "Kitchen", glyph: "◇" },
     ],
   },
@@ -38,7 +38,7 @@ const GROUPS: NavGroup[] = [
   {
     head: "Vận hành · Operations",
     items: [
-      { href: "/inventory", label: "Inventory", glyph: "☐", badge: "7" },
+      { href: "/inventory", label: "Inventory", glyph: "☐" },
       { href: "/branches", label: "Branches", glyph: "◉" },
       { href: "/users", label: "Staff", glyph: "◐" },
     ],
@@ -48,39 +48,43 @@ const GROUPS: NavGroup[] = [
 function SidebarContent() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const roleSubtitle = user?.roles?.length
+    ? user.roles.map((role) => role.replace(/_/g, " ")).join(", ")
+    : null;
 
   return (
     <>
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-6">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-          <path d="M12 22V8" stroke="var(--honey)" strokeWidth="1.3" strokeLinecap="round" />
-          <path d="M12 8c-2-1.5-3.5-3.2-3.5-5C8.5 1.5 10 1 12 1s3.5.5 3.5 2c0 1.8-1.5 3.5-3.5 5z" stroke="var(--honey)" strokeWidth="1.3" />
-          <path d="M12 12c-2.5-.5-4.5-1.7-4.5-3.5 0-1 .5-1.7 1.5-2 1.5 1 2.5 2.7 3 5.5z" stroke="var(--honey)" strokeWidth="1.2" />
-          <path d="M12 12c2.5-.5 4.5-1.7 4.5-3.5 0-1-.5-1.7-1.5-2-1.5 1-2.5 2.7-3 5.5z" stroke="var(--honey)" strokeWidth="1.2" />
+          <path
+            d="M12 22V8"
+            stroke="var(--honey)"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
+          <path
+            d="M12 8c-2-1.5-3.5-3.2-3.5-5C8.5 1.5 10 1 12 1s3.5.5 3.5 2c0 1.8-1.5 3.5-3.5 5z"
+            stroke="var(--honey)"
+            strokeWidth="1.3"
+          />
+          <path
+            d="M12 12c-2.5-.5-4.5-1.7-4.5-3.5 0-1 .5-1.7 1.5-2 1.5 1 2.5 2.7 3 5.5z"
+            stroke="var(--honey)"
+            strokeWidth="1.2"
+          />
+          <path
+            d="M12 12c2.5-.5 4.5-1.7 4.5-3.5 0-1-.5-1.7-1.5-2-1.5 1-2.5 2.7-3 5.5z"
+            stroke="var(--honey)"
+            strokeWidth="1.2"
+          />
         </svg>
-        <span className="font-display text-[18px] text-[var(--admin-ink-text)]">Bakerio</span>
-        <span
-          className="ml-auto rounded border border-honey/30 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-honey"
-        >
+        <span className="font-display text-[18px] text-[var(--admin-ink-text)]">
+          Bakerio
+        </span>
+        <span className="ml-auto rounded border border-honey/30 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-honey">
           Ops
         </span>
-      </div>
-
-      {/* Branch picker */}
-      <div className="px-3 pb-4">
-        <div className="flex items-center gap-2.5 rounded-lg bg-[var(--admin-ink-text)]/10 px-3 py-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-golden font-display text-[12px] font-bold text-espresso">
-            LL
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-[12px] font-semibold text-[var(--admin-ink-text)]">Lê Lợi Flagship</div>
-            <div className="font-mono text-[10px] tracking-[0.1em] text-[var(--admin-muted-dark)]">
-              Cửa hàng chính · D.1
-            </div>
-          </div>
-          <span className="text-[12px] text-[var(--admin-muted-dark)]" aria-hidden="true">⇅</span>
-        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto">
@@ -90,9 +94,10 @@ function SidebarContent() {
               {g.head}
             </div>
             {g.items.map((it) => {
-              const active = it.href === "/"
-                ? pathname === "/"
-                : pathname === it.href || pathname.startsWith(`${it.href}/`);
+              const active =
+                it.href === "/"
+                  ? pathname === "/"
+                  : pathname === it.href || pathname.startsWith(`${it.href}/`);
               return (
                 <Link
                   key={it.href}
@@ -118,7 +123,9 @@ function SidebarContent() {
                     <span
                       className={cn(
                         "rounded-full px-1.5 py-0.5 font-mono text-[9.5px]",
-                        active ? "bg-golden text-espresso" : "bg-white/8 text-[var(--admin-ink-text)]",
+                        active
+                          ? "bg-golden text-espresso"
+                          : "bg-white/8 text-[var(--admin-ink-text)]",
                       )}
                     >
                       {it.badge}
@@ -146,11 +153,17 @@ function SidebarContent() {
           <div className="truncate text-[11.5px] font-semibold text-[var(--admin-ink-text)]">
             {user?.full_name || user?.email || "Operator"}
           </div>
-          <div className="font-mono text-[10px] tracking-[0.08em] text-[var(--admin-muted-dark)]">
-            Manager · LL
-          </div>
+          {roleSubtitle && (
+            <div className="font-mono text-[10px] tracking-[0.08em] text-[var(--admin-muted-dark)]">
+              {roleSubtitle}
+            </div>
+          )}
         </div>
-        <button onClick={logout} aria-label="Sign out" className="text-[11px] text-[var(--admin-muted-dark)]">
+        <button
+          onClick={logout}
+          aria-label="Sign out"
+          className="text-[11px] text-[var(--admin-muted-dark)]"
+        >
           <LogOut aria-hidden="true" className="h-4 w-4" />
         </button>
       </div>
@@ -184,7 +197,10 @@ export function Sidebar() {
 
       {open && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setOpen(false)}
+          />
           <aside className="absolute inset-y-0 left-0 flex w-[232px] flex-col bg-[var(--admin-ink)] text-[var(--admin-ink-text)] shadow-xl">
             <button
               onClick={() => setOpen(false)}
