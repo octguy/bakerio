@@ -8,14 +8,31 @@ const mockSetBranch = vi.fn();
 
 vi.mock("@repo/api-client", () => ({
   getBranches: vi.fn().mockResolvedValue([
-    { id: "1", name: "Bakerio Quận 1", address: "123 Đường ABC", region: "south" },
-    { id: "2", name: "Bakerio Hoàn Kiếm", address: "456 Phố XYZ", region: "north" },
-    { id: "3", name: "Bakerio Miền Đông", address: "789 Đường LMN", region: "east" },
+    {
+      id: "1",
+      name: "Bakerio Quận 1",
+      address: "123 Đường ABC",
+      region: "south",
+    },
+    {
+      id: "2",
+      name: "Bakerio Hoàn Kiếm",
+      address: "456 Phố XYZ",
+      region: "north",
+    },
+    {
+      id: "3",
+      name: "Bakerio Miền Đông",
+      address: "789 Đường LMN",
+      region: "east",
+    },
   ]),
 }));
 
 vi.mock("next/image", () => ({ default: (props: any) => <img {...props} /> }));
-vi.mock("next/link", () => ({ default: ({ children, ...props }: any) => <a {...props}>{children}</a> }));
+vi.mock("next/link", () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
 vi.mock("@/store/cart", () => ({ useCartStore: () => mockSetBranch }));
 
@@ -41,13 +58,14 @@ describe("HomePage (branch selection)", () => {
   it("handles error during getBranches gracefully (instanceof Error)", async () => {
     vi.mocked(getBranches).mockRejectedValueOnce(new Error("Connection timeout"));
     render(await Page());
-    expect(screen.getByText("Connection timeout")).toBeInTheDocument();
+    expect(screen.getByText("We couldn't load branch availability. Please try again.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /retry/i }).getAttribute("href")).toBe("/");
   });
 
   it("handles error during getBranches gracefully (non-Error throw)", async () => {
     vi.mocked(getBranches).mockRejectedValueOnce("Simple error string");
     render(await Page());
-    expect(screen.getByText("Failed to load branches")).toBeInTheDocument();
+    expect(screen.getByText("We couldn't load branch availability. Please try again.")).toBeInTheDocument();
   });
 
   it("selects a branch and redirects to menu when a branch card is clicked", async () => {

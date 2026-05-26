@@ -16,7 +16,12 @@ vi.mock("@repo/api-client", () => ({
 
 vi.mock("@/lib/auth", () => ({
   useAuth: () => ({
-    user: { id: "1", email: "test@example.com", display_name: "John Doe", full_name: "John Doe" },
+    user: {
+      id: "1",
+      email: "test@example.com",
+      display_name: "John Doe",
+      full_name: "John Doe",
+    },
     loading: false,
     logout: mockLogout,
   }),
@@ -43,6 +48,13 @@ describe("ProfilePage", () => {
     render(<ProfilePage />);
     expect(screen.getByText("John Doe")).toBeInTheDocument();
     expect(screen.getByText("test@example.com")).toBeInTheDocument();
+  });
+
+  it("does not show unsourced account metadata", () => {
+    render(<ProfilePage />);
+    expect(screen.queryByText(/member since May 2024/i)).toBeNull();
+    expect(screen.queryByText("+84 901 234 567")).toBeNull();
+    expect(screen.queryByText("Password")).toBeNull();
   });
 
   it("has sign out button", () => {

@@ -3,7 +3,9 @@ import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 
 const mockPush = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
-vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a> }));
+vi.mock("next/link", () => ({
+  default: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
+}));
 
 const mockRegister = vi.fn();
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ register: mockRegister }) }));
@@ -25,17 +27,19 @@ describe("RegisterPage", () => {
     expect(screen.getByRole("heading", { name: /let's set you/i })).toBeInTheDocument();
   });
 
-  it("renders name, email, phone, and password inputs with labels", () => {
+  it("renders name, email, and password inputs with labels", () => {
     render(<RegisterPage />);
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/phone/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/phone/i)).toBeNull();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
   });
 
   it("shows validation errors when submitting empty fields", async () => {
     render(<RegisterPage />);
-    const form = screen.getByRole("button", { name: /send verification code/i });
+    const form = screen.getByRole("button", {
+      name: /send verification code/i,
+    });
     const formEl = form.closest("form")!;
     fireEvent.submit(formEl);
 
@@ -54,11 +58,16 @@ describe("RegisterPage", () => {
 
   it("calls register with correct args on valid submit", async () => {
     render(<RegisterPage />);
-    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jane Doe" } });
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "jane@test.com" } });
-    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "0901234567" } });
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "secret123" } });
-    
+    fireEvent.change(screen.getByLabelText(/full name/i), {
+      target: { value: "Jane Doe" },
+    });
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "jane@test.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: "secret123" },
+    });
+
     // Check agreed checkbox
     fireEvent.click(screen.getByRole("checkbox"));
 
@@ -71,11 +80,16 @@ describe("RegisterPage", () => {
 
   it("redirects to /login after successful registration", async () => {
     render(<RegisterPage />);
-    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jane Doe" } });
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "jane@test.com" } });
-    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "0901234567" } });
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "secret123" } });
-    
+    fireEvent.change(screen.getByLabelText(/full name/i), {
+      target: { value: "Jane Doe" },
+    });
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "jane@test.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: "secret123" },
+    });
+
     // Check agreed checkbox
     fireEvent.click(screen.getByRole("checkbox"));
 
@@ -89,11 +103,16 @@ describe("RegisterPage", () => {
   it("displays error message when registration fails", async () => {
     mockRegister.mockResolvedValue("Email already taken");
     render(<RegisterPage />);
-    fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: "Jane Doe" } });
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "jane@test.com" } });
-    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "0901234567" } });
-    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "secret123" } });
-    
+    fireEvent.change(screen.getByLabelText(/full name/i), {
+      target: { value: "Jane Doe" },
+    });
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: "jane@test.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: "secret123" },
+    });
+
     // Check agreed checkbox
     fireEvent.click(screen.getByRole("checkbox"));
 

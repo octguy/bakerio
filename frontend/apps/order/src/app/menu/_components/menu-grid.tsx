@@ -10,18 +10,50 @@ import { useCartStore } from "@/store/cart";
 
 export function MenuGrid({ products, categories }: { products: Product[]; categories: Category[] }) {
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const items = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
   const totalCount = items.reduce((s, i) => s + i.quantity, 0);
   const totalAmount = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const normalizedSearch = search.trim().toLowerCase();
+  const searchedProducts = normalizedSearch
+    ? products.filter((product) =>
+        [product.name, product.description, product.slug, product.category?.name].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+      )
+    : products;
 
-  const filtered =
-    activeCategory === "all"
-      ? products
-      : products.filter((p) => p.category?.id === activeCategory);
+  const filtered = activeCategory === "all" ? searchedProducts : searchedProducts.filter((p) => p.category?.id === activeCategory);
 
   return (
     <>
+      {/* Search */}
+      <div className="mb-3 flex items-center gap-2.5 rounded-full border border-crust bg-white px-4 py-3 focus-within:border-cinnamon">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--caramel)" strokeWidth="2" aria-hidden>
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
+        <label htmlFor="menu-search" className="sr-only">
+          Search menu
+        </label>
+        <input
+          id="menu-search"
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search bread, pastry, coffee..."
+          className="min-w-0 flex-1 bg-transparent font-editorial text-[14px] italic text-espresso placeholder:text-caramel focus:outline-none"
+        />
+        {search ? (
+          <button type="button" onClick={() => setSearch("")} aria-label="Clear search" className="font-mono text-[13px] text-caramel">
+            ×
+          </button>
+        ) : (
+          <span aria-hidden="true" className="font-mono text-[10px] tracking-[0.1em] text-caramel">
+            ⌘K
+          </span>
+        )}
+      </div>
+
       {/* Category chips */}
       <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-3 scrollbar-hide">
         <button
@@ -29,15 +61,13 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
           aria-pressed={activeCategory === "all"}
           onClick={() => setActiveCategory("all")}
           className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors ${
-            activeCategory === "all"
-              ? "bg-espresso text-white"
-              : "border border-crust bg-white text-espresso"
+            activeCategory === "all" ? "bg-espresso text-white" : "border border-crust bg-white text-espresso"
           }`}
         >
-          All <span className="font-mono text-[10px] opacity-70">{products.length}</span>
+          All <span className="font-mono text-[10px] opacity-70">{searchedProducts.length}</span>
         </button>
         {categories.map((cat) => {
-          const count = products.filter((p) => p.category?.id === cat.id).length;
+          const count = searchedProducts.filter((p) => p.category?.id === cat.id).length;
           const isActive = activeCategory === cat.id;
           return (
             <button
@@ -87,13 +117,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
               <div className="relative h-[110px] bg-butter">
                 <Link href={`/menu/${product.slug}`} aria-label={`View ${product.name}`}>
                   {product.images?.[0] ? (
-                    <Image
-                      src={product.images[0].url}
-                      alt={product.name}
-                      fill
-                      className="object-cover"
-                      sizes="50vw"
-                    />
+                    <Image src={product.images[0].url} alt={product.name} fill className="object-cover" sizes="50vw" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center">
                       <Croissant className="text-golden" size={36} aria-hidden="true" />
@@ -110,15 +134,9 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
                 </button>
               </div>
               <Link href={`/menu/${product.slug}`} className="block p-3">
-                <h3 className="font-display text-[14px] leading-[1.1] tracking-tight text-espresso line-clamp-1">
-                  {product.name}
-                </h3>
-                <div className="mt-0.5 font-editorial text-[11px] text-cinnamon line-clamp-1">
-                  {product.category?.name ?? "Bakerio"}
-                </div>
-                <div className="mt-1.5 font-display text-[15px] text-espresso">
-                  {formatVND(product.base_price)}
-                </div>
+                <h3 className="font-display text-[14px] leading-[1.1] tracking-tight text-espresso line-clamp-1">{product.name}</h3>
+                <div className="mt-0.5 font-editorial text-[11px] text-cinnamon line-clamp-1">{product.category?.name ?? "Bakerio"}</div>
+                <div className="mt-1.5 font-display text-[15px] text-espresso">{formatVND(product.base_price)}</div>
               </Link>
             </div>
           );
@@ -126,7 +144,9 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
       </div>
 
       {filtered.length === 0 && (
-        <p className="py-8 text-center font-editorial text-[14px] italic text-caramel">No products found</p>
+        <p className="py-8 text-center font-editorial text-[14px] italic text-caramel">
+          {normalizedSearch ? "No products match your search" : "No products found"}
+        </p>
       )}
 
       {/* Floating cart bar */}
@@ -137,9 +157,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
             className="flex items-center justify-between rounded-full bg-espresso px-5 py-3.5 text-white shadow-[0_12px_30px_rgba(44,24,16,0.35)]"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-honey font-mono text-[12px] font-bold text-espresso">
-                {totalCount}
-              </div>
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-honey font-mono text-[12px] font-bold text-espresso">{totalCount}</div>
               <div>
                 <div className="text-[12.5px] font-semibold">View cart</div>
                 <div className="font-mono text-[10px] tracking-[0.08em] opacity-70">15–25 min · ready</div>

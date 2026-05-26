@@ -1,4 +1,5 @@
 import { getBranches, type Branch } from "@repo/api-client";
+import Link from "next/link";
 import { BranchCard } from "./_components/branch-card";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +16,8 @@ export default async function HomePage() {
 
   try {
     branches = await getBranches();
-  } catch (e: unknown) {
-    error = e instanceof Error ? e.message : "Failed to load branches";
+  } catch {
+    error = "We couldn't load branch availability. Please try again.";
   }
 
   return (
@@ -26,7 +27,11 @@ export default async function HomePage() {
         <span className="block font-script text-[28px] leading-none text-cinnamon">good morning,</span>
         <h1
           className="mt-2 font-display tracking-tight text-espresso"
-          style={{ fontSize: "clamp(36px,9vw,44px)", lineHeight: 0.95, letterSpacing: "-0.02em" }}
+          style={{
+            fontSize: "clamp(36px,9vw,44px)",
+            lineHeight: 0.95,
+            letterSpacing: "-0.02em",
+          }}
         >
           Where shall
           <br />
@@ -44,9 +49,7 @@ export default async function HomePage() {
         </div>
         <div className="flex-1">
           <div className="text-[14px] font-semibold text-espresso">Use my location</div>
-          <div className="mt-0.5 font-editorial text-[11.5px] text-caramel">
-            We&apos;ll find your nearest oven.
-          </div>
+          <div className="mt-0.5 font-editorial text-[11.5px] text-caramel">We&apos;ll find your nearest oven.</div>
         </div>
         <span className="text-[18px] text-caramel">›</span>
       </div>
@@ -57,35 +60,31 @@ export default async function HomePage() {
           <div
             key={label}
             className={`-mb-px border-b-2 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] ${
-              i === 0
-                ? "border-espresso font-bold text-espresso"
-                : "border-transparent text-caramel"
+              i === 0 ? "border-espresso font-bold text-espresso" : "border-transparent text-caramel"
             }`}
           >
             {label}
           </div>
         ))}
         <div className="flex-1" />
-        <div className="py-2.5 font-mono text-[11px] tracking-[0.12em] text-caramel">
-          {branches.length} open
-        </div>
+        <div className="py-2.5 font-mono text-[11px] tracking-[0.12em] text-caramel">{branches.length} open</div>
       </div>
 
       {error && (
-        <p className="rounded-md border border-sienna/30 bg-sienna/10 px-4 py-3 text-center font-mono text-[11px] tracking-wider text-sienna">
-          {error}
-        </p>
+        <div role="alert" className="mb-3 rounded-xl border border-sienna/30 bg-sienna/10 px-4 py-3 text-center">
+          <p className="font-mono text-[11px] tracking-wider text-sienna">{error}</p>
+          <Link
+            href="/"
+            className="mt-2 inline-flex rounded-full bg-white px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-cinnamon"
+          >
+            Retry
+          </Link>
+        </div>
       )}
 
       <div className="flex flex-col gap-3">
         {branches.map((branch, i) => (
-          <BranchCard
-            key={branch.id}
-            branch={branch}
-            index={i}
-            isSelected={i === 0}
-            heroImage={HERO_IMAGES[branch.region] ?? HERO_IMAGES.south}
-          />
+          <BranchCard key={branch.id} branch={branch} index={i} isSelected={i === 0} heroImage={HERO_IMAGES[branch.region] ?? HERO_IMAGES.south} />
         ))}
       </div>
 
@@ -93,7 +92,9 @@ export default async function HomePage() {
       {branches.length > 0 && (
         <div
           className="sticky bottom-16 mt-6 pb-4 pt-4"
-          style={{ background: "linear-gradient(180deg, transparent, var(--cream) 30%)" }}
+          style={{
+            background: "linear-gradient(180deg, transparent, var(--cream) 30%)",
+          }}
         >
           <div className="text-center font-editorial text-[13px] text-caramel">
             52 items baked fresh at {branches[0]?.name?.split(" ")[0] ?? "Lê Lợi"} this morning.
