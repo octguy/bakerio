@@ -51,7 +51,7 @@ func (m *Module) Wire(branchLister service.BranchLister, membership branchSvc.Me
 // (SeedBranch), used by the branch module's fan-out on branch creation.
 func (m *Module) Service() service.ProductService { return m.productSvc }
 
-func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
-	m.categoryH.RegisterRoutes(protected)
-	m.productH.RegisterRoutes(protected)
+func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
+	m.categoryH.RegisterRoutes(public, protected)
+	m.productH.RegisterRoutes(public, protected)
 }

@@ -20,10 +20,12 @@ func NewCategoryHandler(svc service.CategoryService) *CategoryHandler {
 	return &CategoryHandler{svc: svc}
 }
 
-func (h *CategoryHandler) RegisterRoutes(protected *gin.RouterGroup) {
+func (h *CategoryHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
+	publicCategories := public.Group("/categories")
+	publicCategories.GET("", h.ListCategories)
+	publicCategories.GET("/:id", h.GetCategory)
+
 	g := protected.Group("/categories")
-	g.GET("", middleware.RequirePermission("product:view:all"), h.ListCategories)
-	g.GET("/:id", middleware.RequirePermission("product:view:all"), h.GetCategory)
 	g.POST("", middleware.RequirePermission("product:manage:all"), h.CreateCategory)
 	g.PATCH("/:id", middleware.RequirePermission("product:manage:all"), h.UpdateCategory)
 	g.DELETE("/:id", middleware.RequirePermission("product:manage:all"), h.DeleteCategory)
@@ -57,7 +59,6 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 // GetCategory godoc
 // @Summary      Get category by ID
 // @Tags         categories
-// @Security     BearerAuth
 // @Produce      json
 // @Param        id   path      string  true "Category ID"
 // @Success      200  {object}  dto.CategoryResponse
@@ -81,7 +82,6 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 // ListCategories godoc
 // @Summary      List all active categories
 // @Tags         categories
-// @Security     BearerAuth
 // @Produce      json
 // @Success      200  {array}   dto.CategoryResponse
 // @Router       /categories [get]
