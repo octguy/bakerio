@@ -8,6 +8,17 @@ import type { Product, Category } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import { useCartStore } from "@/store/cart";
 
+type ProductWithCategoryId = Product & { category_id?: string };
+
+function getProductCategoryId(product: Product) {
+  return product.category?.id ?? (product as ProductWithCategoryId).category_id;
+}
+
+function getProductCategoryName(product: Product, categories: Category[]) {
+  const categoryId = getProductCategoryId(product);
+  return product.category?.name || categories.find((category) => category.id === categoryId)?.name || "";
+}
+
 export function MenuGrid({ products, categories }: { products: Product[]; categories: Category[] }) {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -25,7 +36,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
   const filtered =
     activeCategory === "all"
       ? searchedProducts
-      : searchedProducts.filter((p) => (p.category?.id || (p as { category_id?: string }).category_id) === activeCategory);
+      : searchedProducts.filter((p) => getProductCategoryId(p) === activeCategory);
 
   return (
     <>
@@ -70,7 +81,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
           All <span className="font-mono text-[10px] opacity-70">{searchedProducts.length}</span>
         </button>
         {categories.map((cat) => {
-          const count = searchedProducts.filter((p) => (p.category?.id || (p as { category_id?: string }).category_id) === cat.id).length;
+          const count = searchedProducts.filter((p) => getProductCategoryId(p) === cat.id).length;
           const isActive = activeCategory === cat.id;
           return (
             <button
@@ -106,10 +117,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
                 description: product.description || "",
                 basePrice: product.base_price,
                 image: product.images?.[0]?.url || "",
-                category:
-                  product.category?.name ||
-                  categories.find((c) => c.id === (product.category?.id || (product as { category_id?: string }).category_id))?.name ||
-                  "",
+                category: getProductCategoryName(product, categories),
                 options: [],
               },
               choices: [],
@@ -144,9 +152,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
                   {product.name}
                 </h3>
                 <div className="mt-0.5 font-editorial text-[11px] text-cinnamon line-clamp-1">
-                  {product.category?.name ||
-                    categories.find((c) => c.id === (product.category?.id || (product as { category_id?: string }).category_id))?.name ||
-                    "Bakerio"}
+                  {getProductCategoryName(product, categories) || "Bakerio"}
                 </div>
                 <div className="mt-1.5 font-display text-[15px] text-espresso">
                   {formatVND(product.base_price)}

@@ -21,6 +21,8 @@ interface DataTableProps<T> {
 }
 
 export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: DataTableProps<T>) {
+  "use no memo";
+
   const [globalFilter, setGlobalFilter] = useState("");
 
   const table = useReactTable({

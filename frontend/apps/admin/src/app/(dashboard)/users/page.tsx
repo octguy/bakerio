@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { Plus } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -75,7 +75,32 @@ export default function UsersPage() {
   };
 
   useEffect(() => {
-    fetchStaffData(true); // eslint-disable-line react-hooks/set-state-in-effect
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const staffList = await getStaff();
+        const countsData = await getStaffCounts();
+        if (cancelled) return;
+        setStaff(staffList);
+        setCounts(countsData);
+        setError("");
+      } catch (err) {
+        if (cancelled) return;
+        setError("Could not load staff data. Retry when the API is reachable.");
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to fetch staff:", err);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const createMut = useMutation({
@@ -95,7 +120,7 @@ export default function UsersPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       email: "",
@@ -105,34 +130,32 @@ export default function UsersPage() {
       branch_id: "",
     },
   });
-  const selectedRole = watch("role");
+  const selectedRole = useWatch({ control, name: "role" });
 
   useEffect(() => {
     if (!open) return;
 
     let cancelled = false;
-    setBranchError("");
-    setBranchesLoading(true);
 
-    void getBranches()
-      .then((branchList) => {
-        if (!cancelled) {
-          setBranches(branchList);
-        }
-      })
-      .catch((err) => {
+    void (async () => {
+      try {
+        const branchList = await getBranches();
+        if (cancelled) return;
+        setBranches(branchList);
+        setBranchError("");
+      } catch (err) {
         if (cancelled) return;
         setBranches([]);
         setBranchError("Could not load branches. Retry when the API is reachable.");
         if (process.env.NODE_ENV !== "production") {
           console.error("Failed to fetch branches:", err);
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setBranchesLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -166,7 +189,14 @@ export default function UsersPage() {
             Staff <span className="font-editorial text-cinnamon">· the team</span>
           </h1>
         </div>
-        <Button onClick={() => setOpen(true)} className="rounded-full bg-espresso text-cream font-mono text-[11px] uppercase tracking-[0.08em] px-4 py-2 hover:bg-cinnamon transition-colors flex items-center gap-1.5">
+        <Button
+          onClick={() => {
+            setBranchError("");
+            setBranchesLoading(true);
+            setOpen(true);
+          }}
+          className="rounded-full bg-espresso text-cream font-mono text-[11px] uppercase tracking-[0.08em] px-4 py-2 hover:bg-cinnamon transition-colors flex items-center gap-1.5"
+        >
           <Plus className="h-4 w-4" /> Add User
         </Button>
       </div>

@@ -34,6 +34,16 @@ const SEV: Record<string, string> = {
   green: "var(--sage)",
 };
 
+function formatCompactVnd(amount: number) {
+  if (amount >= 1_000_000) {
+    return `${(amount / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 1 })}M₫`;
+  }
+  if (amount >= 1_000) {
+    return `${Math.round(amount / 1_000)}K₫`;
+  }
+  return `${amount.toLocaleString("vi-VN")}₫`;
+}
+
 function Spark({ data, color }: { data: number[]; color: string }) {
   const max = Math.max(...data);
   const min = Math.min(...data);
@@ -87,11 +97,12 @@ export default function DashboardPage() {
   });
   const activeCount =
     products?.filter((p) => p.is_active).length ?? stats.activeProducts;
+  const averageBasket = stats.totalOrders > 0 ? stats.revenue / stats.totalOrders : 0;
 
   const KPIS = [
     {
       label: "Doanh thu · today",
-      value: "14.6M₫",
+      value: formatCompactVnd(stats.revenue),
       delta: "+12.4%",
       sub: "vs 7d avg",
       spark: [12, 14, 11, 13, 16, 14, 15, 17, 14, 15],
@@ -107,7 +118,7 @@ export default function DashboardPage() {
     },
     {
       label: "Trung bình giỏ",
-      value: "128K₫",
+      value: formatCompactVnd(averageBasket),
       delta: "+3.6%",
       sub: "WoW",
       spark: [120, 125, 118, 130, 124, 128, 132, 126, 128, 128],

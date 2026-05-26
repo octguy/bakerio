@@ -29,15 +29,13 @@ vi.mock("@/data/locations", () => ({
 
 import LocationsPage from "./page";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 describe("LocationsPage", () => {
-  it("renders without crashing", () => {
-    const { container } = render(<LocationsPage />);
-    expect(container.firstChild).toBeInTheDocument();
-  });
-
-  it("contains heading about locations", () => {
+  it("derives the page count from the locations data", () => {
     render(<LocationsPage />);
     expect(screen.getByRole("heading", { name: /2 shops/i })).toBeInTheDocument();
   });
@@ -60,11 +58,6 @@ describe("LocationsPage", () => {
     expect(screen.getByText("Mon–Sun 7:00–22:00")).toBeInTheDocument();
   });
 
-  it("shows the correct number of locations from mock data", () => {
-    render(<LocationsPage />);
-    expect(screen.getAllByText(/Bakerio Nguyễn Huệ/i).length).toBeGreaterThan(0);
-  });
-
   it("displays address for selected location", async () => {
     render(<LocationsPage />);
     expect(screen.getByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).toBeInTheDocument();
@@ -78,20 +71,21 @@ describe("LocationsPage", () => {
     expect(screen.getByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).toBeInTheDocument();
   });
 
-  it("filters locations when a region button is clicked", () => {
+  it("filters the shop list and selected callout when a region button is clicked", () => {
     render(<LocationsPage />);
     
-    // Click District 1 filter
-    fireEvent.click(screen.getByRole("button", { name: "District 1" }));
+    fireEvent.click(screen.getByRole("button", { name: "District 7" }));
     
-    // Nguyễn Huệ list item should still be there
-    const listButtonsD1 = screen.getAllByRole("button");
-    const hasNguyenHue = listButtonsD1.some(b => b.textContent?.includes("Bakerio Nguyễn Huệ"));
+    const listButtons = screen.getAllByRole("button");
+    const district7ListButton = listButtons.find(
+      (b) => b.className.includes("text-left") && b.textContent?.includes("Bakerio Phú Mỹ Hưng"),
+    );
+    const district1ListButton = listButtons.find(
+      (b) => b.className.includes("text-left") && b.textContent?.includes("Bakerio Nguyễn Huệ"),
+    );
     
-    expect(hasNguyenHue).toBe(true);
-    // PMH is in pins (as map buttons), but should be filtered out from list buttons
-    // The list button for PMH contains its name in text content
-    const pmhListButton = listButtonsD1.find(b => b.className.includes("text-left") && b.textContent?.includes("Bakerio Phú Mỹ Hưng"));
-    expect(pmhListButton).toBeUndefined();
+    expect(district7ListButton).toBeDefined();
+    expect(district1ListButton).toBeUndefined();
+    expect(screen.getByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).toBeInTheDocument();
   });
 });

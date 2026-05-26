@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { STAFF_ROLES, getTokenRoles, hasStaffAccess } from "./route";
+import { getTokenRoles, hasStaffAccess } from "./route";
 
 // Helper to build a JWT-like token string
 function buildToken(payload: Record<string, any>): string {

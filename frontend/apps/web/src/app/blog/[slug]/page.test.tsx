@@ -14,6 +14,16 @@ vi.mock("next/navigation", () => ({
   notFound: () => { mockNotFound(); },
 }));
 
+const mockBlogPostActions = vi.hoisted(() =>
+  vi.fn(({ slug, title }: { slug: string; title: string }) => (
+    <div data-testid="post-actions" data-slug={slug} data-title={title} />
+  )),
+);
+
+vi.mock("./BlogPostActions", () => ({
+  default: mockBlogPostActions,
+}));
+
 vi.mock("@/data/posts", () => ({
   posts: [
     {
@@ -24,17 +34,34 @@ vi.mock("@/data/posts", () => ({
       image: "/test.jpg",
       category: "Testing",
     },
+    {
+      slug: "second-post",
+      title: "Second Blog Title",
+      excerpt: "Second excerpt content",
+      date: "2024-12-02",
+      image: "/second.jpg",
+      category: "Updates",
+    },
   ],
 }));
 
 import BlogPostPage, { generateStaticParams, generateMetadata } from "./page";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 describe("BlogPostPage", () => {
-  it("renders without crashing with a valid slug", async () => {
-    const { container } = render(await BlogPostPage({ params: Promise.resolve({ slug: "test-post" }) }));
-    expect(container.querySelector("article")).toBeInTheDocument();
+  it("selects the matching slug and passes it to post actions", async () => {
+    render(await BlogPostPage({ params: Promise.resolve({ slug: "test-post" }) }));
+
+    expect(screen.getByRole("article")).toBeInTheDocument();
+    expect(mockBlogPostActions).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: "test-post", title: "Test Blog Title" }),
+      undefined,
+    );
+    expect(screen.getByTestId("post-actions")).toHaveAttribute("data-slug", "test-post");
   });
 
   it("shows blog post title and content", async () => {
@@ -59,7 +86,7 @@ describe("BlogPostPage", () => {
 
   it("generates static params", () => {
     const params = generateStaticParams();
-    expect(params).toEqual([{ slug: "test-post" }]);
+    expect(params).toEqual([{ slug: "test-post" }, { slug: "second-post" }]);
   });
 
   it("generates metadata for valid and invalid slugs", async () => {
