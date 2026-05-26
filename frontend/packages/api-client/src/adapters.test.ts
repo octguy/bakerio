@@ -108,19 +108,19 @@ describe("API Client DTO Adapters and Mock Fallback tests", () => {
       expect(branches).toHaveLength(5);
 
       // Northern lat (>= 20) -> 'north'
-      expect(branches[0].region).toBe("north");
+      expect(branches[0]?.region).toBe("north");
 
       // Central lat (>= 14 and < 20) -> 'central'
-      expect(branches[1].region).toBe("central");
+      expect(branches[1]?.region).toBe("central");
 
       // Southern lat (< 14) -> 'south'
-      expect(branches[2].region).toBe("south");
+      expect(branches[2]?.region).toBe("south");
 
       // Pre-assigned region -> passed through unchanged
-      expect(branches[3].region).toBe("south");
+      expect(branches[3]?.region).toBe("south");
 
       // No lat -> passed through unchanged (region is undefined/not set)
-      expect(branches[4].region).toBeUndefined();
+      expect(branches[4]?.region).toBeUndefined();
     });
   });
 
