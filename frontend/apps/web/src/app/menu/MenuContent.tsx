@@ -41,7 +41,7 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
           Showing {filtered.length} of {productsList.length}
         </div>
 
-        <div className="grid grid-cols-1 gap-9 md:grid-cols-[220px_1fr]">
+        <div className="grid grid-cols-1 gap-9 md:grid-cols-[220px_1fr] items-start">
         {/* Sidebar */}
           <aside>
           <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-caramel">Category</div>
@@ -142,10 +142,10 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
                       <span className="ml-0.5 text-[10px] text-caramel">₫</span>
                     </span>
                     <a
-                      href={orderUrl}
+                      href={`${orderUrl}/menu?add-to-cart=${p.slug}`}
                       className="bkr-press rounded-full border border-espresso px-2.5 py-1 font-mono text-[9.5px] uppercase tracking-[0.18em] text-espresso transition-colors hover:bg-espresso hover:text-white"
                     >
-                      Order ↗
+                      Add +
                     </a>
                   </div>
                 </div>

@@ -122,10 +122,10 @@ describe("MenuPage", () => {
 
   it("links order actions to the configured order app", async () => {
     await renderMenuPage();
-    const orderLinks = screen.getAllByRole("link", { name: /order/i });
+    const orderLinks = screen.getAllByRole("link", { name: /add \+/i });
 
     expect(orderLinks).toHaveLength(3);
-    expect(orderLinks[0]).toHaveAttribute("href", "https://order.bakerio.test");
+    expect(orderLinks[0]).toHaveAttribute("href", "https://order.bakerio.test/menu?add-to-cart=sourdough-loaf");
   });
 
   it("renders the hero section with description text", async () => {

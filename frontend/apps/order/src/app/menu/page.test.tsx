@@ -41,12 +41,33 @@ vi.mock("@repo/api-client", () => ({
   getCategories: vi.fn().mockResolvedValue(apiCategories),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  useSearchParams: () => ({
+    get: vi.fn().mockReturnValue(null),
+    toString: vi.fn().mockReturnValue(""),
+  }),
+}));
+
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
     <a href={href} {...props}>
       {children}
     </a>
   ),
+}));
+
+vi.mock("next-view-transitions", () => ({
+  Link: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+  useTransitionRouter: () => ({ push: vi.fn() }),
 }));
 
 vi.mock("next/image", () => ({

@@ -71,7 +71,20 @@ export function getApiHealth(): { mockServed: string[] } {
   return { mockServed: [...MOCK_SERVED].sort() };
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const BACKEND_API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const API_PROXY_PATH = process.env.NEXT_PUBLIC_API_PROXY_PATH || "/api/backend";
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, "");
+}
+
+function getApiBase(): string {
+  if (typeof window !== "undefined") {
+    return API_PROXY_PATH;
+  }
+  const proxyUrl = process.env.NEXT_PUBLIC_API_PROXY_URL?.trim();
+  return proxyUrl ? trimTrailingSlash(proxyUrl) : trimTrailingSlash(BACKEND_API_BASE);
+}
 
 let token: string | null = null;
 
@@ -82,7 +95,7 @@ function headers(): HeadersInit {
 }
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { headers: headers(), ...opts });
+  const res = await fetch(`${getApiBase()}${path}`, { headers: headers(), ...opts });
   if (res.status === 204) {
     return null as unknown as T;
   }

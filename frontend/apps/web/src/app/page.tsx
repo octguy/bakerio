@@ -42,7 +42,7 @@ export default function Home() {
   }, []);
 
   const featuredProducts = productsList.slice(0, 6);
-  const featuredLocations = locations.slice(0, 3);
+  const featuredLocations = locations.slice(0, 6);
   const featuredPosts = posts.slice(0, 3);
 
   return (
@@ -192,14 +192,14 @@ export default function Home() {
         <div className="mx-auto max-w-[1400px]">
           <div className="mb-14 flex items-end justify-between">
             <div>
-              <div className="mb-4 flex items-center gap-3">
+              <div className="bkr-rise mb-4 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
                   § ii — from the counter
                 </span>
               </div>
               <h2
-                className="font-display tracking-tight text-espresso"
+                className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(40px,7vw,84px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
               >
                 What we baked <span className="font-editorial text-cinnamon">this morning.</span>
@@ -268,14 +268,14 @@ export default function Home() {
         <div className="mx-auto max-w-[1400px]">
           <div className="mb-12 flex items-end justify-between">
             <div>
-              <div className="mb-4 flex items-center gap-3">
+              <div className="bkr-rise mb-4 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
                   § iii — atlas
                 </span>
               </div>
               <h2
-                className="font-display tracking-tight text-espresso"
+                className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(38px,6vw,72px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
               >
                 Eleven shops, <span className="font-editorial text-cinnamon">one city.</span>
@@ -301,14 +301,14 @@ export default function Home() {
         <div className="mx-auto max-w-[1400px]">
           <div className="mb-12 flex items-end justify-between">
             <div>
-              <div className="mb-4 flex items-center gap-3">
+              <div className="bkr-rise mb-4 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
                   The journal · since mmxxiv
                 </span>
               </div>
               <h2
-                className="font-display tracking-tight text-espresso"
+                className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(38px,6vw,72px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
               >
                 Stories <span className="font-editorial text-cinnamon">from the oven.</span>

@@ -22,7 +22,13 @@ function ProfileContent() {
   const { user, logout } = useAuth();
   const profileUser = user as (typeof user & { phone?: string | null; created_at?: string | null }) | null;
   const initial = (user?.full_name?.[0] ?? user?.email?.[0] ?? "T").toUpperCase();
-  const name = user?.display_name || user?.full_name || "Friend";
+  const [displayName, setDisplayName] = useState(user?.display_name || user?.full_name || "Friend");
+  const [draftName, setDraftName] = useState(displayName);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [newAddress, setNewAddress] = useState("");
   const phone = profileUser?.phone?.trim();
   const memberSince = formatMemberSince(profileUser?.created_at);
 
@@ -55,15 +61,46 @@ function ProfileContent() {
     };
   }, []);
 
+  const saveProfile = () => {
+    const nextName = draftName.trim();
+    if (nextName) setDisplayName(nextName);
+    setEditOpen(false);
+  };
+
+  const saveAddress = () => {
+    const trimmed = newAddress.trim();
+    if (!trimmed) return;
+    setAddresses((current) => [
+      ...current,
+      {
+        id: `addr-${Date.now()}`,
+        label: "New address",
+        address: trimmed,
+        is_default: current.length === 0,
+      },
+    ]);
+    setNewAddress("");
+    setAddressOpen(false);
+  };
+
   return (
     <main className="mx-auto max-w-md px-6 pt-4 pb-32">
       {/* Header */}
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-mono text-[11px] font-bold tracking-[0.16em] text-cinnamon">EDIT</span>
+        <button
+          type="button"
+          onClick={() => {
+            setDraftName(displayName);
+            setEditOpen(true);
+          }}
+          className="font-mono text-[11px] font-bold tracking-[0.16em] text-cinnamon"
+        >
+          EDIT
+        </button>
         <div className="font-display text-[16px] leading-none">Profile</div>
-        <span className="text-[16px] text-caramel" aria-hidden="true">
+        <button type="button" onClick={() => setSettingsOpen(true)} className="text-[16px] text-caramel" aria-label="Profile settings">
           ⚙
-        </span>
+        </button>
       </div>
 
       {/* Avatar */}
@@ -71,7 +108,7 @@ function ProfileContent() {
         <div className="mx-auto flex h-[92px] w-[92px] items-center justify-center rounded-full bg-cinnamon font-display text-[38px] text-white shadow-[0_12px_24px_-6px_rgba(196,91,74,0.4)]">
           {initial}
         </div>
-        <h1 className="mt-4 font-display text-[30px] leading-none tracking-tight">{name}</h1>
+        <h1 className="mt-4 font-display text-[30px] leading-none tracking-tight">{displayName}</h1>
         {(memberSince || lifetimeOrders !== undefined) && (
           <div className="mt-1 font-editorial text-[13px] italic text-cinnamon">
             {[memberSince ? `member since ${memberSince}` : null, lifetimeOrders !== undefined ? `${lifetimeOrders} orders` : null].filter(Boolean).join(" · ")}
@@ -127,7 +164,7 @@ function ProfileContent() {
       </Section>
 
       {/* Addresses */}
-      <Section title="Addresses" cta="+ Add">
+      <Section title="Addresses" cta="+ Add" onCta={() => setAddressOpen(true)}>
         {addresses.map((r, idx, all) => (
           <Row
             key={r.id}
@@ -148,7 +185,7 @@ function ProfileContent() {
 
       {/* Preferences */}
       <Section title="Preferences">
-        <Row icon="🔔" label="Push notifications" sub="order updates · promos" badge="soon" />
+        <Row icon="🔔" label="Push notifications" sub={pushEnabled ? "order updates on" : "muted"} toggle on={pushEnabled} onClick={() => setPushEnabled((value) => !value)} />
         <Row icon="🌐" label="Language" sub="Tiếng Việt" badge="soon" />
         <Row icon="🥄" label="Dietary" sub="no peanut" badge="soon" />
         <Row icon="🔒" label="Privacy & data" badge="soon" last />
@@ -163,16 +200,80 @@ function ProfileContent() {
           <div className="text-[13.5px] font-semibold text-sienna">Sign out</div>
         </button>
       </Section>
+
+      {editOpen && (
+        <Modal title="Edit profile" onClose={() => setEditOpen(false)}>
+          <label htmlFor="profile-name" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+            Display name
+          </label>
+          <input
+            id="profile-name"
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+          />
+          <button
+            type="button"
+            onClick={saveProfile}
+            className="bkr-press mt-4 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream"
+          >
+            Save profile
+          </button>
+        </Modal>
+      )}
+
+      {addressOpen && (
+        <Modal title="Add address" onClose={() => setAddressOpen(false)}>
+          <label htmlFor="profile-address" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+            Delivery address
+          </label>
+          <textarea
+            id="profile-address"
+            value={newAddress}
+            onChange={(e) => setNewAddress(e.target.value)}
+            rows={3}
+            className="mt-1 w-full resize-none rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+          />
+          <button
+            type="button"
+            onClick={saveAddress}
+            disabled={!newAddress.trim()}
+            className="bkr-press mt-4 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
+          >
+            Save address
+          </button>
+        </Modal>
+      )}
+
+      {settingsOpen && (
+        <Modal title="Profile settings" onClose={() => setSettingsOpen(false)}>
+          <button
+            type="button"
+            onClick={() => setPushEnabled((value) => !value)}
+            className="flex w-full items-center justify-between rounded-xl border border-crust bg-white px-4 py-3 text-left"
+          >
+            <span>
+              <span className="block text-[13.5px] font-semibold text-espresso">Push notifications</span>
+              <span className="font-editorial text-[11.5px] italic text-caramel">{pushEnabled ? "Enabled" : "Muted"}</span>
+            </span>
+            <span className="font-mono text-[11px] text-cinnamon">{pushEnabled ? "ON" : "OFF"}</span>
+          </button>
+        </Modal>
+      )}
     </main>
   );
 }
 
-function Section({ title, cta, children }: { title: string; cta?: string; children: React.ReactNode }) {
+function Section({ title, cta, onCta, children }: { title: string; cta?: string; onCta?: () => void; children: React.ReactNode }) {
   return (
     <div className="mb-4">
       <div className="mb-2 flex items-center justify-between font-mono text-[9.5px] uppercase tracking-[0.22em] text-caramel">
         <span>{title}</span>
-        {cta && <span className="font-bold text-cinnamon opacity-60">{cta}</span>}
+        {cta && (
+          <button type="button" onClick={onCta} className="font-bold text-cinnamon opacity-80">
+            {cta}
+          </button>
+        )}
       </div>
       <div className="overflow-hidden rounded-2xl border border-crust bg-white">{children}</div>
     </div>
@@ -197,6 +298,7 @@ function Row({
   toggle,
   on,
   badge,
+  onClick,
 }: {
   icon: string;
   label: React.ReactNode;
@@ -205,9 +307,10 @@ function Row({
   toggle?: boolean;
   on?: boolean;
   badge?: string;
+  onClick?: () => void;
 }) {
-  return (
-    <div className={`flex items-center gap-3 px-4 py-3.5 ${last ? "" : "border-b border-crust"} ${badge ? "opacity-60" : ""}`}>
+  const content = (
+    <>
       <div className="flex h-8 w-8 items-center justify-center rounded-md bg-butter text-[14px] text-cinnamon" aria-hidden="true">
         {icon}
       </div>
@@ -226,6 +329,35 @@ function Row({
           ›
         </span>
       )}
+    </>
+  );
+  const className = `flex w-full items-center gap-3 px-4 py-3.5 text-left ${last ? "" : "border-b border-crust"} ${badge ? "opacity-60" : ""}`;
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div className={className}>
+      {content}
+    </div>
+  );
+}
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end bg-espresso/30 px-4 pb-4" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="w-full rounded-2xl border border-crust bg-cream p-5 shadow-[0_22px_80px_rgba(44,24,16,0.24)]">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-display text-[24px] leading-none tracking-tight text-espresso">{title}</h2>
+          <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-caramel" aria-label="Close">
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

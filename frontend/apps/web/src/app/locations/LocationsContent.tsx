@@ -2,6 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { locations, regions } from "@/data/locations";
+import dynamic from "next/dynamic";
+
+const LocationMap = dynamic(() => import("./LocationMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-butter font-mono text-[11px] text-caramel">
+      Loading Atlas...
+    </div>
+  ),
+});
 
 // Editorial atlas: SVG abstract HCMC map + tabular shop list.
 // Positions are normalised (0..1) — picked to roughly correspond to district.
@@ -55,88 +65,16 @@ export default function LocationsContent() {
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.25fr_1fr]">
           {/* Map */}
-          <div className="relative h-[500px] overflow-hidden rounded-sm border border-crust-deep bg-butter lg:h-[630px]">
-            <svg viewBox="0 0 800 600" className="absolute inset-0 h-full w-full">
-              <path
-                d="M-20,180 C 100,200 180,280 240,310 C 320,350 360,310 420,350 C 500,400 620,420 720,500 L 820,520 L 820,620 L -20,620 Z"
-                fill="var(--crust)"
-                opacity="0.55"
-              />
-              <path
-                d="M-20,180 C 100,200 180,280 240,310 C 320,350 360,310 420,350 C 500,400 620,420 720,500 L 820,520"
-                stroke="var(--crust-deep)"
-                strokeWidth="1.5"
-                fill="none"
-              />
-              <g stroke="var(--crust-deep)" strokeWidth="0.7" fill="none" opacity="0.5">
-                <path d="M120,80 L380,60 L420,180 L350,300 L180,260 Z" />
-                <path d="M380,60 L580,80 L600,220 L450,260 L420,180 Z" />
-                <path d="M580,80 L780,120 L760,260 L600,220 Z" />
-                <path d="M180,260 L350,300 L420,350 L380,470 L200,440 Z" />
-                <path d="M350,300 L450,260 L600,220 L640,360 L500,420 L420,350 Z" />
-                <path d="M380,470 L500,420 L640,360 L660,520 L500,560 L420,540 Z" />
-              </g>
-              <g fill="var(--crust-deep)" opacity="0.35">
-                {Array.from({ length: 14 }).map((_, r) =>
-                  Array.from({ length: 18 }).map((_, c) => (
-                    <circle key={`${r}-${c}`} cx={50 + c * 42} cy={40 + r * 40} r="0.8" />
-                  )),
-                )}
-              </g>
-              <g className="font-mono" fontSize="9" fill="var(--caramel)" letterSpacing="0.18em">
-                <text x="230" y="160">D.1</text>
-                <text x="450" y="160">D.3</text>
-                <text x="650" y="190">D.2</text>
-                <text x="500" y="540">D.7</text>
-                <text x="650" y="320">THẢO ĐIỀN</text>
-              </g>
-              <g transform="translate(740,80)">
-                <circle r="22" fill="none" stroke="var(--espresso)" strokeWidth="0.7" />
-                <polygon points="0,-18 4,0 0,18 -4,0" fill="var(--cinnamon)" />
-                <text x="0" y="-26" textAnchor="middle" className="font-mono" fontSize="8" letterSpacing="0.18em">
-                  N
-                </text>
-              </g>
-            </svg>
-
-            {filtered.map((location, i) => {
-              const locationIndex = locations.findIndex((item) => item.name === location.name);
-              const p = PIN_LAYOUT[locationIndex] ?? { x: 0.5, y: 0.5 };
-              const num = String(i + 1).padStart(2, "0");
-              const isSel = location.name === selectedLocation?.name;
-              return (
-                <button
-                  key={location.name}
-                  onClick={() => setSelectedLocationName(location.name)}
-                  className="absolute"
-                  style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%`, transform: "translate(-50%, -100%)" }}
-                  aria-label={location.name}
-                >
-                  <span
-                    className="flex items-center justify-center border-2 border-white shadow-[0_4px_12px_rgba(44,24,16,0.3)]"
-                    style={{
-                      background: isSel ? "var(--golden)" : "var(--espresso)",
-                      color: "#fff",
-                      width: isSel ? 36 : 28,
-                      height: isSel ? 36 : 28,
-                      borderRadius: "50% 50% 50% 0",
-                      transform: "rotate(-45deg)",
-                    }}
-                  >
-                    <span
-                      className="font-mono font-bold"
-                      style={{ transform: "rotate(45deg)", fontSize: isSel ? 12 : 10 }}
-                    >
-                      {num}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
+          <div className="relative h-[500px] overflow-hidden rounded-sm border border-crust-deep bg-butter lg:h-[630px] z-0">
+            <LocationMap
+              locations={filtered}
+              selectedLocation={selectedLocation}
+              onSelectLocation={setSelectedLocationName}
+            />
 
             {/* Callout */}
             {selectedLocation && (
-              <div className="absolute bottom-6 left-6 w-[280px] rounded-sm border border-crust bg-white p-4 shadow-[0_12px_30px_-10px_rgba(44,24,16,0.3)]">
+              <div className="absolute bottom-6 left-6 w-[280px] rounded-sm border border-crust bg-white p-4 shadow-[0_12px_30px_-10px_rgba(44,24,16,0.3)] z-20">
                 <div className="mb-2 flex items-center gap-2.5">
                   <span className="flex h-[22px] w-[22px] items-center justify-center rounded bg-golden font-mono text-[10px] font-bold text-white">
                     {String(selectedIdx + 1).padStart(2, "0")}

@@ -1,8 +1,19 @@
 import { getProducts, getCategories, type Product, type Category } from "@repo/api-client";
 import { MenuGrid } from "./_components/menu-grid";
+import { MenuLocationHeader } from "./_components/menu-location-header";
 import Link from "next/link";
+import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
+
+// Keep loading.tsx on screen at least this long so the 500ms card-ascent plus a
+// ~1s pause play out before the catalog swaps in. The fetch runs concurrently
+// (see Promise.all below): we reveal at max(floor, fetch) — the floor when the
+// fetch is quick, or the moment it resolves when it's slower. Disabled under
+// test so the suite doesn't pay the wait.
+const MIN_LOADING_MS = process.env.NODE_ENV === "test" ? 0 : 1500;
+
+const settleFloor = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export default async function MenuPage() {
   let products: Product[] = [];
@@ -10,23 +21,21 @@ export default async function MenuPage() {
   let loadError = false;
 
   try {
-    [products, categories] = await Promise.all([getProducts(), getCategories()]);
+    // Resolves only once BOTH the catalog and the floor are done -> max(floor, fetch).
+    const [catalog] = await Promise.all([
+      Promise.all([getProducts(), getCategories()]),
+      settleFloor(MIN_LOADING_MS),
+    ]);
+    [products, categories] = catalog;
   } catch {
     loadError = true;
   }
 
   return (
     <main className="mx-auto max-w-md px-6 pt-4 pb-28">
-      {/* Top bar */}
-      <div className="mb-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 text-espresso">
-          <span className="text-[18px]">‹</span>
-          <div>
-            <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">pickup at</div>
-            <div className="font-display text-[16px] leading-none text-espresso">Lê Lợi · 0.8km</div>
-          </div>
-        </Link>
-      </div>
+      {/* Compact branch card — loading.tsx renders the same element, so the
+          morph from the tapped location card lands here seamlessly. */}
+      <MenuLocationHeader />
 
       {loadError ? (
         <div role="alert" className="mt-6 rounded-2xl border border-sienna/30 bg-sienna/10 px-4 py-5 text-center">
@@ -65,7 +74,9 @@ export default async function MenuPage() {
             </div>
           </div>
 
-          <MenuGrid products={products} categories={categories} />
+          <Suspense fallback={<div className="font-editorial text-[14.5px] italic text-caramel text-center py-12">Opening today&apos;s batch…</div>}>
+            <MenuGrid products={products} categories={categories} />
+          </Suspense>
         </>
       )}
     </main>

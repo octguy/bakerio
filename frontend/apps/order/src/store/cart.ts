@@ -2,11 +2,21 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CartItem, Coupon } from '@/types';
 
+export interface SelectedBranch {
+  id: string;
+  name: string;
+  address: string;
+  dist: string;
+  eta: string;
+}
+
 interface CartStore {
   branchId: string | null;
+  selectedBranch: SelectedBranch | null;
   items: CartItem[];
   coupon: Coupon | null;
   setBranch: (id: string) => void;
+  selectBranch: (branch: SelectedBranch) => void;
   addItem: (item: Omit<CartItem, 'id'>) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, qty: number) => void;
@@ -22,10 +32,16 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       branchId: null,
+      selectedBranch: null,
       items: [],
       coupon: null,
 
-      setBranch: (id) => set({ branchId: id, items: [], coupon: null }),
+      // Reorder flow only knows the id; drop any stale summary so the menu
+      // header falls back gracefully instead of showing the wrong branch.
+      setBranch: (id) => set({ branchId: id, selectedBranch: null, items: [], coupon: null }),
+
+      selectBranch: (branch) =>
+        set({ branchId: branch.id, selectedBranch: branch, items: [], coupon: null }),
 
       addItem: (item) =>
         set((state) => ({

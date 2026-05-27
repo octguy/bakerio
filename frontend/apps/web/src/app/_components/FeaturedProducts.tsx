@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Product } from "@repo/api-client";
+import { getOrderUrl } from "@/lib/public-config";
 
 interface FeaturedProductsProps {
   featuredProducts: Product[];
@@ -47,12 +48,12 @@ export function FeaturedProducts({ featuredProducts, loading, formatVND }: Featu
               Our signature. A loaf baked five times daily, sliced warm, layered with house pâté and a 7-spice mayonnaise. The crust shatters on cue.
             </p>
             <div className="mt-6 flex items-center gap-3">
-              <Link
-                href="/menu"
+              <a
+                href={`${getOrderUrl()}/menu?add-to-cart=${featuredProducts[0].slug}`}
                 className="bkr-press rounded-full bg-espresso px-5 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.16em] text-cream"
               >
                 Add to cart
-              </Link>
+              </a>
               <span className="font-mono text-[10.5px] tracking-[0.1em] text-caramel">⏱ READY IN 10 MIN</span>
             </div>
           </div>
@@ -93,9 +94,12 @@ export function FeaturedProducts({ featuredProducts, loading, formatVND }: Featu
                 {formatVND(p.base_price)}
                 <span className="ml-0.5 text-[10px] text-caramel">₫</span>
               </span>
-              <button className="bkr-press rounded-full border border-espresso px-2.5 py-1 font-mono text-[9.5px] uppercase tracking-[0.18em] text-espresso">
+              <a
+                href={`${getOrderUrl()}/menu?add-to-cart=${p.slug}`}
+                className="bkr-press rounded-full border border-espresso px-2.5 py-1 font-mono text-[9.5px] uppercase tracking-[0.18em] text-espresso transition-colors hover:bg-espresso hover:text-white"
+              >
                 Add +
-              </button>
+              </a>
             </div>
           </div>
         </article>

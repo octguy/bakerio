@@ -108,7 +108,28 @@ body {
 .bkr-press:hover  { filter: brightness(1.05); }
 .bkr-press:active { transform: scale(0.97); }
 
+/* Cross-route morph for the branch card -> menu header (next-view-transitions).
+   500ms: the tapped card ascends into the compact header while the branch list
+   cross-fades to the menu's loading template. The template then holds (see
+   MIN_LOADING_MS in menu/page.tsx) for ~1s before the catalog swaps in. */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 500ms;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Keep the morphing location card above the page cross-fade for the whole run. */
+::view-transition-group(selected-branch) {
+  z-index: 2147483647;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bkr-pulse, .bkr-ping, .bkr-marquee, .bkr-rise, .bkr-rise-1, .bkr-rise-2,
   .bkr-rise-3, .bkr-fill { animation: none !important; }
+
+  /* View Transitions ignore reduced-motion unless we opt out explicitly. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
 }

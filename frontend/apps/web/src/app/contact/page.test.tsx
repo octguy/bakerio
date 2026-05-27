@@ -57,14 +57,28 @@ describe("ContactPage", () => {
     expect(screen.getByText("Message is required")).toBeInTheDocument();
   });
 
-  it("shows a configuration error when no contact endpoint is configured", () => {
+  it("shows a configuration error when no contact endpoint is configured", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () =>
+          Promise.resolve({
+            error: { message: "Contact form is not configured yet. Please email hello@bakerio.vn directly." },
+          }),
+      }),
+    );
+
     render(<ContactPage />);
     fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Hello" } });
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
-    expect(screen.getByRole("alert")).toHaveTextContent(/contact form is not configured yet/i);
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/contact form is not configured yet/i);
+    });
   });
 
   it("shows email-specific error for invalid email format", () => {
@@ -80,7 +94,6 @@ describe("ContactPage", () => {
   });
 
   it("hides the form after successful submission", async () => {
-    vi.stubEnv("NEXT_PUBLIC_CONTACT_ENDPOINT", "https://example.com/contact");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 
     render(<ContactPage />);
@@ -93,6 +106,10 @@ describe("ContactPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Thank you.")).toBeInTheDocument();
     });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/contact",
+      expect.objectContaining({ method: "POST" }),
+    );
     expect(screen.getByText(/we'll write back/i)).toBeInTheDocument();
     expect(screen.queryByLabelText("Your name")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /send message/i })).not.toBeInTheDocument();

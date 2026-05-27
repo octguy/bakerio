@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Croissant } from "lucide-react";
 import type { Product, Category } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
@@ -24,6 +25,42 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
   const [search, setSearch] = useState("");
   const items = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const slug = searchParams.get("add-to-cart");
+    if (slug) {
+      const product = products.find((p) => p.slug === slug);
+      if (product) {
+        addItem({
+          product: {
+            id: product.id,
+            name: product.name,
+            slug: product.slug,
+            description: product.description || "",
+            basePrice: product.base_price,
+            image: product.images?.[0]?.url || "",
+            category: getProductCategoryName(product, categories),
+            options: [],
+          },
+          choices: [],
+          quantity: 1,
+          unitPrice: product.base_price,
+        });
+
+        // Clean query param from URL
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("add-to-cart");
+        const queryStr = params.toString();
+        const cleanPath = queryStr ? `/menu?${queryStr}` : "/menu";
+        window.history.replaceState(null, "", cleanPath);
+
+        // Transition user to cart
+        router.push("/cart");
+      }
+    }
+  }, [searchParams, products, categories, addItem, router]);
   const totalCount = items.reduce((s, i) => s + i.quantity, 0);
   const totalAmount = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const normalizedSearch = search.trim().toLowerCase();

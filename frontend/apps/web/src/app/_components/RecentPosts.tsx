@@ -42,10 +42,10 @@ export function RecentPosts({ featuredPosts }: RecentPostsProps) {
                 {post.date}
               </span>
             </div>
-            <h3 className="font-display text-[20px] leading-[1.15] tracking-tight text-espresso">
+            <h3 className="font-display text-[20px] leading-[1.15] tracking-tight text-espresso line-clamp-2">
               {post.title}
             </h3>
-            <p className="mt-2 line-clamp-2 font-news text-[14px] text-cocoa">{post.excerpt}</p>
+            <p className="mt-2 line-clamp-2 font-news text-[14px] text-cocoa min-h-[32px]">{post.excerpt}</p>
             {i === 0 && (
               <span className="mt-3 inline-block font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-cinnamon">
                 Read on →

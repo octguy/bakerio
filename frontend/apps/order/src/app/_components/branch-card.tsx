@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { flushSync } from "react-dom";
+import { useTransitionRouter } from "next-view-transitions";
 import { useCartStore } from "@/store/cart";
 import type { Branch } from "@repo/api-client";
 
@@ -19,23 +21,38 @@ const regionTags: Record<string, string> = {
 };
 
 export function BranchCard({ branch, index, isSelected, heroImage }: Props) {
-  const router = useRouter();
-  const setBranch = useCartStore((s) => s.setBranch);
-
-  const handleSelect = () => {
-    setBranch(branch.id);
-    router.push("/menu");
-  };
+  const router = useTransitionRouter();
+  const selectBranch = useCartStore((s) => s.selectBranch);
+  // Exactly one card matches the store, so only the tapped card claims the
+  // shared morph name — no duplicate view-transition-name across the page.
+  const isMorphing = useCartStore((s) => s.selectedBranch?.id === branch.id);
 
   const tag = regionTags[branch.region];
   const dist = ["0.8 km", "2.1 km", "5.6 km", "7.2 km"][index % 4];
   const eta = ["15–25 min", "25–35 min", "35–50 min", "45–60 min"][index % 4];
 
+  // Warm the /menu segment (incl. its header-bearing loading.tsx) so the tap
+  // commits straight to it instead of flashing the root loading template,
+  // which has no morph target and would cancel the transition.
+  useEffect(() => {
+    router.prefetch("/menu");
+  }, [router]);
+
+  const handleSelect = () => {
+    // flushSync so this card carries `selected-branch` in the DOM *before* the
+    // view-transition snapshot is taken; then navigate (the menu header shares
+    // the same name, so the snapshot morphs card -> header).
+    flushSync(() =>
+      selectBranch({ id: branch.id, name: branch.name, address: branch.address, dist, eta }),
+    );
+    router.push("/menu");
+  };
+
   return (
     <button
       onClick={handleSelect}
       aria-label={branch.name}
-      style={{ minHeight: 100 }}
+      style={{ minHeight: 100, viewTransitionName: isMorphing ? "selected-branch" : undefined }}
       className={`relative flex w-full overflow-hidden rounded-2xl text-left transition-colors ${
         isSelected
           ? "border-2 border-espresso bg-white"

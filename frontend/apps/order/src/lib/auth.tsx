@@ -15,8 +15,14 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<string | null>;
-  register: (email: string, password: string, fullName: string) => Promise<string | null>;
+  register: (email: string, password: string, fullName: string) => Promise<RegisterResult>;
   logout: () => Promise<void>;
+}
+
+interface RegisterResult {
+  error: string | null;
+  userId?: string;
+  email?: string;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -64,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, fullName: string): Promise<string | null> => {
+  const register = async (email: string, password: string, fullName: string): Promise<RegisterResult> => {
     try {
       setLoading(true);
       const res = await fetch("/api/auth", {
@@ -73,10 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ action: "register", email, password, full_name: fullName }),
       });
       const data = await res.json().catch(() => ({ error: "Unexpected response from server" }));
-      if (!res.ok || data.error) return data.error ?? "Unable to create your account. Please try again.";
-      return null;
+      if (!res.ok || data.error) {
+        return { error: data.error ?? "Unable to create your account. Please try again." };
+      }
+      return { error: null, userId: data.user_id, email: data.email ?? email };
     } catch {
-      return "Unable to reach Bakerio. Check your connection and try again.";
+      return { error: "Unable to reach Bakerio. Check your connection and try again." };
     } finally {
       setLoading(false);
     }
