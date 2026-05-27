@@ -136,7 +136,7 @@ func main() {
 		logger.Log.Fatal("rbac: failed to warm permission cache", zap.Error(err))
 	}
 
-	seedAdmins(ctx, authModule.Service())
+	seedAdmins(ctx, authModule.Service(), pool)
 
 	// 7. Background workers
 	go outbox.NewWorker(publisher, logger.Log, authOutbox).Run(ctx)

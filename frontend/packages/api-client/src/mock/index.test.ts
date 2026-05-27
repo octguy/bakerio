@@ -127,6 +127,7 @@ describe("Mock API client logic and localStorage persistence", () => {
   describe("Product operations", () => {
     it("gets products filtered by category slug", async () => {
       const prods = await mockClient.getProducts("cake");
+      expect(prods.length).toBeGreaterThan(0);
       expect(prods.every((p) => p.category?.slug === "cake")).toBe(true);
     });
 

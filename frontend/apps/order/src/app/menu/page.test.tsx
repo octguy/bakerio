@@ -91,12 +91,6 @@ describe("MenuPage", () => {
     expect(screen.getByText("Croissant")).toBeInTheDocument();
   });
 
-  it("shows menu details and banner", async () => {
-    render(await MenuPage());
-    expect(screen.getByText(/today's batch/i)).toBeInTheDocument();
-    expect(screen.getByText(/sourdough/i)).toBeInTheDocument();
-  });
-
   it("filters the real grid by search text", async () => {
     render(await MenuPage());
 

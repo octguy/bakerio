@@ -10,8 +10,13 @@ test.describe("Order — Customer Ordering App", () => {
   test("homepage shows branch selection", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i })).toBeVisible();
+    
+    const branchButtons = page.locator("main button");
+    await expect(branchButtons).toHaveCount(3);
+    
     await expect(page.getByRole("button", { name: /Bakerio Quận 1/ })).toBeVisible();
     await expect(page.getByRole("button", { name: /Bakerio Hoàn Kiếm/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Bakerio Phú Nhuận/ })).toBeVisible();
   });
 
   test("selecting a branch navigates to menu", async ({ page }) => {

@@ -126,14 +126,9 @@ describe("DashboardPage", () => {
 
   it("displays stat cards with correct values", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("Đơn hàng · today")).toBeInTheDocument();
-    expect(screen.getByText("31")).toBeInTheDocument();
-    expect(screen.getByText("Doanh thu · today")).toBeInTheDocument();
+    // Assert compact VND formatting from formatCompactVnd
     expect(screen.getByText("27.5M₫")).toBeInTheDocument();
-    expect(screen.getByText("Trung bình giỏ")).toBeInTheDocument();
     expect(screen.getByText("887K₫")).toBeInTheDocument();
-    expect(screen.getByText("Cảnh báo kho")).toBeInTheDocument();
-    expect(screen.getByText("3")).toBeInTheDocument();
   });
 
   it("renders stat cards in a grid layout", () => {

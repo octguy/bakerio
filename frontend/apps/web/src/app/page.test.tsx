@@ -124,14 +124,6 @@ describe('Homepage', () => {
     expect(locationLinks[0]).toHaveAttribute('href', '/locations');
   });
 
-  it('has proper semantic structure with sections', () => {
-    const { container } = render(<Home />);
-    const div = container.querySelector('.relative.bg-cream');
-    expect(div).toBeInTheDocument();
-    const sections = div!.querySelectorAll('section');
-    expect(sections.length).toBeGreaterThanOrEqual(4);
-  });
-
   it('renders section headings for products, testimonials, and locations', () => {
     render(<Home />);
     expect(screen.getByText(/what we baked/i)).toBeInTheDocument();

@@ -11,7 +11,29 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@repo/api-client", () => ({
-  getOrderStats: vi.fn().mockResolvedValue({ lifetime: 47 }),
+  getOrderStats: vi.fn().mockResolvedValue({ lifetime: 88 }),
+}));
+
+vi.mock("@repo/api-client/mock/loyalty", () => ({
+  getLoyalty: vi.fn().mockResolvedValue({
+    balance: 1337,
+    asMoney: 25000,
+    progress: 0.75,
+    tier: "Sourdough Master",
+    nextTier: "Ultimate Baker",
+    toNextTier: 500,
+  }),
+}));
+
+vi.mock("@repo/api-client/mock/addresses", () => ({
+  getAddresses: vi.fn().mockResolvedValue([
+    {
+      id: "addr-distinctive",
+      label: "Secret Base",
+      address: "123 Adventure Lane",
+      is_default: true,
+    },
+  ]),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -68,6 +90,27 @@ describe("ProfilePage", () => {
 
     await waitFor(() => {
       expect(mockLogout).toHaveBeenCalled();
+    });
+  });
+
+  it("displays loyalty, address, and lifetime orders from the mocked data layer", async () => {
+    render(<ProfilePage />);
+
+    // Assert loyalty points (balance) and tier
+    await waitFor(() => {
+      expect(screen.getByText("1,337")).toBeInTheDocument();
+      expect(screen.getByText("Sourdough Master tier")).toBeInTheDocument();
+    });
+
+    // Assert lifetime orders count
+    await waitFor(() => {
+      expect(screen.getByText(/88 orders/i)).toBeInTheDocument();
+    });
+
+    // Assert fetched address label and detail
+    await waitFor(() => {
+      expect(screen.getByText("Secret Base")).toBeInTheDocument();
+      expect(screen.getByText("123 Adventure Lane")).toBeInTheDocument();
     });
   });
 });
