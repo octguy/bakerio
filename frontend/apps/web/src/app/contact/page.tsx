@@ -183,7 +183,7 @@ export default function ContactPage() {
               disabled={submitState === "pending"}
               className="bkr-press inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-cream"
             >
-              {submitState === "pending" ? "Sending..." : "Send message"} <span>→</span>
+              {submitState === "pending" ? "Sending…" : "Send message"} <span>→</span>
             </button>
           </form>
         )}

@@ -54,7 +54,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search bread, pastry, coffee..."
+          placeholder="Search bread, pastry, coffee…"
           className="min-w-0 flex-1 bg-transparent font-editorial text-[14px] italic text-espresso placeholder:text-caramel focus:outline-none"
         />
         {search ? (

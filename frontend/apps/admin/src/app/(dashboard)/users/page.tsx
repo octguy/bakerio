@@ -345,7 +345,7 @@ export default function UsersPage() {
             )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createMut.isPending}>{createMut.isPending ? "Creating..." : "Create User"}</Button>
+              <Button type="submit" disabled={createMut.isPending}>{createMut.isPending ? "Creating…" : "Create User"}</Button>
             </div>
           </form>
         </DialogContent>

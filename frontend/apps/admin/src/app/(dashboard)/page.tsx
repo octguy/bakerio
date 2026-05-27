@@ -188,7 +188,7 @@ export default function DashboardPage() {
             </div>
             <div className="mt-1 flex items-baseline gap-2.5">
               <span
-                className="font-display tracking-tight text-espresso"
+                className="font-display tabular-nums tracking-tight text-espresso"
                 style={{
                   fontSize: "30px",
                   lineHeight: 1,
