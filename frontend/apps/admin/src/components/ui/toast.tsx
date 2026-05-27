@@ -21,11 +21,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+      {/* aria-live="polite" ensures screen readers announce toast messages */}
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        role="status"
+        className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2"
+      >
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`rounded-md px-4 py-2 text-sm text-white shadow-lg animate-in slide-in-from-right ${
+            className={`rounded-md px-4 py-2 text-sm text-white shadow-lg motion-safe:animate-in motion-safe:slide-in-from-right ${
               t.type === "error" ? "bg-red-600" : t.type === "info" ? "bg-blue-600" : "bg-green-600"
             }`}
           >

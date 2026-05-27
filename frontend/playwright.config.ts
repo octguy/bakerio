@@ -35,6 +35,35 @@ export default defineConfig({
       name: "a11y",
       testMatch: /a11y\/.*/,
     },
+    // ── Visual screenshot projects (always capture, animations disabled) ──
+    {
+      name: "visual-web",
+      use: {
+        baseURL: "http://localhost:3000",
+        screenshot: "on",
+        video: "off",
+        launchOptions: { args: ["--disable-web-security"] },
+      },
+      testMatch: /visual\/web-.*/,
+    },
+    {
+      name: "visual-order",
+      use: {
+        baseURL: "http://localhost:3001",
+        screenshot: "on",
+        video: "off",
+      },
+      testMatch: /visual\/order-.*/,
+    },
+    {
+      name: "visual-admin",
+      use: {
+        baseURL: "http://localhost:3002",
+        screenshot: "on",
+        video: "off",
+      },
+      testMatch: /visual\/admin-.*/,
+    },
   ],
   webServer: [
     {

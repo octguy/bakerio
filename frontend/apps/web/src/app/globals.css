@@ -176,7 +176,8 @@ body {
 .btn-primary {
   background-color: var(--espresso);
   color: #fff;
-  transition: all 0.3s ease;
+  /* explicit properties only — no transition:all to avoid painting box-shadow on every frame */
+  transition: background-color 250ms ease-out, transform 150ms ease-out, box-shadow 250ms ease-out;
 }
 .btn-primary:hover {
   background-color: var(--cinnamon) !important;
@@ -189,23 +190,25 @@ body {
   border: 1px solid var(--espresso);
   color: var(--espresso);
   background-color: transparent;
-  transition: all 0.3s ease;
+  transition: background-color 250ms ease-out, color 250ms ease-out, transform 150ms ease-out;
 }
 .btn-outline:hover {
   background-color: var(--espresso) !important;
   color: #fff !important;
   transform: scale(1.02);
 }
+.btn-outline:active { transform: scale(0.97); }
 
 .btn-white {
   border: 1px solid #fff;
   color: #fff;
-  transition: all 0.3s ease;
+  transition: background-color 250ms ease-out, transform 150ms ease-out;
 }
 .btn-white:hover {
   background-color: rgba(255, 255, 255, 0.15) !important;
   transform: scale(1.02);
 }
+.btn-white:active { transform: scale(0.97); }
 
 @keyframes pulse-play {
   0%, 100% { transform: scale(1); }
