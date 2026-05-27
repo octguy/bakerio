@@ -15,8 +15,9 @@ export default function TestimonialCard({
   text,
   initials,
 }: TestimonialCardProps) {
+  // aria-label: card
   return (
-    <div className="rounded-xl bg-white p-6 shadow-sm">
+    <div className="rounded-xl bg-white p-6 shadow-sm" aria-label={name}>
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-golden/20 text-sm font-bold text-golden">
           {initials}

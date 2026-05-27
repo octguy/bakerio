@@ -31,9 +31,11 @@ export function BranchCard({ branch, index, isSelected, heroImage }: Props) {
   const dist = ["0.8 km", "2.1 km", "5.6 km", "7.2 km"][index % 4];
   const eta = ["15–25 min", "25–35 min", "35–50 min", "45–60 min"][index % 4];
 
+  // aria-label: card
   return (
     <button
       onClick={handleSelect}
+      aria-label={branch.name}
       className={`relative flex overflow-hidden rounded-2xl text-left transition-colors ${
         isSelected ? "border-2 border-espresso bg-white" : "border border-crust bg-white"
       }`}

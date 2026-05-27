@@ -119,7 +119,7 @@ export default function RegisterPage() {
         </div>
 
         <label className="mt-3 flex items-start gap-2 text-[11.5px] leading-[1.4] text-cocoa">
-          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 flex-shrink-0 accent-cinnamon" />
+          <input type="checkbox" aria-label="I agree to terms and conditions" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 flex-shrink-0 accent-cinnamon" />
           <span className="font-editorial italic">
             I agree to the <strong className="font-sans not-italic text-cinnamon">terms</strong> and{" "}
             <strong className="font-sans not-italic text-cinnamon">crumb-collecting policy</strong>.

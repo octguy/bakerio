@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { getProducts } from '@repo/api-client';
 
 vi.mock('next/image', () => ({
-  default: (props: Record<string, unknown>) => <img {...props} />,
+  default: (props: Record<string, unknown>) => <img alt="Mocked Image" {...props} />,
 }));
 
 vi.mock('next/link', () => ({

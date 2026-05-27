@@ -26,8 +26,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-full bg-[var(--admin-bg)] text-espresso">
+      <a href="#main-content" className="sr-only focus:not-sr-only">Skip to main content</a>
       <Sidebar />
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <main id="main-content" className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <AdminTopBar />
         <div className="flex-1 overflow-auto px-5 pt-4 pb-6 md:px-7 md:pt-6">{children}</div>
       </main>

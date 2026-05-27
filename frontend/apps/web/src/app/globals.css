@@ -100,9 +100,9 @@ body {
 }
 
 /* ── Editorial type utilities ───────────────────────────── */
-.font-display    { font-family: var(--font-display), 'DM Serif Display', Georgia, serif; }
-.font-editorial  { font-family: var(--font-editorial), 'Instrument Serif', Georgia, serif; font-style: italic; }
-.font-news       { font-family: var(--font-news), Georgia, serif; }
+.font-display    { font-family: var(--font-display), 'Newsreader', Georgia, serif; }
+.font-editorial  { font-family: var(--font-editorial), 'Newsreader', Georgia, serif; font-style: italic; }
+.font-news       { font-family: var(--font-news), 'Newsreader', Georgia, serif; }
 .font-mono       { font-family: var(--font-mono), ui-monospace, monospace; }
 .font-script     { font-family: var(--font-script), cursive; }
 
