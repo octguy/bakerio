@@ -479,14 +479,15 @@ export async function createOrder(data: CreateOrderRequest): Promise<Order> {
     const product =
       products.find((p) => p.id === item.product_id) ||
       mockProducts.find((p) => p.id === item.product_id);
-    if (!product) throw new Error(`Unknown product ${item.product_id}`);
+    const productName = product?.name ?? `Product ${item.product_id.slice(0, 8)}`;
+    const unitPrice = product?.base_price ?? 0;
     return {
       id: `oi-${orderIdCounter}-${i}`,
       product_id: item.product_id,
-      product_name: product.name,
+      product_name: productName,
       quantity: item.quantity,
-      unit_price: product.base_price,
-      total_price: product.base_price * item.quantity,
+      unit_price: unitPrice,
+      total_price: unitPrice * item.quantity,
     };
   });
 

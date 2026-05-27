@@ -9,7 +9,6 @@ interface FeaturedProductsProps {
 }
 
 export function FeaturedProducts({ featuredProducts, loading, formatVND }: FeaturedProductsProps) {
-  // aria-label: card
   if (loading) {
     return (
       <div className="py-24 text-center font-editorial text-[16px] italic text-caramel">

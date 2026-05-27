@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { cleanupByPrefix } from "./_cleanup";
 
 const RUN = Date.now();
 const MARK = `E2E ${RUN}`;
@@ -16,7 +17,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.afterAll(async () => {
-  const { cleanupByPrefix } = await import("./_cleanup");
   await cleanupByPrefix("categories", "E2E ");
 });
 
@@ -24,21 +24,52 @@ test.describe("Admin — Categories CRUD", () => {
   test("displays categories in the data table", async ({ page }) => {
     await page.goto("/categories");
     await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("table").getByText("Cakes", { exact: true })).toBeVisible();
-    await expect(page.locator("table").getByText("Pastries", { exact: true })).toBeVisible();
+    await expect(
+      page.locator("table").getByText("Cakes", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator("table").getByText("Pastries", { exact: true }),
+    ).toBeVisible();
+  });
+
+  test("data table search filters rows and exposes empty state", async ({
+    page,
+  }) => {
+    await page.goto("/categories");
+    await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
+
+    const search = page.getByLabel("Search categories...");
+    await search.fill("Cakes");
+    await expect(page.locator("tbody")).toContainText("Cakes");
+    await expect(page.locator("tbody")).not.toContainText("Pastries");
+    await expect(page.getByText("1 row(s)")).toBeVisible();
+
+    await search.fill(`missing-${RUN}`);
+    await expect(page.getByText("No results.")).toBeVisible();
+    await expect(page.getByText("0 row(s)")).toBeVisible();
   });
 
   test("creates a new category", async ({ page }) => {
     await page.goto("/categories");
-    await expect(page.getByRole("button", { name: /add category/i })).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole("button", { name: /add category/i }),
+    ).toBeVisible({ timeout: 10000 });
     await page.getByRole("button", { name: /add category/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
-    await page.getByRole("dialog").locator("input").first().fill(`${MARK} Create`);
+    await page
+      .getByRole("dialog")
+      .locator("input")
+      .first()
+      .fill(`${MARK} Create`);
     await page.getByRole("button", { name: /save/i }).click();
 
-    await expect(page.getByText("Category created")).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("table").getByText(`${MARK} Create`).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Category created")).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(
+      page.locator("table").getByText(`${MARK} Create`).first(),
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test("edits an existing category", async ({ page }) => {
@@ -48,10 +79,18 @@ test.describe("Admin — Categories CRUD", () => {
     // Create throwaway category
     await page.getByRole("button", { name: /add category/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await page.getByRole("dialog").locator("input").first().fill(`${MARK} Edit`);
+    await page
+      .getByRole("dialog")
+      .locator("input")
+      .first()
+      .fill(`${MARK} Edit`);
     await page.getByRole("button", { name: /save/i }).click();
-    await expect(page.getByText("Category created")).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("table").getByText(`${MARK} Edit`).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Category created")).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(
+      page.locator("table").getByText(`${MARK} Edit`).first(),
+    ).toBeVisible({ timeout: 10000 });
 
     // Click the edit (pencil) icon button in the table row actions for the created category
     const editRow = page.locator("tbody tr", { hasText: `${MARK} Edit` });
@@ -62,8 +101,12 @@ test.describe("Admin — Categories CRUD", () => {
     await nameInput.fill(`${MARK} Edited`);
     await page.getByRole("button", { name: /save/i }).click();
 
-    await expect(page.getByText("Category updated")).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("table").getByText(`${MARK} Edited`).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Category updated")).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(
+      page.locator("table").getByText(`${MARK} Edited`).first(),
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test("deletes a category", async ({ page }) => {
@@ -75,17 +118,28 @@ test.describe("Admin — Categories CRUD", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.getByRole("dialog").locator("input").first().fill(`${MARK} Del`);
     await page.getByRole("button", { name: /save/i }).click();
-    await expect(page.getByText("Category created")).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("table").getByText(`${MARK} Del`).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Category created")).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(
+      page.locator("table").getByText(`${MARK} Del`).first(),
+    ).toBeVisible({ timeout: 10000 });
 
     // Click the delete (trash) icon button — second button in created row's actions
     const deleteRow = page.locator("tbody tr", { hasText: `${MARK} Del` });
     await deleteRow.locator("button").nth(1).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
-    await page.getByRole("button", { name: /delete/i }).last().click();
+    await page
+      .getByRole("button", { name: /delete/i })
+      .last()
+      .click();
 
-    await expect(page.getByText("Category deleted")).toBeVisible({ timeout: 10000 });
-    await expect(page.locator("table").getByText(`${MARK} Del`, { exact: true })).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Category deleted")).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(
+      page.locator("table").getByText(`${MARK} Del`, { exact: true }),
+    ).not.toBeVisible({ timeout: 10000 });
   });
 });

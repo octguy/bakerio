@@ -31,17 +31,28 @@ export function BranchCard({ branch, index, isSelected, heroImage }: Props) {
   const dist = ["0.8 km", "2.1 km", "5.6 km", "7.2 km"][index % 4];
   const eta = ["15–25 min", "25–35 min", "35–50 min", "45–60 min"][index % 4];
 
-  // aria-label: card
   return (
     <button
       onClick={handleSelect}
       aria-label={branch.name}
-      className={`relative flex overflow-hidden rounded-2xl text-left transition-colors ${
-        isSelected ? "border-2 border-espresso bg-white" : "border border-crust bg-white"
+      style={{ minHeight: 100 }}
+      className={`relative flex w-full overflow-hidden rounded-2xl text-left transition-colors ${
+        isSelected
+          ? "border-2 border-espresso bg-white"
+          : "border border-crust bg-white"
       }`}
     >
-      <div className="relative h-[100px] w-[100px] flex-shrink-0">
-        <Image src={heroImage} alt={branch.name} fill className="object-cover" sizes="100px" />
+      <div
+        className="relative h-[100px] w-[100px] flex-shrink-0"
+        style={{ height: 100, width: 100 }}
+      >
+        <Image
+          src={heroImage}
+          alt={branch.name}
+          fill
+          className="pointer-events-none object-cover"
+          sizes="100px"
+        />
         {tag && (
           <span className="absolute left-2 top-2 rounded-full bg-cream px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.18em] text-cinnamon">
             ★ {tag}
@@ -53,11 +64,14 @@ export function BranchCard({ branch, index, isSelected, heroImage }: Props) {
           <h2 className="font-display text-[18px] leading-[1.05] tracking-tight text-espresso">
             {branch.name}
           </h2>
-          <p className="mt-0.5 font-editorial text-[12px] text-cinnamon">{branch.address}</p>
+          <p className="mt-0.5 font-editorial text-[12px] text-cinnamon">
+            {branch.address}
+          </p>
         </div>
         <div className="mt-2 flex items-center gap-2.5">
           <span className="inline-flex items-center gap-1 font-mono text-[10px] font-semibold text-sage">
-            <span className="bkr-pulse inline-block h-1.5 w-1.5 rounded-full bg-sage" /> Open
+            <span className="bkr-pulse inline-block h-1.5 w-1.5 rounded-full bg-sage" />{" "}
+            Open
           </span>
           <span className="font-mono text-[10px] text-cocoa">{dist}</span>
           <span className="font-mono text-[10px] text-caramel">· {eta}</span>

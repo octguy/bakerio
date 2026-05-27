@@ -15,7 +15,6 @@ interface RecentPostsProps {
 }
 
 export function RecentPosts({ featuredPosts }: RecentPostsProps) {
-  // aria-label: card
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
       {featuredPosts.map((post, i) => (

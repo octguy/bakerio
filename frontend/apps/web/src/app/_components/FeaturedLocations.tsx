@@ -11,7 +11,6 @@ interface FeaturedLocationsProps {
 }
 
 export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps) {
-  // aria-label: card
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
       {featuredLocations.map((l, i) => {

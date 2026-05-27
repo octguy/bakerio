@@ -7,16 +7,39 @@ import { test, expect } from "@playwright/test";
 // and keyboard assertions remain valid regardless.
 
 test.describe("Order — Customer Ordering App", () => {
+  async function loginCustomer(page: import("@playwright/test").Page) {
+    const res = await page.request.post("/api/auth", {
+      data: {
+        action: "login",
+        email: process.env.E2E_CUSTOMER_EMAIL,
+        password: process.env.E2E_CUSTOMER_PASSWORD,
+      },
+    });
+
+    expect(
+      res.ok(),
+      `customer auth failed: ${res.status()} ${await res.text()}`,
+    ).toBe(true);
+  }
+
   test("homepage shows branch selection", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i })).toBeVisible();
-    
+    await expect(
+      page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i }),
+    ).toBeVisible();
+
     const branchButtons = page.locator("main button");
     await expect(branchButtons).toHaveCount(3);
-    
-    await expect(page.getByRole("button", { name: /Bakerio Quận 1/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Bakerio Hoàn Kiếm/ })).toBeVisible();
-    await expect(page.getByRole("button", { name: /Bakerio Phú Nhuận/ })).toBeVisible();
+
+    await expect(
+      page.getByRole("button", { name: /Bakerio Quận 1/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Bakerio Hoàn Kiếm/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Bakerio Phú Nhuận/ }),
+    ).toBeVisible();
   });
 
   test("selecting a branch navigates to menu", async ({ page }) => {
@@ -42,7 +65,9 @@ test.describe("Order — Customer Ordering App", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test("full ordering flow: branch → menu → product detail", async ({ page }) => {
+  test("full ordering flow: branch → menu → product detail", async ({
+    page,
+  }) => {
     await page.goto("/");
     await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
     await expect(page).toHaveURL(/\/menu/);
@@ -51,5 +76,51 @@ test.describe("Order — Customer Ordering App", () => {
     await productLink.click();
     await expect(page).toHaveURL(/\/menu\/.+/);
     await expect(page.locator("main")).toBeVisible();
+  });
+
+  test("authenticated customer can add, review, and place an order", async ({
+    page,
+  }) => {
+    await loginCustomer(page);
+
+    await page.goto("/");
+    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
+    await expect(page).toHaveURL(/\/menu/);
+
+    await page.goto("/menu/traditional-croissant");
+    await expect(
+      page.getByRole("heading", { name: "Traditional Croissant" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Increase quantity" }).click();
+    await page.getByRole("button", { name: "Add to Cart" }).click();
+    await expect(page.getByText("Added to cart!")).toBeVisible();
+
+    await page.getByRole("button", { name: "View Cart" }).click();
+    await expect(page).toHaveURL(/\/cart/);
+    await expect(
+      page.getByRole("heading", { name: /2 items, baked fresh/i }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Increase quantity" }).click();
+    await expect(
+      page.getByRole("heading", { name: /3 items, baked fresh/i }),
+    ).toBeVisible();
+
+    await page.locator("a[href='/checkout']").click();
+    await expect(page).toHaveURL(/\/checkout/);
+    await expect(
+      page.getByRole("button", { name: /Pay with Pay at counter/i }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Delivery" }).click();
+    await expect(page.getByText("Deliver to")).toBeVisible();
+
+    await page
+      .getByRole("button", { name: /Pay with Pay at counter/i })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: /Order placed/i }),
+    ).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole("link", { name: /Track my order/i }),
+    ).toBeVisible();
   });
 });

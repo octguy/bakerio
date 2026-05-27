@@ -44,7 +44,7 @@ export function AdminTopBar() {
         <span className="text-espresso">{label}</span>
       </div>
 
-      <div className="mx-auto flex w-full max-w-[480px] items-center gap-2.5 rounded-md border border-[var(--admin-line)] bg-white px-3.5 py-2 focus-within:border-cinnamon">
+      <div className="mx-auto flex w-full max-w-[480px] items-center gap-2.5 rounded-md border border-[var(--admin-line)] bg-white px-3.5 py-2 focus-within:border-cinnamon focus-within:ring-2 focus-within:ring-cinnamon/30">
         <Search
           aria-hidden="true"
           className="h-3.5 w-3.5 text-[var(--admin-muted)]"
