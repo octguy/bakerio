@@ -219,6 +219,11 @@ export default function CategoriesPage() {
                 type="number"
                 {...register("sort_order")}
               />
+              {errors.sort_order && (
+                <p className="text-xs text-destructive mt-1">
+                  {errors.sort_order.message}
+                </p>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button

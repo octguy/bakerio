@@ -306,12 +306,23 @@ export default function UsersPage() {
             </div>
             <div>
               <Label htmlFor="create-user-email">Email</Label>
-              <Input id="create-user-email" type="email" {...register("email")} />
+              <Input
+                id="create-user-email"
+                type="email"
+                autoComplete="email"
+                spellCheck={false}
+                {...register("email")}
+              />
               {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
             </div>
             <div>
               <Label htmlFor="create-user-password">Password</Label>
-              <Input id="create-user-password" type="password" {...register("password")} />
+              <Input
+                id="create-user-password"
+                type="password"
+                autoComplete="new-password"
+                {...register("password")}
+              />
               {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
             </div>
             <div>

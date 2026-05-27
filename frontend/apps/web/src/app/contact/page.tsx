@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { z } from "zod";
 import { getContactEndpoint } from "@/lib/public-config";
@@ -23,6 +23,19 @@ export default function ContactPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitState, setSubmitState] = useState<"idle" | "pending" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -85,6 +98,7 @@ export default function ContactPage() {
       }
 
       form.reset();
+      setIsDirty(false);
       setSubmitState("success");
     } catch (error) {
       setSubmitState("error");
@@ -125,7 +139,12 @@ export default function ContactPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5" aria-busy={submitState === "pending"}>
+          <form
+            onSubmit={handleSubmit}
+            onChangeCapture={() => setIsDirty(true)}
+            className="space-y-5"
+            aria-busy={submitState === "pending"}
+          >
             {[
               { name: "name", label: "Your name", placeholder: "Linh Phạm" },
               { name: "email", label: "Email", placeholder: "you@example.com" },
@@ -142,6 +161,8 @@ export default function ContactPage() {
                   id={`contact-${f.name}`}
                   name={f.name}
                   type={f.name === "email" ? "email" : "text"}
+                  autoComplete={f.name === "email" ? "email" : undefined}
+                  spellCheck={f.name === "email" ? false : undefined}
                   placeholder={f.placeholder}
                   disabled={submitState === "pending"}
                   className="w-full rounded-md border border-crust bg-white px-4 py-3.5 text-[15px] text-espresso outline-none transition focus:border-cinnamon focus:ring-2 focus:ring-cinnamon/15"
