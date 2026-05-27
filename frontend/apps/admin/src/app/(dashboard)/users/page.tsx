@@ -197,22 +197,24 @@ export default function UsersPage() {
           }}
           className="rounded-full bg-espresso text-cream font-mono text-[11px] uppercase tracking-[0.08em] px-4 py-2 hover:bg-cinnamon transition-colors flex items-center gap-1.5"
         >
-          <Plus className="h-4 w-4" /> Add User
+          <Plus aria-hidden="true" className="h-4 w-4" /> Add User
         </Button>
       </div>
 
       {/* Staff Table */}
-      <div className="rounded-lg border border-[var(--admin-line)] bg-white">
-        <div
-          className="grid items-center border-b border-[var(--admin-line)] px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--admin-muted)]"
-          style={{ gridTemplateColumns: "2fr 1.5fr 1fr 1.5fr 1fr" }}
-        >
-          <span>Staff Member</span>
-          <span>Role</span>
-          <span>Branch</span>
-          <span>Shift</span>
-          <span>Status</span>
-        </div>
+      <div className="overflow-x-auto rounded-lg border border-[var(--admin-line)] bg-white">
+        <table className="min-w-full border-collapse">
+          <thead>
+            <tr className="border-b border-[var(--admin-line)] font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">
+              <th scope="col" className="px-4 py-3 text-left font-inherit">Name</th>
+              <th scope="col" className="px-4 py-3 text-left font-inherit">Email</th>
+              <th scope="col" className="px-4 py-3 text-left font-inherit">Role</th>
+              <th scope="col" className="px-4 py-3 text-left font-inherit">Branch</th>
+              <th scope="col" className="px-4 py-3 text-left font-inherit">Shift</th>
+              <th scope="col" className="px-4 py-3 text-left font-inherit">Status</th>
+            </tr>
+          </thead>
+          <tbody>
         {staff.map((s, i) => {
           const statusColors: Record<string, string> = {
             "clocked-in": "var(--sage)",
@@ -237,37 +239,37 @@ export default function UsersPage() {
           const avatarClass = avatarColors[s.accent] || "bg-espresso text-cream";
 
           return (
-            <div
+            <tr
               key={s.email}
-              className="grid items-center px-4 py-3.5"
-              style={{
-                gridTemplateColumns: "2fr 1.5fr 1fr 1.5fr 1fr",
-                borderBottom: i === staff.length - 1 ? undefined : "1px solid var(--admin-line)",
-              }}
+              className={i === staff.length - 1 ? undefined : "border-b border-[var(--admin-line)]"}
             >
-              <div className="flex items-center gap-3">
+              <td className="px-4 py-3.5">
+                <div className="flex items-center gap-3">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-full font-display text-[15px] ${avatarClass}`}>
                   {s.initial}
                 </div>
                 <div>
                   <div className="text-[14px] font-semibold text-espresso">{s.name}</div>
-                  <div className="font-mono text-[11px] text-[var(--admin-muted)]">{s.email}</div>
                 </div>
-              </div>
-              <span className="font-mono text-[12px] font-bold text-espresso">{s.role}</span>
-              <span className="font-editorial text-[14px] italic text-caramel">{s.branch}</span>
-              <span className="font-mono text-[12px] text-espresso">{s.shift}</span>
-              <span>
+                </div>
+              </td>
+              <td className="px-4 py-3.5 font-mono text-[11px] text-[var(--admin-muted)]">{s.email}</td>
+              <td className="px-4 py-3.5 font-mono text-[12px] font-bold text-espresso">{s.role}</td>
+              <td className="px-4 py-3.5 font-editorial text-[14px] italic text-caramel">{s.branch}</td>
+              <td className="px-4 py-3.5 font-mono text-[12px] text-espresso">{s.shift}</td>
+              <td className="px-4 py-3.5">
                 <span
                   className="rounded-full px-2.5 py-1 font-mono text-[10px] font-bold tracking-[0.06em]"
                   style={{ background: `${color}18`, color }}
                 >
                   ● {statusLabels[s.status]}
                 </span>
-              </span>
-            </div>
+              </td>
+            </tr>
           );
         })}
+          </tbody>
+        </table>
         {loading && (
           <div className="px-4 py-6 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
             Loading staff...
@@ -306,12 +308,23 @@ export default function UsersPage() {
             </div>
             <div>
               <Label htmlFor="create-user-email">Email</Label>
-              <Input id="create-user-email" type="email" {...register("email")} />
+              <Input
+                id="create-user-email"
+                type="email"
+                autoComplete="email"
+                spellCheck={false}
+                {...register("email")}
+              />
               {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
             </div>
             <div>
               <Label htmlFor="create-user-password">Password</Label>
-              <Input id="create-user-password" type="password" {...register("password")} />
+              <Input
+                id="create-user-password"
+                type="password"
+                autoComplete="new-password"
+                {...register("password")}
+              />
               {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
             </div>
             <div>
@@ -345,7 +358,7 @@ export default function UsersPage() {
             )}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createMut.isPending}>{createMut.isPending ? "Creating..." : "Create User"}</Button>
+              <Button type="submit" disabled={createMut.isPending}>{createMut.isPending ? "Creating…" : "Create User"}</Button>
             </div>
           </form>
         </DialogContent>

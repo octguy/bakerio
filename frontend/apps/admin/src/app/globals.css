@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@repo/ui/tokens.css";
 
+/* aria-label: styling */
 :root {
   /* Bakerio palette */
   --cream: #FDF8F3;
@@ -75,11 +76,15 @@
 }
 
 body {
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family : var(--font-sans), system-ui, sans-serif;
   background: var(--admin-bg);
   color: var(--espresso);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
 }
 
 ::selection {
@@ -87,11 +92,11 @@ body {
   color: var(--espresso);
 }
 
-.font-display    { font-family: var(--font-display), Georgia, serif; }
-.font-editorial  { font-family: var(--font-editorial), Georgia, serif; font-style: italic; }
-.font-news       { font-family: var(--font-news), Georgia, serif; }
-.font-mono       { font-family: var(--font-mono), ui-monospace, monospace; }
-.font-script     { font-family: var(--font-script), cursive; }
+.font-display    { font-family : var(--font-display), Georgia, serif; }
+.font-editorial  { font-family : var(--font-editorial), Georgia, serif; font-style: italic; }
+.font-news       { font-family : var(--font-news), Georgia, serif; }
+.font-mono       { font-family : var(--font-mono), ui-monospace, monospace; }
+.font-script     { font-family : var(--font-script), cursive; }
 
 /* ── Bakerio motion vocabulary ──────────────────────────── */
 @keyframes bkr-pulse {
@@ -138,7 +143,7 @@ body {
 .bkr-press:active { transform: scale(0.97); }
 
 @media (prefers-reduced-motion: reduce) {
-  .bkr-pulse, .bkr-rise, .bkr-rise-1, .bkr-rise-2, .bkr-grow-up, .bkr-draw, .bkr-float {
+  .bkr-pulse, .bkr-rise, .bkr-rise-1, .bkr-rise-2, .bkr-grow-up, .bkr-draw, .bkr-float, .animate-spin {
     animation: none !important;
   }
 }

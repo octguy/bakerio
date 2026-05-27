@@ -241,6 +241,7 @@ function LoginContent() {
         />
 
         <div
+          aria-hidden="true"
           className="bkr-float absolute left-20 top-20 flex h-[140px] w-[140px] flex-col items-center justify-center rounded-full bg-cinnamon text-cream shadow-[0_12px_30px_rgba(44,24,16,0.4)]"
           style={{ ["--rot" as string]: "-8deg", transform: "rotate(-8deg)" }}
         >

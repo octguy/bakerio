@@ -81,7 +81,7 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: Da
         </table>
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground tabular-nums">
           {table.getFilteredRowModel().rows.length} row(s)
         </p>
         <div className="flex gap-2">

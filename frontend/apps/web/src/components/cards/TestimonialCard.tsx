@@ -15,6 +15,7 @@ export default function TestimonialCard({
   text,
   initials,
 }: TestimonialCardProps) {
+  // aria-label: card
   return (
     <div className="rounded-xl bg-white p-6 shadow-sm" aria-label={name}>
       <div className="flex items-center gap-3">

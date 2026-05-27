@@ -1,4 +1,5 @@
 export default function TeamMemberCard({ name, role, initials, bio }: { name: string; role: string; initials: string; bio: string }) {
+  // aria-label: card
   return (
     <div className="text-center" aria-label={name}>
       <div className="w-24 h-24 rounded-full bg-golden flex items-center justify-center mx-auto mb-4">

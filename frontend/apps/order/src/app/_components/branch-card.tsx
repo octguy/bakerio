@@ -53,10 +53,8 @@ export function BranchCard({ branch, index, isSelected, heroImage }: Props) {
       onClick={handleSelect}
       aria-label={branch.name}
       style={{ minHeight: 100, viewTransitionName: isMorphing ? "selected-branch" : undefined }}
-      className={`relative flex w-full overflow-hidden rounded-2xl text-left transition-colors ${
-        isSelected
-          ? "border-2 border-espresso bg-white"
-          : "border border-crust bg-white"
+      className={`relative flex w-full overflow-hidden rounded-2xl text-left transition-colors transition-transform transition-shadow hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98] ${
+        isSelected ? "border-2 border-espresso bg-white" : "border border-crust bg-white"
       }`}
     >
       <div

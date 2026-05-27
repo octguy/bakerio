@@ -113,7 +113,7 @@ export default function Home() {
                 { n: "48h", label: "Lên men", sub: "sourdough" },
               ].map((d) => (
                 <div key={d.label}>
-                  <div className="font-display text-[34px] leading-none tracking-tight text-espresso">{d.n}</div>
+                  <div className="font-display tabular-nums text-[34px] leading-none tracking-tight text-espresso">{d.n}</div>
                   <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-cinnamon">
                     {d.label}
                   </div>

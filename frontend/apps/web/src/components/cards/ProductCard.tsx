@@ -7,6 +7,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ name, price, image }: ProductCardProps) {
+  // aria-label: card
   return (
     <div className="rounded-[10px] overflow-hidden bg-white shadow-[0_4px_16px_rgba(44,24,16,0.08)]" aria-label={name}>
       <div className="relative h-56 w-full">

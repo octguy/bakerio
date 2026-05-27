@@ -1,6 +1,5 @@
 "use client";
 
-
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
 import { setMockOrderSessionUser } from "@repo/api-client/mock";
 

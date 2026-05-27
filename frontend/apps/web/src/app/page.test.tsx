@@ -1,3 +1,5 @@
+// aria-label: mock
+// gsap.kill()
 import { render, screen, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { getProducts } from '@repo/api-client';

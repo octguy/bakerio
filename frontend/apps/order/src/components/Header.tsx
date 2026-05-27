@@ -28,7 +28,7 @@ export function Header() {
             aria-label="Shopping cart"
             className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-crust bg-white text-espresso"
           >
-            <ShoppingBag size={16} />
+            <ShoppingBag size={16} aria-hidden="true" />
             {itemCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-cinnamon font-mono text-[9.5px] font-bold text-white">
                 {itemCount}
@@ -45,7 +45,7 @@ export function Header() {
                 {userInitial}
               </Link>
               <button onClick={logout} aria-label="Log out" className="p-2 text-caramel transition-colors hover:text-espresso">
-                <LogOut size={16} />
+                <LogOut size={16} aria-hidden="true" />
               </button>
             </div>
           ) : (

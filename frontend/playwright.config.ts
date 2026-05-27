@@ -42,7 +42,7 @@ export default defineConfig({
       name: "a11y",
       testMatch: /a11y\/.*/,
     },
-    // ── Visual screenshot projects (always capture, animations disabled) ──
+    // Visual screenshot projects (always capture, animations disabled)
     {
       name: "visual-web",
       use: {

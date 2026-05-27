@@ -91,7 +91,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search bread, pastry, coffee..."
+          placeholder="Search bread, pastry, coffee…"
           className="min-w-0 flex-1 bg-transparent font-editorial text-[14px] italic text-espresso placeholder:text-caramel focus:outline-none"
         />
         {search ? (
@@ -111,7 +111,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
           type="button"
           aria-pressed={activeCategory === "all"}
           onClick={() => setActiveCategory("all")}
-          className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors ${
+          className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors transition-transform active:scale-[0.97] ${
             activeCategory === "all" ? "bg-espresso text-white" : "border border-crust bg-white text-espresso"
           }`}
         >
@@ -126,7 +126,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
               type="button"
               aria-pressed={isActive}
               onClick={() => setActiveCategory(cat.id)}
-              className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors ${
+              className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors transition-transform active:scale-[0.97] ${
                 isActive ? "bg-espresso text-white" : "border border-crust bg-white text-espresso"
               }`}
             >

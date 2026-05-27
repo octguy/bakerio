@@ -181,7 +181,7 @@ export default function ProductsPage() {
             setOpen(true);
           }}
         >
-          <Plus className="h-4 w-4" /> Add Product
+          <Plus aria-hidden="true" className="h-4 w-4" /> Add Product
         </Button>
       </div>
 

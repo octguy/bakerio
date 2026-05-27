@@ -1,3 +1,4 @@
+// aria-label: page
 import { getBranches, type Branch } from "@repo/api-client";
 import Link from "next/link";
 import { BranchCard } from "./_components/branch-card";
