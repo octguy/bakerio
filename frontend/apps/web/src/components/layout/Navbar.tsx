@@ -80,14 +80,14 @@ export default function Navbar() {
               href={orderUrl}
               className="hidden md:inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors bkr-press bg-espresso text-cream hover:bg-cocoa"
             >
-              Order online <span aria-hidden>→</span>
+              Order online <span aria-hidden="true">→</span>
             </a>
             <button
               className={`md:hidden transition-all duration-300 ease-[ease] text-espresso ${menuOpen ? "rotate-180" : "rotate-0"}`}
               onClick={() => setMenuOpen(true)}
               aria-label="Open menu"
             >
-              <Menu size={24} />
+              <Menu size={24} aria-hidden="true" />
             </button>
           </div>
         </div>

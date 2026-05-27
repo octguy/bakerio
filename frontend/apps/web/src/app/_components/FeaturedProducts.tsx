@@ -32,7 +32,8 @@ export function FeaturedProducts({ featuredProducts, loading, formatVND }: Featu
               sizes="(max-width: 768px) 100vw, 40vw"
             />
             <span className="absolute left-4 top-4 rounded-full border border-crust bg-cream px-3 py-1.5 font-mono text-[9.5px] uppercase tracking-[0.2em] text-cinnamon">
-              ★ House signature
+              <span aria-hidden="true">★ </span>
+              House signature
             </span>
             <span className="absolute right-4 top-4 rounded-sm bg-espresso px-3.5 py-2 font-display text-[20px] text-cream">
               {formatVND(featuredProducts[0].base_price)}₫
@@ -54,7 +55,10 @@ export function FeaturedProducts({ featuredProducts, loading, formatVND }: Featu
               >
                 Add to cart
               </Link>
-              <span className="font-mono text-[10.5px] tracking-[0.1em] text-caramel">⏱ READY IN 10 MIN</span>
+              <span className="font-mono text-[10.5px] tracking-[0.1em] text-caramel">
+                <span aria-hidden="true">⏱ </span>
+                READY IN 10 MIN
+              </span>
             </div>
           </div>
         </article>
