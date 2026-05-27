@@ -39,8 +39,8 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: Da
     <div className="space-y-4">
       {searchKey && (
         <Input
-          placeholder={searchPlaceholder || "Search..."}
-          aria-label={searchPlaceholder || "Search..."}
+          placeholder={searchPlaceholder || "Search…"}
+          aria-label={searchPlaceholder || "Search…"}
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-sm"
@@ -81,7 +81,7 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: Da
         </table>
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground tabular-nums">
           {table.getFilteredRowModel().rows.length} row(s)
         </p>
         <div className="flex gap-2">

@@ -83,6 +83,10 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
 ::selection {
   background: rgba(212, 148, 58, 0.25);
   color: var(--espresso);

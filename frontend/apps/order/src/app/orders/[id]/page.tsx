@@ -266,10 +266,10 @@ function OrderTrackingPageInner({ params }: PageProps) {
           {order.items.map((it) => (
             <div key={it.id} className="flex justify-between items-center text-[13.5px] text-espresso">
               <span>
-                <span className="font-mono text-[12px] font-bold text-cinnamon mr-2">{it.quantity}x</span>
+                <span className="mr-2 font-mono tabular-nums text-[12px] font-bold text-cinnamon">{it.quantity}x</span>
                 {it.product_name}
               </span>
-              <span className="font-mono">{formatVND(it.total_price)}</span>
+              <span className="font-mono tabular-nums">{formatVND(it.total_price)}</span>
             </div>
           ))}
         </div>
@@ -279,18 +279,18 @@ function OrderTrackingPageInner({ params }: PageProps) {
           <div className="flex flex-col gap-1.5 border-b border-crust pb-3 mb-3 text-[12.5px] text-cocoa">
             <div className="flex justify-between">
               <span>Subtotal</span>
-              <span className="font-mono">{formatVND(order.subtotal_amount)}</span>
+              <span className="font-mono tabular-nums">{formatVND(order.subtotal_amount)}</span>
             </div>
             {order.loyalty_discount_amount ? (
               <div className="flex justify-between text-sage font-semibold">
                 <span>Crumbs Discount {order.crumbs_redeemed ? `(${order.crumbs_redeemed})` : ""}</span>
-                <span className="font-mono">−{formatVND(order.loyalty_discount_amount)}</span>
+                <span className="font-mono tabular-nums">−{formatVND(order.loyalty_discount_amount)}</span>
               </div>
             ) : null}
             {order.delivery_fee_amount ? (
               <div className="flex justify-between">
                 <span>Delivery Fee</span>
-                <span className="font-mono">{formatVND(order.delivery_fee_amount)}</span>
+                <span className="font-mono tabular-nums">{formatVND(order.delivery_fee_amount)}</span>
               </div>
             ) : null}
           </div>
@@ -298,7 +298,7 @@ function OrderTrackingPageInner({ params }: PageProps) {
 
         <div className="flex justify-between items-center">
           <span className="font-display text-[16px] text-espresso">Total amount</span>
-          <span className="font-display text-[20px] text-espresso">{formatVND(order.total_amount)}</span>
+          <span className="font-display tabular-nums text-[20px] text-espresso">{formatVND(order.total_amount)}</span>
         </div>
       </div>
 

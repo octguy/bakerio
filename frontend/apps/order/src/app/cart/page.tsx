@@ -90,7 +90,7 @@ function CartPageInner() {
           letterSpacing: "-0.02em",
         }}
       >
-        {items.reduce((s, i) => s + i.quantity, 0)} items, baked <span className="font-editorial text-cinnamon">fresh.</span>
+        <span className="tabular-nums">{items.reduce((s, i) => s + i.quantity, 0)}</span> items, baked <span className="font-editorial text-cinnamon">fresh.</span>
       </h1>
 
       {/* Pickup card */}
@@ -128,7 +128,7 @@ function CartPageInner() {
               </div>
             </div>
             <div className="text-right">
-              <div className="font-display text-[14px] leading-none text-espresso">{formatVND(item.unitPrice * item.quantity)}</div>
+              <div className="font-display tabular-nums text-[14px] leading-none text-espresso">{formatVND(item.unitPrice * item.quantity)}</div>
               <div className="mt-2 inline-flex items-center rounded-full border border-crust font-mono text-[11px]">
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -137,7 +137,7 @@ function CartPageInner() {
                 >
                   −
                 </button>
-                <span className="min-w-[18px] text-center font-bold text-espresso">{item.quantity}</span>
+                <span className="min-w-[18px] tabular-nums text-center font-bold text-espresso">{item.quantity}</span>
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
                   className="flex h-[22px] w-[22px] items-center justify-center text-espresso"
@@ -167,12 +167,12 @@ function CartPageInner() {
             }}
           >
             <span>{r.l}</span>
-            <span className="font-mono">{r.v}</span>
+            <span className="font-mono tabular-nums">{r.v}</span>
           </div>
         ))}
         <div className="mt-3 flex items-baseline justify-between border-t border-crust pt-3">
           <span className="font-display text-[20px] text-espresso">Total</span>
-          <span className="font-display text-[26px] tracking-tight text-espresso">{formatVND(total)}</span>
+          <span className="font-display tabular-nums text-[26px] tracking-tight text-espresso">{formatVND(total)}</span>
         </div>
       </div>
 
@@ -189,7 +189,7 @@ function CartPageInner() {
           href="/checkout"
           className="bkr-press flex items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream"
         >
-          <span>Pay {formatVND(total)}</span>
+          <span className="tabular-nums">Pay {formatVND(total)}</span>
           <span className="flex items-center gap-2">
             <span className="font-mono text-[11px] opacity-75">Continue</span>
             <span aria-hidden="true">→</span>

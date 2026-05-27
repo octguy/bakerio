@@ -168,7 +168,7 @@ export default function CategoriesPage() {
       </div>
 
       {isLoading ? (
-        <p>Loading...</p>
+        <p>Loading…</p>
       ) : (
         <DataTable
           columns={columns}
