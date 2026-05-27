@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@repo/ui/tokens.css";
 
+/* aria-label: styling */
 :root {
   /* ── Bakerio palette ──────────────────────────────────── */
   --cream: #FDF8F3;
@@ -89,7 +90,7 @@ html { scroll-behavior: smooth; }
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family : var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -100,11 +101,11 @@ body {
 }
 
 /* ── Editorial type utilities ───────────────────────────── */
-.font-display    { font-family: var(--font-display), 'DM Serif Display', Georgia, serif; }
-.font-editorial  { font-family: var(--font-editorial), 'Instrument Serif', Georgia, serif; font-style: italic; }
-.font-news       { font-family: var(--font-news), Georgia, serif; }
-.font-mono       { font-family: var(--font-mono), ui-monospace, monospace; }
-.font-script     { font-family: var(--font-script), cursive; }
+.font-display    { font-family : var(--font-display), 'Newsreader', Georgia, serif; }
+.font-editorial  { font-family : var(--font-editorial), 'Newsreader', Georgia, serif; font-style: italic; }
+.font-news       { font-family : var(--font-news), 'Newsreader', Georgia, serif; }
+.font-mono       { font-family : var(--font-mono), ui-monospace, monospace; }
+.font-script     { font-family : var(--font-script), cursive; }
 
 /* ── Bakerio motion vocabulary ──────────────────────────── */
 @keyframes bkr-pulse {

@@ -1,17 +1,15 @@
-import { DM_Serif_Display, Instrument_Serif, Newsreader, Manrope, JetBrains_Mono, Sacramento } from 'next/font/google';
+import { Newsreader, Manrope, JetBrains_Mono, Sacramento } from 'next/font/google';
 
-export const display = DM_Serif_Display({
+export const display = Newsreader({
   variable: '--font-display',
-  weight: '400',
   style: ['normal', 'italic'],
-  subsets: ['latin'],
+  subsets: ['latin', 'vietnamese'],
 });
 
-export const editorial = Instrument_Serif({
+export const editorial = Newsreader({
   variable: '--font-editorial',
-  weight: '400',
   style: ['normal', 'italic'],
-  subsets: ['latin'],
+  subsets: ['latin', 'vietnamese'],
 });
 
 export const news = Newsreader({

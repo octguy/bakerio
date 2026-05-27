@@ -41,9 +41,7 @@ export default function Navbar() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <Link
             href="/"
-            className={`flex items-baseline gap-3 transition-colors duration-300 ${
-              scrolled ? "text-espresso" : "text-white"
-            }`}
+            className="flex items-baseline gap-3 transition-colors duration-300 text-espresso"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
               <path d="M12 22V8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -52,11 +50,7 @@ export default function Navbar() {
               <path d="M12 12c2.5-.5 4.5-1.7 4.5-3.5 0-1-.5-1.7-1.5-2-1.5 1-2.5 2.7-3 5.5z" stroke="currentColor" strokeWidth="1.2" />
             </svg>
             <span className="font-display text-[1.4rem] leading-none tracking-tight">Bakerio</span>
-            <span
-              className={`hidden md:inline font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                scrolled ? "text-caramel" : "text-white/70"
-              }`}
-            >
+            <span className="hidden md:inline font-mono text-[10px] uppercase tracking-[0.18em] transition-colors text-caramel">
               est. mmxxiv · saigon
             </span>
           </Link>
@@ -69,12 +63,8 @@ export default function Navbar() {
                 aria-current={isActiveLink(link.href) ? "page" : undefined}
                 className={`border-b pb-0.5 text-[13px] font-medium tracking-wide transition-colors duration-300 ${
                   isActiveLink(link.href)
-                    ? scrolled
-                      ? "border-espresso text-espresso"
-                      : "border-white/80 text-white"
-                    : scrolled
-                      ? "border-transparent text-caramel hover:text-espresso"
-                      : "border-transparent text-white/85 hover:text-white"
+                    ? "border-espresso text-espresso"
+                    : "border-transparent text-caramel hover:text-espresso"
                 }`}
               >
                 {link.label}
@@ -83,27 +73,17 @@ export default function Navbar() {
           </nav>
 
           <div className="flex items-center gap-4">
-            <span
-              className={`hidden md:inline font-mono text-[10.5px] tracking-[0.12em] transition-colors ${
-                scrolled ? "text-caramel" : "text-white/70"
-              }`}
-            >
+            <span className="hidden md:inline font-mono text-[10.5px] tracking-[0.12em] transition-colors text-caramel">
               vi · en
             </span>
             <a
               href={orderUrl}
-              className={`hidden md:inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors bkr-press ${
-                scrolled
-                  ? "bg-espresso text-cream hover:bg-cocoa"
-                  : "bg-white text-espresso hover:bg-cream"
-              }`}
+              className="hidden md:inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors bkr-press bg-espresso text-cream hover:bg-cocoa"
             >
               Order online <span aria-hidden>→</span>
             </a>
             <button
-              className={`md:hidden transition-all duration-300 ease-[ease] ${
-                scrolled ? "text-espresso" : "text-white"
-              } ${menuOpen ? "rotate-180" : "rotate-0"}`}
+              className={`md:hidden transition-all duration-300 ease-[ease] text-espresso ${menuOpen ? "rotate-180" : "rotate-0"}`}
               onClick={() => setMenuOpen(true)}
               aria-label="Open menu"
             >

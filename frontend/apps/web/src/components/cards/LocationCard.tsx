@@ -18,8 +18,9 @@ export default function LocationCard({
       ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
       : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
+  // aria-label: card
   return (
-    <div className="rounded-[10px] border border-crust bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+    <div className="rounded-[10px] border border-crust bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md" aria-label={name}>
       <h3 className="font-bold text-espresso">{name}</h3>
       <p className="mt-1 text-sm text-warm-gray">{address}</p>
       {hours && <p className="mt-1 text-sm text-warm-gray">{hours}</p>}

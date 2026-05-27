@@ -40,6 +40,7 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: Da
       {searchKey && (
         <Input
           placeholder={searchPlaceholder || "Search..."}
+          aria-label={searchPlaceholder || "Search..."}
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-sm"

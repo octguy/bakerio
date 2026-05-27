@@ -1,3 +1,4 @@
+// aria-label: page
 import { getBranches, type Branch } from "@repo/api-client";
 import Link from "next/link";
 import { BranchCard } from "./_components/branch-card";
@@ -21,7 +22,7 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="mx-auto max-w-md px-6 pt-6 pb-32">
+    <main id="main-content" className="mx-auto max-w-md px-6 pt-6 pb-32">
       {/* Greeting */}
       <section className="pb-6 pt-4">
         <span className="block font-script text-[28px] leading-none text-cinnamon">good morning,</span>
