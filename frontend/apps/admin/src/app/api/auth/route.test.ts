@@ -1,5 +1,19 @@
-import { describe, expect, it } from "vitest";
-import { STAFF_ROLES, getTokenRoles, hasStaffAccess } from "./route";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { POST, getTokenRoles, hasStaffAccess } from "./route";
+import { NextRequest } from "next/server";
+
+// Mock next/headers cookies
+const mockSet = vi.fn();
+const mockDelete = vi.fn();
+const mockGet = vi.fn();
+
+vi.mock("next/headers", () => ({
+  cookies: vi.fn().mockImplementation(async () => ({
+    set: mockSet,
+    delete: mockDelete,
+    get: mockGet,
+  })),
+}));
 
 // Helper to build a JWT-like token string
 function buildToken(payload: Record<string, any>): string {
@@ -74,6 +88,83 @@ describe("Admin Route Auth Gating Logic", () => {
       const token = buildToken({ roles: ["branch_staff"] });
       const roles = getTokenRoles(token);
       expect(hasStaffAccess(roles)).toBe(true);
+    });
+  });
+
+  describe("POST handler", () => {
+    let originalFetch: typeof global.fetch;
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+      mockSet.mockClear();
+      mockDelete.mockClear();
+      mockGet.mockClear();
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it("POST non-staff JWT (roles ['customer']) -> status 403 AND no admin_token cookie set", async () => {
+      const customerToken = buildToken({ roles: ["customer"] });
+      global.fetch = vi.fn().mockResolvedValue({
+        text: () => Promise.resolve(JSON.stringify({ data: { access_token: customerToken } })),
+      } as any);
+
+      const req = new NextRequest("http://localhost/api/auth", {
+        method: "POST",
+        body: JSON.stringify({ action: "login", email: "customer@bakerio.com", password: "password" }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+      expect(mockSet).not.toHaveBeenCalled();
+    });
+
+    it("POST staff JWT -> status 200 AND httpOnly admin_token cookie set", async () => {
+      const staffToken = buildToken({ roles: ["branch_staff"] });
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          text: () => Promise.resolve(JSON.stringify({ data: { access_token: staffToken } })),
+        } as any)
+        .mockResolvedValueOnce({
+          text: () => Promise.resolve(JSON.stringify({ data: { id: "u-staff", email: "staff@bakerio.com" } })),
+        } as any);
+
+      const req = new NextRequest("http://localhost/api/auth", {
+        method: "POST",
+        body: JSON.stringify({ action: "login", email: "staff@bakerio.com", password: "password" }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(mockSet).toHaveBeenCalledWith("admin_token", staffToken, expect.objectContaining({ httpOnly: true }));
+    });
+
+    it("POST where backend login errors -> status 401", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        text: () => Promise.resolve(JSON.stringify({ error: { message: "Invalid credentials" } })),
+      } as any);
+
+      const req = new NextRequest("http://localhost/api/auth", {
+        method: "POST",
+        body: JSON.stringify({ action: "login", email: "wrong@bakerio.com", password: "password" }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(401);
+      expect(mockSet).not.toHaveBeenCalled();
+    });
+
+    it("action:'logout' -> admin_token cookie deleted", async () => {
+      const req = new NextRequest("http://localhost/api/auth", {
+        method: "POST",
+        body: JSON.stringify({ action: "logout" }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(mockDelete).toHaveBeenCalledWith("admin_token");
     });
   });
 });

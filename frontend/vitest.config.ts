@@ -8,39 +8,45 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const appAliasRoots = [
+  { marker: '/apps/admin/', root: path.resolve(__dirname, 'apps/admin/src') },
+  { marker: '/apps/order/', root: path.resolve(__dirname, 'apps/order/src') },
+  { marker: '/apps/web/', root: path.resolve(__dirname, 'apps/web/src') },
+];
+
+const resolveExtensions = ['.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'];
+
+function resolveExistingPath(basePath: string) {
+  for (const ext of resolveExtensions) {
+    const candidate = basePath + ext;
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return basePath;
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    {
+      name: 'bakerio-app-alias',
+      enforce: 'pre',
+      resolveId(source, importer) {
+        if (!source.startsWith('@/') || !importer) {
+          return null;
+        }
+        const app = appAliasRoots.find((entry) => importer.includes(entry.marker));
+        if (!app) {
+          return null;
+        }
+        return resolveExistingPath(path.resolve(app.root, source.slice(2)));
+      },
+    },
+    react(),
+  ],
   resolve: {
     alias: [
       { find: '@repo/api-client', replacement: path.resolve(__dirname, 'packages/api-client/src') },
-      {
-        find: /^@\/(.*)$/,
-        replacement: '$1',
-        customResolver(source, importer, options) {
-          if (importer) {
-            const cleanSource = source.startsWith('@/') ? source.substring(2) : source;
-            let resolved = null;
-            if (importer.includes('/apps/admin/')) {
-              resolved = path.resolve(__dirname, 'apps/admin/src', cleanSource);
-            } else if (importer.includes('/apps/order/')) {
-              resolved = path.resolve(__dirname, 'apps/order/src', cleanSource);
-            } else if (importer.includes('/apps/web/')) {
-              resolved = path.resolve(__dirname, 'apps/web/src', cleanSource);
-            }
-            if (resolved) {
-              const extensions = ['.ts', '.tsx', '.js', '.jsx', '/index.ts', '/index.tsx', '/index.js', '/index.jsx'];
-              for (const ext of extensions) {
-                if (fs.existsSync(resolved + ext)) {
-                  resolved = resolved + ext;
-                  break;
-                }
-              }
-            }
-            return resolved;
-          }
-          return null;
-        }
-      }
     ],
   },
   test: {

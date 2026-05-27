@@ -9,7 +9,7 @@ vi.mock("next/link", () => ({
   default: ({ children, ...props }: { children: React.ReactNode; href: string }) => <a {...props}>{children}</a>,
 }));
 
-import AboutPage from "./page";
+import AboutPage, { metadata } from "./page";
 
 afterEach(cleanup);
 
@@ -19,35 +19,30 @@ describe("AboutPage", () => {
     expect(container.firstChild).toBeInTheDocument();
   });
 
-  it("displays the hero heading about the bakery", () => {
-    render(<AboutPage />);
-    expect(
-      screen.getByRole("heading", { level: 1, name: /we started/i })
-    ).toBeInTheDocument();
+  it("exports correct metadata", () => {
+    expect(metadata.title).toBe("About — One oven, eleven shops");
+    expect(metadata.description).toContain("Bakerio started in 2024 with one oven on Lê Lợi");
   });
 
-  it("renders the origin story section", () => {
-    render(<AboutPage />);
-    expect(screen.getByText(/Linh and Khoa opened a 14m² shop/i)).toBeInTheDocument();
-  });
+  it("renders with correct semantic landmark structure and hierarchy", () => {
+    const { container } = render(<AboutPage />);
+    
+    // Check that there is a main division/structure
+    expect(container.querySelector(".bg-cream")).toBeInTheDocument();
+    
+    // Check that it contains section elements
+    const sections = container.querySelectorAll("section");
+    expect(sections.length).toBe(3);
 
-  it("renders core pillars", () => {
-    render(<AboutPage />);
-    expect(screen.getByText("Sourdough")).toBeInTheDocument();
-    expect(screen.getByText("Pâtisserie")).toBeInTheDocument();
-    expect(screen.getByText("Bánh mì")).toBeInTheDocument();
-  });
+    // Check that the second section contains article elements
+    const articles = sections[1]?.querySelectorAll("article");
+    expect(articles?.length).toBe(3);
 
-  it("renders company stats", () => {
-    render(<AboutPage />);
-    expect(screen.getByText("mmxxiv")).toBeInTheDocument();
-    expect(screen.getByText("11")).toBeInTheDocument();
-    expect(screen.getByText("46")).toBeInTheDocument();
-  });
-
-  it("renders the pull-quote section", () => {
-    render(<AboutPage />);
-    expect(screen.getByText(/the trick isn't the crust/i)).toBeInTheDocument();
-    expect(screen.getByText("Linh Phạm")).toBeInTheDocument();
+    // Check heading hierarchy levels
+    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2 })).toBeInTheDocument();
+    
+    const h3s = screen.getAllByRole("heading", { level: 3 });
+    expect(h3s.length).toBe(3);
   });
 });

@@ -47,7 +47,27 @@ services:
       -c \"INSERT INTO product.categories (id, name, slug, sort_order, is_active) VALUES
       ('00000000-0000-0000-0000-000000000201', 'Cakes', 'cakes', 1, true),
       ('00000000-0000-0000-0000-000000000202', 'Pastries', 'pastries', 2, true)
-      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, sort_order = EXCLUDED.sort_order, is_active = EXCLUDED.is_active;\""
+      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, sort_order = EXCLUDED.sort_order, is_active = EXCLUDED.is_active;\"
+      -c \"INSERT INTO product.products (id, name, slug, category_id, price, sort_order, is_active) VALUES
+      ('00000000-0000-0000-0000-000000000301', 'Traditional Croissant', 'traditional-croissant', '00000000-0000-0000-0000-000000000202', 45000.00, 1, true),
+      ('00000000-0000-0000-0000-000000000302', 'Sourdough Bread', 'sourdough-bread', '00000000-0000-0000-0000-000000000202', 85000.00, 2, true),
+      ('00000000-0000-0000-0000-000000000303', 'Chocolate Croissant', 'chocolate-croissant', '00000000-0000-0000-0000-000000000202', 50000.00, 3, true),
+      ('00000000-0000-0000-0000-000000000304', 'Red Velvet Cake', 'red-velvet-cake', '00000000-0000-0000-0000-000000000201', 350000.00, 4, true)
+      ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, slug = EXCLUDED.slug, category_id = EXCLUDED.category_id, price = EXCLUDED.price, sort_order = EXCLUDED.sort_order, is_active = EXCLUDED.is_active;\"
+      -c \"INSERT INTO product.branch_products (product_id, branch_id, is_active) VALUES
+      ('00000000-0000-0000-0000-000000000301', '00000000-0000-0000-0000-000000000101', true),
+      ('00000000-0000-0000-0000-000000000301', '00000000-0000-0000-0000-000000000102', true),
+      ('00000000-0000-0000-0000-000000000301', '00000000-0000-0000-0000-000000000103', true),
+      ('00000000-0000-0000-0000-000000000302', '00000000-0000-0000-0000-000000000101', true),
+      ('00000000-0000-0000-0000-000000000302', '00000000-0000-0000-0000-000000000102', true),
+      ('00000000-0000-0000-0000-000000000302', '00000000-0000-0000-0000-000000000103', true),
+      ('00000000-0000-0000-0000-000000000303', '00000000-0000-0000-0000-000000000101', true),
+      ('00000000-0000-0000-0000-000000000303', '00000000-0000-0000-0000-000000000102', true),
+      ('00000000-0000-0000-0000-000000000303', '00000000-0000-0000-0000-000000000103', true),
+      ('00000000-0000-0000-0000-000000000304', '00000000-0000-0000-0000-000000000101', true),
+      ('00000000-0000-0000-0000-000000000304', '00000000-0000-0000-0000-000000000102', true),
+      ('00000000-0000-0000-0000-000000000304', '00000000-0000-0000-0000-000000000103', true)
+      ON CONFLICT (product_id, branch_id) DO UPDATE SET is_active = EXCLUDED.is_active;\""
     networks:
       - bakerio_test
 

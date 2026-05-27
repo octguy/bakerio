@@ -41,11 +41,6 @@ import BlogPage from "./page";
 afterEach(cleanup);
 
 describe("BlogPage", () => {
-  it("renders without crashing", () => {
-    const { container } = render(<BlogPage />);
-    expect(container.firstChild).toBeInTheDocument();
-  });
-
   it("contains blog heading", () => {
     render(<BlogPage />);
     expect(screen.getByRole("heading", { level: 1, name: /stories/i })).toBeInTheDocument();

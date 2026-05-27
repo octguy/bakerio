@@ -2,6 +2,13 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useQuery } from "@tanstack/react-query";
 
+const dashboardStats = vi.hoisted(() => ({
+  totalOrders: 31,
+  revenue: 27_500_000,
+  activeProducts: 9,
+  lowStockItems: 3,
+}));
+
 vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(() => ({
     data: [
@@ -83,6 +90,30 @@ vi.mock("recharts", () => ({
   Cell: () => null,
 }));
 
+vi.mock("@repo/api-client/mock/analytics", () => ({
+  getMockDashboardStats: vi.fn(() => dashboardStats),
+  getMockDailyRevenue: vi.fn(() => [
+    { date: "Mon", revenue: 1_000_000, orders: 4 },
+    { date: "Tue", revenue: 2_000_000, orders: 5 },
+  ]),
+  getMockRecentOrders: vi.fn(() => [
+    { id: "ORD-1", customer: "Mai", total: 125_000 },
+  ]),
+  getMockHeatmap: vi.fn(() => ({
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    hours: Array.from({ length: 14 }, (_, index) => index + 7),
+    grid: Array.from({ length: 7 }, () => Array.from({ length: 14 }, () => 0.25)),
+    peak: { day: "MON", hour: 9, ordersPerHour: 12 },
+  })),
+  getMockAlerts: vi.fn(() => [
+    { tag: "STOCK", branch: "Lê Lợi", text: "Flour low", sev: "red", time: "2m" },
+    { tag: "ORDER", branch: "Pasteur", text: "Order delayed", sev: "amber", time: "8m" },
+  ]),
+  getMockTopSellers: vi.fn(() => [
+    { rank: "01", name: "Bánh mì", sold: 12, rev: 780_000, share: 80 },
+  ]),
+}));
+
 import DashboardPage from "./page";
 
 afterEach(cleanup);
@@ -95,12 +126,9 @@ describe("DashboardPage", () => {
 
   it("displays stat cards with correct values", () => {
     render(<DashboardPage />);
-    expect(screen.getByText("Đơn hàng · today")).toBeInTheDocument();
-    expect(screen.getByText("1247")).toBeInTheDocument();
-    expect(screen.getByText("Doanh thu · today")).toBeInTheDocument();
-    expect(screen.getByText("14.6M₫")).toBeInTheDocument();
-    expect(screen.getByText("Cảnh báo kho")).toBeInTheDocument();
-    expect(screen.getByText("7")).toBeInTheDocument();
+    // Assert compact VND formatting from formatCompactVnd
+    expect(screen.getByText("27.5M₫")).toBeInTheDocument();
+    expect(screen.getByText("887K₫")).toBeInTheDocument();
   });
 
   it("renders stat cards in a grid layout", () => {
@@ -119,6 +147,6 @@ describe("DashboardPage", () => {
   it("falls back to stats value when products are loading", () => {
     vi.mocked(useQuery).mockReturnValue({ data: undefined, isLoading: true } as any);
     render(<DashboardPage />);
-    expect(screen.getByText(/42 loaves so far/i)).toBeInTheDocument();
+    expect(screen.getByText(/9 loaves so far/i)).toBeInTheDocument();
   });
 });

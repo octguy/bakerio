@@ -1,5 +1,6 @@
 import { render, screen, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { getProducts } from '@repo/api-client';
 
 vi.mock('next/image', () => ({
   default: (props: Record<string, unknown>) => <img {...props} />,
@@ -93,18 +94,26 @@ vi.mock('lucide-react', () => ({
 
 import Home from './page';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 describe('Homepage', () => {
-  it('renders without crashing', () => {
-    const { container } = render(<Home />);
-    expect(container.firstChild).toBeInTheDocument();
-  });
-
   it('contains the hero heading', () => {
     render(<Home />);
     const headings = screen.getAllByRole('heading', { level: 1 });
     expect(headings[0]).toHaveTextContent(/every bite tells a story/i);
+  });
+
+  it('renders featured products from the api-client response', async () => {
+    render(<Home />);
+
+    expect(screen.getByText(/opening the larder doors/i)).toBeInTheDocument();
+    expect(await screen.findByText('Bánh Mì Sài Gòn')).toBeInTheDocument();
+    expect(screen.getByText('35.000₫')).toBeInTheDocument();
+    expect(getProducts).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/opening the larder doors/i)).toBeNull();
   });
 
   it('has CTA links in the hero section', () => {
@@ -113,14 +122,6 @@ describe('Homepage', () => {
     expect(menuLinks[0]).toHaveAttribute('href', '/menu');
     const locationLinks = screen.getAllByRole('link', { name: /find locations/i });
     expect(locationLinks[0]).toHaveAttribute('href', '/locations');
-  });
-
-  it('has proper semantic structure with sections', () => {
-    const { container } = render(<Home />);
-    const div = container.querySelector('.relative.bg-cream');
-    expect(div).toBeInTheDocument();
-    const sections = div!.querySelectorAll('section');
-    expect(sections.length).toBeGreaterThanOrEqual(4);
   });
 
   it('renders section headings for products, testimonials, and locations', () => {

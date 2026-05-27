@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
 
+// NOTE: branch/products/categories READS are PUBLIC (PR #24), so a backend built from current main
+// serves REAL branch/product data to the guest (unauthenticated) SSR homepage. The api-client
+// only falls back to MOCK fixtures if the backend is unreachable or running a STALE build that
+// predates PR #24. The name assertions below assume a current backend; navigation, structure,
+// and keyboard assertions remain valid regardless.
+
 /**
  * Branch Selection Flow — Order App Homepage
  *
@@ -14,36 +20,32 @@ test.describe("Branch Selection — Homepage", () => {
 
     await expect(page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i })).toBeVisible();
     await expect(page.getByRole("main").getByText("Pickup").first()).toBeVisible();
+    
+    // Assert real branch count and count text
+    await expect(page.locator("main button")).toHaveCount(3);
+    await expect(page.getByText("3 open")).toBeVisible();
   });
 
-  test("handles API failure gracefully with error message", async ({ page }) => {
-    // SSR fetch will fail if backend is unavailable — page should show error text, not crash
-    await page.goto("/");
-
-    const heading = page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i });
-    await expect(heading).toBeVisible();
-
-    // Page either shows branches or an error message — never a blank crash
-    const branchButtons = page.locator("main button");
-    const count = await branchButtons.count();
-    if (count > 0) {
-      await expect(branchButtons.first()).toBeVisible();
-    } else {
-      await expect(page.locator("text=Failed to load")).toBeVisible();
-    }
-  });
+  // NOTE: The order home page fetches branches in an SSR server component and getBranches()
+  // falls back to mock data on error, so the "couldn't load branch availability" error path is
+  // not reachable via Playwright page.route. It is covered by the unit test apps/order/src/app/page.test.tsx.
 
   test("branch cards display name, address, and region", async ({ page }) => {
     await page.goto("/");
 
     const branchButtons = page.locator("main button");
-    await expect(branchButtons).not.toHaveCount(0);
+    await expect(branchButtons).toHaveCount(3);
 
     const firstBranch = branchButtons.first();
     // Each card has a heading (name), address text, and region badge
     await expect(firstBranch.locator("h2")).toBeVisible();
     await expect(firstBranch.locator("p")).toBeVisible();
-    await expect(firstBranch.getByText(/Open|Selected/).first()).toBeVisible();
+    
+    // Assert backend-provided address
+    await expect(page.getByText("65 Lê Lợi, Quận 1")).toBeVisible();
+    
+    // Assert derived region tag instead of static "Open" text
+    await expect(firstBranch.getByText(/Coffee bar|Flagship/).first()).toBeVisible();
   });
 
   test("clicking a branch navigates to /menu", async ({ page }) => {

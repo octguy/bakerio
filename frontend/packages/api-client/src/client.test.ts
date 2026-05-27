@@ -7,7 +7,7 @@ const originalFetch = global.fetch;
 describe("API Client tests", () => {
   let fetchMock: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     fetchMock = vi.fn().mockImplementation(() => 
       Promise.resolve({
         status: 200,
@@ -17,7 +17,9 @@ describe("API Client tests", () => {
       })
     );
     global.fetch = fetchMock;
-    client.logout(); // Reset token
+    localStorage.clear();
+    await client.logout(); // Reset token
+    fetchMock.mockClear();
   });
 
   afterEach(() => {
@@ -102,6 +104,10 @@ describe("API Client tests", () => {
       mockResponse(200, { data: null });
       await client.logout();
       expect(client.getToken()).toBeNull();
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/auth/logout"),
+        expect.objectContaining({ method: "POST" })
+      );
     });
   });
 
@@ -181,12 +187,25 @@ describe("API Client tests", () => {
 
     it("deletes product on backend", async () => {
       mockResponse(200, { data: null });
-      await expect(client.deleteProduct("p-1")).resolves.not.toThrow();
+      await client.deleteProduct("p-1");
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/products/p-1"),
+        expect.objectContaining({ method: "DELETE" })
+      );
     });
 
     it("falls back to mock product deletion when backend fails", async () => {
       fetchMock.mockRejectedValue(new Error("Deletion failed"));
-      await expect(client.deleteProduct("p-1")).resolves.not.toThrow();
+      const beforeProds = await client.getProducts();
+      const initialCount = beforeProds.length;
+      const targetId = beforeProds[0]?.id;
+      expect(targetId).toBeDefined();
+
+      await client.deleteProduct(targetId!);
+
+      const afterProds = await client.getProducts();
+      expect(afterProds.length).toBe(initialCount - 1);
+      expect(afterProds.find((p) => p.id === targetId)).toBeUndefined();
     });
   });
 
@@ -241,7 +260,25 @@ describe("API Client tests", () => {
       expect(res.name).toBe("Drinks updated");
 
       mockResponse(200, { data: null });
-      await expect(client.deleteCategory("cat-new")).resolves.not.toThrow();
+      await client.deleteCategory("cat-new");
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/categories/cat-new"),
+        expect.objectContaining({ method: "DELETE" })
+      );
+    });
+
+    it("falls back to mock category deletion when backend fails", async () => {
+      fetchMock.mockRejectedValue(new Error("Deletion failed"));
+      const beforeCats = await client.getCategories();
+      const initialCount = beforeCats.length;
+      const targetId = beforeCats[0]?.id;
+      expect(targetId).toBeDefined();
+
+      await client.deleteCategory(targetId!);
+
+      const afterCats = await client.getCategories();
+      expect(afterCats.length).toBe(initialCount - 1);
+      expect(afterCats.find((c) => c.id === targetId)).toBeUndefined();
     });
   });
 
@@ -268,18 +305,30 @@ describe("API Client tests", () => {
       expect(res.name).toBe("Hanoi updated");
 
       mockResponse(200, { data: null });
-      await expect(client.deleteBranch("br-2")).resolves.not.toThrow();
+      await client.deleteBranch("br-2");
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/branch/br-2"),
+        expect.objectContaining({ method: "DELETE" })
+      );
     });
   });
 
   describe("Supplier operations", () => {
-    it("gets and creates suppliers", async () => {
-      let res = await client.getSuppliers();
-      expect(res.length).toBeGreaterThan(0);
-      expect(res[0]?.name).toBe("Lê & Sons");
+    it("serves suppliers from the explicit mock module and tracks that honestly", async () => {
+      const res = await client.getSuppliers("Long An");
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(res).toEqual([
+        expect.objectContaining({ id: "sup-3", name: "Long An Farm", region: "Long An" }),
+        expect.objectContaining({ id: "sup-4", name: "Trần family", region: "Long An" }),
+      ]);
+      expect(res.every((supplier) => supplier.region === "Long An")).toBe(true);
+      expect(client.getApiHealth().mockServed).toContain("suppliers.list");
 
       const created = await client.createSupplier({ name: "Sugar Inc", region: "south" });
-      expect(created.name).toBe("Sugar Inc");
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(created).toEqual(expect.objectContaining({ name: "Sugar Inc", region: "south" }));
+      expect(client.getApiHealth().mockServed).toContain("suppliers.create");
     });
   });
 
@@ -320,11 +369,44 @@ describe("API Client tests", () => {
   });
 
   describe("Mock functions passing", () => {
-    it("correctly exposes the mock order functions directly", async () => {
-      expect(client.createOrder).toBeDefined();
-      expect(client.getOrders).toBeDefined();
-      expect(client.getOrder).toBeDefined();
-      expect(client.updateOrderStatus).toBeDefined();
+    it("routes order helpers to the mock order store with observable behavior", async () => {
+      const orderProduct = mockProducts.find((product) => product.id === "p-bmi-1");
+      expect(orderProduct).toBeDefined();
+      const expectedLineTotal = orderProduct!.base_price * 2;
+      const order = await client.createOrder({
+        branch_id: "br-le-loi",
+        items: [{ product_id: orderProduct!.id, quantity: 2 }],
+        fulfillment_mode: "PICKUP",
+        requested_time: "ASAP",
+        payment_method: "COD",
+        delivery_fee_amount: 0,
+        loyalty_discount_amount: 0,
+        subtotal_amount: expectedLineTotal,
+        total_amount: expectedLineTotal,
+      });
+
+      expect(order).toMatchObject({
+        branch_id: "br-le-loi",
+        status: "PENDING_PAYMENT",
+        subtotal_amount: expectedLineTotal,
+        total_amount: expectedLineTotal,
+      });
+      expect(order.items).toEqual([
+        expect.objectContaining({
+          product_id: orderProduct!.id,
+          product_name: orderProduct!.name,
+          quantity: 2,
+          total_price: expectedLineTotal,
+        }),
+      ]);
+
+      await expect(client.getOrder(order.id)).resolves.toMatchObject({ id: order.id });
+      await expect(client.getOrders()).resolves.toEqual([expect.objectContaining({ id: order.id })]);
+      await expect(client.updateOrderStatus(order.id, "READY")).resolves.toMatchObject({
+        id: order.id,
+        status: "READY",
+      });
+      await expect(client.reorderItems(order.id)).resolves.toEqual([{ product_id: orderProduct!.id, quantity: 2 }]);
     });
   });
 

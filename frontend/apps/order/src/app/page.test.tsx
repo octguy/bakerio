@@ -49,10 +49,11 @@ describe("HomePage (branch selection)", () => {
     expect(screen.getByRole("heading", { level: 1, name: /where shall/i })).toBeInTheDocument();
   });
 
-  it("displays branch names from API", async () => {
+  it("displays branch names and the derived open count", async () => {
     render(await Page());
     expect(screen.getByText("Bakerio Quận 1")).toBeInTheDocument();
     expect(screen.getByText("Bakerio Hoàn Kiếm")).toBeInTheDocument();
+    expect(screen.getByText("3 open")).toBeInTheDocument();
   });
 
   it("handles error during getBranches gracefully (instanceof Error)", async () => {
