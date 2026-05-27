@@ -104,8 +104,8 @@ function ProfileContent() {
               className="bkr-fill h-full rounded-sm bg-honey"
               style={
                 {
-                  "--pct": `${(loyalty?.progress ?? 0) * 100}%`,
-                  width: `${(loyalty?.progress ?? 0) * 100}%`,
+                  "--fill-scale": loyalty?.progress ?? 0,
+                  transform: `scaleX(${loyalty?.progress ?? 0})`,
                 } as React.CSSProperties
               }
             />

@@ -168,7 +168,7 @@ body {
 .bkr-lift { transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.3s; }
 .bkr-lift:hover { transform: translateY(-3px); box-shadow: 0 16px 32px -16px rgba(44,24,16,0.3); }
 
-.bkr-press { transition: transform 0.12s ease, filter 0.12s ease; }
+.bkr-press { transition: transform 0.12s ease-out, filter 0.12s ease-out; }
 .bkr-press:hover  { filter: brightness(1.05); }
 .bkr-press:active { transform: scale(0.97); }
 

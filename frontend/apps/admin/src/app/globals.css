@@ -139,7 +139,7 @@ body {
 .bkr-press:active { transform: scale(0.97); }
 
 @media (prefers-reduced-motion: reduce) {
-  .bkr-pulse, .bkr-rise, .bkr-rise-1, .bkr-rise-2, .bkr-grow-up, .bkr-draw, .bkr-float {
+  .bkr-pulse, .bkr-rise, .bkr-rise-1, .bkr-rise-2, .bkr-grow-up, .bkr-draw, .bkr-float, .animate-spin {
     animation: none !important;
   }
 }

@@ -99,8 +99,8 @@ body {
 .bkr-rise-2 { animation: bkr-rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 240ms both; }
 .bkr-rise-3 { animation: bkr-rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 380ms both; }
 
-@keyframes bkr-fill { from { width: 0; } to { width: var(--pct, 100%); } }
-.bkr-fill { animation: bkr-fill 1400ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes bkr-fill { from { transform: scaleX(0); } to { transform: scaleX(var(--fill-scale, 1)); } }
+.bkr-fill { transform-origin: left center; animation: bkr-fill 1400ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
 
 .bkr-lift { transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.3s; }
 .bkr-lift:hover { transform: translateY(-3px); box-shadow: 0 16px 32px -16px rgba(44,24,16,0.3); }
