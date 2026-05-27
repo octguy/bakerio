@@ -26,7 +26,7 @@ const PILLARS = [
     title: "Bánh mì",
     sub: "Saigon · since 2024",
     body: "Our own recipe — a thinner crust, a softer crumb. Pâté made every morning. Chả lụa from the family in Long An.",
-    image: "https://images.unsplash.com/photo-1600326145552-327c4df2c246?w=1400&q=85&auto=format",
+    image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1400&q=85&auto=format",
   },
 ];
 
@@ -45,7 +45,7 @@ export default function AboutPage() {
               className="font-display tracking-tight"
               style={{ fontSize: "clamp(56px,9vw,96px)", lineHeight: 0.92, letterSpacing: "-0.025em" }}
             >
-              We started
+              We started{" "}
               <br />
               with one <span className="font-editorial text-cinnamon">oven.</span>
             </h1>

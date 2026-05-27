@@ -36,7 +36,8 @@ test.describe("Admin — Users Management", () => {
     await inputs.nth(0).fill(`E2E Staff ${RUN}`);       // Full Name
     await inputs.nth(1).fill(`staff-${RUN}@bakerio.vn`); // Email
     await inputs.nth(2).fill("secure123");           // Password
-    await dialog.locator("select").selectOption("product_manager"); // Role (non-branch-scoped)
+    await dialog.locator("select#create-user-role").selectOption("branch_staff");
+    await dialog.locator("select#create-user-branch").selectOption({ label: "Bakerio Quận 1" });
 
     await page.getByRole("button", { name: /create user/i }).click();
     await expect(page.getByText("User created")).toBeVisible({ timeout: 10000 });
