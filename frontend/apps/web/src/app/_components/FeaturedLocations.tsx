@@ -37,7 +37,10 @@ export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps)
               <div className="mt-1 font-editorial text-[13px] text-cinnamon">{l.address}</div>
               <div className="mt-4 flex items-center gap-2.5 font-mono text-[10.5px] tracking-wide text-caramel">
                 <span className="inline-flex items-center gap-1 font-semibold text-sage">
-                  <span className="bkr-pulse inline-block h-1.5 w-1.5 rounded-full bg-sage" />
+                  <span
+                    className="bkr-pulse inline-block h-1.5 w-1.5 rounded-full bg-sage"
+                    aria-hidden="true"
+                  />
                   Open
                 </span>
                 <span>· {l.hours}</span>

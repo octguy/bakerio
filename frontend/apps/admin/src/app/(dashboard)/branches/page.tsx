@@ -102,19 +102,21 @@ export default function BranchesPage() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label={`Edit ${row.original.name}`}
             onClick={() => {
               setEditing(row.original);
               setOpen(true);
             }}
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil aria-hidden="true" className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
+            aria-label={`Delete ${row.original.name}`}
             onClick={() => setDeleting(row.original)}
           >
-            <Trash2 className="h-4 w-4 text-destructive" />
+            <Trash2 aria-hidden="true" className="h-4 w-4 text-destructive" />
           </Button>
         </div>
       ),
@@ -161,7 +163,7 @@ export default function BranchesPage() {
             setOpen(true);
           }}
         >
-          <Plus className="h-4 w-4" /> Add Branch
+          <Plus aria-hidden="true" className="h-4 w-4" /> Add Branch
         </Button>
       </div>
 

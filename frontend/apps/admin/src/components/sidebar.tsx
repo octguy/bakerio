@@ -200,6 +200,7 @@ export function Sidebar() {
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setOpen(false)}
+            aria-hidden="true"
           />
           <aside className="absolute inset-y-0 left-0 flex w-[232px] flex-col bg-[var(--admin-ink)] text-[var(--admin-ink-text)] shadow-xl">
             <button

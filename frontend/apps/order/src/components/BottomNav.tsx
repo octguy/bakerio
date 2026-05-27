@@ -24,18 +24,20 @@ export function BottomNav() {
             <Link
               key={href}
               href={href}
-              aria-label={label}
               className="relative flex flex-col items-center gap-0.5"
               style={{ color: active ? "var(--cinnamon)" : "var(--caramel)", fontWeight: active ? 700 : 500 }}
             >
               <span className="text-[16px]" aria-hidden>{icon}</span>
               {label === "Cart" && itemCount > 0 && (
-                <span
-                  className="absolute -right-2 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-cinnamon font-mono text-[9px] font-bold text-white"
-                  aria-label={`${itemCount} items in cart`}
-                >
-                  {itemCount}
-                </span>
+                <>
+                  <span
+                    className="absolute -right-2 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-cinnamon font-mono text-[9px] font-bold text-white"
+                    aria-hidden="true"
+                  >
+                    {itemCount}
+                  </span>
+                  <span className="sr-only">{itemCount} items</span>
+                </>
               )}
               <span className="font-mono text-[9.5px] uppercase tracking-[0.16em]">{label}</span>
             </Link>
