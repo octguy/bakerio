@@ -113,3 +113,10 @@ docker-mail:
 #	make docker-minio
 docker-minio:
 	cd deployments && docker compose --env-file ../.env up -d minio
+
+# Start backend containers, run migrations, and seed the database for E2E tests
+test-setup:
+	cd deployments && docker compose --env-file ../.env up -d
+	@echo "Waiting for PostgreSQL container to be healthy..."
+	@until docker exec bakerio-postgres pg_isready -U postgres -d bakerio-db >/dev/null 2>&1; do sleep 1; done
+	docker exec -i bakerio-postgres psql -U postgres -d bakerio-db < ../db/seed_e2e.sql
