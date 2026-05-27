@@ -65,7 +65,7 @@ export function AddToCartSection({ product }: { product: Product }) {
       </div>
 
       {!added ? (
-        <button onClick={handleAdd} className="w-full bg-golden hover:bg-golden-dark text-white font-semibold py-3 rounded-[10px] transition-colors">
+        <button onClick={handleAdd} className="w-full rounded-[10px] bg-golden py-3 font-semibold text-white transition-colors transition-transform hover:bg-golden-dark active:scale-[0.97]">
           Add to Cart
         </button>
       ) : (

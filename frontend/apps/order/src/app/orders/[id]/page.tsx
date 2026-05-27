@@ -227,7 +227,7 @@ function OrderTrackingPageInner({ params }: PageProps) {
         <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg border border-crust p-2.5 max-w-[150px]">
           <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-caramel">Rider</div>
           <div className="text-[11.5px] font-bold text-espresso">
-            {order.status === "OUT_FOR_DELIVERY" ? "Nguyễn Văn Hùng 🛵" : "Waiting for pickup..."}
+            {order.status === "OUT_FOR_DELIVERY" ? "Nguyễn Văn Hùng 🛵" : "Waiting for pickup…"}
           </div>
         </div>
       </div>
@@ -246,8 +246,8 @@ function OrderTrackingPageInner({ params }: PageProps) {
         <div className="mt-5">
           <div className="h-2 overflow-hidden rounded-full bg-butter">
             <div
-              className="h-full rounded-full bg-cinnamon transition-all duration-1000"
-              style={{ width: `${progress}%` }}
+              className="h-full rounded-full bg-cinnamon transition-transform duration-1000"
+              style={{ transform: `scaleX(${progress / 100})`, transformOrigin: "left center" }}
             />
           </div>
           <div className="mt-2 flex justify-between font-mono text-[9px] tracking-[0.08em] text-caramel uppercase">

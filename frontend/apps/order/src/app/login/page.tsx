@@ -65,11 +65,14 @@ export default function LoginPage() {
           <input
             id="login-email"
             type="email"
+            name="email"
             required
+            autoComplete="email"
+            spellCheck={false}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="thinh@bakerio.vn"
-            className="mt-2 w-full rounded-xl border border-crust bg-white px-4 py-3.5 font-editorial text-[15px] text-espresso italic placeholder:text-caramel focus:border-cinnamon focus:outline-none"
+            className="mt-2 w-full rounded-xl border border-crust bg-white px-4 py-3.5 font-editorial text-[15px] text-espresso italic placeholder:text-caramel focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
           />
           {fieldErrors.email && <p className="mt-1 font-mono text-[11px] text-sienna">{fieldErrors.email}</p>}
         </div>
@@ -78,11 +81,13 @@ export default function LoginPage() {
           <label htmlFor="login-password" className="block font-mono text-[10px] uppercase tracking-[0.18em] text-caramel">
             Password
           </label>
-          <div className="mt-2 flex items-center gap-2 rounded-xl border-2 border-cinnamon bg-white px-4 py-3.5">
+          <div className="mt-2 flex items-center gap-2 rounded-xl border-2 border-cinnamon bg-white px-4 py-3.5 focus-within:ring-2 focus-within:ring-cinnamon/40">
             <input
               id="login-password"
               type={showPw ? "text" : "password"}
+              name="password"
               required
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="•••••••••"

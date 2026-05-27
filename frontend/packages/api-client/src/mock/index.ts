@@ -24,7 +24,7 @@ export const mockCategories: Category[] = [
 
 // Image library — bakery / Vietnamese pastry feel
 const IMG = {
-  banhmi: "https://images.unsplash.com/photo-1600326145552-327c4df2c246?w=1400&q=85&auto=format",
+  banhmi: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=1400&q=85&auto=format",
   flour: "https://images.unsplash.com/photo-1568051243851-f9b136146e97?w=1200&q=85&auto=format",
   pastry: "https://images.unsplash.com/photo-1568827999250-3f6afff96e66?w=1200&q=85&auto=format",
   pastry2: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=1200&q=85&auto=format",

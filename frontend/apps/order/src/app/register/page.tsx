@@ -91,11 +91,14 @@ export default function RegisterPage() {
             <input
               id={`reg-${f.name}`}
               type={f.type}
+              name={f.name}
               required
+              autoComplete={f.type === "email" ? "email" : f.name}
+              spellCheck={f.type === "email" ? false : undefined}
               value={f.value}
               onChange={(e) => f.set(e.target.value)}
               placeholder={f.placeholder}
-              className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso placeholder:text-caramel focus:border-cinnamon focus:outline-none"
+              className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso placeholder:text-caramel focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
             />
             {fieldErrors[f.name] && <p className="mt-1 font-mono text-[11px] text-sienna">{fieldErrors[f.name]}</p>}
           </div>
@@ -108,18 +111,20 @@ export default function RegisterPage() {
           <input
             id="reg-password"
             type="password"
+            name="password"
             required
             minLength={6}
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            className="mt-1 w-full rounded-xl border-2 border-cinnamon bg-white px-3.5 py-3 font-mono text-[14px] tracking-[0.25em] text-espresso placeholder:text-caramel focus:outline-none"
+            className="mt-1 w-full rounded-xl border-2 border-cinnamon bg-white px-3.5 py-3 font-mono text-[14px] tracking-[0.25em] text-espresso placeholder:text-caramel focus:outline-none focus:ring-2 focus:ring-cinnamon/40"
           />
           {fieldErrors.password && <p className="mt-1 font-mono text-[11px] text-sienna">{fieldErrors.password}</p>}
         </div>
 
         <label className="mt-3 flex items-start gap-2 text-[11.5px] leading-[1.4] text-cocoa">
-          <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 flex-shrink-0 accent-cinnamon" />
+          <input type="checkbox" aria-label="I agree to terms and conditions" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 flex-shrink-0 accent-cinnamon" />
           <span className="font-editorial italic">
             I agree to the <strong className="font-sans not-italic text-cinnamon">terms</strong> and{" "}
             <strong className="font-sans not-italic text-cinnamon">crumb-collecting policy</strong>.

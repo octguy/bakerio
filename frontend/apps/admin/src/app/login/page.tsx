@@ -108,14 +108,17 @@ function LoginContent() {
               >
                 Work email
               </label>
-              <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-crust bg-white px-4 py-3.5">
+              <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-crust bg-white px-4 py-3.5 focus-within:ring-2 focus-within:ring-cinnamon">
                 <span className="text-caramel" aria-hidden="true">
                   ✉
                 </span>
                 <input
                   id="email"
                   type="email"
+                  name="email"
                   required
+                  autoComplete="email"
+                  spellCheck={false}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="thinh@bakerio.vn"
@@ -141,14 +144,16 @@ function LoginContent() {
                   FORGOT?
                 </button>
               </div>
-              <div className="mt-2 flex items-center gap-2.5 rounded-xl border-2 border-cinnamon bg-white px-4 py-3.5">
+              <div className="mt-2 flex items-center gap-2.5 rounded-xl border-2 border-cinnamon bg-white px-4 py-3.5 focus-within:ring-2 focus-within:ring-cinnamon/60">
                 <span className="text-caramel" aria-hidden="true">
                   🔑
                 </span>
                 <input
                   id="password"
                   type={showPw ? "text" : "password"}
+                  name="password"
                   required
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="•••••••••"
