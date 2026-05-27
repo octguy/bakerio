@@ -44,13 +44,13 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: "npm run start -w order -- -p 3001",
+      command: "NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true npm run build -w order && NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true npm run start -w order -- -p 3001",
       port: 3001,
       reuseExistingServer: true,
       timeout: 60_000,
     },
     {
-      command: "npm run start -w admin -- -p 3002",
+      command: "NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true npm run build -w admin && NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true npm run start -w admin -- -p 3002",
       port: 3002,
       reuseExistingServer: true,
       timeout: 60_000,

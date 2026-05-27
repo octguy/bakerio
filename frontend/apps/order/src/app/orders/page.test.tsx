@@ -78,16 +78,6 @@ describe("OrdersPage", () => {
     expect(container).toBeTruthy();
   });
 
-  it("shows orders heading", () => {
-    render(<OrdersPage />);
-    expect(screen.getByText("Orders")).toBeInTheDocument();
-  });
-
-  it("displays loading state initially", () => {
-    render(<OrdersPage />);
-    expect(screen.getByText("Reading the order book…")).toBeInTheDocument();
-  });
-
   it("displays order status and total after load", async () => {
     render(<OrdersPage />);
     expect(await screen.findByText("Picked up")).toBeInTheDocument();

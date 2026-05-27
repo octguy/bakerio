@@ -16,6 +16,8 @@
 import type { Branch, Category, CreateOrderRequest, Order, Product } from "./types";
 
 const MOCK_SERVED = new Set<string>();
+const DISABLE_MOCK_FALLBACK = process.env.NEXT_PUBLIC_DISABLE_MOCK_FALLBACK === "true";
+
 function markMock(key: string) {
   MOCK_SERVED.add(key);
 }
@@ -162,6 +164,7 @@ export const getProducts = cache(async (): Promise<Product[]> => {
     const arr = Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : [];
     return arr.map(adaptProduct);
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("products.list", "[api-client] /products unavailable — using mock fixtures.", err);
     return mockGetProducts();
   }
@@ -172,6 +175,7 @@ export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
     const raw = await request<Product>(`/products/${idOrSlug}`);
     return adaptProduct(raw);
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("products.get", "[api-client] /products/:id not available — using mock fixture.", err);
     const found = await mockGetProduct(idOrSlug);
     if (found) return found;
@@ -205,6 +209,7 @@ export async function createProduct(data: {
     });
     return adaptProduct(res);
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("products.create", "[api-client] /products POST not available — creating in mock.", err);
     return mockCreateProduct(data);
   }
@@ -232,6 +237,7 @@ export async function updateProduct(
     });
     return adaptProduct(res);
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("products.update", "[api-client] /products/:id PATCH not available — updating in mock.", err);
     return mockUpdateProduct(id, data);
   }
@@ -241,6 +247,7 @@ export async function deleteProduct(id: string) {
   try {
     return await request<void>(`/products/${id}`, { method: "DELETE" });
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("products.delete", "[api-client] /products/:id DELETE not available — removing from mock.", err);
     return mockDeleteProduct(id);
   }
@@ -252,11 +259,13 @@ export const getCategories = cache(async (): Promise<Category[]> => {
   try {
     const cats = await request<Category[]>("/categories");
     if (!cats || cats.length === 0) {
+      if (DISABLE_MOCK_FALLBACK) return cats || [];
       useMockFallback("categories.empty");
       return mockGetCategories();
     }
     return cats;
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("categories.list", "[api-client] /categories not available — using mock fixtures.", err);
     return mockGetCategories();
   }
@@ -266,6 +275,7 @@ export const getCategory = cache(async (id: string): Promise<Category> => {
   try {
     return await request<Category>(`/categories/${id}`);
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("categories.get", "[api-client] /categories/:id not available — using mock fixture.", err);
     const found = mockCategories.find((c) => c.id === id || c.slug === id);
     if (found) return found;
@@ -277,6 +287,7 @@ export async function createCategory(data: { name: string; parent_id?: string; s
   try {
     return await request<Category>("/categories", { method: "POST", body: JSON.stringify(data) });
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("categories.create", "[api-client] /categories POST not available — creating in mock.", err);
     return mockCreateCategory(data);
   }
@@ -286,6 +297,7 @@ export async function updateCategory(id: string, data: { name: string; parent_id
   try {
     return await request<Category>(`/categories/${id}`, { method: "PATCH", body: JSON.stringify(data) });
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("categories.update", "[api-client] /categories/:id PATCH not available — updating in mock.", err);
     return mockUpdateCategory(id, data);
   }
@@ -295,6 +307,7 @@ export async function deleteCategory(id: string) {
   try {
     return await request<void>(`/categories/${id}`, { method: "DELETE" });
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("categories.delete", "[api-client] /categories/:id DELETE not available — deleting in mock.", err);
     return mockDeleteCategory(id);
   }
@@ -308,6 +321,7 @@ export const getBranches = cache(async (): Promise<Branch[]> => {
     if (!Array.isArray(raw)) return raw as unknown as Branch[];
     return raw.map(adaptBranch);
   } catch (err) {
+    if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback("branches.list", "[api-client] /branch not available — using mock fixtures.", err);
     return mockGetBranches();
   }

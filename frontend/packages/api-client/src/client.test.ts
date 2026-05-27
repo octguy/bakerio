@@ -104,6 +104,10 @@ describe("API Client tests", () => {
       mockResponse(200, { data: null });
       await client.logout();
       expect(client.getToken()).toBeNull();
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/auth/logout"),
+        expect.objectContaining({ method: "POST" })
+      );
     });
   });
 
@@ -183,12 +187,25 @@ describe("API Client tests", () => {
 
     it("deletes product on backend", async () => {
       mockResponse(200, { data: null });
-      await expect(client.deleteProduct("p-1")).resolves.not.toThrow();
+      await client.deleteProduct("p-1");
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/products/p-1"),
+        expect.objectContaining({ method: "DELETE" })
+      );
     });
 
     it("falls back to mock product deletion when backend fails", async () => {
       fetchMock.mockRejectedValue(new Error("Deletion failed"));
-      await expect(client.deleteProduct("p-1")).resolves.not.toThrow();
+      const beforeProds = await client.getProducts();
+      const initialCount = beforeProds.length;
+      const targetId = beforeProds[0]?.id;
+      expect(targetId).toBeDefined();
+
+      await client.deleteProduct(targetId!);
+
+      const afterProds = await client.getProducts();
+      expect(afterProds.length).toBe(initialCount - 1);
+      expect(afterProds.find((p) => p.id === targetId)).toBeUndefined();
     });
   });
 
@@ -243,7 +260,25 @@ describe("API Client tests", () => {
       expect(res.name).toBe("Drinks updated");
 
       mockResponse(200, { data: null });
-      await expect(client.deleteCategory("cat-new")).resolves.not.toThrow();
+      await client.deleteCategory("cat-new");
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/categories/cat-new"),
+        expect.objectContaining({ method: "DELETE" })
+      );
+    });
+
+    it("falls back to mock category deletion when backend fails", async () => {
+      fetchMock.mockRejectedValue(new Error("Deletion failed"));
+      const beforeCats = await client.getCategories();
+      const initialCount = beforeCats.length;
+      const targetId = beforeCats[0]?.id;
+      expect(targetId).toBeDefined();
+
+      await client.deleteCategory(targetId!);
+
+      const afterCats = await client.getCategories();
+      expect(afterCats.length).toBe(initialCount - 1);
+      expect(afterCats.find((c) => c.id === targetId)).toBeUndefined();
     });
   });
 
@@ -270,7 +305,11 @@ describe("API Client tests", () => {
       expect(res.name).toBe("Hanoi updated");
 
       mockResponse(200, { data: null });
-      await expect(client.deleteBranch("br-2")).resolves.not.toThrow();
+      await client.deleteBranch("br-2");
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/branch/br-2"),
+        expect.objectContaining({ method: "DELETE" })
+      );
     });
   });
 
