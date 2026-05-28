@@ -18,6 +18,7 @@ vi.mock("@tanstack/react-query", () => ({
       {
         id: "p-1",
         name: "Bread",
+        slug: "bread",
         base_price: 25000,
         category: { id: "cat-1", name: "Bakery" },
         sku: "BRD001",
@@ -142,6 +143,7 @@ describe("ProductsPage CRUD flow", () => {
             {
               id: "p-1",
               name: "Bread",
+              slug: "bread",
               base_price: 25000,
               category: { id: "cat-1", name: "Bakery" },
               sku: "BRD001",
@@ -198,6 +200,7 @@ describe("ProductsPage CRUD flow", () => {
     fireEvent.click(screen.getByRole("button", { name: /add product/i }));
 
     const skuInput = container.querySelector('input[name="sku"]')!;
+    const slugInput = container.querySelector('input[name="slug"]')!;
     const nameInput = container.querySelector('input[name="name"]')!;
     const unitInput = container.querySelector('input[name="unit"]')!;
     const priceInput = container.querySelector('input[name="price"]')!;
@@ -205,6 +208,7 @@ describe("ProductsPage CRUD flow", () => {
     const catSelect = container.querySelector('select[name="category_id"]')!;
 
     fireEvent.change(skuInput, { target: { value: "CAKE001" } });
+    fireEvent.change(slugInput, { target: { value: "sponge-cake" } });
     fireEvent.change(nameInput, { target: { value: "Sponge Cake" } });
     fireEvent.change(unitInput, { target: { value: "piece" } });
     fireEvent.change(priceInput, { target: { value: "150000" } });
@@ -216,6 +220,7 @@ describe("ProductsPage CRUD flow", () => {
     await waitFor(() => {
       expect(createProduct).toHaveBeenCalledWith({
         sku: "CAKE001",
+        slug: "sponge-cake",
         name: "Sponge Cake",
         unit: "piece",
         base_price: 150000,
@@ -235,6 +240,9 @@ describe("ProductsPage CRUD flow", () => {
     fireEvent.change(container.querySelector('input[name="sku"]')!, {
       target: { value: "SKUERR" },
     });
+    fireEvent.change(container.querySelector('input[name="slug"]')!, {
+      target: { value: "error-prod" },
+    });
     fireEvent.change(container.querySelector('input[name="name"]')!, {
       target: { value: "Error Prod" },
     });
@@ -243,6 +251,9 @@ describe("ProductsPage CRUD flow", () => {
     });
     fireEvent.change(container.querySelector('input[name="price"]')!, {
       target: { value: "100" },
+    });
+    fireEvent.change(container.querySelector('select[name="category_id"]')!, {
+      target: { value: "cat-1" },
     });
 
     fireEvent.submit(container.querySelector("form")!);
@@ -271,6 +282,8 @@ describe("ProductsPage CRUD flow", () => {
         description: "",
         unit: "piece",
         base_price: 25000,
+        category_id: "cat-1",
+        slug: "bread",
       });
       expect(mockToast).toHaveBeenCalledWith("Product updated");
     });

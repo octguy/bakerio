@@ -33,11 +33,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 const schema = z.object({
   sku: z.string().min(1, "SKU required"),
+  slug: z
+    .string()
+    .min(1, "Slug required")
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "Lowercase letters, numbers, and hyphens only",
+    ),
   name: z.string().min(1, "Name required"),
   unit: z.string().min(1, "Unit required"),
   price: z.coerce.number().positive("Price must be positive"),
   description: z.string().optional(),
-  category_id: z.string().optional(),
+  category_id: z.string().min(1, "Category required"),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -61,6 +68,7 @@ export default function ProductsPage() {
     mutationFn: (d: FormData) =>
       createProduct({
         sku: d.sku,
+        slug: d.slug,
         name: d.name,
         unit: d.unit,
         base_price: d.price,
@@ -82,6 +90,8 @@ export default function ProductsPage() {
         description: d.description,
         unit: d.unit,
         base_price: d.price,
+        category_id: d.category_id,
+        slug: editing!.slug,
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
@@ -266,6 +276,7 @@ function ProductFormDialog({
     values: editing
       ? {
           sku: editing.sku,
+          slug: editing.slug,
           name: editing.name,
           unit: editing.unit,
           price: editing.base_price,
@@ -310,6 +321,22 @@ function ProductFormDialog({
               )}
             </div>
             <div>
+              <Label htmlFor="product-slug">Slug</Label>
+              <Input
+                id="product-slug"
+                {...register("slug")}
+                disabled={!!editing}
+                placeholder="sponge-cake"
+              />
+              {errors.slug && (
+                <p className="text-xs text-destructive mt-1">
+                  {errors.slug.message}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
               <Label htmlFor="product-unit">Unit</Label>
               <Input
                 id="product-unit"
@@ -322,15 +349,15 @@ function ProductFormDialog({
                 </p>
               )}
             </div>
-          </div>
-          <div>
-            <Label htmlFor="product-name">Name</Label>
-            <Input id="product-name" {...register("name")} />
-            {errors.name && (
-              <p className="text-xs text-destructive mt-1">
-                {errors.name.message}
-              </p>
-            )}
+            <div>
+              <Label htmlFor="product-name">Name</Label>
+              <Input id="product-name" {...register("name")} />
+              {errors.name && (
+                <p className="text-xs text-destructive mt-1">
+                  {errors.name.message}
+                </p>
+              )}
+            </div>
           </div>
           <div>
             <Label htmlFor="product-price">Price (VND)</Label>
@@ -348,13 +375,18 @@ function ProductFormDialog({
           <div>
             <Label htmlFor="product-category">Category</Label>
             <Select id="product-category" {...register("category_id")}>
-              <option value="">None</option>
+              <option value="">Select category</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </Select>
+            {errors.category_id && (
+              <p className="text-xs text-destructive mt-1">
+                {errors.category_id.message}
+              </p>
+            )}
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>

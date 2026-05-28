@@ -189,6 +189,7 @@ export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
 // doesn't accept. sku/unit/description/allergens remain client-side only.
 export async function createProduct(data: {
   sku: string;
+  slug: string;
   name: string;
   unit: string;
   base_price: number;
@@ -198,6 +199,7 @@ export async function createProduct(data: {
 }) {
   const backendBody = {
     name: data.name,
+    slug: data.slug,
     category_id: data.category_id,
     price: String(data.base_price),
     sort_order: 0,
@@ -223,6 +225,8 @@ export async function updateProduct(
     unit: string;
     is_active: boolean;
     base_price: number;
+    category_id: string;
+    slug: string;
     allergens: string[];
   }>,
 ) {
@@ -230,6 +234,8 @@ export async function updateProduct(
   if (data.name !== undefined) backendBody.name = data.name;
   if (data.base_price !== undefined) backendBody.price = String(data.base_price);
   if (data.is_active !== undefined) backendBody.is_active = data.is_active;
+  if (data.category_id !== undefined) backendBody.category_id = data.category_id;
+  if (data.slug !== undefined) backendBody.slug = data.slug;
   try {
     const res = await request<Product>(`/products/${id}`, {
       method: "PATCH",
