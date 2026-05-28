@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getProducts } from "@repo/api-client";
-import type { Product } from "@repo/api-client";
-import { locations } from "@/data/locations";
+import { getBranches, getProducts } from "@repo/api-client";
+import type { Branch, Product } from "@repo/api-client";
 import { posts } from "@/data/posts";
+import { toWebLocations } from "@/lib/locations";
 import { FeaturedProducts } from "./_components/FeaturedProducts";
 import { FeaturedLocations } from "./_components/FeaturedLocations";
 import { RecentPosts } from "./_components/RecentPosts";
@@ -32,17 +32,29 @@ function formatVND(n: number) {
 
 export default function Home() {
   const [productsList, setProductsList] = useState<Product[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getProducts().then((data) => {
-      setProductsList(data);
+    let isMounted = true;
+
+    Promise.all([
+      getProducts().catch(() => []),
+      getBranches().catch(() => []),
+    ]).then(([products, branchData]) => {
+      if (!isMounted) return;
+      setProductsList(products);
+      setBranches(branchData);
       setLoading(false);
     });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const featuredProducts = productsList.slice(0, 6);
-  const featuredLocations = locations.slice(0, 6);
+  const featuredLocations = toWebLocations(branches).slice(0, 6);
   const featuredPosts = posts.slice(0, 3);
 
   return (

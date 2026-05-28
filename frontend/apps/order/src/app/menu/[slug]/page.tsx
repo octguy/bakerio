@@ -1,10 +1,22 @@
 import Image from "next/image";
 import { Croissant } from "lucide-react";
+import { Suspense } from "react";
 import { getProduct } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import { AddToCartSection } from "../_components/add-to-cart";
+import Loading from "./loading";
 
-export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export const unstable_instant = false;
+
+export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  return (
+    <Suspense fallback={<Loading />}>
+      <ProductDetailContent params={params} />
+    </Suspense>
+  );
+}
+
+async function ProductDetailContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   let product;
 

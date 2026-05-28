@@ -6,6 +6,7 @@ import {
   getBranches,
   createBranch,
   updateBranch,
+  updateBranchStatus,
   deleteBranch,
 } from "@repo/api-client";
 import type { Branch } from "@repo/api-client";
@@ -23,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -79,6 +80,21 @@ export default function BranchesPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
+  const statusMut = useMutation({
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: "active" | "inactive";
+    }) => updateBranchStatus(id, status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["branches"] });
+      toast("Branch status updated");
+    },
+    onError: (e: Error) => toast(e.message, "error"),
+  });
+
   const columns: ColumnDef<Branch, unknown>[] = [
     { accessorKey: "name", header: "Name" },
     { accessorKey: "address", header: "Address" },
@@ -86,13 +102,34 @@ export default function BranchesPage() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <Badge
-          variant={row.original.status === "active" ? "success" : "secondary"}
-        >
-          {row.original.status}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const isActive = row.original.status === "active";
+        const nextStatus = isActive ? "inactive" : "active";
+
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant={isActive ? "success" : "secondary"}>
+              {row.original.status}
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`${isActive ? "Deactivate" : "Activate"} ${row.original.name}`}
+              onClick={() =>
+                statusMut.mutate({ id: row.original.id, status: nextStatus })
+              }
+              disabled={statusMut.isPending}
+            >
+              {isActive ? (
+                <ToggleRight aria-hidden="true" className="h-4 w-4" />
+              ) : (
+                <ToggleLeft aria-hidden="true" className="h-4 w-4" />
+              )}
+              {isActive ? "Deactivate" : "Activate"}
+            </Button>
+          </div>
+        );
+      },
     },
     {
       id: "actions",

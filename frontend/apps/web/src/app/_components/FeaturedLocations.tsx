@@ -28,6 +28,14 @@ const DOT_MASK = "linear-gradient(to right, transparent, #000 18%, #000 82%, tra
 export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps) {
   const count = featuredLocations.length;
 
+  if (count === 0) {
+    return (
+      <div className="rounded-sm border border-crust bg-white p-10 text-center">
+        <p className="font-editorial text-[16px] italic text-caramel">No shops are available right now.</p>
+      </div>
+    );
+  }
+
   // Tripled list track (18 items total) to prevent showing empty blank spaces at viewport boundaries
   const extendedLocations = [
     ...featuredLocations,

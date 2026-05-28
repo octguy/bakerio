@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Camera, Globe, Video } from "lucide-react";
-import { locations } from "@/data/locations";
+import { getBranches } from "@repo/api-client";
 import { getOrderUrl } from "@/lib/public-config";
 
 const navLinks = [
@@ -21,7 +22,23 @@ const socialLinks = [
 
 export default function Footer() {
   const orderUrl = getOrderUrl();
-  const locationCount = locations.length;
+  const [locationCount, setLocationCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getBranches()
+      .then((branches) => {
+        if (isMounted) setLocationCount(branches.length);
+      })
+      .catch(() => {
+        if (isMounted) setLocationCount(0);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <footer className="bg-espresso text-cream">

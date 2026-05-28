@@ -13,10 +13,17 @@
 //   import { getApiHealth } from "@repo/api-client";
 //   const { mockServed } = getApiHealth();
 
-import type { Branch, Category, CreateOrderRequest, Order, Product } from "./types";
+import type {
+  Branch,
+  Category,
+  CreateOrderRequest,
+  Order,
+  Product,
+} from "./types";
 
 const MOCK_SERVED = new Set<string>();
-const DISABLE_MOCK_FALLBACK = process.env.NEXT_PUBLIC_DISABLE_MOCK_FALLBACK === "true";
+const DISABLE_MOCK_FALLBACK =
+  process.env.NEXT_PUBLIC_DISABLE_MOCK_FALLBACK === "true";
 
 function markMock(key: string) {
   MOCK_SERVED.add(key);
@@ -36,7 +43,8 @@ function adaptProduct(p: any): Product {
   if (!p || typeof p !== "object") return p as Product;
   let adapted = p;
   if (p.base_price === undefined && p.price !== undefined) {
-    const priceNum = typeof p.price === "string" ? parseFloat(p.price) : Number(p.price);
+    const priceNum =
+      typeof p.price === "string" ? parseFloat(p.price) : Number(p.price);
     adapted = { ...p, base_price: Number.isFinite(priceNum) ? priceNum : 0 };
   }
   if (adapted.category_id && !adapted.category) {
@@ -71,7 +79,8 @@ export function getApiHealth(): { mockServed: string[] } {
   return { mockServed: [...MOCK_SERVED].sort() };
 }
 
-const BACKEND_API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const BACKEND_API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
 const API_PROXY_PATH = process.env.NEXT_PUBLIC_API_PROXY_PATH || "/api/backend";
 
 function trimTrailingSlash(value: string): string {
@@ -83,7 +92,9 @@ function getApiBase(): string {
     return API_PROXY_PATH;
   }
   const proxyUrl = process.env.NEXT_PUBLIC_API_PROXY_URL?.trim();
-  return proxyUrl ? trimTrailingSlash(proxyUrl) : trimTrailingSlash(BACKEND_API_BASE);
+  return proxyUrl
+    ? trimTrailingSlash(proxyUrl)
+    : trimTrailingSlash(BACKEND_API_BASE);
 }
 
 let token: string | null = null;
@@ -95,7 +106,10 @@ function headers(): HeadersInit {
 }
 
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(`${getApiBase()}${path}`, { headers: headers(), ...opts });
+  const res = await fetch(`${getApiBase()}${path}`, {
+    headers: headers(),
+    ...opts,
+  });
   if (res.status === 204) {
     return null as unknown as T;
   }
@@ -135,7 +149,11 @@ export async function login(email: string, password: string) {
   return data;
 }
 
-export async function register(email: string, password: string, full_name: string) {
+export async function register(
+  email: string,
+  password: string,
+  full_name: string,
+) {
   return request<{ id: string; email: string }>("/auth/register", {
     method: "POST",
     body: JSON.stringify({ email, password, full_name }),
@@ -147,38 +165,52 @@ export async function logout() {
   token = null;
 }
 
-export function setToken(t: string) { token = t; }
-export function getToken() { return token; }
+export function setToken(t: string) {
+  token = t;
+}
+export function getToken() {
+  return token;
+}
 
 // ===== PRODUCTS (REAL) =====
 
 import { cache } from "react";
 
-import { 
-  getProducts as mockGetProducts, 
-  getProduct as mockGetProduct, 
-  createProduct as mockCreateProduct, 
-  updateProduct as mockUpdateProduct, 
+import {
+  getProducts as mockGetProducts,
+  getProduct as mockGetProduct,
+  createProduct as mockCreateProduct,
+  updateProduct as mockUpdateProduct,
   deleteProduct as mockDeleteProduct,
   getCategories as mockGetCategories,
   createCategory as mockCreateCategory,
   updateCategory as mockUpdateCategory,
   deleteCategory as mockDeleteCategory,
   getBranches as mockGetBranches,
-  mockCategories
+  mockCategories,
 } from "./mock";
 
 export const getProducts = cache(async (): Promise<Product[]> => {
   try {
     // Backend returns ProductListResponse {items,total,page,size}; legacy test
     // mocks return a bare array. Honor either; pass through 204→null.
-    const raw = await request<Product[] | { items?: Product[] } | null>("/products");
+    const raw = await request<Product[] | { items?: Product[] } | null>(
+      "/products",
+    );
     if (raw == null) return raw as unknown as Product[];
-    const arr = Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : [];
+    const arr = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw.items)
+        ? raw.items
+        : [];
     return arr.map(adaptProduct);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("products.list", "[api-client] /products unavailable — using mock fixtures.", err);
+    useMockFallback(
+      "products.list",
+      "[api-client] /products unavailable — using mock fixtures.",
+      err,
+    );
     return mockGetProducts();
   }
 });
@@ -189,7 +221,11 @@ export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
     return adaptProduct(raw);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("products.get", "[api-client] /products/:id not available — using mock fixture.", err);
+    useMockFallback(
+      "products.get",
+      "[api-client] /products/:id not available — using mock fixture.",
+      err,
+    );
     const found = await mockGetProduct(idOrSlug);
     if (found) return found;
     throw err;
@@ -223,7 +259,11 @@ export async function createProduct(data: {
     return adaptProduct(res);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("products.create", "[api-client] /products POST not available — creating in mock.", err);
+    useMockFallback(
+      "products.create",
+      "[api-client] /products POST not available — creating in mock.",
+      err,
+    );
     return mockCreateProduct(data);
   }
 }
@@ -241,7 +281,8 @@ export async function updateProduct(
 ) {
   const backendBody: Record<string, unknown> = {};
   if (data.name !== undefined) backendBody.name = data.name;
-  if (data.base_price !== undefined) backendBody.price = String(data.base_price);
+  if (data.base_price !== undefined)
+    backendBody.price = String(data.base_price);
   if (data.is_active !== undefined) backendBody.is_active = data.is_active;
   try {
     const res = await request<Product>(`/products/${id}`, {
@@ -251,7 +292,11 @@ export async function updateProduct(
     return adaptProduct(res);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("products.update", "[api-client] /products/:id PATCH not available — updating in mock.", err);
+    useMockFallback(
+      "products.update",
+      "[api-client] /products/:id PATCH not available — updating in mock.",
+      err,
+    );
     return mockUpdateProduct(id, data);
   }
 }
@@ -261,7 +306,11 @@ export async function deleteProduct(id: string) {
     return await request<void>(`/products/${id}`, { method: "DELETE" });
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("products.delete", "[api-client] /products/:id DELETE not available — removing from mock.", err);
+    useMockFallback(
+      "products.delete",
+      "[api-client] /products/:id DELETE not available — removing from mock.",
+      err,
+    );
     return mockDeleteProduct(id);
   }
 }
@@ -279,7 +328,11 @@ export const getCategories = cache(async (): Promise<Category[]> => {
     return cats;
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("categories.list", "[api-client] /categories not available — using mock fixtures.", err);
+    useMockFallback(
+      "categories.list",
+      "[api-client] /categories not available — using mock fixtures.",
+      err,
+    );
     return mockGetCategories();
   }
 });
@@ -289,29 +342,59 @@ export const getCategory = cache(async (id: string): Promise<Category> => {
     return await request<Category>(`/categories/${id}`);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("categories.get", "[api-client] /categories/:id not available — using mock fixture.", err);
+    useMockFallback(
+      "categories.get",
+      "[api-client] /categories/:id not available — using mock fixture.",
+      err,
+    );
     const found = mockCategories.find((c) => c.id === id || c.slug === id);
     if (found) return found;
     throw err;
   }
 });
 
-export async function createCategory(data: { name: string; parent_id?: string; sort_order?: number }) {
+export async function createCategory(data: {
+  name: string;
+  parent_id?: string;
+  sort_order?: number;
+}) {
   try {
-    return await request<Category>("/categories", { method: "POST", body: JSON.stringify(data) });
+    return await request<Category>("/categories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("categories.create", "[api-client] /categories POST not available — creating in mock.", err);
+    useMockFallback(
+      "categories.create",
+      "[api-client] /categories POST not available — creating in mock.",
+      err,
+    );
     return mockCreateCategory(data);
   }
 }
 
-export async function updateCategory(id: string, data: { name: string; parent_id?: string; sort_order?: number; is_active?: boolean }) {
+export async function updateCategory(
+  id: string,
+  data: {
+    name: string;
+    parent_id?: string;
+    sort_order?: number;
+    is_active?: boolean;
+  },
+) {
   try {
-    return await request<Category>(`/categories/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+    return await request<Category>(`/categories/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("categories.update", "[api-client] /categories/:id PATCH not available — updating in mock.", err);
+    useMockFallback(
+      "categories.update",
+      "[api-client] /categories/:id PATCH not available — updating in mock.",
+      err,
+    );
     return mockUpdateCategory(id, data);
   }
 }
@@ -321,7 +404,11 @@ export async function deleteCategory(id: string) {
     return await request<void>(`/categories/${id}`, { method: "DELETE" });
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("categories.delete", "[api-client] /categories/:id DELETE not available — deleting in mock.", err);
+    useMockFallback(
+      "categories.delete",
+      "[api-client] /categories/:id DELETE not available — deleting in mock.",
+      err,
+    );
     return mockDeleteCategory(id);
   }
 }
@@ -335,7 +422,11 @@ export const getBranches = cache(async (): Promise<Branch[]> => {
     return raw.map(adaptBranch);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
-    useMockFallback("branches.list", "[api-client] /branch not available — using mock fixtures.", err);
+    useMockFallback(
+      "branches.list",
+      "[api-client] /branch not available — using mock fixtures.",
+      err,
+    );
     return mockGetBranches();
   }
 });
@@ -345,12 +436,43 @@ export const getBranch = cache(async (id: string): Promise<Branch> => {
   return adaptBranch(raw);
 });
 
-export async function createBranch(data: { name: string; address: string; region: string; lat?: number; lng?: number }) {
-  return request<Branch>("/branch", { method: "POST", body: JSON.stringify(data) });
+export async function createBranch(data: {
+  name: string;
+  address: string;
+  region: string;
+  lat?: number;
+  lng?: number;
+}) {
+  return request<Branch>("/branch", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
-export async function updateBranch(id: string, data: Partial<{ name: string; address: string; region: string; lat: number; lng: number }>) {
-  return request<Branch>(`/branch/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+export async function updateBranch(
+  id: string,
+  data: Partial<{
+    name: string;
+    address: string;
+    region: string;
+    lat: number;
+    lng: number;
+  }>,
+) {
+  return request<Branch>(`/branch/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateBranchStatus(
+  id: string,
+  status: "active" | "inactive",
+) {
+  return request<void>(`/branch/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
 }
 
 export async function deleteBranch(id: string) {
@@ -371,20 +493,32 @@ interface BranchMembersResponse {
   members: BranchMember[];
 }
 
-export async function getBranchMembers(branchId: string): Promise<BranchMember[]> {
-  const res = await request<BranchMembersResponse | null>(`/branch/${branchId}/members`);
+export async function getBranchMembers(
+  branchId: string,
+): Promise<BranchMember[]> {
+  const res = await request<BranchMembersResponse | null>(
+    `/branch/${branchId}/members`,
+  );
   return res?.members ?? [];
 }
 
-export async function assignBranchMember(branchId: string, userId: string): Promise<BranchMember> {
+export async function assignBranchMember(
+  branchId: string,
+  userId: string,
+): Promise<BranchMember> {
   return request<BranchMember>(`/branch/${branchId}/members`, {
     method: "POST",
     body: JSON.stringify({ user_id: userId }),
   });
 }
 
-export async function removeBranchMember(branchId: string, userId: string): Promise<void> {
-  return request<void>(`/branch/${branchId}/members/${userId}`, { method: "DELETE" });
+export async function removeBranchMember(
+  branchId: string,
+  userId: string,
+): Promise<void> {
+  return request<void>(`/branch/${branchId}/members/${userId}`, {
+    method: "DELETE",
+  });
 }
 
 // ===== SUPPLIERS (MOCK — audit §I: no backend module) =====
@@ -399,9 +533,24 @@ export interface SupplierRow {
 }
 
 const MOCK_SUPPLIERS: SupplierRow[] = [
-  { id: "sup-1", name: "Lê & Sons", region: "Lâm Đồng", contact_info: "+84 263 1100" },
-  { id: "sup-2", name: "Saigon Imports", region: "HCMC", contact_info: "+84 28 3822" },
-  { id: "sup-3", name: "Long An Farm", region: "Long An", contact_info: "+84 272 4000" },
+  {
+    id: "sup-1",
+    name: "Lê & Sons",
+    region: "Lâm Đồng",
+    contact_info: "+84 263 1100",
+  },
+  {
+    id: "sup-2",
+    name: "Saigon Imports",
+    region: "HCMC",
+    contact_info: "+84 28 3822",
+  },
+  {
+    id: "sup-3",
+    name: "Long An Farm",
+    region: "Long An",
+    contact_info: "+84 272 4000",
+  },
   { id: "sup-4", name: "Trần family", region: "Long An" },
   { id: "sup-5", name: "Đà Lạt Co.", region: "Lâm Đồng" },
   { id: "sup-6", name: "Vinamilk", region: "HCMC" },
@@ -410,10 +559,16 @@ const MOCK_SUPPLIERS: SupplierRow[] = [
 export async function getSuppliers(region?: string): Promise<SupplierRow[]> {
   markMock("suppliers.list");
   await new Promise((r) => setTimeout(r, 80));
-  return region ? MOCK_SUPPLIERS.filter((s) => s.region === region) : MOCK_SUPPLIERS;
+  return region
+    ? MOCK_SUPPLIERS.filter((s) => s.region === region)
+    : MOCK_SUPPLIERS;
 }
 
-export async function createSupplier(data: { name: string; region: string; contact_info?: string }): Promise<SupplierRow> {
+export async function createSupplier(data: {
+  name: string;
+  region: string;
+  contact_info?: string;
+}): Promise<SupplierRow> {
   markMock("suppliers.create");
   await new Promise((r) => setTimeout(r, 120));
   const row: SupplierRow = { id: `sup-${Date.now()}`, ...data };
@@ -461,7 +616,10 @@ export async function createProcurementOrder(data: {
   return order;
 }
 
-export async function updateProcurementStatus(id: string, status: ProcurementStatus): Promise<ProcurementOrder | null> {
+export async function updateProcurementStatus(
+  id: string,
+  status: ProcurementStatus,
+): Promise<ProcurementOrder | null> {
   markMock("procurement.update");
   await new Promise((r) => setTimeout(r, 120));
   const idx = MOCK_PROCUREMENT.findIndex((o) => o.id === id);
@@ -474,7 +632,13 @@ export async function updateProcurementStatus(id: string, status: ProcurementSta
 
 // ===== USERS (REAL) =====
 
-export async function createUser(data: { email: string; full_name: string; password: string; role: string; branch_id?: string }) {
+export async function createUser(data: {
+  email: string;
+  full_name: string;
+  password: string;
+  role: string;
+  branch_id?: string;
+}) {
   return request<any>("/users", { method: "POST", body: JSON.stringify(data) });
 }
 
@@ -486,8 +650,15 @@ export async function getMyProfile() {
   return request<any>("/profile");
 }
 
-export async function updateMyProfile(data: { display_name?: string; avatar_url?: string; bio?: string }) {
-  return request<any>("/profile", { method: "PATCH", body: JSON.stringify(data) });
+export async function updateMyProfile(data: {
+  display_name?: string;
+  avatar_url?: string;
+  bio?: string;
+}) {
+  return request<any>("/profile", {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
 
 // ===== ORDERS (MOCK — backend not implemented) =====
@@ -498,7 +669,7 @@ import {
   getOrder as mockGetOrder,
   updateOrderStatus as mockUpdateOrderStatus,
   getOrderStats as mockGetOrderStats,
-  reorderItems as mockReorderItems
+  reorderItems as mockReorderItems,
 } from "./mock";
 
 export async function createOrder(data: CreateOrderRequest): Promise<Order> {

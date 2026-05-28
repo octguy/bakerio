@@ -9,6 +9,9 @@ import { BottomNav } from "@/components/BottomNav";
 export const metadata: Metadata = {
   title: "Bakerio — Order Fresh Baked Goods",
   description: "Pick up your order. Bánh mì, croissant, sourdough, cà phê — every morning, eleven shops across Saigon.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -28,3 +31,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+

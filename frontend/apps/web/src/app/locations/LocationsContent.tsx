@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState } from "react";
-import { locations, regions } from "@/data/locations";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { getBranches } from "@repo/api-client";
+import type { WebLocation } from "@/lib/locations";
+import { locationRegions, toWebLocations } from "@/lib/locations";
 
 const LocationMap = dynamic(() => import("./LocationMap"), {
   ssr: false,
@@ -27,12 +29,38 @@ const PIN_LAYOUT = [
 ];
 
 export default function LocationsContent() {
+  const [locations, setLocations] = useState<WebLocation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const regions = useMemo(() => locationRegions(locations), [locations]);
   const [active, setActive] = useState<string>("All");
   const [prevActive, setPrevActive] = useState<string>("All");
   const [selectedLocationName, setSelectedLocationName] = useState<string>(locations[0]?.name ?? "");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getBranches()
+      .then((branches) => {
+        if (!isMounted) return;
+        const nextLocations = toWebLocations(branches);
+        setLocations(nextLocations);
+        setSelectedLocationName(nextLocations[0]?.name ?? "");
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setLocations([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const filtered = useMemo(
     () => (active === "All" ? locations : locations.filter((l) => l.region === active)),
-    [active],
+    [active, locations],
   );
 
   if (active !== prevActive) {
@@ -42,6 +70,26 @@ export default function LocationsContent() {
 
   const selectedLocation = filtered.find((location) => location.name === selectedLocationName) ?? filtered[0] ?? null;
   const selectedIdx = selectedLocation ? filtered.findIndex((location) => location.name === selectedLocation.name) : -1;
+
+  if (loading) {
+    return (
+      <section className="px-6 pb-24 lg:px-14">
+        <div className="mx-auto max-w-[1400px] rounded-sm border border-crust bg-white p-10 text-center">
+          <p className="font-editorial text-[16px] italic text-caramel">Loading shops from the bakery network...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (locations.length === 0) {
+    return (
+      <section className="px-6 pb-24 lg:px-14">
+        <div className="mx-auto max-w-[1400px] rounded-sm border border-crust bg-white p-10 text-center">
+          <p className="font-editorial text-[16px] italic text-caramel">No shops are available right now.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="px-6 pb-24 lg:px-14">

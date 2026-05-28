@@ -44,6 +44,7 @@ export {
   getBranch,
   createBranch,
   updateBranch,
+  updateBranchStatus,
   deleteBranch,
   // Branch membership (REAL)
   getBranchMembers,
@@ -71,7 +72,12 @@ export {
 } from "./client";
 
 // Mock data for seeding/testing
-export { mockProducts, mockCategories, mockBranches, getMockOrderSessionUser, setMockOrderSessionUser } from "./mock";
-
+export {
+  mockProducts,
+  mockCategories,
+  mockBranches,
+  getMockOrderSessionUser,
+  setMockOrderSessionUser,
+} from "./mock";
 
 export type { BranchMember } from "./client";

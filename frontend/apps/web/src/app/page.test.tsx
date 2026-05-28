@@ -66,6 +66,10 @@ vi.mock('@repo/api-client', () => ({
       images: [{ url: '/img/banhmi.jpg' }],
     },
   ]),
+  getBranches: vi.fn().mockResolvedValue([
+    { id: 'br-1', name: 'Bakerio Nguyễn Huệ', address: '45 Nguyễn Huệ, Bến Nghé, Quận 1', lat: 10.77, lng: 106.7, status: 'active', region: 'south' },
+    { id: 'br-2', name: 'Bakerio Phú Mỹ Hưng', address: '18 Nguyễn Lương Bằng, Tân Phú, Quận 7', lat: 10.72, lng: 106.71, status: 'active', region: 'south' },
+  ]),
 }));
 
 vi.mock('@/data/locations', () => ({

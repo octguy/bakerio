@@ -4,16 +4,16 @@ import { useEffect } from 'react';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Location } from '@/data/locations';
+import type { WebLocation } from '@/lib/locations';
 
 interface LocationMapProps {
-  locations: Location[];
-  selectedLocation: Location | null;
+  locations: WebLocation[];
+  selectedLocation: WebLocation | null;
   onSelectLocation: (name: string) => void;
 }
 
 // A helper component to handle map movement when selected location changes
-function MapController({ selectedLocation }: { selectedLocation: Location | null }) {
+function MapController({ selectedLocation }: { selectedLocation: WebLocation | null }) {
   const map = useMap();
 
   useEffect(() => {

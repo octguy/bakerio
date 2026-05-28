@@ -7,7 +7,12 @@ import {
 } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useQuery } from "@tanstack/react-query";
-import { createBranch, updateBranch, deleteBranch } from "@repo/api-client";
+import {
+  createBranch,
+  updateBranch,
+  updateBranchStatus,
+  deleteBranch,
+} from "@repo/api-client";
 
 const mockToast = vi.fn();
 const mockInvalidate = vi.fn();
@@ -45,6 +50,7 @@ vi.mock("@repo/api-client", () => ({
   getBranches: vi.fn(),
   createBranch: vi.fn(),
   updateBranch: vi.fn(),
+  updateBranchStatus: vi.fn(),
   deleteBranch: vi.fn(),
 }));
 
@@ -115,6 +121,8 @@ vi.mock("lucide-react", () => ({
   Plus: () => <span>+</span>,
   Pencil: () => <span>✎</span>,
   Trash2: () => <span>🗑</span>,
+  ToggleLeft: () => <span>off</span>,
+  ToggleRight: () => <span>on</span>,
 }));
 
 import BranchesPage from "./page";
@@ -243,6 +251,36 @@ describe("BranchesPage CRUD flow", () => {
     });
   });
 
+  it("toggles branch status", async () => {
+    vi.mocked(updateBranchStatus).mockResolvedValue(null as any);
+    render(<BranchesPage />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /deactivate downtown/i }),
+    );
+
+    await waitFor(() => {
+      expect(updateBranchStatus).toHaveBeenCalledWith("br-1", "inactive");
+      expect(mockToast).toHaveBeenCalledWith("Branch status updated");
+      expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: ["branches"] });
+    });
+  });
+
+  it("handles branch status update failure", async () => {
+    vi.mocked(updateBranchStatus).mockRejectedValue(
+      new Error("Status update failed"),
+    );
+    render(<BranchesPage />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /deactivate downtown/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith("Status update failed", "error");
+    });
+  });
+
   it("deletes branch successfully", async () => {
     vi.mocked(deleteBranch).mockResolvedValue(null as any);
     render(<BranchesPage />);
@@ -252,7 +290,7 @@ describe("BranchesPage CRUD flow", () => {
     expect(screen.getByText("Delete Branch")).toBeInTheDocument();
 
     // Click confirm delete
-    fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
 
     await waitFor(() => {
       expect(deleteBranch).toHaveBeenCalledWith("br-1");
@@ -265,7 +303,7 @@ describe("BranchesPage CRUD flow", () => {
     render(<BranchesPage />);
 
     fireEvent.click(screen.getByText("🗑"));
-    fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith("Delete error", "error");

@@ -3,7 +3,11 @@ import type { NextConfig } from "next";
 const orderUrl = process.env.ORDER_URL || process.env.NEXT_PUBLIC_ORDER_URL || "";
 
 const nextConfig: NextConfig = {
+  cacheComponents: true,
   output: "standalone",
+  experimental: {
+    instantNavigationDevToolsToggle: true,
+  },
   transpilePackages: ["@repo/api-client"],
   images: {
     remotePatterns: [
