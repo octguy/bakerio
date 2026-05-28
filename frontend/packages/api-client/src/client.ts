@@ -439,7 +439,6 @@ export const getBranch = cache(async (id: string): Promise<Branch> => {
 export async function createBranch(data: {
   name: string;
   address: string;
-  region: string;
   lat?: number;
   lng?: number;
 }) {
@@ -454,7 +453,6 @@ export async function updateBranch(
   data: Partial<{
     name: string;
     address: string;
-    region: string;
     lat: number;
     lng: number;
   }>,

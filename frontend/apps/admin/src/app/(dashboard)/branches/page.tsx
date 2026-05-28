@@ -32,6 +32,16 @@ import { zodResolver } from "@hookform/resolvers/zod";
 const schema = z.object({
   name: z.string().min(1, "Name required"),
   address: z.string().min(1, "Address required"),
+  lat: z
+    .number({ invalid_type_error: "Latitude must be a number" })
+    .min(-90, "Latitude must be at least -90")
+    .max(90, "Latitude must be at most 90")
+    .optional(),
+  lng: z
+    .number({ invalid_type_error: "Longitude must be a number" })
+    .min(-180, "Longitude must be at least -180")
+    .max(180, "Longitude must be at most 180")
+    .optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -88,7 +98,12 @@ export default function BranchesPage() {
       id: string;
       status: "active" | "inactive";
     }) => updateBranchStatus(id, status),
-    onSuccess: () => {
+    onSuccess: (_result, { id, status }) => {
+      qc.setQueryData<Branch[]>(["branches"], (current) =>
+        current?.map((branch) =>
+          branch.id === id ? { ...branch, status } : branch,
+        ),
+      );
       qc.invalidateQueries({ queryKey: ["branches"] });
       toast("Branch status updated");
     },
@@ -98,7 +113,16 @@ export default function BranchesPage() {
   const columns: ColumnDef<Branch, unknown>[] = [
     { accessorKey: "name", header: "Name" },
     { accessorKey: "address", header: "Address" },
-    { accessorKey: "region", header: "Region" },
+    {
+      accessorKey: "lat",
+      header: "Lat",
+      cell: ({ row }) => row.original.lat ?? "-",
+    },
+    {
+      accessorKey: "lng",
+      header: "Lng",
+      cell: ({ row }) => row.original.lng ?? "-",
+    },
     {
       accessorKey: "status",
       header: "Status",
@@ -113,7 +137,7 @@ export default function BranchesPage() {
             </Badge>
             <Button
               variant="outline"
-              size="sm"
+              size="icon"
               aria-label={`${isActive ? "Deactivate" : "Activate"} ${row.original.name}`}
               onClick={() =>
                 statusMut.mutate({ id: row.original.id, status: nextStatus })
@@ -125,7 +149,6 @@ export default function BranchesPage() {
               ) : (
                 <ToggleLeft aria-hidden="true" className="h-4 w-4" />
               )}
-              {isActive ? "Deactivate" : "Activate"}
             </Button>
           </div>
         );
@@ -168,7 +191,12 @@ export default function BranchesPage() {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     values: editing
-      ? { name: editing.name, address: editing.address }
+      ? {
+          name: editing.name,
+          address: editing.address,
+          lat: editing.lat,
+          lng: editing.lng,
+        }
       : undefined,
   });
 
@@ -230,8 +258,8 @@ export default function BranchesPage() {
             <DialogTitle>{editing ? "Edit Branch" : "New Branch"}</DialogTitle>
             <DialogDescription>
               {editing
-                ? "Update this branch's name and address."
-                : "Add a new branch with its name and address."}
+                ? "Update this branch's name, address, and coordinates."
+                : "Add a new branch with its name, address, and coordinates."}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -257,6 +285,42 @@ export default function BranchesPage() {
                   {errors.address.message}
                 </p>
               )}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="branch-lat">Latitude</Label>
+                <Input
+                  id="branch-lat"
+                  type="number"
+                  step="any"
+                  {...register("lat", {
+                    setValueAs: (value) =>
+                      value === "" ? undefined : Number(value),
+                  })}
+                />
+                {errors.lat && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.lat.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="branch-lng">Longitude</Label>
+                <Input
+                  id="branch-lng"
+                  type="number"
+                  step="any"
+                  {...register("lng", {
+                    setValueAs: (value) =>
+                      value === "" ? undefined : Number(value),
+                  })}
+                />
+                {errors.lng && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.lng.message}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button
