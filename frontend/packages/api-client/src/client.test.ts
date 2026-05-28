@@ -156,26 +156,51 @@ describe("API Client tests", () => {
     });
 
     it("creates product on backend", async () => {
-      const input = { sku: "SKU1", name: "New Prod", unit: "piece", base_price: 100 };
+      const input = {
+        sku: "SKU1",
+        slug: "new-prod",
+        name: "New Prod",
+        unit: "piece",
+        base_price: 100,
+      };
       const output = { id: "p-new", ...input, base_price: 100, is_active: true, created_at: "" };
       mockResponse(201, { data: output });
       const res = await client.createProduct(input);
       expect(res.id).toBe("p-new");
+      const [, requestInit] = fetchMock.mock.calls[0];
+      expect(JSON.parse(requestInit.body)).toEqual(
+        expect.objectContaining({ slug: input.slug }),
+      );
     });
 
     it("falls back to mock product creation when backend fails", async () => {
       fetchMock.mockRejectedValue(new Error("Creation forbidden"));
-      const input = { sku: "SKU-MOCK", name: "Mock Prod Name", unit: "piece", base_price: 50 };
+      const input = {
+        sku: "SKU-MOCK",
+        slug: "mock-prod-name",
+        name: "Mock Prod Name",
+        unit: "piece",
+        base_price: 50,
+      };
       const res = await client.createProduct(input);
       expect(res.sku).toBe("SKU-MOCK");
       expect(res.name).toBe("Mock Prod Name");
     });
 
     it("updates product on backend", async () => {
-      const updateData = { name: "Updated Name", base_price: 150 };
+      const updateData = {
+        name: "Updated Name",
+        base_price: 150,
+        category_id: "cat-1",
+        slug: "updated-name",
+      };
       mockResponse(200, { data: { id: "p-1", ...updateData } });
       const res = await client.updateProduct("p-1", updateData);
       expect(res.name).toBe("Updated Name");
+      const [, requestInit] = fetchMock.mock.calls[0];
+      expect(JSON.parse(requestInit.body)).toEqual(
+        expect.objectContaining({ category_id: "cat-1" }),
+      );
     });
 
     it("falls back to mock product update when backend fails", async () => {
