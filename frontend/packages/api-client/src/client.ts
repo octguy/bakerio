@@ -245,6 +245,7 @@ export async function createProduct(data: {
 }) {
   const backendBody = {
     name: data.name,
+    slug: data.slug,
     category_id: data.category_id,
     price: String(data.price),
     sort_order: data.sort_order ?? 0,
