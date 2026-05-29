@@ -63,6 +63,17 @@
   --color-admin-line: var(--admin-line);
   --color-admin-muted: var(--admin-muted);
 
+  --color-brand-50: var(--cream);
+  --color-brand-100: var(--vanilla);
+  --color-brand-200: var(--butter);
+  --color-brand-300: var(--crust);
+  --color-brand-400: var(--crust-deep);
+  --color-brand-500: var(--cinnamon);
+  --color-brand-600: var(--espresso);
+  --color-brand-700: var(--cocoa);
+  --color-brand-800: var(--espresso-soft);
+  --color-brand-900: var(--espresso-deep);
+
   --font-sans: var(--font-sans);
   --font-display: var(--font-display);
   --font-editorial: var(--font-editorial);

@@ -38,9 +38,9 @@ const GROUPS: NavGroup[] = [
   {
     head: "Vận hành · Operations",
     items: [
-      { href: "/inventory", label: "Inventory", glyph: "☐" },
       { href: "/branches", label: "Branches", glyph: "◉" },
       { href: "/users", label: "Staff", glyph: "◐" },
+      { href: "/account", label: "Account", glyph: "◈" },
     ],
   },
 ];
@@ -48,6 +48,7 @@ const GROUPS: NavGroup[] = [
 function SidebarContent() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const isSuperAdmin = user?.roles?.includes("super_admin") ?? false;
   const roleSubtitle = user?.roles?.length
     ? user.roles.map((role) => role.replace(/_/g, " ")).join(", ")
     : null;
@@ -94,21 +95,20 @@ function SidebarContent() {
               {g.head}
             </div>
             {g.items.map((it) => {
+              if (isSuperAdmin && it.href === "/users") return null;
+
               const active =
                 it.href === "/"
                   ? pathname === "/"
                   : pathname === it.href || pathname.startsWith(`${it.href}/`);
-              return (
-                <Link
-                  key={it.href}
-                  href={it.href}
-                  className={cn(
-                    "relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[12.5px] transition-colors",
-                    active
-                      ? "bg-[var(--admin-ink-text)]/10 font-semibold text-honey"
-                      : "font-medium text-[var(--admin-ink-text)] hover:bg-[var(--admin-ink-text)]/5",
-                  )}
-                >
+              const itemClassName = cn(
+                "relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[12.5px] transition-colors",
+                active
+                  ? "bg-[var(--admin-ink-text)]/10 font-semibold text-honey"
+                  : "font-medium text-[var(--admin-ink-text)] hover:bg-[var(--admin-ink-text)]/5",
+              );
+              const content = (
+                <>
                   <span
                     className={cn(
                       "w-3.5 font-mono text-[11px]",
@@ -137,6 +137,11 @@ function SidebarContent() {
                       aria-hidden
                     />
                   )}
+                </>
+              );
+              return (
+                <Link key={it.href} href={it.href} className={itemClassName}>
+                  {content}
                 </Link>
               );
             })}

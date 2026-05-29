@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFilterStore } from "@/lib/store";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getCategories,
@@ -12,7 +13,6 @@ import type { Category } from "@repo/api-client";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,6 +31,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 const schema = z.object({
   name: z.string().min(1, "Name required"),
   sort_order: z.coerce.number().optional(),
+  is_active: z.boolean().optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -40,6 +41,7 @@ export default function CategoriesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState<Category | null>(null);
+  const { onlyActive } = useFilterStore();
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["categories"],
@@ -59,7 +61,11 @@ export default function CategoriesPage() {
 
   const updateMut = useMutation({
     mutationFn: (d: FormData) =>
-      updateCategory(editing!.id, { name: d.name, sort_order: d.sort_order }),
+      updateCategory(editing!.id, {
+        name: d.name,
+        sort_order: d.sort_order ?? 0,
+        is_active: d.is_active ?? editing!.is_active,
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["categories"] });
       setOpen(false);
@@ -79,19 +85,66 @@ export default function CategoriesPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
+  const statusMut = useMutation({
+    mutationFn: ({
+      category,
+      isActive,
+    }: {
+      category: Category;
+      isActive: boolean;
+    }) =>
+      updateCategory(category.id, {
+        name: category.name,
+        sort_order: category.sort_order,
+        is_active: isActive,
+      }),
+    onSuccess: (_result, { category, isActive }) => {
+      qc.setQueryData<Category[]>(["categories"], (current) =>
+        current?.map((item) =>
+          item.id === category.id ? { ...item, is_active: isActive } : item,
+        ),
+      );
+      qc.invalidateQueries({ queryKey: ["categories"] });
+      toast("Category status updated");
+    },
+    onError: (e: Error) => toast(e.message, "error"),
+  });
+
   const columns: ColumnDef<Category, unknown>[] = [
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "slug", header: "Slug" },
-    { accessorKey: "sort_order", header: "Order" },
     {
       accessorKey: "is_active",
       header: "Status",
-      cell: ({ row }) => (
-        <Badge variant={row.original.is_active ? "success" : "secondary"}>
-          {row.original.is_active ? "Active" : "Inactive"}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const isActive = row.original.is_active;
+        const isPending =
+          statusMut.isPending &&
+          statusMut.variables?.category?.id === row.original.id;
+        return (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`${isActive ? "Deactivate" : "Activate"} ${row.original.name}`}
+            onClick={() =>
+              statusMut.mutate({
+                category: row.original,
+                isActive: !isActive,
+              })
+            }
+            disabled={isPending}
+            className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-0 shadow-none"
+          >
+            {isActive ? (
+              <ToggleRight aria-hidden="true" className="h-6 w-6 text-sage fill-sage/20" />
+) : (
+              <ToggleLeft aria-hidden="true" className="h-6 w-6 text-sienna fill-sienna/20" />
+            )}
+          </Button>
+        );
+      },
     },
+    { accessorKey: "name", header: "Name" },
+    { accessorKey: "slug", header: "Slug" },
+    { accessorKey: "sort_order", header: "Order" },
     {
       id: "actions",
       header: "",
@@ -129,7 +182,11 @@ export default function CategoriesPage() {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     values: editing
-      ? { name: editing.name, sort_order: editing.sort_order }
+      ? {
+          name: editing.name,
+          sort_order: editing.sort_order,
+          is_active: editing.is_active,
+        }
       : undefined,
   });
 
@@ -167,12 +224,13 @@ export default function CategoriesPage() {
         </Button>
       </div>
 
+
       {isLoading ? (
         <p>Loading…</p>
       ) : (
         <DataTable
           columns={columns}
-          data={categories}
+          data={onlyActive ? categories.filter((c) => c.is_active) : categories}
           searchKey="name"
           searchPlaceholder="Search categories..."
         />

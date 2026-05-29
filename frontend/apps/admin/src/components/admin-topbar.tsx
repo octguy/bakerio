@@ -1,7 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, ToggleLeft, ToggleRight } from "lucide-react";
+import { useFilterStore } from "@/lib/store";
+import { Button } from "@/components/ui/button";
 
 const SEGMENT_LABEL: Record<string, string> = {
   "": "Counter",
@@ -36,6 +38,9 @@ export function AdminTopBar() {
     month: "short",
   });
 
+  const { onlyActive, setOnlyActive } = useFilterStore();
+  const showToggle = ["branches", "products", "categories"].includes(segment);
+
   return (
     <header className="flex h-[60px] flex-shrink-0 items-center gap-4 border-b border-[var(--admin-line)] bg-[var(--admin-bg)] px-7">
       <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
@@ -43,6 +48,30 @@ export function AdminTopBar() {
         <span>›</span>
         <span className="text-espresso">{label}</span>
       </div>
+
+      {showToggle && (
+        <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
+          <span>|</span>
+          <div className="flex items-center gap-1.5 select-none">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={onlyActive ? "Show all items" : "Show only active items"}
+              onClick={() => setOnlyActive(!onlyActive)}
+              className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-0 shadow-none animate-none"
+            >
+              {onlyActive ? (
+                <ToggleRight aria-hidden="true" className="h-6 w-6 text-sage fill-sage/20" />
+              ) : (
+                <ToggleLeft aria-hidden="true" className="h-6 w-6 text-[var(--admin-muted)] fill-[var(--admin-muted)]/10" />
+              )}
+            </Button>
+            <span className="text-[10px] tracking-wider text-caramel">
+              Active only
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="mx-auto flex w-full max-w-[480px] items-center gap-2.5 rounded-md border border-[var(--admin-line)] bg-white px-3.5 py-2 focus-within:border-cinnamon focus-within:ring-2 focus-within:ring-cinnamon/30">
         <Search

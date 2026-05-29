@@ -12,12 +12,12 @@ import { useCartStore } from "@/store/cart";
 type ProductWithCategoryId = Product & { category_id?: string };
 
 function getProductCategoryId(product: Product) {
-  return product.category?.id ?? (product as ProductWithCategoryId).category_id;
+  return product.category_id;
 }
 
 function getProductCategoryName(product: Product, categories: Category[]) {
   const categoryId = getProductCategoryId(product);
-  return product.category?.name || categories.find((category) => category.id === categoryId)?.name || "";
+  return categories.find((category) => category.id === categoryId)?.name || "";
 }
 
 export function MenuGrid({ products, categories }: { products: Product[]; categories: Category[] }) {
@@ -33,21 +33,21 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
     if (slug) {
       const product = products.find((p) => p.slug === slug);
       if (product) {
-        addItem({
-          product: {
-            id: product.id,
-            name: product.name,
-            slug: product.slug,
-            description: product.description || "",
-            basePrice: product.base_price,
-            image: product.images?.[0]?.url || "",
-            category: getProductCategoryName(product, categories),
-            options: [],
-          },
-          choices: [],
-          quantity: 1,
-          unitPrice: product.base_price,
-        });
+         addItem({
+           product: {
+             id: product.id,
+             name: product.name,
+             slug: product.slug,
+              description: "",
+              basePrice: product.price,
+              image: "",
+              category: product.category_id,
+             options: [],
+           },
+           choices: [],
+           quantity: 1,
+           unitPrice: product.price,
+         });
 
         // Clean query param from URL
         const params = new URLSearchParams(searchParams.toString());
@@ -66,7 +66,7 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
   const normalizedSearch = search.trim().toLowerCase();
   const searchedProducts = normalizedSearch
     ? products.filter((product) =>
-        [product.name, product.description, product.slug, product.category?.name].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+        [product.name, product.slug, getProductCategoryName(product, categories)].some((value) => value?.toLowerCase().includes(normalizedSearch)),
       )
     : products;
 
@@ -145,35 +145,31 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
       {/* Product grid */}
       <div className="grid grid-cols-2 gap-3 pb-16">
         {filtered.map((product) => {
-          const handleAdd = () => {
-            addItem({
-              product: {
-                id: product.id,
-                name: product.name,
-                slug: product.slug,
-                description: product.description || "",
-                basePrice: product.base_price,
-                image: product.images?.[0]?.url || "",
-                category: getProductCategoryName(product, categories),
-                options: [],
-              },
-              choices: [],
-              quantity: 1,
-              unitPrice: product.base_price,
-            });
-          };
+         const handleAdd = () => {
+           addItem({
+             product: {
+               id: product.id,
+               name: product.name,
+               slug: product.slug,
+                description: "",
+                basePrice: product.price,
+                image: "",
+                category: product.category_id,
+               options: [],
+             },
+             choices: [],
+             quantity: 1,
+             unitPrice: product.price,
+           });
+         };
 
           return (
             <div key={product.id} className="overflow-hidden rounded-2xl border border-crust bg-white">
               <div className="relative h-[110px] bg-butter">
                 <Link href={`/menu/${product.slug}`} aria-label={`View ${product.name}`}>
-                  {product.images?.[0] ? (
-                    <Image src={product.images[0].url} alt={product.name} fill className="object-cover" sizes="50vw" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Croissant className="text-golden" size={36} aria-hidden="true" />
-                    </div>
-                  )}
+                 <div className="flex h-full w-full items-center justify-center">
+                   <Croissant className="text-golden" size={36} aria-hidden="true" />
+                 </div>
                 </Link>
                 <button
                   type="button"
@@ -188,12 +184,12 @@ export function MenuGrid({ products, categories }: { products: Product[]; catego
                 <h3 className="font-display text-[14px] leading-[1.1] tracking-tight text-espresso line-clamp-1">
                   {product.name}
                 </h3>
-                <div className="mt-0.5 font-editorial text-[11px] text-cinnamon line-clamp-1">
-                  {getProductCategoryName(product, categories) || "Bakerio"}
-                </div>
-                <div className="mt-1.5 font-display text-[15px] text-espresso">
-                  {formatVND(product.base_price)}
-                </div>
+                 <div className="mt-0.5 font-editorial text-[11px] text-cinnamon line-clamp-1">
+                   {getProductCategoryName(product, categories) || "Bakerio"}
+                 </div>
+                 <div className="mt-1.5 font-display text-[15px] text-espresso">
+                   {formatVND(product.price)}
+                 </div>
               </Link>
             </div>
           );

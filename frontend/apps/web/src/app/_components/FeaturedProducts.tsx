@@ -2,6 +2,8 @@ import Image from "next/image";
 import type { Product } from "@repo/api-client";
 import { getOrderUrl } from "@/lib/public-config";
 
+const PRODUCT_IMAGE = "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80";
+
 interface FeaturedProductsProps {
   featuredProducts: Product[];
   loading: boolean;
@@ -24,7 +26,7 @@ export function FeaturedProducts({ featuredProducts, loading, formatVND }: Featu
         <article className="bkr-lift flex flex-col overflow-hidden rounded-sm bg-white shadow-[0_10px_30px_-15px_rgba(44,24,16,0.2)] md:row-span-2" aria-label={featuredProducts[0].name}>
           <div className="relative h-[300px] md:h-[460px] w-full">
             <Image
-              src={featuredProducts[0].images?.[0]?.url || "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80"}
+              src={PRODUCT_IMAGE}
               alt={featuredProducts[0].name}
               fill
               className="object-cover"
@@ -34,7 +36,7 @@ export function FeaturedProducts({ featuredProducts, loading, formatVND }: Featu
               ★ House signature
             </span>
             <span className="absolute right-4 top-4 rounded-sm bg-espresso px-3.5 py-2 font-display text-[20px] text-cream">
-              {formatVND(featuredProducts[0].base_price)}₫
+              {formatVND(featuredProducts[0].price)}₫
             </span>
           </div>
           <div className="flex flex-1 flex-col p-7">
@@ -42,7 +44,6 @@ export function FeaturedProducts({ featuredProducts, loading, formatVND }: Featu
             <h3 className="mt-1.5 font-display text-[34px] leading-none tracking-tight text-espresso">
               {featuredProducts[0].name}
             </h3>
-            <div className="font-editorial text-[16px] text-cinnamon">{featuredProducts[0].category?.name}</div>
             <p className="mt-4 font-news text-[15.5px] leading-[1.55] text-cocoa">
               Our signature. A loaf baked five times daily, sliced warm, layered with house pâté and a 7-spice mayonnaise. The crust shatters on cue.
             </p>
@@ -68,7 +69,7 @@ export function FeaturedProducts({ featuredProducts, loading, formatVND }: Featu
         >
           <div className="relative h-[200px] w-full">
             <Image
-              src={p.images?.[0]?.url || "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80"}
+              src={PRODUCT_IMAGE}
               alt={p.name}
               fill
               className="object-cover"
@@ -87,10 +88,9 @@ export function FeaturedProducts({ featuredProducts, loading, formatVND }: Featu
             <h3 className="mt-1 font-display text-[20px] leading-[1.05] tracking-tight text-espresso">
               {p.name}
             </h3>
-            <div className="font-editorial text-[13px] text-cinnamon">{p.category?.name}</div>
             <div className="mt-auto flex items-baseline justify-between border-t border-dashed border-crust pt-3">
               <span className="font-display text-[18px] text-espresso">
-                {formatVND(p.base_price)}
+                {formatVND(p.price)}
                 <span className="ml-0.5 text-[10px] text-caramel">₫</span>
               </span>
               <a

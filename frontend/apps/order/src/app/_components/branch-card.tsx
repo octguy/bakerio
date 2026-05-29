@@ -16,8 +16,6 @@ interface Props {
 }
 
 const regionTags: Record<string, string> = {
-  north: "Flagship",
-  central: "Family",
   south: "Coffee bar",
 };
 
@@ -28,7 +26,7 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
   // shared morph name — no duplicate view-transition-name across the page.
   const isMorphing = useCartStore((s) => s.selectedBranch?.id === branch.id);
 
-  const tag = regionTags[branch.region];
+  const tag = regionTags.south;
 
   // Warm the /menu segment (incl. its header-bearing loading.tsx) so the tap
   // commits straight to it instead of flashing the root loading template,

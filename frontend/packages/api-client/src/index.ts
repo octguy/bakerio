@@ -2,7 +2,11 @@ export type {
   Product,
   Category,
   ProductImage,
+  BranchBrief,
+  BranchProduct,
   Branch,
+  Profile,
+  CreateUserResponse,
   Order,
   OrderItem,
   OrderStatus,
@@ -29,10 +33,14 @@ export {
   // Products — GET /products is now a PUBLIC endpoint (no auth needed).
   // Keep the mock fallback as a safety net when product fetches fail.
   getProducts,
+  getProductsPage,
   getProduct,
   createProduct,
   updateProduct,
   deleteProduct,
+  listProductImages,
+  uploadProductImages,
+  deleteProductImage,
   // Categories (REAL)
   getCategories,
   getCategory,
@@ -45,23 +53,20 @@ export {
   createBranch,
   updateBranch,
   updateBranchStatus,
+  setBranchProductAvailability,
   deleteBranch,
   // Branch membership (REAL)
   getBranchMembers,
   assignBranchMember,
   removeBranchMember,
-  // Suppliers / Procurement — backend has no module, audit §I flagged this.
-  // These now hit a local mock with the same shape.
-  getSuppliers,
-  createSupplier,
-  getProcurementOrders,
-  createProcurementOrder,
-  updateProcurementStatus,
   // Users (REAL — list is composed from /branch + /branch/:id/members)
   createUser,
   getUserProfile,
+  updateUserProfile,
   getMyProfile,
   updateMyProfile,
+  changePassword,
+  setUserPassword,
   // Orders (MOCK — backend has no /orders handler)
   createOrder,
   getOrders,

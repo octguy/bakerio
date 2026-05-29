@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { getBranches } from "@repo/api-client";
 import type { WebLocation } from "@/lib/locations";
-import { locationRegions, toWebLocations } from "@/lib/locations";
+import { toWebLocations } from "@/lib/locations";
 
 const LocationMap = dynamic(() => import("./LocationMap"), {
   ssr: false,
@@ -31,9 +31,6 @@ const PIN_LAYOUT = [
 export default function LocationsContent() {
   const [locations, setLocations] = useState<WebLocation[]>([]);
   const [loading, setLoading] = useState(true);
-  const regions = useMemo(() => locationRegions(locations), [locations]);
-  const [active, setActive] = useState<string>("All");
-  const [prevActive, setPrevActive] = useState<string>("All");
   const [selectedLocationName, setSelectedLocationName] = useState<string>(locations[0]?.name ?? "");
 
   useEffect(() => {
@@ -58,18 +55,8 @@ export default function LocationsContent() {
       isMounted = false;
     };
   }, []);
-  const filtered = useMemo(
-    () => (active === "All" ? locations : locations.filter((l) => l.region === active)),
-    [active, locations],
-  );
-
-  if (active !== prevActive) {
-    setPrevActive(active);
-    setSelectedLocationName(filtered[0]?.name ?? "");
-  }
-
-  const selectedLocation = filtered.find((location) => location.name === selectedLocationName) ?? filtered[0] ?? null;
-  const selectedIdx = selectedLocation ? filtered.findIndex((location) => location.name === selectedLocation.name) : -1;
+  const selectedLocation = locations.find((location) => location.name === selectedLocationName) ?? locations[0] ?? null;
+  const selectedIdx = selectedLocation ? locations.findIndex((location) => location.name === selectedLocation.name) : -1;
 
   if (loading) {
     return (
@@ -94,28 +81,11 @@ export default function LocationsContent() {
   return (
     <section className="px-6 pb-24 lg:px-14">
       <div className="mx-auto max-w-[1400px]">
-        {/* Region tabs */}
-        <div className="mb-6 flex flex-wrap gap-1.5">
-          {regions.map((region) => (
-            <button
-              key={region}
-              onClick={() => setActive(region)}
-              className={`rounded-full px-3.5 py-1.5 font-mono text-[11px] tracking-[0.1em] transition-all ${
-                active === region
-                  ? "bg-espresso font-bold text-cream"
-                  : "border border-crust bg-white text-cocoa hover:border-espresso"
-              }`}
-            >
-              {region}
-            </button>
-          ))}
-        </div>
-
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.25fr_1fr]">
           {/* Map */}
           <div className="relative h-[500px] overflow-hidden rounded-sm border border-crust-deep bg-butter lg:h-[630px] z-0">
             <LocationMap
-              locations={filtered}
+              locations={locations}
               selectedLocation={selectedLocation}
               onSelectLocation={setSelectedLocationName}
             />
@@ -147,17 +117,16 @@ export default function LocationsContent() {
               <span>№</span>
               <span className="flex-1 pl-4">SHOP</span>
               <span className="w-[110px]">HOURS</span>
-              <span className="w-[60px] text-right">REGION</span>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {filtered.map((s, i) => {
+              {locations.map((s, i) => {
                 const isSel = s.name === selectedLocation?.name;
                 return (
                   <button
                     key={s.name}
                     onClick={() => setSelectedLocationName(s.name)}
                     className={`flex w-full items-center py-3.5 text-left ${
-                      i < filtered.length - 1 ? "border-b border-crust" : ""
+                      i < locations.length - 1 ? "border-b border-crust" : ""
                     } ${isSel ? "-mx-3 rounded bg-vanilla px-3" : ""}`}
                   >
                     <span
@@ -170,10 +139,9 @@ export default function LocationsContent() {
                       <div className="font-display text-[18px] leading-tight tracking-tight text-espresso">
                         {s.name}
                       </div>
-                      <div className="mt-0.5 font-editorial text-[13px] text-cinnamon">{s.region}</div>
+                      <div className="mt-0.5 font-editorial text-[13px] text-cinnamon">{s.address}</div>
                     </div>
                     <span className="w-[110px] font-mono text-[11px] text-cocoa">{s.hours.replace(/Mon.Sun /, "")}</span>
-                    <span className="w-[60px] text-right font-mono text-[11px] text-caramel">{s.region.split(" ").pop()}</span>
                   </button>
                 );
               })}

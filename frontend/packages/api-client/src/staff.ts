@@ -12,9 +12,16 @@
 import { getBranches, getBranchMembers, type BranchMember } from "./client";
 
 export type StaffStatus = "clocked-in" | "on-break" | "late" | "off";
-export type StaffRole = "Manager" | "Co-founder" | "Head baker" | "Pastry chef" | "Rider" | "Barista";
+export type StaffRole =
+  | "Manager"
+  | "Co-founder"
+  | "Head baker"
+  | "Pastry chef"
+  | "Rider"
+  | "Barista";
 
 export interface StaffMember {
+  userId: string;
   email: string;
   name: string;
   initial: string;
@@ -64,6 +71,7 @@ function displayRole(roles: string[]): string {
 function toStaff(member: BranchMember, branchName: string): StaffMember {
   const role = displayRole(member.roles);
   return {
+    userId: member.user_id,
     email: member.email,
     name: member.display_name,
     initial: initialOf(member.display_name),
@@ -76,11 +84,15 @@ function toStaff(member: BranchMember, branchName: string): StaffMember {
   };
 }
 
-export async function getStaff(role?: StaffRole | string): Promise<StaffMember[]> {
+export async function getStaff(
+  role?: StaffRole | string,
+): Promise<StaffMember[]> {
   const branches = await getBranches();
   const groups = await Promise.all(
     branches.map(async (b) => {
-      const members = await getBranchMembers(b.id).catch(() => [] as BranchMember[]);
+      const members = await getBranchMembers(b.id).catch(
+        () => [] as BranchMember[],
+      );
       return members.map((m) => toStaff(m, b.name));
     }),
   );
@@ -88,12 +100,21 @@ export async function getStaff(role?: StaffRole | string): Promise<StaffMember[]
   return role ? flat.filter((s) => s.role === role) : flat;
 }
 
-export async function getStaffCounts(): Promise<{
+export async function getBranchStaff(
+  branchId: string,
+  branchName: string,
+  role?: StaffRole | string,
+): Promise<StaffMember[]> {
+  const members = await getBranchMembers(branchId);
+  const staff = members.map((m) => toStaff(m, branchName));
+  return role ? staff.filter((s) => s.role === role) : staff;
+}
+
+export function getStaffCountsFromList(staff: StaffMember[]): {
   total: number;
   onShift: number;
   byRole: Record<string, number>;
-}> {
-  const staff = await getStaff();
+} {
   const byRole: Record<string, number> = { All: staff.length };
   for (const s of staff) {
     byRole[s.role] = (byRole[s.role] ?? 0) + 1;
@@ -104,4 +125,13 @@ export async function getStaffCounts(): Promise<{
     onShift: staff.length,
     byRole,
   };
+}
+
+export async function getStaffCounts(): Promise<{
+  total: number;
+  onShift: number;
+  byRole: Record<string, number>;
+}> {
+  const staff = await getStaff();
+  return getStaffCountsFromList(staff);
 }

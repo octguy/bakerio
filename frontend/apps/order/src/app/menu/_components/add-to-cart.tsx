@@ -12,27 +12,27 @@ export function AddToCartSection({ product }: { product: Product }) {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
-  const unitPrice = product.base_price;
+  const unitPrice = product.price;
   const totalPrice = unitPrice * quantity;
 
-  const handleAdd = () => {
-    addItem({
-      product: {
-        id: product.id,
-        name: product.name,
-        slug: product.slug,
-        description: product.description || "",
-        basePrice: product.base_price,
-        image: product.images?.[0]?.url || "",
-        category: product.category?.name || "",
-        options: [],
-      },
-      choices: [],
-      quantity,
-      unitPrice,
-    });
-    setAdded(true);
-  };
+   const handleAdd = () => {
+     addItem({
+       product: {
+         id: product.id,
+         name: product.name,
+         slug: product.slug,
+         description: "",
+         basePrice: product.price,
+         image: "",
+         category: product.category_id,
+         options: [],
+       },
+       choices: [],
+       quantity,
+       unitPrice,
+     });
+     setAdded(true);
+   };
 
   return (
     <>

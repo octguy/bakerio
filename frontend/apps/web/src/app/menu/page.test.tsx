@@ -11,44 +11,29 @@ const apiCategories = vi.hoisted(() => [
 const apiProducts = vi.hoisted(() => [
   {
     id: "p-sourdough",
-    sku: "SDH-1",
     name: "Sourdough Loaf",
     slug: "sourdough-loaf",
-    description: "48 hour ferment",
-    base_price: 110000,
-    unit: "loaf",
+    price: 110000,
     is_active: true,
-    category: apiCategories[0],
-    allergens: ["Gluten"],
-    images: [{ id: "img-1", url: "/sourdough.jpg", is_primary: true, sort_order: 0 }],
+    category_id: apiCategories[0].id,
     created_at: "2026-01-01T00:00:00Z",
   },
   {
     id: "p-croissant",
-    sku: "CRO-1",
     name: "Butter Croissant",
     slug: "butter-croissant",
-    description: "AOP butter",
-    base_price: 48000,
-    unit: "piece",
+    price: 48000,
     is_active: true,
-    category: apiCategories[1],
-    allergens: ["Gluten", "Dairy"],
-    images: [{ id: "img-2", url: "/croissant.jpg", is_primary: true, sort_order: 0 }],
+    category_id: apiCategories[1].id,
     created_at: "2026-01-01T00:00:00Z",
   },
   {
     id: "p-coffee",
-    sku: "CFE-1",
     name: "Iced Latte",
     slug: "iced-latte",
-    description: "Condensed milk",
-    base_price: 42000,
-    unit: "cup",
+    price: 42000,
     is_active: true,
-    category: apiCategories[2],
-    allergens: ["Dairy"],
-    images: [{ id: "img-3", url: "/latte.jpg", is_primary: true, sort_order: 0 }],
+    category_id: apiCategories[2].id,
     created_at: "2026-01-01T00:00:00Z",
   },
 ]);
@@ -107,17 +92,6 @@ describe("MenuPage", () => {
     expect(screen.getByText("Sourdough Loaf")).toBeInTheDocument();
     expect(screen.queryByText("Butter Croissant")).toBeNull();
     expect(screen.queryByText("Iced Latte")).toBeNull();
-  });
-
-  it("allergen filtering hides products without every selected allergen", async () => {
-    await renderMenuPage();
-
-    fireEvent.click(screen.getByRole("button", { name: "Dairy" }));
-
-    expect(screen.getByText("Showing 2 of 3")).toBeInTheDocument();
-    expect(screen.getByText("Butter Croissant")).toBeInTheDocument();
-    expect(screen.getByText("Iced Latte")).toBeInTheDocument();
-    expect(screen.queryByText("Sourdough Loaf")).toBeNull();
   });
 
   it("links order actions to the configured order app", async () => {

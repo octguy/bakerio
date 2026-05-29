@@ -1,30 +1,32 @@
 "use client";
 
 import { useState } from "react";
+import { useFilterStore } from "@/lib/store";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getBranches,
   createBranch,
   updateBranch,
   updateBranchStatus,
-  deleteBranch,
 } from "@repo/api-client";
 import type { Branch } from "@repo/api-client";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  ToggleLeft,
+  ToggleRight,
+  PackageCheck,
+  Users,
+} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,7 +52,7 @@ export default function BranchesPage() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Branch | null>(null);
-  const [deleting, setDeleting] = useState<Branch | null>(null);
+  const { onlyActive } = useFilterStore();
 
   const { data: branches = [], isLoading } = useQuery({
     queryKey: ["branches"],
@@ -80,16 +82,6 @@ export default function BranchesPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
-  const deleteMut = useMutation({
-    mutationFn: (id: string) => deleteBranch(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["branches"] });
-      setDeleting(null);
-      toast("Branch deleted");
-    },
-    onError: (e: Error) => toast(e.message, "error"),
-  });
-
   const statusMut = useMutation({
     mutationFn: ({
       id,
@@ -111,6 +103,37 @@ export default function BranchesPage() {
   });
 
   const columns: ColumnDef<Branch, unknown>[] = [
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const isActive = row.original.status === "active";
+        const nextStatus = isActive ? "inactive" : "active";
+        const isPending =
+          statusMut.isPending && statusMut.variables?.id === row.original.id;
+
+        return (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`${isActive ? "Deactivate" : "Activate"} ${row.original.name}`}
+              onClick={() =>
+                statusMut.mutate({ id: row.original.id, status: nextStatus })
+              }
+              disabled={isPending}
+              className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-0 shadow-none"
+            >
+              {isActive ? (
+                <ToggleRight aria-hidden="true" className="h-8 w-8 text-sage fill-sage/20" />
+              ) : (
+                <ToggleLeft aria-hidden="true" className="h-6 w-6 text-sienna fill-sienna/20" />
+              )}
+            </Button>
+          </div>
+        );
+      },
+    },
     { accessorKey: "name", header: "Name" },
     { accessorKey: "address", header: "Address" },
     {
@@ -124,41 +147,24 @@ export default function BranchesPage() {
       cell: ({ row }) => row.original.lng ?? "-",
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => {
-        const isActive = row.original.status === "active";
-        const nextStatus = isActive ? "inactive" : "active";
-
-        return (
-          <div className="flex items-center gap-2">
-            <Badge variant={isActive ? "success" : "secondary"}>
-              {row.original.status}
-            </Badge>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label={`${isActive ? "Deactivate" : "Activate"} ${row.original.name}`}
-              onClick={() =>
-                statusMut.mutate({ id: row.original.id, status: nextStatus })
-              }
-              disabled={statusMut.isPending}
-            >
-              {isActive ? (
-                <ToggleRight aria-hidden="true" className="h-4 w-4" />
-              ) : (
-                <ToggleLeft aria-hidden="true" className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        );
-      },
-    },
-    {
       id: "actions",
       header: "",
       cell: ({ row }) => (
         <div className="flex gap-1">
+          <Link
+            href={`/branches/${row.original.id}/staff`}
+            className={buttonVariants({ variant: "ghost", size: "icon" })}
+            aria-label={`Manage staff for ${row.original.name}`}
+          >
+            <Users aria-hidden="true" className="h-4 w-4" />
+          </Link>
+          <Link
+            href={`/branches/${row.original.id}/products`}
+            className={buttonVariants({ variant: "ghost", size: "icon" })}
+            aria-label={`Manage product availability for ${row.original.name}`}
+          >
+            <PackageCheck aria-hidden="true" className="h-4 w-4" />
+          </Link>
           <Button
             variant="ghost"
             size="icon"
@@ -174,7 +180,8 @@ export default function BranchesPage() {
             variant="ghost"
             size="icon"
             aria-label={`Delete ${row.original.name}`}
-            onClick={() => setDeleting(row.original)}
+            title="Use Deactivate - backend has no delete"
+            disabled
           >
             <Trash2 aria-hidden="true" className="h-4 w-4 text-destructive" />
           </Button>
@@ -237,7 +244,7 @@ export default function BranchesPage() {
       ) : (
         <DataTable
           columns={columns}
-          data={branches}
+          data={onlyActive ? branches.filter((b) => b.status === "active") : branches}
           searchKey="name"
           searchPlaceholder="Search branches..."
         />
@@ -341,32 +348,6 @@ export default function BranchesPage() {
               </Button>
             </div>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!deleting} onOpenChange={() => setDeleting(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Branch</DialogTitle>
-            <DialogDescription>
-              Confirm that you want to permanently remove this branch.
-            </DialogDescription>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Delete &quot;{deleting?.name}&quot;?
-          </p>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setDeleting(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleting && deleteMut.mutate(deleting.id)}
-              disabled={deleteMut.isPending}
-            >
-              Delete
-            </Button>
-          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -21,8 +21,8 @@ vi.mock("@/components/ui/GoogleMap", () => ({
 
 vi.mock("@repo/api-client", () => ({
   getBranches: vi.fn().mockResolvedValue([
-    { id: "br-1", name: "Bakerio Nguyễn Huệ", address: "45 Nguyễn Huệ, Bến Nghé, Quận 1", region: "south", status: "active", lat: 10.77, lng: 106.70 },
-    { id: "br-2", name: "Bakerio Phú Mỹ Hưng", address: "18 Nguyễn Lương Bằng, Tân Phú, Quận 7", region: "south", status: "active", lat: 10.72, lng: 106.71 },
+    { id: "br-1", name: "Bakerio Nguyễn Huệ", address: "45 Nguyễn Huệ, Bến Nghé, Quận 1", status: "active", lat: 10.77, lng: 106.70 },
+    { id: "br-2", name: "Bakerio Phú Mỹ Hưng", address: "18 Nguyễn Lương Bằng, Tân Phú, Quận 7", status: "active", lat: 10.72, lng: 106.71 },
   ]),
 }));
 
@@ -70,21 +70,16 @@ describe("LocationsPage", () => {
     expect(screen.getByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).toBeInTheDocument();
   });
 
-  it("filters the shop list and selected callout when a region button is clicked", async () => {
+  it("updates the selected callout when a shop is clicked", async () => {
     render(<LocationsPage />);
-    
-    fireEvent.click(await screen.findByRole("button", { name: "District 7" }));
-    
+
     const listButtons = screen.getAllByRole("button");
-    const district7ListButton = listButtons.find(
+    const selectedButton = listButtons.find(
       (b) => b.className.includes("text-left") && b.textContent?.includes("Bakerio Phú Mỹ Hưng"),
     );
-    const district1ListButton = listButtons.find(
-      (b) => b.className.includes("text-left") && b.textContent?.includes("Bakerio Nguyễn Huệ"),
-    );
-    
-    expect(district7ListButton).toBeDefined();
-    expect(district1ListButton).toBeUndefined();
+
+    expect(selectedButton).toBeDefined();
+    fireEvent.click(selectedButton!);
     expect(screen.getByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).toBeInTheDocument();
   });
 });

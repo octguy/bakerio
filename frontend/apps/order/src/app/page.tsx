@@ -127,16 +127,16 @@ export default async function HomePage() {
       )}
 
       <div className="flex flex-col gap-3">
-        {rankedBranches.map(({ branch, distance }, i) => (
-          <BranchCard
-            key={branch.id}
-            branch={branch}
-            isSelected={i === 0}
-            heroImage={HERO_IMAGES[branch.region] ?? HERO_IMAGES.south}
-            distanceLabel={distanceLabel(distance)}
-            etaLabel={etaLabel(distance)}
-          />
-        ))}
+         {rankedBranches.map(({ branch, distance }, i) => (
+           <BranchCard
+             key={branch.id}
+             branch={branch}
+             isSelected={i === 0}
+             heroImage={HERO_IMAGES.south}
+             distanceLabel={distanceLabel(distance)}
+             etaLabel={etaLabel(distance)}
+           />
+         ))}
       </div>
 
       {/* Continue CTA */}

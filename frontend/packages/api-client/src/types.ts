@@ -2,35 +2,31 @@
 
 export interface Product {
   id: string;
-  sku: string;
   name: string;
   slug: string;
-  description?: string;
-  base_price: number;
-  unit: string;
+  category_id: string;
+  price: number;
+  sort_order: number;
   is_active: boolean;
-  category?: Category;
-  images?: ProductImage[];
-  /** Optional client-side field; not yet on the backend DTO — see API audit § III. */
-  allergens?: string[];
-  /** Optional client-side field for "★ / New / ✦" badges on cards. */
-  tag?: string;
   created_at: string;
+  updated_at: string;
 }
 
 export interface Category {
   id: string;
   name: string;
   slug: string;
-  parent_id?: string;
   sort_order: number;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProductImage {
   id: string;
+  product_id: string;
   url: string;
-  is_primary: boolean;
+  alt_text?: string;
   sort_order: number;
 }
 
@@ -41,7 +37,40 @@ export interface Branch {
   lat?: number;
   lng?: number;
   status: string;
-  region: string;
+  created_at: string;
+}
+
+export interface BranchBrief {
+  id: string;
+  name: string;
+  address: string;
+}
+
+export interface BranchProduct {
+  product_id: string;
+  branch_id: string;
+  is_active: boolean;
+}
+
+export interface Profile {
+  id: string;
+  user_id: string;
+  display_name: string;
+  phone?: string;
+  address?: string;
+  avatar_url?: string;
+  bio?: string;
+  roles?: string[];
+  branch?: BranchBrief;
+}
+
+export interface CreateUserResponse {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  branch?: BranchBrief;
+  created_at: string;
 }
 
 export interface Order {

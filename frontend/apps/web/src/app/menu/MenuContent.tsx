@@ -5,7 +5,7 @@ import Image from "next/image";
 import type { Product, Category } from "@repo/api-client";
 import { getOrderUrl } from "@/lib/public-config";
 
-const ALLERGENS = ["Gluten", "Dairy", "Eggs", "Nuts", "Vegan-friendly"];
+const PRODUCT_IMAGE = "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80";
 
 interface MenuContentProps {
   initialProducts: Product[];
@@ -16,22 +16,12 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
   const [productsList] = useState<Product[]>(initialProducts);
   const [categoriesList] = useState<Category[]>(initialCategories);
   const [active, setActive] = useState<string>("All");
-  const [selectedAllergens, setSelectedAllergens] = useState<string[]>([]);
   const orderUrl = getOrderUrl();
 
-  const toggleAllergen = (a: string) => {
-    setSelectedAllergens((prev) =>
-      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]
-    );
-  };
-
   const filtered = productsList.filter((p) => {
-    const pCategory = p.category?.slug ? p.category : categoriesList.find((c) => c.id === (p.category?.id || (p as { category_id?: string }).category_id)) || p.category;
+    const pCategory = categoriesList.find((c) => c.id === p.category_id);
     const categoryMatch = active === "All" || pCategory?.slug === active;
-    const allergenMatch =
-      selectedAllergens.length === 0 ||
-      selectedAllergens.every((a) => p.allergens?.includes(a));
-    return categoryMatch && allergenMatch;
+    return categoryMatch;
   });
 
   return (
@@ -60,7 +50,7 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
 
           {categoriesList.map((c) => {
             const count = productsList.filter((p) => {
-              const pCategory = p.category?.slug ? p.category : categoriesList.find((cat) => cat.id === (p.category?.id || (p as { category_id?: string }).category_id)) || p.category;
+              const pCategory = categoriesList.find((cat) => cat.id === p.category_id);
               return pCategory?.slug === c.slug;
             }).length;
             const isActive = active === c.slug;
@@ -89,25 +79,6 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
             </div>
           </div>
 
-          <div className="mt-5">
-            <div className="mb-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-caramel">Allergens</div>
-            {ALLERGENS.map((a) => {
-              const isChecked = selectedAllergens.includes(a);
-              return (
-                <button
-                  key={a}
-                  onClick={() => toggleAllergen(a)}
-                  className="flex items-center gap-2.5 py-1.5 text-[13px] text-cocoa w-full text-left"
-                >
-                  <span
-                    className="block h-3.5 w-3.5 rounded-sm border-[1.5px] border-crust-deep transition-colors"
-                    style={{ background: isChecked ? "var(--cinnamon)" : "#fff" }}
-                  />
-                  <span>{a}</span>
-                </button>
-              );
-            })}
-          </div>
           </aside>
 
           {/* Product grid */}
@@ -119,7 +90,7 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
               >
                 <div className="relative h-[160px] w-full">
                   <Image
-                    src={p.images?.[0]?.url || "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80"}
+                    src={PRODUCT_IMAGE}
                     alt={p.name}
                     fill
                     className="object-cover"
@@ -132,13 +103,11 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
                   </span>
                   <h3 className="mt-1 font-display text-[17px] leading-[1.1] tracking-tight text-espresso">{p.name}</h3>
                   <div className="font-editorial text-[12.5px] text-cinnamon">
-                    {(p.category?.name ||
-                      categoriesList.find((c) => c.id === (p.category?.id || (p as { category_id?: string }).category_id))?.name) ||
-                      "Bakes"}
+                    {categoriesList.find((c) => c.id === p.category_id)?.name || "Bakes"}
                   </div>
                   <div className="mt-auto flex items-baseline justify-between border-t border-dashed border-crust pt-2.5">
                     <span className="font-display text-[16px] text-espresso">
-                      {p.base_price.toLocaleString("vi-VN")}
+                      {Number(p.price).toLocaleString("vi-VN")}
                       <span className="ml-0.5 text-[10px] text-caramel">₫</span>
                     </span>
                     <a

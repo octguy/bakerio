@@ -11,7 +11,6 @@ import {
   createBranch,
   updateBranch,
   updateBranchStatus,
-  deleteBranch,
 } from "@repo/api-client";
 
 const mockToast = vi.fn();
@@ -54,7 +53,6 @@ vi.mock("@repo/api-client", () => ({
   createBranch: vi.fn(),
   updateBranch: vi.fn(),
   updateBranchStatus: vi.fn(),
-  deleteBranch: vi.fn(),
 }));
 
 vi.mock("@/components/data-table", () => ({
@@ -83,6 +81,7 @@ vi.mock("@/components/ui/button", () => ({
       {children}
     </button>
   ),
+  buttonVariants: () => "",
 }));
 
 vi.mock("@/components/ui/badge", () => ({
@@ -126,6 +125,7 @@ vi.mock("lucide-react", () => ({
   Trash2: () => <span>🗑</span>,
   ToggleLeft: () => <span>off</span>,
   ToggleRight: () => <span>on</span>,
+  Users: () => <span>staff</span>,
 }));
 
 import BranchesPage from "./page";
@@ -381,42 +381,17 @@ describe("BranchesPage CRUD flow", () => {
     });
   });
 
-  it("deletes branch successfully", async () => {
-    vi.mocked(deleteBranch).mockResolvedValue(null as any);
+  it("disables branch delete action", () => {
     render(<BranchesPage />);
 
-    // Click delete button
-    fireEvent.click(screen.getByText("🗑"));
-    expect(screen.getByText("Delete Branch")).toBeInTheDocument();
-
-    // Click confirm delete
-    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
-
-    await waitFor(() => {
-      expect(deleteBranch).toHaveBeenCalledWith("br-1");
-      expect(mockToast).toHaveBeenCalledWith("Branch deleted");
+    const disabledDelete = screen.getByRole("button", {
+      name: /delete downtown/i,
     });
-  });
-
-  it("handles deleteBranch failure", async () => {
-    vi.mocked(deleteBranch).mockRejectedValue(new Error("Delete error"));
-    render(<BranchesPage />);
-
-    fireEvent.click(screen.getByText("🗑"));
-    fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
-
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith("Delete error", "error");
-    });
-  });
-
-  it("closes delete branch dialog on cancel", () => {
-    render(<BranchesPage />);
-    fireEvent.click(screen.getByText("🗑"));
-    expect(screen.getByText("Delete Branch")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
-    expect(screen.queryByText("Delete Branch")).not.toBeInTheDocument();
+    expect(disabledDelete).toBeDisabled();
+    expect(disabledDelete).toHaveAttribute(
+      "title",
+      "Use Deactivate - backend has no delete",
+    );
   });
 
   it("closes edit dialog on backdrop / openChange callback", () => {
