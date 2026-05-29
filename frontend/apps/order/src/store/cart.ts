@@ -15,6 +15,7 @@ interface CartStore {
   selectedBranch: SelectedBranch | null;
   items: CartItem[];
   coupon: Coupon | null;
+  isCartOpen: boolean;
   setBranch: (id: string) => void;
   selectBranch: (branch: SelectedBranch) => void;
   addItem: (item: Omit<CartItem, 'id'>) => void;
@@ -23,6 +24,7 @@ interface CartStore {
   applyCoupon: (coupon: Coupon) => void;
   removeCoupon: () => void;
   clearCart: () => void;
+  setCartOpen: (open: boolean) => void;
   subtotal: () => number;
   discount: () => number;
   total: () => number;
@@ -35,6 +37,7 @@ export const useCartStore = create<CartStore>()(
       selectedBranch: null,
       items: [],
       coupon: null,
+      isCartOpen: false,
 
       // Reorder flow only knows the id; drop any stale summary so the menu
       // header falls back gracefully instead of showing the wrong branch.
@@ -46,6 +49,7 @@ export const useCartStore = create<CartStore>()(
       addItem: (item) =>
         set((state) => ({
           items: [...state.items, { ...item, id: crypto.randomUUID() }],
+          isCartOpen: true,
         })),
 
       removeItem: (id) =>
@@ -61,6 +65,7 @@ export const useCartStore = create<CartStore>()(
       applyCoupon: (coupon) => set({ coupon }),
       removeCoupon: () => set({ coupon: null }),
       clearCart: () => set({ items: [], coupon: null }),
+      setCartOpen: (open) => set({ isCartOpen: open }),
 
       subtotal: () =>
         get().items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0),

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Croissant } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
@@ -18,12 +19,26 @@ export default function CartPage() {
 }
 
 function CartPageInner() {
+  const [hydrated, setHydrated] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setHydrated(true), []);
+
   const items = useCartStore((s) => s.items);
   const removeItem = useCartStore((s) => s.removeItem);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const subtotal = useCartStore((s) => s.subtotal());
+  const setCartOpen = useCartStore((s) => s.setCartOpen);
+  const router = useRouter();
 
   const [loyalty, setLoyalty] = useState(0);
+
+  useEffect(() => {
+    // If desktop (md: width >= 768px), redirect to /menu and slide open sidebar cart
+    if (typeof window !== "undefined" && window.innerWidth >= 768) {
+      setCartOpen(true);
+      router.replace("/menu");
+    }
+  }, [router, setCartOpen]);
 
   useEffect(() => {
     let active = true;
@@ -46,6 +61,9 @@ function CartPageInner() {
   }, [subtotal]);
 
   const total = Math.max(0, subtotal - loyalty);
+
+
+  if (!hydrated) return null;
 
   if (items.length === 0) {
     return (

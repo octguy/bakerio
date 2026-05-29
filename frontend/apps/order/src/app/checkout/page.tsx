@@ -42,6 +42,10 @@ export default function CheckoutPage() {
 
 function CheckoutPageInner() {
   const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setHydrated(true), []);
+
   const items = useCartStore((s) => s.items);
   const branchId = useCartStore((s) => s.branchId);
   const subtotal = useCartStore((s) => s.subtotal());
@@ -77,6 +81,9 @@ function CheckoutPageInner() {
     };
     loadLoyaltyData();
   }, [subtotal]);
+
+
+  if (!hydrated) return null;
 
   if (ordered) {
     return (

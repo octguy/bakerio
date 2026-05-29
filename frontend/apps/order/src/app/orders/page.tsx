@@ -149,9 +149,9 @@ function OrdersPageInner() {
   ];
 
   return (
-    <main className="mx-auto max-w-md px-6 pt-4 pb-32">
-      {/* Header */}
-      <div className="mb-3 flex items-center justify-between">
+    <main className="mx-auto max-w-5xl px-6 pt-4 pb-32 md:pb-12">
+      {/* Header (Mobile only) */}
+      <div className="mb-3 flex items-center justify-between md:hidden">
         <Link href="/profile" aria-label="Back to profile" className="text-[22px] text-espresso">‹</Link>
         <div className="font-display text-[16px] leading-none text-espresso">Orders</div>
         <span className="font-mono text-[11px] tracking-[0.1em] text-caramel">Filter</span>
@@ -217,7 +217,7 @@ function OrdersPageInner() {
           </Link>
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5">
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((o) => {
             const st = STATUS_LABEL[o.status] ?? { l: o.status, c: "var(--caramel)" };
             const itemsCount = o.items.reduce((s, i) => s + i.quantity, 0);

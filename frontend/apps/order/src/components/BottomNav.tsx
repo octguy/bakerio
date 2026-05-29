@@ -13,21 +13,29 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  const itemCount = useCartStore((s) => s.items.reduce((sum, item) => sum + item.quantity, 0));
+  const itemCount = useCartStore((s) =>
+    s.items.reduce((sum, item) => sum + item.quantity, 0),
+  );
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-crust bg-white md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-crust bg-white lg:hidden">
       <div className="flex items-center justify-around px-2 pt-2.5 pb-7">
         {navItems.map(({ href, icon, label }) => {
-          const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+          const active =
+            pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
             <Link
               key={href}
               href={href}
               className="relative flex flex-col items-center gap-0.5"
-              style={{ color: active ? "var(--cinnamon)" : "var(--caramel)", fontWeight: active ? 700 : 500 }}
+              style={{
+                color: active ? "var(--cinnamon)" : "var(--caramel)",
+                fontWeight: active ? 700 : 500,
+              }}
             >
-              <span className="text-[16px]" aria-hidden>{icon}</span>
+              <span className="text-[16px]" aria-hidden>
+                {icon}
+              </span>
               {label === "Cart" && itemCount > 0 && (
                 <>
                   <span
@@ -39,7 +47,9 @@ export function BottomNav() {
                   <span className="sr-only">{itemCount} items</span>
                 </>
               )}
-              <span className="font-mono text-[9.5px] uppercase tracking-[0.16em]">{label}</span>
+              <span className="font-mono text-[9.5px] uppercase tracking-[0.16em]">
+                {label}
+              </span>
             </Link>
           );
         })}

@@ -3,32 +3,40 @@ import { ViewTransitions } from "next-view-transitions";
 import "./globals.css";
 import { display, editorial, news, sans, mono, script } from "@/lib/fonts";
 import { AuthProvider } from "@/lib/auth";
-import { Header } from "@/components/Header";
-import { BottomNav } from "@/components/BottomNav";
+import { DesktopSidebarNav } from "@/components/DesktopSidebarNav";
+import { LayoutShell } from "@/components/LayoutShell";
 
 export const metadata: Metadata = {
   title: "Bakerio — Order Fresh Baked Goods",
-  description: "Pick up your order. Bánh mì, croissant, sourdough, cà phê — every morning, eleven shops across Saigon.",
+  description:
+    "Pick up your order. Bánh mì, croissant, sourdough, cà phê — every morning, eleven shops across Saigon.",
   icons: {
     icon: "/favicon.ico",
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const fontVars = `${sans.variable} ${display.variable} ${editorial.variable} ${news.variable} ${mono.variable} ${script.variable}`;
   return (
     <html lang="vi" className={fontVars}>
-      <body className="min-h-screen bg-cream text-espresso pb-16 md:pb-0 antialiased">
+      <body className="min-h-screen bg-cream text-espresso pb-16 lg:pb-0 antialiased">
         <ViewTransitions>
           <AuthProvider>
-            <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-espresso focus:rounded">Skip to content</a>
-            <Header />
-            {children}
-            <BottomNav />
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-espresso focus:rounded"
+            >
+              Skip to content
+            </a>
+            <DesktopSidebarNav />
+            <LayoutShell>{children}</LayoutShell>
           </AuthProvider>
         </ViewTransitions>
       </body>
     </html>
   );
 }
-

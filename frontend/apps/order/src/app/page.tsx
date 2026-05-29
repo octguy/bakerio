@@ -65,7 +65,7 @@ export default async function HomePage() {
     .sort((a, b) => a.distance - b.distance);
 
   return (
-    <main id="main-content" className="mx-auto max-w-md px-6 pt-6 pb-0">
+    <main id="main-content" className="mx-auto max-w-5xl px-6 pt-6 pb-0">
       {/* Greeting */}
       <section className="pb-6 pt-4">
         <span className="block font-script text-[28px] leading-none text-cinnamon">good morning,</span>
@@ -126,7 +126,7 @@ export default async function HomePage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
          {rankedBranches.map(({ branch, distance }, i) => (
            <BranchCard
              key={branch.id}
