@@ -13,7 +13,7 @@ vi.mock("@/lib/auth", () => ({ useAuth: () => ({ register: mockRegister }) }));
 import RegisterPage from "./page";
 
 beforeEach(() => {
-  mockRegister.mockResolvedValue(null);
+  mockRegister.mockResolvedValue({ error: null, userId: "user-123", email: "jane@test.com" });
 });
 
 afterEach(() => {
@@ -78,7 +78,7 @@ describe("RegisterPage", () => {
     });
   });
 
-  it("redirects to /login after successful registration", async () => {
+  it("redirects to verify email after successful registration", async () => {
     render(<RegisterPage />);
     fireEvent.change(screen.getByLabelText(/full name/i), {
       target: { value: "Jane Doe" },
@@ -96,12 +96,12 @@ describe("RegisterPage", () => {
     fireEvent.submit(screen.getByRole("button", { name: /send verification code/i }));
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/login");
+      expect(mockPush).toHaveBeenCalledWith("/verify-email?user_id=user-123&email=jane%40test.com");
     });
   });
 
   it("displays error message when registration fails", async () => {
-    mockRegister.mockResolvedValue("Email already taken");
+    mockRegister.mockResolvedValue({ error: "Email already taken" });
     render(<RegisterPage />);
     fireEvent.change(screen.getByLabelText(/full name/i), {
       target: { value: "Jane Doe" },

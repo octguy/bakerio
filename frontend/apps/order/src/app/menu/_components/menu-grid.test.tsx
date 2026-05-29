@@ -2,7 +2,20 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import type { Category, Product } from "@repo/api-client";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MenuGrid } from "./menu-grid";
+
+vi.mock("next/navigation", () => ({
+  useRouter: vi.fn(() => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  })),
+  useSearchParams: vi.fn(() => ({
+    get: vi.fn().mockReturnValue(null),
+    toString: vi.fn().mockReturnValue(""),
+  })),
+}));
 
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: { children: ReactNode; href: string }) => (
@@ -98,5 +111,30 @@ describe("MenuGrid", () => {
 
     expect(screen.getByText("Croissant")).toBeTruthy();
     expect(screen.getByText("Bánh Mì")).toBeTruthy();
+  });
+
+  it("automatically adds product to cart when add-to-cart query parameter is present", () => {
+    const mockGet = vi.fn().mockReturnValue("croissant");
+    vi.mocked(useSearchParams).mockReturnValue({
+      get: mockGet,
+      toString: vi.fn().mockReturnValue("add-to-cart=croissant"),
+    } as any);
+
+    const mockPush = vi.fn();
+    vi.mocked(useRouter).mockReturnValue({
+      push: mockPush,
+    } as any);
+
+    render(<MenuGrid products={products} categories={categories} />);
+
+    expect(mockAddItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        product: expect.objectContaining({
+          slug: "croissant",
+          name: "Croissant",
+        }),
+      })
+    );
+    expect(mockPush).toHaveBeenCalledWith("/cart");
   });
 });

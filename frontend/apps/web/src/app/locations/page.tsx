@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import { locations } from "@/data/locations";
 import LocationsContent from "./LocationsContent";
-
-const locationCount = locations.length;
 
 export const metadata: Metadata = {
   title: "Locations — Atlas",
-  description: `${locationCount} shops, one city. Find Bakerio across Saigon — District 1, 7, and Thủ Đức.`,
+  description: "Find Bakerio shops across Saigon, updated from live branch availability.",
 };
 
 export default function LocationsPage() {
@@ -25,7 +22,7 @@ export default function LocationsPage() {
               className="font-display tracking-tight"
               style={{ fontSize: "clamp(48px,9vw,80px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
             >
-              {locationCount} shops, <span className="font-editorial text-cinnamon">one city.</span>
+              Shops, <span className="font-editorial text-cinnamon">one city.</span>
             </h1>
           </div>
           <div className="hidden text-right md:block">

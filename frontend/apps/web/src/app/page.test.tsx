@@ -60,11 +60,18 @@ vi.mock('@repo/api-client', () => ({
     {
       id: 'p-1',
       name: 'Bánh Mì Sài Gòn',
-      base_price: 35000,
+      slug: 'banh-mi-sai-gon',
+      category_id: 'c-1',
+      price: 35000,
+      sort_order: 1,
       is_active: true,
-      category: { id: 'c-1', name: 'Bread' },
-      images: [{ url: '/img/banhmi.jpg' }],
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
     },
+  ]),
+  getBranches: vi.fn().mockResolvedValue([
+    { id: 'br-1', name: 'Bakerio Nguyễn Huệ', address: '45 Nguyễn Huệ, Bến Nghé, Quận 1', lat: 10.77, lng: 106.7, status: 'active', created_at: '2026-01-01T00:00:00Z' },
+    { id: 'br-2', name: 'Bakerio Phú Mỹ Hưng', address: '18 Nguyễn Lương Bằng, Tân Phú, Quận 7', lat: 10.72, lng: 106.71, status: 'active', created_at: '2026-01-01T00:00:00Z' },
   ]),
 }));
 

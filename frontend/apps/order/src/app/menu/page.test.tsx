@@ -10,28 +10,20 @@ const apiCategories = vi.hoisted(() => [
 const apiProducts = vi.hoisted(() => [
   {
     id: "p-banh-mi",
-    sku: "BMI-1",
     name: "Bánh Mì",
-    base_price: 25000,
+    price: 25000,
     slug: "banh-mi",
-    description: "Crisp baguette sandwich",
-    unit: "piece",
+    category_id: "c-bread",
     is_active: true,
-    images: [],
-    category: apiCategories[0],
     created_at: "2026-01-01T00:00:00Z",
   },
   {
     id: "p-croissant",
-    sku: "CRO-1",
     name: "Croissant",
-    base_price: 35000,
+    price: 35000,
     slug: "croissant",
-    description: "Buttery pastry",
-    unit: "piece",
+    category_id: "c-pastry",
     is_active: true,
-    images: [],
-    category: apiCategories[1],
     created_at: "2026-01-01T00:00:00Z",
   },
 ]);
@@ -41,12 +33,33 @@ vi.mock("@repo/api-client", () => ({
   getCategories: vi.fn().mockResolvedValue(apiCategories),
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  useSearchParams: () => ({
+    get: vi.fn().mockReturnValue(null),
+    toString: vi.fn().mockReturnValue(""),
+  }),
+}));
+
 vi.mock("next/link", () => ({
   default: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
     <a href={href} {...props}>
       {children}
     </a>
   ),
+}));
+
+vi.mock("next-view-transitions", () => ({
+  Link: ({ children, href, ...props }: { children: React.ReactNode; href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+  useTransitionRouter: () => ({ push: vi.fn() }),
 }));
 
 vi.mock("next/image", () => ({

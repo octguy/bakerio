@@ -22,10 +22,10 @@ export default function RegisterPage() {
     setError("");
     setFieldErrors({});
 
-    const result = registerSchema.safeParse({ name, email, password });
-    if (!result.success) {
+    const validation = registerSchema.safeParse({ name, email, password });
+    if (!validation.success) {
       const errs: Record<string, string> = {};
-      result.error.issues.forEach((i) => {
+      validation.error.issues.forEach((i) => {
         errs[i.path[0] as string] = i.message;
       });
       setFieldErrors(errs);
@@ -37,13 +37,16 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-    const err = await register(email, password, name);
+    const result = await register(email, password, name);
     setLoading(false);
-    if (err) {
-      setError(err);
+    if (result.error) {
+      setError(result.error);
       return;
     }
-    router.push("/login");
+    const params = new URLSearchParams();
+    if (result.userId) params.set("user_id", result.userId);
+    params.set("email", result.email ?? email);
+    router.push(`/verify-email?${params.toString()}`);
   };
 
   return (

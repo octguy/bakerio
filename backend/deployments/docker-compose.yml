@@ -38,6 +38,25 @@ services:
       - bakerio_network
     restart: on-failure
 
+  seed-branding:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ${PWD}/../db/seed_branding.sql:/seed/seed_branding.sql:ro
+    command:
+      - sh
+      - -c
+      - psql -h postgres -U ${DB_USER} -d ${DB_NAME} -v ON_ERROR_STOP=1 -f /seed/seed_branding.sql
+    networks:
+      - bakerio_network
+    restart: on-failure
+
   redis:
     image: redis:7-alpine
     container_name: bakerio-redis
@@ -114,6 +133,8 @@ services:
       postgres:
         condition: service_healthy
       migrate:
+        condition: service_completed_successfully
+      seed-branding:
         condition: service_completed_successfully
       redis:
         condition: service_healthy

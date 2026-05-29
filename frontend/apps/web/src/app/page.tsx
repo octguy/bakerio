@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getProducts } from "@repo/api-client";
-import type { Product } from "@repo/api-client";
-import { locations } from "@/data/locations";
+import { getBranches, getProducts } from "@repo/api-client";
+import type { Branch, Product } from "@repo/api-client";
 import { posts } from "@/data/posts";
+import { toWebLocations } from "@/lib/locations";
 import { FeaturedProducts } from "./_components/FeaturedProducts";
 import { FeaturedLocations } from "./_components/FeaturedLocations";
 import { RecentPosts } from "./_components/RecentPosts";
@@ -32,17 +32,29 @@ function formatVND(n: number) {
 
 export default function Home() {
   const [productsList, setProductsList] = useState<Product[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getProducts().then((data) => {
-      setProductsList(data);
+    let isMounted = true;
+
+    Promise.all([
+      getProducts().catch(() => []),
+      getBranches().catch(() => []),
+    ]).then(([products, branchData]) => {
+      if (!isMounted) return;
+      setProductsList(products);
+      setBranches(branchData);
       setLoading(false);
     });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const featuredProducts = productsList.slice(0, 6);
-  const featuredLocations = locations.slice(0, 3);
+  const featuredLocations = toWebLocations(branches).slice(0, 6);
   const featuredPosts = posts.slice(0, 3);
 
   return (
@@ -192,14 +204,14 @@ export default function Home() {
         <div className="mx-auto max-w-[1400px]">
           <div className="mb-14 flex items-end justify-between">
             <div>
-              <div className="mb-4 flex items-center gap-3">
+              <div className="bkr-rise mb-4 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
                   § ii — from the counter
                 </span>
               </div>
               <h2
-                className="font-display tracking-tight text-espresso"
+                className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(40px,7vw,84px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
               >
                 What we baked <span className="font-editorial text-cinnamon">this morning.</span>
@@ -268,14 +280,14 @@ export default function Home() {
         <div className="mx-auto max-w-[1400px]">
           <div className="mb-12 flex items-end justify-between">
             <div>
-              <div className="mb-4 flex items-center gap-3">
+              <div className="bkr-rise mb-4 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
                   § iii — atlas
                 </span>
               </div>
               <h2
-                className="font-display tracking-tight text-espresso"
+                className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(38px,6vw,72px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
               >
                 Eleven shops, <span className="font-editorial text-cinnamon">one city.</span>
@@ -301,14 +313,14 @@ export default function Home() {
         <div className="mx-auto max-w-[1400px]">
           <div className="mb-12 flex items-end justify-between">
             <div>
-              <div className="mb-4 flex items-center gap-3">
+              <div className="bkr-rise mb-4 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
                   The journal · since mmxxiv
                 </span>
               </div>
               <h2
-                className="font-display tracking-tight text-espresso"
+                className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(38px,6vw,72px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
               >
                 Stories <span className="font-editorial text-cinnamon">from the oven.</span>

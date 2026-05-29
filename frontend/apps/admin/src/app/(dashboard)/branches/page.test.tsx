@@ -7,10 +7,15 @@ import {
 } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { useQuery } from "@tanstack/react-query";
-import { createBranch, updateBranch, deleteBranch } from "@repo/api-client";
+import {
+  createBranch,
+  updateBranch,
+  updateBranchStatus,
+} from "@repo/api-client";
 
 const mockToast = vi.fn();
 const mockInvalidate = vi.fn();
+const mockSetQueryData = vi.fn();
 
 vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(() => ({
@@ -19,7 +24,8 @@ vi.mock("@tanstack/react-query", () => ({
         id: "br-1",
         name: "Downtown",
         address: "123 Main St",
-        region: "north",
+        lat: 10.7738,
+        lng: 106.703,
         status: "active",
       },
     ],
@@ -29,7 +35,7 @@ vi.mock("@tanstack/react-query", () => ({
     mutate: async (variables: any) => {
       try {
         const result = await mutationFn(variables);
-        if (onSuccess) onSuccess(result);
+        if (onSuccess) onSuccess(result, variables);
       } catch (err: any) {
         if (onError) onError(err);
       }
@@ -38,6 +44,7 @@ vi.mock("@tanstack/react-query", () => ({
   })),
   useQueryClient: vi.fn(() => ({
     invalidateQueries: mockInvalidate,
+    setQueryData: mockSetQueryData,
   })),
 }));
 
@@ -45,7 +52,7 @@ vi.mock("@repo/api-client", () => ({
   getBranches: vi.fn(),
   createBranch: vi.fn(),
   updateBranch: vi.fn(),
-  deleteBranch: vi.fn(),
+  updateBranchStatus: vi.fn(),
 }));
 
 vi.mock("@/components/data-table", () => ({
@@ -74,6 +81,7 @@ vi.mock("@/components/ui/button", () => ({
       {children}
     </button>
   ),
+  buttonVariants: () => "",
 }));
 
 vi.mock("@/components/ui/badge", () => ({
@@ -115,6 +123,9 @@ vi.mock("lucide-react", () => ({
   Plus: () => <span>+</span>,
   Pencil: () => <span>✎</span>,
   Trash2: () => <span>🗑</span>,
+  ToggleLeft: () => <span>off</span>,
+  ToggleRight: () => <span>on</span>,
+  Users: () => <span>staff</span>,
 }));
 
 import BranchesPage from "./page";
@@ -128,7 +139,8 @@ describe("BranchesPage CRUD flow", () => {
           id: "br-1",
           name: "Downtown",
           address: "123 Main St",
-          region: "north",
+          lat: 10.7738,
+          lng: 106.703,
           status: "active",
         },
       ],
@@ -145,6 +157,8 @@ describe("BranchesPage CRUD flow", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Downtown")).toBeInTheDocument();
     expect(screen.getByText("123 Main St")).toBeInTheDocument();
+    expect(screen.getByText("10.7738")).toBeInTheDocument();
+    expect(screen.getByText("106.703")).toBeInTheDocument();
   });
 
   it("handles Loading state", () => {
@@ -170,9 +184,13 @@ describe("BranchesPage CRUD flow", () => {
 
     const nameInput = container.querySelector('input[name="name"]')!;
     const addrInput = container.querySelector('input[name="address"]')!;
+    const latInput = container.querySelector('input[name="lat"]')!;
+    const lngInput = container.querySelector('input[name="lng"]')!;
 
     fireEvent.change(nameInput, { target: { value: "Saigon Centre" } });
     fireEvent.change(addrInput, { target: { value: "District 1" } });
+    fireEvent.change(latInput, { target: { value: "10.7738" } });
+    fireEvent.change(lngInput, { target: { value: "106.703" } });
 
     fireEvent.submit(container.querySelector("form")!);
 
@@ -180,6 +198,8 @@ describe("BranchesPage CRUD flow", () => {
       expect(createBranch).toHaveBeenCalledWith({
         name: "Saigon Centre",
         address: "District 1",
+        lat: 10.7738,
+        lng: 106.703,
       });
       expect(mockToast).toHaveBeenCalledWith("Branch created");
       expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: ["branches"] });
@@ -224,6 +244,8 @@ describe("BranchesPage CRUD flow", () => {
       expect(updateBranch).toHaveBeenCalledWith("br-1", {
         name: "Downtown Upd",
         address: "123 Main St",
+        lat: 10.7738,
+        lng: 106.703,
       });
       expect(mockToast).toHaveBeenCalledWith("Branch updated");
     });
@@ -243,42 +265,133 @@ describe("BranchesPage CRUD flow", () => {
     });
   });
 
-  it("deletes branch successfully", async () => {
-    vi.mocked(deleteBranch).mockResolvedValue(null as any);
+  it("toggles branch status", async () => {
+    vi.mocked(updateBranchStatus).mockResolvedValue(null as any);
     render(<BranchesPage />);
 
-    // Click delete button
-    fireEvent.click(screen.getByText("🗑"));
-    expect(screen.getByText("Delete Branch")).toBeInTheDocument();
-
-    // Click confirm delete
-    fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /deactivate downtown/i }),
+    );
 
     await waitFor(() => {
-      expect(deleteBranch).toHaveBeenCalledWith("br-1");
-      expect(mockToast).toHaveBeenCalledWith("Branch deleted");
+      expect(updateBranchStatus).toHaveBeenCalledWith("br-1", "inactive");
+      expect(mockSetQueryData).toHaveBeenCalledWith(
+        ["branches"],
+        expect.any(Function),
+      );
+      expect(mockToast).toHaveBeenCalledWith("Branch status updated");
+      expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: ["branches"] });
     });
   });
 
-  it("handles deleteBranch failure", async () => {
-    vi.mocked(deleteBranch).mockRejectedValue(new Error("Delete error"));
+  it("reverses branch status in the local query cache", async () => {
+    vi.mocked(updateBranchStatus).mockResolvedValue(null as any);
     render(<BranchesPage />);
 
-    fireEvent.click(screen.getByText("🗑"));
-    fireEvent.click(screen.getByRole("button", { name: /delete/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /deactivate downtown/i }),
+    );
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith("Delete error", "error");
+      expect(mockSetQueryData).toHaveBeenCalledWith(
+        ["branches"],
+        expect.any(Function),
+      );
+    });
+
+    const updater = mockSetQueryData.mock.calls.at(-1)?.[1] as (
+      branches: Array<{
+        id: string;
+        name: string;
+        address: string;
+        lat?: number;
+        lng?: number;
+        status: string;
+      }>,
+    ) => Array<{
+      id: string;
+      name: string;
+      address: string;
+      lat?: number;
+      lng?: number;
+      status: string;
+    }>;
+
+    expect(
+      updater([
+        {
+          id: "br-1",
+          name: "Downtown",
+          address: "123 Main St",
+          lat: 10.7738,
+          lng: 106.703,
+          status: "active",
+        },
+      ]),
+    ).toEqual([
+      {
+        id: "br-1",
+        name: "Downtown",
+        address: "123 Main St",
+        lat: 10.7738,
+        lng: 106.703,
+        status: "inactive",
+      },
+    ]);
+  });
+
+  it("activates an inactive branch", async () => {
+    vi.mocked(updateBranchStatus).mockResolvedValue(null as any);
+    vi.mocked(useQuery).mockReturnValue({
+      data: [
+        {
+          id: "br-2",
+          name: "Uptown",
+          address: "456 Side St",
+          lat: 10.7295,
+          lng: 106.7186,
+          status: "inactive",
+        },
+      ],
+      isLoading: false,
+    } as any);
+    render(<BranchesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /activate uptown/i }));
+
+    await waitFor(() => {
+      expect(updateBranchStatus).toHaveBeenCalledWith("br-2", "active");
+      expect(mockToast).toHaveBeenCalledWith("Branch status updated");
+      expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: ["branches"] });
     });
   });
 
-  it("closes delete branch dialog on cancel", () => {
+  it("handles branch status update failure", async () => {
+    vi.mocked(updateBranchStatus).mockRejectedValue(
+      new Error("Status update failed"),
+    );
     render(<BranchesPage />);
-    fireEvent.click(screen.getByText("🗑"));
-    expect(screen.getByText("Delete Branch")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
-    expect(screen.queryByText("Delete Branch")).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: /deactivate downtown/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith("Status update failed", "error");
+    });
+  });
+
+  it("disables branch delete action", () => {
+    render(<BranchesPage />);
+
+    const disabledDelete = screen.getByRole("button", {
+      name: /delete downtown/i,
+    });
+    expect(disabledDelete).toBeDisabled();
+    expect(disabledDelete).toHaveAttribute(
+      "title",
+      "Use Deactivate - backend has no delete",
+    );
   });
 
   it("closes edit dialog on backdrop / openChange callback", () => {

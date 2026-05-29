@@ -228,6 +228,7 @@ describe("CategoriesPage CRUD flow", () => {
       expect(updateCategory).toHaveBeenCalledWith("cat-1", {
         name: "Sourdough Bread",
         sort_order: 1,
+        is_active: true,
       });
       expect(mockToast).toHaveBeenCalledWith("Category updated");
     });

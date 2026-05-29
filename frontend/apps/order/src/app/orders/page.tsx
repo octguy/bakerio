@@ -91,27 +91,27 @@ function OrdersPageInner() {
         throw new Error(`Order ${orderId} not found`);
       }
       const itemsList = await reorderItems(orderId);
-      const addedItems = await Promise.all(
-        itemsList.map(async (item) => {
-          const product = await getProduct(item.product_id);
-          if (!product) return null;
-          return {
-            product: {
-              id: product.id,
-              name: product.name,
-              slug: product.slug,
-              description: product.description || "",
-              basePrice: product.base_price,
-              image: product.images?.[0]?.url || "",
-              category: product.category?.name || "",
-              options: [],
-            },
-            choices: [],
-            quantity: item.quantity,
-            unitPrice: product.base_price,
-          };
-        })
-      );
+           const addedItems = await Promise.all(
+             itemsList.map(async (item) => {
+               const product = await getProduct(item.product_id);
+               if (!product) return null;
+               return {
+                 product: {
+                   id: product.id,
+                   name: product.name,
+                   slug: product.slug,
+                   description: "",
+                   basePrice: product.price,
+                   image: "",
+                   category: product.category_id,
+                   options: [],
+                 },
+                 choices: [],
+                 quantity: item.quantity,
+                 unitPrice: product.price,
+               };
+             })
+           );
 
       setBranch(sourceOrder.branch_id);
       addedItems.forEach((it) => {

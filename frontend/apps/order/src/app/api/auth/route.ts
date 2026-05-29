@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
-  const { action, email, password, full_name } = body;
+  const { action, email, password, full_name, user_id, otp } = body;
 
   try {
     if (action === "login") {
@@ -41,7 +41,18 @@ export async function POST(req: NextRequest) {
       });
       const json = await res.json();
       if (json.error) return NextResponse.json({ error: json.error.message }, { status: 400 });
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, user_id: json.data?.id, email: json.data?.email });
+    }
+
+    if (action === "verify") {
+      const res = await fetch(`${API_BASE}/auth/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id, otp }),
+      });
+      const json = await res.json();
+      if (json.error) return NextResponse.json({ error: json.error.message }, { status: 400 });
+      return NextResponse.json({ success: true, verified: json.data?.verified, message: json.data?.message });
     }
 
     if (action === "logout") {

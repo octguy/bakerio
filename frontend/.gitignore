@@ -5,8 +5,7 @@ node_modules
 .pnp
 .pnp.js
 
-# Local env files
-.env
+# Local env overrides only — .env and .env.production are committed
 .env.local
 .env.development.local
 .env.test.local

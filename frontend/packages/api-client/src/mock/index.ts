@@ -5,21 +5,24 @@ import type {
   Order,
   OrderItem,
   Product,
+  ProductImage,
 } from "../types";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const MOCK_TS = "2024-01-01T00:00:00Z";
+
 // ── Categories ─────────────────────────────────────────────
 // Audit §III: design shows 8 categories, mock had 4. Grown to match.
 export const mockCategories: Category[] = [
-  { id: "cat-banhmi", name: "Bánh mì", slug: "banh-mi", sort_order: 1, is_active: true },
-  { id: "cat-sourdough", name: "Sourdough", slug: "sourdough", sort_order: 2, is_active: true },
-  { id: "cat-croissant", name: "Croissant", slug: "croissant", sort_order: 3, is_active: true },
-  { id: "cat-pastry", name: "Pastry", slug: "pastry", sort_order: 4, is_active: true },
-  { id: "cat-cake", name: "Cake", slug: "cake", sort_order: 5, is_active: true },
-  { id: "cat-coffee", name: "Cà phê · Drinks", slug: "coffee", sort_order: 6, is_active: true },
-  { id: "cat-seasonal", name: "Seasonal", slug: "seasonal", sort_order: 7, is_active: true },
-  { id: "cat-gift", name: "Gift box", slug: "gift", sort_order: 8, is_active: true },
+  { id: "cat-banhmi", name: "Bánh mì", slug: "banh-mi", sort_order: 1, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "cat-sourdough", name: "Sourdough", slug: "sourdough", sort_order: 2, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "cat-croissant", name: "Croissant", slug: "croissant", sort_order: 3, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "cat-pastry", name: "Pastry", slug: "pastry", sort_order: 4, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "cat-cake", name: "Cake", slug: "cake", sort_order: 5, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "cat-coffee", name: "Cà phê · Drinks", slug: "coffee", sort_order: 6, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "cat-seasonal", name: "Seasonal", slug: "seasonal", sort_order: 7, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "cat-gift", name: "Gift box", slug: "gift", sort_order: 8, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
 ];
 
 // Image library — bakery / Vietnamese pastry feel
@@ -35,35 +38,51 @@ const IMG = {
   loaves: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1400&q=85&auto=format",
 };
 
-function imageObj(url: string, idx: number) {
-  return [{ id: `img-${idx}`, url, is_primary: true, sort_order: 0 }];
-}
-
 // ── Products ───────────────────────────────────────────────
-// Audit §III: swapped fixtures from English (Vanilla Sponge, Croissant) to
-// Vietnamese names used in the design folio (Bánh mì Sài Gòn, Tart Quýt Hồng).
-// Added optional `allergens` for the menu filter; field is ignored by backend.
+// Backend-truthful shape: Product mirrors the Go ProductResponse exactly
+// (category_id + price, no sku/unit/description/category-object/images/allergens/tag).
+// Demo-only attributes that the backend doesn't persist now live elsewhere:
+// product imagery is kept in the standalone mockProductImages store below.
 export const mockProducts: Product[] = [
-  { id: "p-bmi-1",  sku: "BMI-001",   name: "Bánh mì Sài Gòn",      slug: "banh-mi-sai-gon",      description: "Pâté · chả lụa · jambon · dưa leo. Baked five times daily.", base_price: 65000,  unit: "piece", is_active: true, category: mockCategories[0], images: imageObj(IMG.banhmi, 1),  tag: "★",   allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-bmi-2",  sku: "BMI-002",   name: "Bánh mì heo quay",     slug: "banh-mi-heo-quay",     description: "Crackling roast pork, hoisin glaze.",                       base_price: 72000,  unit: "piece", is_active: true, category: mockCategories[0], images: imageObj(IMG.banhmi, 2),                allergens: ["Gluten"],                       created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-bmi-3",  sku: "BMI-003",   name: "Bánh mì chay",         slug: "banh-mi-chay",         description: "Vegan pâté, marinated mushroom.",                            base_price: 58000,  unit: "piece", is_active: true, category: mockCategories[0], images: imageObj(IMG.banhmi, 3),                allergens: ["Gluten", "Vegan-friendly"],     created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-sdh-1",  sku: "SDH-001",   name: "Sourdough loaf",       slug: "sourdough-loaf",       description: "48-hour ferment, Đà Lạt T55, sea salt.",                     base_price: 110000, unit: "loaf",  is_active: true, category: mockCategories[1], images: imageObj(IMG.loaves, 4),  tag: "✦",   allergens: ["Gluten"],                       created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-sdh-2",  sku: "SDH-002",   name: "Pain de campagne",     slug: "pain-de-campagne",     description: "Rye · whole wheat. Country crumb.",                          base_price: 125000, unit: "loaf",  is_active: true, category: mockCategories[1], images: imageObj(IMG.loaves, 5),                allergens: ["Gluten"],                       created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-cro-1",  sku: "CRO-001",   name: "Croissant au beurre",  slug: "croissant-au-beurre",  description: "AOP butter from Brittany, 81 hand-folded layers.",           base_price: 48000,  unit: "piece", is_active: true, category: mockCategories[2], images: imageObj(IMG.flour, 6),                 allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-cro-2",  sku: "CRO-002",   name: "Pain au chocolat",     slug: "pain-au-chocolat",     description: "Callebaut 70% baton, twin sticks.",                          base_price: 55000,  unit: "piece", is_active: true, category: mockCategories[2], images: imageObj(IMG.pastry, 7),                allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-cro-3",  sku: "CRO-003",   name: "Almond croissant",     slug: "almond-croissant",     description: "Twice-baked, frangipane, shaved almonds.",                   base_price: 62000,  unit: "piece", is_active: true, category: mockCategories[2], images: imageObj(IMG.flour, 8),  tag: "New", allergens: ["Gluten", "Dairy", "Eggs", "Nuts"], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-pas-1",  sku: "PAS-001",   name: "Tart Quýt Hồng",       slug: "tart-quyt-hong",       description: "Mandarin · honey · thyme.",                                  base_price: 95000,  unit: "piece", is_active: true, category: mockCategories[3], images: imageObj(IMG.tart, 9),    tag: "New", allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-pas-2",  sku: "PAS-002",   name: "Mille-feuille",        slug: "mille-feuille",        description: "Vanilla cream · caramel.",                                   base_price: 88000,  unit: "piece", is_active: true, category: mockCategories[3], images: imageObj(IMG.pastry2, 10),              allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-cak-1",  sku: "CAK-001",   name: "Bánh kem dâu",         slug: "banh-kem-dau",         description: "Mascarpone · strawberry · sponge.",                          base_price: 165000, unit: "whole", is_active: true, category: mockCategories[4], images: imageObj(IMG.cake, 11),  tag: "✦",   allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-cak-2",  sku: "CAK-002",   name: "Cheesecake yuzu",      slug: "cheesecake-yuzu",      description: "Cream cheese, yuzu zest, biscuit base.",                     base_price: 185000, unit: "whole", is_active: true, category: mockCategories[4], images: imageObj(IMG.cake2, 12),                allergens: ["Gluten", "Dairy", "Eggs"],     created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-cof-1",  sku: "CFE-001",   name: "Cà phê sữa đá",        slug: "ca-phe-sua-da",        description: "Đà Lạt single-origin, condensed milk, ice.",                 base_price: 38000,  unit: "cup",   is_active: true, category: mockCategories[5], images: imageObj(IMG.coffee, 13),               allergens: ["Dairy"],                        created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-cof-2",  sku: "CFE-002",   name: "Cà phê đen",           slug: "ca-phe-den",           description: "Cold brew, 18h steep.",                                      base_price: 42000,  unit: "cup",   is_active: true, category: mockCategories[5], images: imageObj(IMG.coffee, 14),               allergens: ["Vegan-friendly"],               created_at: "2024-01-01T00:00:00Z" },
+  { id: "p-bmi-1", name: "Bánh mì Sài Gòn",     slug: "banh-mi-sai-gon",     category_id: "cat-banhmi",    price: 65000,  sort_order: 1,  is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-bmi-2", name: "Bánh mì heo quay",    slug: "banh-mi-heo-quay",    category_id: "cat-banhmi",    price: 72000,  sort_order: 2,  is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-bmi-3", name: "Bánh mì chay",        slug: "banh-mi-chay",        category_id: "cat-banhmi",    price: 58000,  sort_order: 3,  is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-sdh-1", name: "Sourdough loaf",      slug: "sourdough-loaf",      category_id: "cat-sourdough", price: 110000, sort_order: 4,  is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-sdh-2", name: "Pain de campagne",    slug: "pain-de-campagne",    category_id: "cat-sourdough", price: 125000, sort_order: 5,  is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-cro-1", name: "Croissant au beurre", slug: "croissant-au-beurre", category_id: "cat-croissant", price: 48000,  sort_order: 6,  is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-cro-2", name: "Pain au chocolat",    slug: "pain-au-chocolat",    category_id: "cat-croissant", price: 55000,  sort_order: 7,  is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-cro-3", name: "Almond croissant",    slug: "almond-croissant",    category_id: "cat-croissant", price: 62000,  sort_order: 8,  is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-pas-1", name: "Tart Quýt Hồng",      slug: "tart-quyt-hong",      category_id: "cat-pastry",    price: 95000,  sort_order: 9,  is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-pas-2", name: "Mille-feuille",       slug: "mille-feuille",       category_id: "cat-pastry",    price: 88000,  sort_order: 10, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-cak-1", name: "Bánh kem dâu",        slug: "banh-kem-dau",        category_id: "cat-cake",      price: 165000, sort_order: 11, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-cak-2", name: "Cheesecake yuzu",     slug: "cheesecake-yuzu",     category_id: "cat-cake",      price: 185000, sort_order: 12, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-cof-1", name: "Cà phê sữa đá",       slug: "ca-phe-sua-da",       category_id: "cat-coffee",    price: 38000,  sort_order: 13, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
+  { id: "p-cof-2", name: "Cà phê đen",          slug: "ca-phe-den",          category_id: "cat-coffee",    price: 42000,  sort_order: 14, is_active: true, created_at: MOCK_TS, updated_at: MOCK_TS },
 ];
 
+// Standalone product-image store (Product no longer carries images, mirroring
+// the backend where images are a separate /products/:id/images resource).
+const mockProductImages: Record<string, ProductImage[]> = {
+  "p-bmi-1": [{ id: "img-p-bmi-1", product_id: "p-bmi-1", url: IMG.banhmi, sort_order: 0 }],
+  "p-bmi-2": [{ id: "img-p-bmi-2", product_id: "p-bmi-2", url: IMG.banhmi, sort_order: 0 }],
+  "p-bmi-3": [{ id: "img-p-bmi-3", product_id: "p-bmi-3", url: IMG.banhmi, sort_order: 0 }],
+  "p-sdh-1": [{ id: "img-p-sdh-1", product_id: "p-sdh-1", url: IMG.loaves, sort_order: 0 }],
+  "p-sdh-2": [{ id: "img-p-sdh-2", product_id: "p-sdh-2", url: IMG.loaves, sort_order: 0 }],
+  "p-cro-1": [{ id: "img-p-cro-1", product_id: "p-cro-1", url: IMG.flour, sort_order: 0 }],
+  "p-cro-2": [{ id: "img-p-cro-2", product_id: "p-cro-2", url: IMG.pastry, sort_order: 0 }],
+  "p-cro-3": [{ id: "img-p-cro-3", product_id: "p-cro-3", url: IMG.flour, sort_order: 0 }],
+  "p-pas-1": [{ id: "img-p-pas-1", product_id: "p-pas-1", url: IMG.tart, sort_order: 0 }],
+  "p-pas-2": [{ id: "img-p-pas-2", product_id: "p-pas-2", url: IMG.pastry2, sort_order: 0 }],
+  "p-cak-1": [{ id: "img-p-cak-1", product_id: "p-cak-1", url: IMG.cake, sort_order: 0 }],
+  "p-cak-2": [{ id: "img-p-cak-2", product_id: "p-cak-2", url: IMG.cake2, sort_order: 0 }],
+  "p-cof-1": [{ id: "img-p-cof-1", product_id: "p-cof-1", url: IMG.coffee, sort_order: 0 }],
+  "p-cof-2": [{ id: "img-p-cof-2", product_id: "p-cof-2", url: IMG.coffee, sort_order: 0 }],
+};
+
 export const mockBranches: Branch[] = [
-  { id: "br-q1",       name: "Bakerio Quận 1",      address: "65 Lê Lợi, Quận 1",       lat: 10.7738, lng: 106.7030, status: "active", region: "south" },
-  { id: "br-hoankiem", name: "Bakerio Hoàn Kiếm",   address: "12 Hàng Bài, Hoàn Kiếm",  lat: 21.0245, lng: 105.8538, status: "active", region: "north" },
-  { id: "br-phunhuan", name: "Bakerio Phú Nhuận",   address: "100 Phan Xích Long",      lat: 10.8007, lng: 106.6805, status: "active", region: "south" },
+  { id: "br-q1",       name: "Bakerio Quận 1",      address: "65 Lê Lợi, Quận 1",       lat: 10.7738, lng: 106.7030, status: "active", created_at: MOCK_TS },
+  { id: "br-hoankiem", name: "Bakerio Hoàn Kiếm",   address: "12 Hàng Bài, Hoàn Kiếm",  lat: 21.0245, lng: 105.8538, status: "active", created_at: MOCK_TS },
+  { id: "br-phunhuan", name: "Bakerio Phú Nhuận",   address: "100 Phan Xích Long",      lat: 10.8007, lng: 106.6805, status: "active", created_at: MOCK_TS },
 ];
 
 const ORDERS_STORAGE_KEY = "bakerio-mock-orders";
@@ -313,7 +332,9 @@ export async function getProducts(categorySlug?: string): Promise<Product[]> {
   await delay(150);
   const products = getSavedProducts();
   if (categorySlug) {
-    return products.filter((p) => p.category?.slug === categorySlug);
+    const category = getSavedCategories().find((c) => c.slug === categorySlug);
+    if (!category) return [];
+    return products.filter((p) => p.category_id === category.id);
   }
   return products;
 }
@@ -324,34 +345,28 @@ export async function getProduct(slugOrId: string): Promise<Product | null> {
   return products.find((p) => p.slug === slugOrId || p.id === slugOrId) ?? null;
 }
 
-// Audit §II: createProduct used to take `price`; updateProduct took `base_price` — DTO drift.
-// Both now take `base_price` to match the real Go DTO.
+// Backend-truthful: createProduct mirrors the Go CreateProductRequest
+// ({ name, category_id, price, sort_order }).
 export async function createProduct(data: {
-  sku: string;
   name: string;
-  unit: string;
-  base_price: number;
-  description?: string;
-  category_id?: string;
-  allergens?: string[];
+  category_id: string;
+  price: number;
+  sort_order?: number;
 }): Promise<Product> {
   await delay(250);
   const products = getSavedProducts();
-  const category = data.category_id ? mockCategories.find((c) => c.id === data.category_id) : undefined;
+  const now = new Date().toISOString();
 
   const newProduct: Product = {
     id: `p-${Date.now()}`,
-    sku: data.sku,
     name: data.name,
-    slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-    description: data.description,
-    base_price: data.base_price,
-    unit: data.unit,
+    slug: slugify(data.name),
+    category_id: data.category_id,
+    price: data.price,
+    sort_order: data.sort_order ?? products.length + 1,
     is_active: true,
-    category,
-    allergens: data.allergens,
-    images: imageObj("https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80", Date.now()),
-    created_at: new Date().toISOString(),
+    created_at: now,
+    updated_at: now,
   };
 
   products.push(newProduct);
@@ -359,16 +374,17 @@ export async function createProduct(data: {
   return newProduct;
 }
 
+// Backend-truthful: updateProduct mirrors the Go UpdateProductRequest full-replace
+// ({ name, category_id, price, sort_order, is_active }).
 export async function updateProduct(
   id: string,
-  data: Partial<{
+  data: {
     name: string;
-    description: string;
-    unit: string;
+    category_id: string;
+    price: number;
+    sort_order: number;
     is_active: boolean;
-    base_price: number;
-    allergens: string[];
-  }>,
+  },
 ): Promise<Product> {
   await delay(250);
   const products = getSavedProducts();
@@ -377,11 +393,16 @@ export async function updateProduct(
 
   const current = products[index];
   if (!current) throw new Error("Product not found");
+
   const updated: Product = {
     ...current,
-    ...data,
-    slug: data.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : current.slug,
-    base_price: data.base_price !== undefined ? data.base_price : current.base_price,
+    name: data.name,
+    slug: data.name ? slugify(data.name) : current.slug,
+    category_id: data.category_id,
+    price: data.price,
+    sort_order: data.sort_order,
+    is_active: data.is_active,
+    updated_at: new Date().toISOString(),
   };
 
   products[index] = updated;
@@ -402,17 +423,19 @@ export async function getCategories(): Promise<Category[]> {
   return getSavedCategories();
 }
 
-export async function createCategory(data: { name: string; parent_id?: string; sort_order?: number }): Promise<Category> {
+export async function createCategory(data: { name: string; sort_order?: number }): Promise<Category> {
   await delay(180);
   const categories = [...getSavedCategories()];
   const slug = slugify(data.name);
+  const now = new Date().toISOString();
   const category: Category = {
     id: `cat-${slug || Date.now()}`,
     name: data.name,
     slug,
-    parent_id: data.parent_id,
     sort_order: data.sort_order ?? categories.length + 1,
     is_active: true,
+    created_at: now,
+    updated_at: now,
   };
   categories.push(category);
   saveCategories(categories);
@@ -421,19 +444,21 @@ export async function createCategory(data: { name: string; parent_id?: string; s
 
 export async function updateCategory(
   id: string,
-  data: { name: string; parent_id?: string; sort_order?: number; is_active?: boolean },
+  data: { name: string; sort_order?: number; is_active?: boolean },
 ): Promise<Category> {
   await delay(180);
   const categories = [...getSavedCategories()];
+  const now = new Date().toISOString();
   const index = categories.findIndex((category) => category.id === id || category.slug === id);
   if (index === -1) {
     const category: Category = {
       id,
       name: data.name,
       slug: data.name ? slugify(data.name) : slugify(id),
-      parent_id: data.parent_id,
       sort_order: data.sort_order ?? categories.length + 1,
       is_active: data.is_active ?? true,
+      created_at: now,
+      updated_at: now,
     };
     categories.push(category);
     saveCategories(categories);
@@ -444,12 +469,12 @@ export async function updateCategory(
   if (!current) throw new Error(`Category ${id} not found`);
 
   const updated: Category = {
-    id: current.id,
+    ...current,
     name: data.name,
     slug: data.name ? slugify(data.name) : current.slug,
-    parent_id: data.parent_id ?? current.parent_id,
     sort_order: data.sort_order ?? current.sort_order,
     is_active: data.is_active ?? current.is_active,
+    updated_at: now,
   };
 
   categories[index] = updated;
@@ -479,14 +504,15 @@ export async function createOrder(data: CreateOrderRequest): Promise<Order> {
     const product =
       products.find((p) => p.id === item.product_id) ||
       mockProducts.find((p) => p.id === item.product_id);
-    if (!product) throw new Error(`Unknown product ${item.product_id}`);
+    const productName = product?.name ?? `Product ${item.product_id.slice(0, 8)}`;
+    const unitPrice = product?.price ?? 0;
     return {
       id: `oi-${orderIdCounter}-${i}`,
       product_id: item.product_id,
-      product_name: product.name,
+      product_name: productName,
       quantity: item.quantity,
-      unit_price: product.base_price,
-      total_price: product.base_price * item.quantity,
+      unit_price: unitPrice,
+      total_price: unitPrice * item.quantity,
     };
   });
 
@@ -575,4 +601,36 @@ export async function login(
     access_token: "mock-jwt-token-" + Date.now(),
     user: { id: "user-1", email, full_name: "Demo User", roles: ["member"] },
   };
+}
+
+// Product images live in a standalone store (the backend exposes them as a
+// separate /products/:id/images resource, not a field on Product). Primary
+// image is determined by sort_order (lowest = primary), so there is no
+// is_primary flag.
+export async function listProductImages(productId: string): Promise<ProductImage[]> {
+  await delay(100);
+  const images = mockProductImages[productId];
+  return images ? [...images] : [];
+}
+
+export async function uploadProductImages(productId: string, files: File[]): Promise<ProductImage[]> {
+  await delay(300);
+  const existingImages = mockProductImages[productId] ?? [];
+
+  const newImages: ProductImage[] = files.map((file, i) => ({
+    id: `img-${Date.now()}-${i}`,
+    product_id: productId,
+    url: URL.createObjectURL(file),
+    sort_order: existingImages.length + i,
+  }));
+
+  const updatedImages = [...existingImages, ...newImages];
+  mockProductImages[productId] = updatedImages;
+  return updatedImages;
+}
+
+export async function deleteProductImage(productId: string, imageId: string): Promise<void> {
+  await delay(150);
+  const existingImages = mockProductImages[productId] ?? [];
+  mockProductImages[productId] = existingImages.filter((img) => img.id !== imageId);
 }

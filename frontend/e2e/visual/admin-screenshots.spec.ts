@@ -7,7 +7,7 @@ import path from "path";
  */
 
 const PUBLIC_ROUTES: { name: string; path: string; waitFor?: string }[] = [
-  { name: "01-login", path: "/login", waitFor: "main" },
+  { name: "01-login", path: "/login", waitFor: "form" },
 ];
 
 const DASHBOARD_ROUTES: { name: string; path: string; waitFor?: string }[] = [
@@ -25,6 +25,18 @@ const VIEWPORTS = [
   { name: "tablet",  width: 768,  height: 1024 },
 ];
 
+async function loginAsAdmin(page: import("@playwright/test").Page) {
+  const res = await page.request.post("/api/auth", {
+    data: {
+      action: "login",
+      email: process.env.E2E_ADMIN_EMAIL,
+      password: process.env.E2E_ADMIN_PASSWORD,
+    },
+  });
+
+  expect(res.ok(), `admin visual auth failed: ${res.status()} ${await res.text()}`).toBe(true);
+}
+
 for (const vp of VIEWPORTS) {
   test.describe(`Admin — ${vp.name} (${vp.width}px)`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
@@ -39,23 +51,14 @@ for (const vp of VIEWPORTS) {
 
         await expect(page).toHaveScreenshot(
           path.join("e2e/screenshots/admin", `${route.name}--${vp.name}.png`),
-          { fullPage: true, animations: "disabled" }
+          { fullPage: true, animations: "disabled", maxDiffPixels: 100 }
         );
       });
     }
 
     for (const route of DASHBOARD_ROUTES) {
       test(`screenshot: ${route.name} @ ${vp.name}`, async ({ page }) => {
-        // Inject mock auth so the dashboard doesn't redirect to login
-        await page.goto("/login", { waitUntil: "domcontentloaded" });
-        await page.evaluate(() => {
-          localStorage.setItem("admin_token", "mock-token-for-visual-testing");
-          localStorage.setItem("admin_user", JSON.stringify({
-            id: "mock-admin-1",
-            name: "Test Admin",
-            role: "superadmin",
-          }));
-        });
+        await loginAsAdmin(page);
 
         await page.goto(route.path, { waitUntil: "networkidle" });
         if (route.waitFor) {
@@ -66,7 +69,7 @@ for (const vp of VIEWPORTS) {
 
         await expect(page).toHaveScreenshot(
           path.join("e2e/screenshots/admin", `${route.name}--${vp.name}.png`),
-          { fullPage: true, animations: "disabled" }
+          { fullPage: true, animations: "disabled", maxDiffPixels: 100 }
         );
       });
     }

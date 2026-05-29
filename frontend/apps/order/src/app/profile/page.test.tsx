@@ -93,6 +93,35 @@ describe("ProfilePage", () => {
     });
   });
 
+  it("edits the display name from the profile header", async () => {
+    render(<ProfilePage />);
+    fireEvent.click(screen.getByRole("button", { name: "EDIT" }));
+    fireEvent.change(screen.getByLabelText(/display name/i), { target: { value: "Jane Baker" } });
+    fireEvent.click(screen.getByRole("button", { name: /save profile/i }));
+
+    expect(screen.getByRole("heading", { name: "Jane Baker" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /edit profile/i })).toBeNull();
+  });
+
+  it("adds an address from the Addresses section", async () => {
+    render(<ProfilePage />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Add" }));
+    fireEvent.change(screen.getByLabelText(/delivery address/i), { target: { value: "45 Pasteur, District 1" } });
+    fireEvent.click(screen.getByRole("button", { name: /save address/i }));
+
+    expect(screen.getByText("45 Pasteur, District 1")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: /add address/i })).toBeNull();
+  });
+
+  it("opens settings and toggles push notifications", () => {
+    render(<ProfilePage />);
+    fireEvent.click(screen.getByRole("button", { name: /profile settings/i }));
+    expect(screen.getByRole("dialog", { name: /profile settings/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /push notifications/i })[0]);
+    expect(screen.getByText("Muted")).toBeInTheDocument();
+  });
+
   it("displays loyalty, address, and lifetime orders from the mocked data layer", async () => {
     render(<ProfilePage />);
 

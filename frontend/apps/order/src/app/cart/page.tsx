@@ -123,9 +123,9 @@ function CartPageInner() {
             </div>
             <div className="min-w-0 flex-1">
               <h4 className="font-display text-[15px] leading-[1.1] tracking-tight text-espresso">{item.product.name}</h4>
-              <div className="mt-0.5 font-editorial text-[11.5px] text-cinnamon line-clamp-1">
-                {item.choices.map((c) => c.choiceLabel).join(" · ") || item.product.category}
-              </div>
+               <div className="mt-0.5 font-editorial text-[11.5px] text-cinnamon line-clamp-1">
+                 {item.choices.map((c) => c.choiceLabel).join(" · ")}
+               </div>
             </div>
             <div className="text-right">
               <div className="font-display tabular-nums text-[14px] leading-none text-espresso">{formatVND(item.unitPrice * item.quantity)}</div>

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3002",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -12,6 +12,7 @@
     "@repo/api-client": "*",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
+    "next-view-transitions": "^0.3.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zustand": "^5.0.13"

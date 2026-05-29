@@ -34,6 +34,10 @@ vi.mock("next/link", () => ({
   default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
+vi.mock("next-view-transitions", () => ({
+  useTransitionRouter: () => ({ push: mockPush, prefetch: vi.fn() }),
+  Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
 vi.mock("@/store/cart", () => ({ useCartStore: () => mockSetBranch }));
 
 afterEach(cleanup);
@@ -72,7 +76,13 @@ describe("HomePage (branch selection)", () => {
   it("selects a branch and redirects to menu when a branch card is clicked", async () => {
     render(await Page());
     fireEvent.click(screen.getByText("Bakerio Quận 1"));
-    expect(mockSetBranch).toHaveBeenCalledWith("1");
+    expect(mockSetBranch).toHaveBeenCalledWith({
+      id: "1",
+      name: "Bakerio Quận 1",
+      address: "123 Đường ABC",
+      dist: "0.8 km",
+      eta: "15–25 min",
+    });
     expect(mockPush).toHaveBeenCalledWith("/menu");
   });
 });

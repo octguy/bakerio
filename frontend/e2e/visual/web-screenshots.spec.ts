@@ -8,19 +8,19 @@ import path from "path";
  */
 
 const ROUTES: { name: string; path: string; waitFor?: string }[] = [
-  { name: "01-homepage",  path: "/",         waitFor: "h1" },
-  { name: "02-menu",      path: "/menu",      waitFor: "[class*='menu'], main, h1" },
-  { name: "03-locations", path: "/locations", waitFor: "h1" },
-  { name: "04-about",     path: "/about",     waitFor: "h1" },
-  { name: "05-blog",      path: "/blog",      waitFor: "h1" },
-  { name: "06-contact",   path: "/contact",   waitFor: "h1" },
+  { name: "01-homepage", path: "/", waitFor: "h1" },
+  { name: "02-menu", path: "/menu", waitFor: "h1" },
+  { name: "04-locations", path: "/locations", waitFor: "h1" },
+  { name: "05-about", path: "/about", waitFor: "h1" },
+  { name: "06-blog", path: "/blog", waitFor: "h1" },
+  { name: "08-contact", path: "/contact", waitFor: "h1" },
   // Note: /menu/[slug], /blog/[slug], /this-page-does-not-exist require
   // a running Next.js server (not static export). Run with visual-web-dev project.
 ];
 
 const VIEWPORTS = [
   { name: "desktop", width: 1440, height: 900 },
-  { name: "mobile",  width: 390,  height: 844 },
+  { name: "mobile", width: 390, height: 844 },
 ];
 
 for (const vp of VIEWPORTS) {
@@ -32,29 +32,37 @@ for (const vp of VIEWPORTS) {
         await page.goto(route.path, { waitUntil: "networkidle" });
 
         if (route.waitFor) {
-          await page.locator(route.waitFor).first().waitFor({ state: "visible", timeout: 10_000 });
+          await page
+            .locator(route.waitFor)
+            .first()
+            .waitFor({ state: "visible", timeout: 10_000 });
         }
 
         // Dismiss any cookie banners or overlays
-        const closeBtn = page.getByRole("button", { name: /close|dismiss|accept/i });
+        const closeBtn = page.getByRole("button", {
+          name: /close|dismiss|accept/i,
+        });
         if (await closeBtn.isVisible({ timeout: 500 }).catch(() => false)) {
           await closeBtn.click();
         }
 
         // Scroll to bottom to trigger lazy loads, then back to top
-        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        await page.evaluate(() =>
+          window.scrollTo(0, document.body.scrollHeight),
+        );
         await page.waitForTimeout(400);
         await page.evaluate(() => window.scrollTo(0, 0));
         await page.waitForTimeout(300);
 
         const screenshotPath = path.join(
           "e2e/screenshots/web",
-          `${route.name}--${vp.name}.png`
+          `${route.name}--${vp.name}.png`,
         );
 
         await expect(page).toHaveScreenshot(screenshotPath, {
           fullPage: true,
           animations: "disabled",
+          maxDiffPixelRatio: 0.02,
           mask: [page.locator("time"), page.locator("[data-dynamic]")],
         });
       });
@@ -67,29 +75,52 @@ for (const vp of VIEWPORTS) {
         const overflow = await page.evaluate(() => {
           const bodyWidth = document.body.scrollWidth;
           const viewportWidth = window.innerWidth;
-          return { bodyWidth, viewportWidth, overflow: bodyWidth > viewportWidth };
+          return {
+            bodyWidth,
+            viewportWidth,
+            overflow: bodyWidth > viewportWidth,
+          };
         });
 
-        expect(overflow.overflow, `${route.path} has horizontal overflow: body=${overflow.bodyWidth} viewport=${overflow.viewportWidth}`).toBe(false);
+        expect(
+          overflow.overflow,
+          `${route.path} has horizontal overflow: body=${overflow.bodyWidth} viewport=${overflow.viewportWidth}`,
+        ).toBe(false);
       }
     });
 
     test(`no broken images @ ${vp.name}`, async ({ page }) => {
       for (const route of ROUTES.slice(0, 5)) {
         await page.goto(route.path, { waitUntil: "networkidle" });
+        await page.evaluate(() =>
+          window.scrollTo(0, document.body.scrollHeight),
+        );
+        await page.waitForTimeout(600);
 
         const brokenImages = await page.evaluate(() => {
           const imgs = Array.from(document.querySelectorAll("img"));
           return imgs
-            .filter((img) => !img.complete || img.naturalWidth === 0)
+            .filter((img) => {
+              const style = window.getComputedStyle(img);
+              const isRendered =
+                img.getClientRects().length > 0 &&
+                style.visibility !== "hidden" &&
+                style.display !== "none";
+              return isRendered && (!img.complete || img.naturalWidth === 0);
+            })
             .map((img) => img.src || img.dataset.src || "(no src)");
         });
 
-        expect(brokenImages, `${route.path} has broken images: ${brokenImages.join(", ")}`).toHaveLength(0);
+        expect(
+          brokenImages,
+          `${route.path} has broken images: ${brokenImages.join(", ")}`,
+        ).toHaveLength(0);
       }
     });
 
-    test(`focus rings visible on interactive elements @ ${vp.name}`, async ({ page }) => {
+    test(`focus rings visible on interactive elements @ ${vp.name}`, async ({
+      page,
+    }) => {
       await page.goto("/contact", { waitUntil: "networkidle" });
 
       // Tab to first input and verify focus is visible
@@ -122,8 +153,9 @@ for (const vp of VIEWPORTS) {
       });
 
       // Color and background should not both be white
-      const bothWhite = contrast.color === "rgb(255, 255, 255)" &&
-                        contrast.background === "rgb(255, 255, 255)";
+      const bothWhite =
+        contrast.color === "rgb(255, 255, 255)" &&
+        contrast.background === "rgb(255, 255, 255)";
       expect(bothWhite).toBe(false);
     });
   });

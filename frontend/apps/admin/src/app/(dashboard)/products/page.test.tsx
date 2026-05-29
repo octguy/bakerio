@@ -15,16 +15,14 @@ const mockInvalidate = vi.fn();
 vi.mock("@tanstack/react-query", () => ({
   useQuery: vi.fn(() => ({
     data: [
-      {
-        id: "p-1",
-        name: "Bread",
-        slug: "bread",
-        base_price: 25000,
-        category: { id: "cat-1", name: "Bakery" },
-        sku: "BRD001",
-        unit: "piece",
-        is_active: true,
-      },
+        {
+          id: "p-1",
+          name: "Bread",
+          price: 25000,
+          category_id: "cat-1",
+          sort_order: 3,
+          is_active: true,
+        },
     ],
     isLoading: false,
   })),
@@ -78,6 +76,7 @@ vi.mock("@/components/ui/button", () => ({
       {children}
     </button>
   ),
+  buttonVariants: () => "",
 }));
 
 vi.mock("@/components/ui/badge", () => ({
@@ -129,6 +128,9 @@ vi.mock("lucide-react", () => ({
   Plus: () => <span>+</span>,
   Pencil: () => <span>✎</span>,
   Trash2: () => <span>🗑</span>,
+  ToggleLeft: () => <span>ToggleLeft</span>,
+  ToggleRight: () => <span>ToggleRight</span>,
+  Image: () => <span>Image</span>,
 }));
 
 import ProductsPage from "./page";
@@ -143,11 +145,9 @@ describe("ProductsPage CRUD flow", () => {
             {
               id: "p-1",
               name: "Bread",
-              slug: "bread",
-              base_price: 25000,
-              category: { id: "cat-1", name: "Bakery" },
-              sku: "BRD001",
-              unit: "piece",
+              price: 25000,
+              category_id: "cat-1",
+              sort_order: 3,
               is_active: true,
             },
           ],
@@ -199,34 +199,26 @@ describe("ProductsPage CRUD flow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /add product/i }));
 
-    const skuInput = container.querySelector('input[name="sku"]')!;
-    const slugInput = container.querySelector('input[name="slug"]')!;
     const nameInput = container.querySelector('input[name="name"]')!;
-    const unitInput = container.querySelector('input[name="unit"]')!;
     const priceInput = container.querySelector('input[name="price"]')!;
-    const descInput = container.querySelector('input[name="description"]')!;
-    const catSelect = container.querySelector('select[name="category_id"]')!;
 
-    fireEvent.change(skuInput, { target: { value: "CAKE001" } });
-    fireEvent.change(slugInput, { target: { value: "sponge-cake" } });
     fireEvent.change(nameInput, { target: { value: "Sponge Cake" } });
-    fireEvent.change(unitInput, { target: { value: "piece" } });
     fireEvent.change(priceInput, { target: { value: "150000" } });
-    fireEvent.change(descInput, { target: { value: "Tasty cake" } });
-    fireEvent.change(catSelect, { target: { value: "cat-1" } });
+
+    // Select category in CategoryCombobox
+    fireEvent.click(screen.getByText("Select category..."));
+    fireEvent.click(screen.getByRole("button", { name: "Bakery" }));
 
     fireEvent.submit(container.querySelector("form")!);
 
     await waitFor(() => {
-      expect(createProduct).toHaveBeenCalledWith({
-        sku: "CAKE001",
-        slug: "sponge-cake",
-        name: "Sponge Cake",
-        unit: "piece",
-        base_price: 150000,
-        description: "Tasty cake",
-        category_id: "cat-1",
-      });
+      expect(createProduct).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Sponge Cake",
+          price: 150000,
+          category_id: "cat-1",
+        })
+      );
       expect(mockToast).toHaveBeenCalledWith("Product created");
       expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: ["products"] });
     });
@@ -237,24 +229,14 @@ describe("ProductsPage CRUD flow", () => {
     const { container } = render(<ProductsPage />);
 
     fireEvent.click(screen.getByRole("button", { name: /add product/i }));
-    fireEvent.change(container.querySelector('input[name="sku"]')!, {
-      target: { value: "SKUERR" },
-    });
-    fireEvent.change(container.querySelector('input[name="slug"]')!, {
-      target: { value: "error-prod" },
-    });
     fireEvent.change(container.querySelector('input[name="name"]')!, {
       target: { value: "Error Prod" },
-    });
-    fireEvent.change(container.querySelector('input[name="unit"]')!, {
-      target: { value: "pc" },
     });
     fireEvent.change(container.querySelector('input[name="price"]')!, {
       target: { value: "100" },
     });
-    fireEvent.change(container.querySelector('select[name="category_id"]')!, {
-      target: { value: "cat-1" },
-    });
+    fireEvent.click(screen.getByText("Select category..."));
+    fireEvent.click(screen.getByRole("button", { name: "Bakery" }));
 
     fireEvent.submit(container.querySelector("form")!);
 
@@ -279,11 +261,10 @@ describe("ProductsPage CRUD flow", () => {
     await waitFor(() => {
       expect(updateProduct).toHaveBeenCalledWith("p-1", {
         name: "Premium Bread",
-        description: "",
-        unit: "piece",
-        base_price: 25000,
         category_id: "cat-1",
-        slug: "bread",
+        price: 25000,
+        sort_order: 3,
+        is_active: true,
       });
       expect(mockToast).toHaveBeenCalledWith("Product updated");
     });
