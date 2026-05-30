@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getLoyalty } from "@repo/api-client/mock/loyalty";
@@ -25,7 +25,6 @@ function ProfileContent() {
   const [draftName, setDraftName] = useState(displayName);
   const [editOpen, setEditOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [newAddress, setNewAddress] = useState("");
@@ -178,9 +177,7 @@ function ProfileContent() {
           EDIT
         </button>
         <div className="font-display text-[16px] leading-none">Profile</div>
-        <button type="button" onClick={() => setSettingsOpen(true)} className="text-[16px] text-caramel" aria-label="Profile settings">
-          ⚙
-        </button>
+        <span className="w-[3.5ch]" aria-hidden="true" />
       </div>
 
       <div className="md:grid md:grid-cols-[320px_1fr] md:gap-8 md:items-start mt-4">
@@ -188,8 +185,8 @@ function ProfileContent() {
         <div>
           {/* Avatar */}
           <div className="relative pt-6 pb-6 text-center bg-white rounded-2xl border border-crust mb-4">
-            {/* Desktop-only Edit & Settings buttons */}
-            <div className="hidden md:flex absolute top-3 right-4 gap-3">
+            {/* Desktop-only Edit button */}
+            <div className="hidden md:flex absolute top-3 right-4">
               <button
                 type="button"
                 onClick={() => {
@@ -199,14 +196,6 @@ function ProfileContent() {
                 className="font-mono text-[10px] font-bold tracking-[0.12em] text-cinnamon hover:text-espresso transition-colors cursor-pointer"
               >
                 EDIT
-              </button>
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(true)}
-                className="text-[14px] text-caramel hover:text-espresso transition-colors cursor-pointer"
-                aria-label="Profile settings"
-              >
-                ⚙
               </button>
             </div>
 
@@ -266,9 +255,10 @@ function ProfileContent() {
           <Section title="Account">
             {[user?.email ? { i: "✉", l: user.email, s: "verified" } : null, phone ? { i: "☎", l: phone, s: "on profile" } : null]
               .filter((r): r is { i: string; l: string; s: string } => Boolean(r))
-              .map((r, idx, a) => (
-                <Row key={idx} icon={r.i} label={r.l} sub={r.s} last={idx === a.length - 1} />
+              .map((r, idx) => (
+                <Row key={idx} icon={r.i} label={r.l} sub={r.s} />
               ))}
+            <Row icon="🔑" label="Password" sub="Change password" onClick={() => setPasswordOpen(true)} last />
           </Section>
 
           {/* Addresses */}
@@ -314,7 +304,6 @@ function ProfileContent() {
             <Row icon="🔔" label="Push notifications" sub={pushEnabled ? "order updates on" : "muted"} toggle on={pushEnabled} onClick={() => setPushEnabled((value) => !value)} />
             <Row icon="🌐" label="Language" sub="Tiếng Việt" badge="soon" />
             <Row icon="🥄" label="Dietary" sub="no peanut" badge="soon" />
-            <Row icon="🔑" label="Password" sub="Change password" onClick={() => setPasswordOpen(true)} />
             <Row icon="🔒" label="Privacy & data" badge="soon" last />
             <button
               type="button"
@@ -388,22 +377,6 @@ function ProfileContent() {
               {isSavingAddress ? "Saving..." : "Save address"}
             </button>
           </div>
-        </Modal>
-      )}
-
-      {settingsOpen && (
-        <Modal title="Profile settings" onClose={() => setSettingsOpen(false)}>
-          <button
-            type="button"
-            onClick={() => setPushEnabled((value) => !value)}
-            className="flex w-full items-center justify-between rounded-xl border border-crust bg-white px-4 py-3 text-left"
-          >
-            <span>
-              <span className="block text-[13.5px] font-semibold text-espresso">Push notifications</span>
-              <span className="font-editorial text-[11.5px] italic text-caramel">{pushEnabled ? "Enabled" : "Muted"}</span>
-            </span>
-            <span className="font-mono text-[11px] text-cinnamon">{pushEnabled ? "ON" : "OFF"}</span>
-          </button>
         </Modal>
       )}
 
@@ -577,16 +550,48 @@ function Row({
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const titleId = useId();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previouslyFocused = useRef<Element | null>(null);
+
+  // Focus management: move focus into modal on mount, restore on unmount
+  useEffect(() => {
+    previouslyFocused.current = document.activeElement;
+    // focus the dialog container
+    modalRef.current?.focus();
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      // restore focus
+      if (previouslyFocused.current instanceof HTMLElement) {
+        previouslyFocused.current.focus();
+      }
+    };
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-end bg-espresso/30 px-4 pb-4" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="w-full rounded-2xl border border-crust bg-cream p-5 shadow-[0_22px_80px_rgba(44,24,16,0.24)]">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-[24px] leading-none tracking-tight text-espresso">{title}</h2>
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-espresso/35 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      ref={modalRef}
+      tabIndex={-1}
+    >
+      <div className="flex h-[50vh] min-h-[min(24rem,calc(100vh-2rem))] w-[min(92vw,50rem)] flex-col rounded-[1.75rem] border border-crust bg-cream p-5 shadow-[0_22px_80px_rgba(44,24,16,0.24)] md:w-[50vw] md:min-w-[32rem]">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 id={titleId} className="font-display text-[24px] leading-none tracking-tight text-espresso">{title}</h2>
           <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-caramel" aria-label="Close">
             ×
           </button>
         </div>
-        {children}
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
       </div>
     </div>
   );

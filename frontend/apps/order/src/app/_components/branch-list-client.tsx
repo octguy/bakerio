@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Branch } from "@repo/api-client";
 import { BranchCard } from "./branch-card";
 import { Link } from "next-view-transitions";
+// import { useCartStore } from "@/store/cart"; // no longer needed for recommendation logic
 
 const HERO_IMAGES: Record<string, string> = {
   north: "https://images.unsplash.com/photo-1517686469429-8bdb88b9f907?w=1400&q=85&auto=format",
@@ -13,6 +14,9 @@ const HERO_IMAGES: Record<string, string> = {
 
 const DEFAULT_CUSTOMER_LOCATION = { lat: 10.7769, lng: 106.7009 };
 const FALLBACK_DISTANCE_KM = Number.POSITIVE_INFINITY;
+const ORDER_TYPES = ["Pick Up", "Delivery", "Dine In"] as const;
+
+type OrderType = (typeof ORDER_TYPES)[number];
 
 function distanceKm(branch: Branch, userLoc: { lat: number; lng: number } | null) {
   if (typeof branch.lat !== "number" || typeof branch.lng !== "number") {
@@ -68,8 +72,10 @@ interface Props {
 export function BranchListClient({ initialBranches, error }: Props) {
   const [search, setSearch] = useState("");
   const [openNow, setOpenNow] = useState(false);
+  const [orderType, setOrderType] = useState<OrderType>("Pick Up");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  // const selectedBranchId = useCartStore((s) => s.selectedBranch?.id ?? s.branchId); // retained for potential future use
 
   // Next.js hydration safety - recalculate open status on client
   const [mounted, setMounted] = useState(false);
@@ -112,6 +118,22 @@ export function BranchListClient({ initialBranches, error }: Props) {
 
   const openCount = mounted ? initialBranches.filter(isBranchOpen).length : initialBranches.length;
 
+const recommendedBranchId = useMemo(() => {
+      if (rankedBranches.length === 0) {
+        return null;
+      }
+      // Always recommend the closest (first) ranked branch, regardless of selected/clicked branch
+      return rankedBranches[0].branch.id;
+    }, [rankedBranches]);
+
+  const recommendedBranch = useMemo(() => {
+    if (!recommendedBranchId) {
+      return null;
+    }
+
+    return rankedBranches.find(({ branch }) => branch.id === recommendedBranchId)?.branch ?? null;
+  }, [rankedBranches, recommendedBranchId]);
+
   return (
     <>
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -130,6 +152,7 @@ export function BranchListClient({ initialBranches, error }: Props) {
         <div className="flex gap-2">
           <button
             onClick={() => setOpenNow((prev) => !prev)}
+            aria-pressed={openNow}
             className={`flex items-center gap-2 rounded-2xl border px-4 py-3.5 text-[13px] font-semibold transition-colors ${
               openNow
                 ? "border-sage bg-sage/10 text-sage"
@@ -155,20 +178,41 @@ export function BranchListClient({ initialBranches, error }: Props) {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-3 flex gap-6 border-b border-crust overflow-x-auto no-scrollbar">
-        {["Pickup", "Delivery", "Dine in"].map((label, i) => (
-          <div
-            key={label}
-            className={`whitespace-nowrap -mb-px border-b-2 py-2.5 font-mono text-[11px] uppercase tracking-[0.18em] ${
-              i === 0 ? "border-espresso font-bold text-espresso" : "border-transparent text-caramel"
-            }`}
-          >
-            {label}
-          </div>
-        ))}
-        <div className="flex-1 min-w-[20px]" />
-        <div className="whitespace-nowrap py-2.5 font-mono text-[11px] tracking-[0.12em] text-caramel">
+      {/* Order type selection */}
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div
+          role="radiogroup"
+          aria-label="Order type"
+          className="grid w-full grid-cols-3 overflow-hidden rounded-2xl border border-crust bg-white p-1 shadow-[inset_0_0_0_1px_rgba(74,44,31,0.04)] sm:flex-1"
+        >
+          {ORDER_TYPES.map((label) => {
+            const isActive = orderType === label;
+
+            return (
+              <label
+                key={label}
+className={`relative min-w-0 cursor-pointer rounded-xl px-2 py-2.5 text-center font-mono text-[10px] uppercase tracking-[0.12em] transition-colors sm:text-[11px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-cream ${
+                      isActive
+                        ? "bg-espresso font-bold text-cream shadow-sm"
+                        : "text-caramel hover:bg-crust/35 hover:text-espresso"
+                    }`}
+              >
+                <input
+                  type="radio"
+                  name="orderType"
+                  value={label}
+                  checked={isActive}
+                  onChange={() => setOrderType(label)}
+                  className="peer sr-only"
+                />
+                <span className="block truncate rounded-[inherit] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-cream">
+                  {label}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+        <div className="whitespace-nowrap font-mono text-[11px] tracking-[0.12em] text-caramel sm:px-1 sm:text-right">
           {openCount} open
         </div>
       </div>
@@ -191,11 +235,11 @@ export function BranchListClient({ initialBranches, error }: Props) {
             <p className="font-editorial text-[18px] text-caramel">No branches found matching your criteria.</p>
           </div>
         ) : (
-          rankedBranches.map(({ branch, distance }, i) => (
+          rankedBranches.map(({ branch, distance }) => (
             <BranchCard
               key={branch.id}
               branch={branch}
-              isSelected={i === 0 && search === "" && !openNow}
+              isSelected={branch.id === recommendedBranchId}
               heroImage={HERO_IMAGES.south}
               distanceLabel={distanceLabel(distance)}
               etaLabel={etaLabel(distance)}
@@ -215,7 +259,7 @@ export function BranchListClient({ initialBranches, error }: Props) {
           }}
         >
           <div className="text-center font-editorial text-[13px] text-caramel">
-            52 items baked fresh at {rankedBranches[0]?.branch.name?.split(" ")[0] ?? "Lê Lợi"} this morning.
+            52 items baked fresh at {recommendedBranch?.name?.split(" ")[0] ?? "Lê Lợi"} this morning.
           </div>
         </div>
       )}

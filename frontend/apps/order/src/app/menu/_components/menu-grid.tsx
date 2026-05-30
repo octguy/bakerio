@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "next-view-transitions";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
-import { useSearchParams } from "next/navigation";;
+import { useSearchParams } from "next/navigation";
 import { Croissant, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product, Category } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import { useCartStore } from "@/store/cart";
 
 import { SortDropdown } from "./sort-dropdown";
+import { ProductBanner } from "./product-banner";
 import { MenuEmptyState } from "./menu-empty-state";
 
 type MenuProduct = Product & {
@@ -61,6 +63,7 @@ export function MenuGrid({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftChevron, setShowLeftChevron] = useState(false);
   const [showRightChevron, setShowRightChevron] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const checkScroll = () => {
     const el = scrollRef.current;
@@ -176,7 +179,7 @@ export function MenuGrid({
     0,
   );
   const normalizedSearch = search.trim().toLowerCase();
-  
+
   const filteredAndSorted = [...products]
     .filter((product) => {
       if (!normalizedSearch) return true;
@@ -211,169 +214,255 @@ export function MenuGrid({
       return 0;
     });
 
+  const searchSlotRef = useRef<HTMLDivElement>(null);
+  const leftColRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const searchSlot = searchSlotRef.current;
+    if (!searchSlot) return;
+
+    let wasStuck = false;
+
+    const onScroll = () => {
+      // 0.5rem = 8px. Trigger when search bar reaches this top offset.
+      const rect = searchSlot.getBoundingClientRect();
+      const isStuck = rect.top <= 8;
+
+      if (isStuck !== wasStuck) {
+        wasStuck = isStuck;
+        const portal = document.getElementById("menu-search-portal");
+        if (!portal) return;
+
+        if (isStuck) {
+          searchSlot.classList.remove("visible");
+          searchSlot.classList.add("invisible");
+          portal.classList.remove("invisible", "opacity-0", "pointer-events-none");
+          portal.classList.add("visible", "opacity-100");
+        } else {
+          searchSlot.classList.remove("invisible");
+          searchSlot.classList.add("visible");
+          portal.classList.add("invisible", "opacity-0", "pointer-events-none");
+          portal.classList.remove("visible", "opacity-100");
+        }
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    // Also attach to window resize to re-check in case layout changes
+    window.addEventListener("resize", onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    const leftCol = leftColRef.current;
+    if (!leftCol) return;
+    const updatePosition = () => {
+      const rect = leftCol.getBoundingClientRect();
+      document.documentElement.style.setProperty("--menu-search-w", `${rect.width}px`);
+      document.documentElement.style.setProperty("--menu-search-left", `${rect.left}px`);
+    };
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(leftCol);
+    return () => observer.disconnect();
+  }, []);
+
+  const searchBar = (
+    <div className="flex min-h-12 items-center gap-2.5 rounded-full border-2 border-espresso bg-white px-4 py-3 shadow-[6px_6px_0_var(--espresso)] transition-transform focus-within:-translate-y-0.5 sm:px-5">
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="var(--caramel)"
+        strokeWidth="2"
+        aria-hidden
+      >
+        <circle cx="11" cy="11" r="7" />
+        <path d="M21 21l-4.3-4.3" />
+      </svg>
+      <label htmlFor="menu-search" className="sr-only">
+        Search menu
+      </label>
+      <input
+        id="menu-search"
+        type="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Search bread, pastry, coffee…"
+        className="min-w-0 flex-1 bg-transparent font-editorial text-[15px] italic text-espresso placeholder:text-caramel focus:outline-none md:text-[16px]"
+      />
+      {search ? (
+        <button
+          type="button"
+          onClick={() => setSearch("")}
+          aria-label="Clear search"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-butter font-mono text-[16px] text-caramel transition-transform active:scale-90"
+        >
+          ×
+        </button>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="font-mono text-[10px] tracking-[0.1em] text-caramel"
+        >
+          ⌘K
+        </span>
+      )}
+    </div>
+  );
+
+  const portalSearch = mounted && createPortal(
+    <div
+      id="menu-search-portal"
+      className="fixed z-50 invisible opacity-0 pointer-events-none"
+      style={{
+        top: "0.5rem",
+        left: "var(--menu-search-left)",
+        width: "var(--menu-search-w)",
+      }}
+    >
+      {searchBar}
+    </div>,
+    document.body,
+  );
+
   return (
     <>
-      {/* Sticky Search Bar */}
-      <div className="sticky top-2 z-40 mb-4 transition-all md:top-4">
-        <div className="flex min-h-12 items-center gap-2.5 rounded-full border-2 border-espresso bg-white px-4 py-3 shadow-[6px_6px_0_var(--espresso)] transition-transform focus-within:-translate-y-0.5 sm:px-5">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--caramel)"
-            strokeWidth="2"
-            aria-hidden
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
-          </svg>
-          <label htmlFor="menu-search" className="sr-only">
-            Search menu
-          </label>
-          <input
-            id="menu-search"
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search bread, pastry, coffee…"
-            className="min-w-0 flex-1 bg-transparent font-editorial text-[15px] italic text-espresso placeholder:text-caramel focus:outline-none md:text-[16px]"
-          />
-          {search ? (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              aria-label="Clear search"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-butter font-mono text-[16px] text-caramel transition-transform active:scale-90"
-            >
-              ×
-            </button>
-          ) : (
-            <span
-              aria-hidden="true"
-              className="font-mono text-[10px] tracking-[0.1em] text-caramel"
-            >
-              ⌘K
-            </span>
-          )}
-        </div>
-      </div>
-
+      {/* Hero + Filter Card */}
       <div className="mb-4 rounded-[1.75rem] border border-espresso/10 bg-cream/75 p-3 shadow-[0_22px_55px_-45px_rgba(44,24,16,0.7)] sm:p-4 md:mb-5 md:rounded-[2.25rem] md:p-5 lg:bg-white/72">
-        <div className="mb-3 flex flex-col gap-2 sm:mb-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+        {/* 2×2 Hero Grid */}
+        <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,0.9fr)_1.1fr] lg:gap-5 lg:h-[50vh] lg:min-h-[320px] mb-3 sm:mb-4">
+          {/* Carousel — order first on mobile, right column on lg+ */}
+          <div className="order-first lg:order-none lg:col-start-2 lg:row-span-full">
+            <ProductBanner />
+          </div>
+
+          {/* Left column — heading + search + categories + price */}
+          <div ref={leftColRef} className="flex flex-col gap-4 lg:col-start-1 lg:row-span-full">
             <div className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-cinnamon">
               oven ledger
             </div>
-            <h2 className="mt-1 font-display text-[clamp(2rem,9vw,4.4rem)] leading-[0.86] tracking-[-0.055em] text-espresso">
+            <h2 className="font-display text-[clamp(2rem,9vw,4.4rem)] leading-[0.86] tracking-[-0.055em] text-espresso">
               Order by
               <span className="font-editorial italic text-sienna">
                 {" "}
                 appetite.
               </span>
             </h2>
-          </div>
-          <div className="max-w-[18rem] rounded-2xl border border-crust-deep bg-butter/60 px-3 py-2 font-editorial text-[13px] italic leading-snug text-caramel sm:text-right md:text-[14px]">
-            {products.length} warm choices crossing bread, pastry, coffee and
-            pantry shelves.
-          </div>
-        </div>
 
-        {/* Category chips */}
-        <div className="relative -mx-1 md:mx-0">
-          {/* Left fade out overlay and interactive chevron */}
-          {showLeftChevron && (
-            <>
-              <div className="pointer-events-none absolute left-0 top-0 z-10 h-12 w-16 bg-gradient-to-r from-cream to-transparent" />
-              <button
-                type="button"
-                onClick={scrollLeft}
-                className="absolute left-0 top-6 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-transform active:scale-90"
-                aria-label="Scroll categories left"
+            {/* Search bar slot — classes managed by scroll listener to avoid React latency */}
+            <div ref={searchSlotRef} className="mt-auto visible">
+              {searchBar}
+            </div>
+
+            {/* Category chips */}
+            <div className="relative mt-2 -mx-1 md:mx-0">
+              {showLeftChevron && (
+                <>
+                  <div className="pointer-events-none absolute left-0 top-0 z-10 h-12 w-16 bg-gradient-to-r from-cream to-transparent" />
+                  <button
+                    type="button"
+                    onClick={scrollLeft}
+                    className="absolute left-0 top-6 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-transform active:scale-90"
+                    aria-label="Scroll categories left"
+                  >
+                    <ChevronLeft size={20} className="text-espresso" />
+                  </button>
+                </>
+              )}
+
+              <div
+                ref={scrollRef}
+                onScroll={checkScroll}
+                className="scrollbar-hide flex gap-2 overflow-x-auto px-1 md:flex-wrap md:overflow-visible"
               >
-                <ChevronLeft size={20} className="text-espresso" />
-              </button>
-            </>
-          )}
-
-          <div
-            ref={scrollRef}
-            onScroll={checkScroll}
-            className="scrollbar-hide mb-4 flex gap-2 overflow-x-auto px-1 pb-3 md:mb-5 md:flex-wrap md:overflow-visible md:pb-0"
-          >
-            <button
-              type="button"
-              aria-pressed={activeCategory === "all"}
-              onClick={(e) => handleCategoryClick(e, "all")}
-              className={`flex min-h-11 flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[13px] font-bold transition-colors transition-transform active:scale-[0.97] md:min-h-12 ${
-                activeCategory === "all"
-                  ? "bg-espresso text-white shadow-[0_10px_22px_-14px_rgba(44,24,16,0.8)]"
-                  : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
-              }`}
-            >
-              All
-            </button>
-            {categories.map((cat) => {
-              const isActive = activeCategory === cat.id;
-              return (
                 <button
-                  key={cat.id}
                   type="button"
-                  aria-pressed={isActive}
-                  onClick={(e) => handleCategoryClick(e, cat.id)}
+                  aria-pressed={activeCategory === "all"}
+                  onClick={(e) => handleCategoryClick(e, "all")}
                   className={`flex min-h-11 flex-shrink-0 items-center gap-1.5 rounded-full px-4 py-2.5 text-[13px] font-bold transition-colors transition-transform active:scale-[0.97] md:min-h-12 ${
-                    isActive
+                    activeCategory === "all"
                       ? "bg-espresso text-white shadow-[0_10px_22px_-14px_rgba(44,24,16,0.8)]"
                       : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
                   }`}
                 >
-                  {cat.name}
+                  All
                 </button>
-              );
-            })}
-          </div>
+                {categories.map((cat) => {
+                  const isActive = activeCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={(e) => handleCategoryClick(e, cat.id)}
+                      className={`flex min-h-11 flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-2.5 text-[13px] font-bold transition-colors transition-transform active:scale-[0.97] md:min-h-12 ${
+                        isActive
+                          ? "bg-espresso text-white shadow-[0_10px_22px_-14px_rgba(44,24,16,0.8)]"
+                          : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+                  );
+                })}
+              </div>
 
-          {/* Right fade out overlay and interactive chevron */}
-          {showRightChevron && (
-            <>
-              <div className="pointer-events-none absolute right-0 top-0 z-10 h-12 w-16 bg-gradient-to-l from-cream to-transparent md:hidden" />
+              {showRightChevron && (
+                <>
+                  <div className="pointer-events-none absolute right-0 top-0 z-10 h-12 w-16 bg-gradient-to-l from-cream to-transparent md:hidden" />
+                  <button
+                    type="button"
+                    onClick={scrollRight}
+                    className="absolute right-0 top-6 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-transform active:scale-90 md:hidden"
+                    aria-label="Scroll categories right"
+                  >
+                    <ChevronRight size={20} className="text-espresso" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Divider — centered in gap-4 by parent flex */}
+            <div className="border-t border-espresso/10" />
+
+            {/* Price filter pills */}
+            <div className="flex flex-wrap gap-2">
+              <span className="flex items-center font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">Price:</span>
               <button
                 type="button"
-                onClick={scrollRight}
-                className="absolute right-0 top-6 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-transform active:scale-90 md:hidden"
-                aria-label="Scroll categories right"
+                onClick={() => setPriceFilter("all")}
+                className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                  priceFilter === "all"
+                    ? "bg-espresso text-white"
+                    : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
+                }`}
               >
-                <ChevronRight size={20} className="text-espresso" />
+                All Prices
               </button>
-            </>
-          )}
-        </div>
-
-        {/* Advanced Filter Pills */}
-        <div className="mt-1 flex flex-wrap gap-2 border-t border-espresso/10 pt-3 md:mt-2 md:pt-4">
-          <span className="flex items-center font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">Price:</span>
-          <button
-            type="button"
-            onClick={() => setPriceFilter("all")}
-            className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors ${
-              priceFilter === "all"
-                ? "bg-espresso text-white"
-                : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
-            }`}
-          >
-            All Prices
-          </button>
-          <button
-            type="button"
-            onClick={() => setPriceFilter("under50k")}
-            className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors ${
-              priceFilter === "under50k"
-                ? "bg-espresso text-white"
-                : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
-            }`}
-          >
-            Under 50k
-          </button>
+              <button
+                type="button"
+                onClick={() => setPriceFilter("under50k")}
+                className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                  priceFilter === "under50k"
+                    ? "bg-espresso text-white"
+                    : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
+                }`}
+              >
+                Under 50k
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -470,6 +559,8 @@ export function MenuGrid({
           }}
         />
       )}
+
+      {portalSearch}
 
       {/* Floating cart bar */}
       {totalCount > 0 && (

@@ -6,6 +6,16 @@ import { Link } from "next-view-transitions";
 import { useAuth } from "@/lib/auth";
 import { loginSchema } from "./schema";
 
+function getSafeNextPath(search: string) {
+  const next = new URLSearchParams(search).get("next");
+
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) {
+    return "/";
+  }
+
+  return next;
+}
+
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
@@ -38,7 +48,7 @@ export default function LoginPage() {
       setError(err);
       return;
     }
-    router.push("/");
+    router.push(getSafeNextPath(window.location.search));
   };
 
   return (

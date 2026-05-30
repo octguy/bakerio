@@ -42,21 +42,24 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
     flushSync(() =>
       selectBranch({ id: branch.id, name: branch.name, address: branch.address, dist: distanceLabel, eta: etaLabel }),
     );
+    router.prefetch("/menu");
     router.push("/menu");
   };
 
   return (
     <button
       onClick={handleSelect}
+      onPointerEnter={() => router.prefetch("/menu")}
+      onFocus={() => router.prefetch("/menu")}
       aria-label={isSelected ? `${branch.name}, recommended` : branch.name}
       style={{ minHeight: 100, viewTransitionName: isMorphing ? "selected-branch" : undefined }}
-      className={`relative flex w-full rounded-2xl text-left transition-colors transition-transform transition-shadow hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98] ${
-        isSelected ? "border-2 border-espresso bg-white" : "border border-crust bg-white"
-      }`}
+className={`relative flex w-full items-stretch rounded-2xl border-2 bg-white text-left transition-colors transition-transform hover:-translate-y-0.5 active:scale-[0.98] ${
+            isSelected ? "border-espresso" : "border-crust"
+          }`}
     >
       <div
-        className="relative h-[100px] w-[100px] flex-shrink-0 overflow-hidden rounded-l-2xl"
-        style={{ height: 100, width: 100 }}
+        className="relative min-h-[100px] w-[100px] flex-shrink-0 self-stretch overflow-hidden rounded-l-[14px]"
+        style={{ width: 100 }}
       >
         <Image
           src={heroImage}
