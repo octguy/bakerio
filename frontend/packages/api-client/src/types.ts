@@ -34,6 +34,7 @@ export interface Branch {
   id: string;
   name: string;
   address: string;
+  opening_hours?: string;
   lat?: number;
   lng?: number;
   status: string;
@@ -160,4 +161,28 @@ export interface LoginResponse {
 export interface ApiResponse<T> {
   data?: T;
   error?: { code: string; message: string };
+}
+
+export interface GetOrdersOptions {
+  page?: number;
+  size?: number;
+  search?: string;
+  status?: string;
+}
+
+export interface PaginatedOrders {
+  items: Order[];
+  total: number;
+  page: number;
+  size: number;
+  pages: number;
+}
+
+export interface SavedAddress {
+  id: string;
+  label: string;
+  address: string;
+  is_default?: boolean;
+  lat?: number;
+  lng?: number;
 }

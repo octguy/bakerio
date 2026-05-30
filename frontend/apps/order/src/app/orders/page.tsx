@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { getOrders, getOrderStats, getProduct, reorderItems, getMockOrderSessionUser } from "@repo/api-client";
 import type { Order, OrderStatus } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link } from "next-view-transitions";
+import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { useOrderDetailsStore } from "@/store/orderDetails";
@@ -38,17 +38,43 @@ function OrdersPageInner() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"All" | "In progress" | "Delivered" | "Cancelled">("All");
   const [stats, setStats] = useState({ lifetime: 0, inProgress: 0, delivered: 0, cancelled: 0 });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
-  const fetchOrdersData = async () => {
+  const observer = useRef<IntersectionObserver | null>(null);
+  const fetchCount = useRef(0);
+  const statsFetched = useRef(false);
+
+  const lastOrderElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (loading || isFetchingMore) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver((entries) => {
+      if (entries[0] && entries[0].isIntersecting && hasMore) {
+        setPage((prev) => prev + 1);
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [loading, isFetchingMore, hasMore]);
+
+  const fetchOrdersData = async (currentPage: number, currentSearch: string, currentTab: typeof activeTab, shouldAppend: boolean) => {
+    const currentFetchId = ++fetchCount.current;
     try {
-      setError(null);
-      const data = await getOrders();
+      if (!shouldAppend) {
+        setLoading(true);
+      } else {
+        setIsFetchingMore(true);
+      }
+      const statuses = currentTab === "All" ? undefined : currentTab === "In progress" ? "PENDING_PAYMENT,PAID,CONFIRMED,PREPARING,READY,OUT_FOR_DELIVERY" : currentTab === "Delivered" ? "DELIVERED,COMPLETED" : "CANCELLED";
+      const data = await getOrders({ page: currentPage, size: 10, search: currentSearch, status: statuses });
+      if (currentFetchId !== fetchCount.current) return;
       const sessionUser = getMockOrderSessionUser();
       const store = useOrderDetailsStore.getState();
-      const mergedOrders = data.map((o) => {
+      const mergedOrders = data.items.map((o) => {
         const localDetail = store.getOrderDetail(sessionUser, o.id);
         if (!localDetail) return o;
         return {
@@ -65,22 +91,42 @@ function OrdersPageInner() {
           note: localDetail.note,
         };
       });
-      setOrders(mergedOrders);
-      const counts = await getOrderStats();
-      setStats(counts);
+      setOrders(prev => shouldAppend ? [...prev, ...mergedOrders] : mergedOrders);
+      setHasMore(currentPage * 10 < data.total);
+      setError(null);
+      if (!statsFetched.current) {
+        const counts = await getOrderStats();
+        if (currentFetchId === fetchCount.current) {
+          setStats(counts);
+          statsFetched.current = true;
+        }
+      }
     } catch (err) {
+      if (currentFetchId !== fetchCount.current) return;
       setError("Could not load orders. Please try again.");
       if (process.env.NODE_ENV !== "production") {
         console.error("Failed to load orders:", err);
       }
     } finally {
-      setLoading(false);
+      if (currentFetchId === fetchCount.current) {
+        setLoading(false);
+        setIsFetchingMore(false);
+      }
     }
   };
 
+  // Reset page and clear orders when tab or search changes
   useEffect(() => {
-    fetchOrdersData(); // eslint-disable-line react-hooks/set-state-in-effect
-  }, []);
+    setPage(1); // eslint-disable-line react-hooks/set-state-in-effect
+    setOrders([]);
+    setHasMore(true);
+  }, [activeTab, searchQuery]);
+
+  // Fetch data when page, tab, or search changes
+  useEffect(() => {
+    fetchOrdersData(page, searchQuery, activeTab, page > 1); // eslint-disable-line react-hooks/set-state-in-effect
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, activeTab, searchQuery]);
 
   const handleReorder = async (orderId: string) => {
     setLoading(true);
@@ -127,20 +173,6 @@ function OrdersPageInner() {
     }
   };
 
-  const filtered = orders.filter((o) => {
-    if (activeTab === "All") return true;
-    if (activeTab === "In progress") {
-      return ["PENDING_PAYMENT", "PAID", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status);
-    }
-    if (activeTab === "Delivered") {
-      return ["DELIVERED", "COMPLETED"].includes(o.status);
-    }
-    if (activeTab === "Cancelled") {
-      return o.status === "CANCELLED";
-    }
-    return true;
-  });
-
   const tabs = [
     { l: "All", k: "All" as const, count: stats.lifetime },
     { l: "In progress", k: "In progress" as const, count: stats.inProgress },
@@ -149,9 +181,9 @@ function OrdersPageInner() {
   ];
 
   return (
-    <main className="mx-auto max-w-md px-6 pt-4 pb-32">
-      {/* Header */}
-      <div className="mb-3 flex items-center justify-between">
+    <main className="mx-auto max-w-5xl px-6 pt-4 pb-32 md:pb-12">
+      {/* Header (Mobile only) */}
+      <div className="mb-3 flex items-center justify-between md:hidden">
         <Link href="/profile" aria-label="Back to profile" className="text-[22px] text-espresso">‹</Link>
         <div className="font-display text-[16px] leading-none text-espresso">Orders</div>
         <span className="font-mono text-[11px] tracking-[0.1em] text-caramel">Filter</span>
@@ -167,6 +199,17 @@ function OrdersPageInner() {
         <p className="mt-2 font-editorial text-[14px] italic leading-[1.45] text-caramel">
           You&apos;ve had {stats.lifetime} orders with us. That&apos;s a lot of bánh mì.
         </p>
+      </div>
+
+      <div className="mt-6 mb-4">
+        <input
+          type="text"
+          value={searchQuery}
+          aria-label="Search orders"
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search orders..."
+          className="w-full rounded-2xl border border-crust bg-white px-4 py-3 font-mono text-[13px] text-espresso placeholder-caramel shadow-sm focus:border-cinnamon focus:outline-none focus:ring-1 focus:ring-cinnamon transition-all"
+        />
       </div>
 
       {/* Tabs */}
@@ -194,7 +237,7 @@ function OrdersPageInner() {
           {error}
           <button
             type="button"
-            onClick={fetchOrdersData}
+            onClick={() => fetchOrdersData(page, searchQuery, activeTab, page > 1)}
             className="ml-3 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cinnamon"
           >
             Retry
@@ -202,11 +245,11 @@ function OrdersPageInner() {
         </div>
       )}
 
-      {loading ? (
+      {loading && page === 1 ? (
         <div className="py-12 text-center font-editorial text-[14px] italic text-caramel">
           Reading the order book…
         </div>
-      ) : filtered.length === 0 ? (
+      ) : orders.length === 0 && !loading ? (
         <div className="rounded-2xl border border-dashed border-crust-deep bg-butter py-10 text-center">
           <p className="font-editorial text-[14px] italic text-cocoa">No orders to show.</p>
           <Link
@@ -217,79 +260,89 @@ function OrdersPageInner() {
           </Link>
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5">
-          {filtered.map((o) => {
-            const st = STATUS_LABEL[o.status] ?? { l: o.status, c: "var(--caramel)" };
-            const itemsCount = o.items.reduce((s, i) => s + i.quantity, 0);
-            const displayId = o.id.replace("order-", "#");
-            return (
-              <div
-                key={o.id}
-                className={`relative overflow-hidden rounded-2xl bg-white p-4 ${
-                  st.live ? "border-2 border-cinnamon" : "border border-crust"
-                }`}
-              >
-                {st.live && (
-                  <div className="absolute right-0 top-0 rounded-bl-[10px] bg-cinnamon px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-white">
-                    <span className="bkr-pulse mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-white align-middle" aria-hidden="true" />
-                    Live
-                  </div>
-                )}
-                <div className="mb-2 flex items-center gap-2.5">
-                  <span className="font-mono text-[11.5px] font-bold tracking-[0.04em] text-espresso">
-                    {displayId}
-                  </span>
-                  <span className="font-mono text-[10px] tracking-wider text-caramel">
-                    · {o.branch_id === "br-le-loi" ? "Lê Lợi" : o.branch_id === "br-pasteur" ? "Pasteur" : o.branch_id === "br-thao-dien" ? "Thảo Điền" : "Phú Mỹ Hưng"}
-                  </span>
-                  <span
-                    className="ml-auto font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]"
-                    style={{ color: st.c }}
-                  >
-                    {st.l}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-butter font-display text-[16px] text-cinnamon">
-                    {itemsCount}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-editorial text-[13px] text-cocoa">
-                      {itemsCount} items · {new Date(o.created_at).toLocaleDateString("vi-VN")}
+        <>
+          <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+            {orders.map((o, index) => {
+              const st = STATUS_LABEL[o.status] ?? { l: o.status, c: "var(--caramel)" };
+              const itemsCount = o.items.reduce((s, i) => s + i.quantity, 0);
+              const displayId = o.id.replace("order-", "#");
+              const isLast = index === orders.length - 1;
+              return (
+                <div
+                  key={o.id}
+                  ref={isLast ? lastOrderElementRef : null}
+                  className={`relative overflow-hidden rounded-2xl bg-white p-4 ${
+                    st.live ? "border-2 border-cinnamon" : "border border-crust"
+                  }`}
+                >
+                  {st.live && (
+                    <div className="absolute right-0 top-0 rounded-bl-[10px] bg-cinnamon px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-white">
+                      <span className="bkr-pulse mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-white align-middle" aria-hidden="true" />
+                      Live
                     </div>
-                    <div className="mt-0.5 font-display text-[18px] text-espresso">
-                      {formatVND(o.total_amount)}
-                    </div>
-                  </div>
-                  {st.live ? (
-                    <Link href={`/orders/${o.id}`} aria-label={`Track order ${displayId}`}>
-                      <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
-                    </Link>
-                  ) : (
-                    <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
                   )}
-                </div>
-
-                <div className="mt-2.5 flex justify-between border-t border-dashed border-crust pt-2.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-cinnamon">
-                  {st.live ? (
-                    <Link href={`/orders/${o.id}`} className="hover:text-espresso transition-colors">
-                      Track →
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleReorder(o.id)}
-                      className="font-bold text-cinnamon hover:text-espresso transition-colors"
+                  <div className="mb-2 flex items-center gap-2.5">
+                    <span className="font-mono text-[11.5px] font-bold tracking-[0.04em] text-espresso">
+                      {displayId}
+                    </span>
+                    <span className="font-mono text-[10px] tracking-wider text-caramel">
+                      · {o.branch_id === "br-le-loi" ? "Lê Lợi" : o.branch_id === "br-pasteur" ? "Pasteur" : o.branch_id === "br-thao-dien" ? "Thảo Điền" : "Phú Mỹ Hưng"}
+                    </span>
+                    <span
+                      className="ml-auto font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]"
+                      style={{ color: st.c }}
                     >
-                      Reorder
-                    </button>
-                  )}
+                      {st.l}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-butter font-display text-[16px] text-cinnamon">
+                      {itemsCount}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-editorial text-[13px] text-cocoa">
+                        {itemsCount} items · {new Date(o.created_at).toLocaleDateString("vi-VN")}
+                      </div>
+                      <div className="mt-0.5 font-display text-[18px] text-espresso">
+                        {formatVND(o.total_amount)}
+                      </div>
+                    </div>
+                    {st.live ? (
+                      <Link href={`/orders/${o.id}`} aria-label={`Track order ${displayId}`}>
+                        <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
+                      </Link>
+                    ) : (
+                      <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
+                    )}
+                  </div>
+
+                  <div className="mt-2.5 flex justify-between border-t border-dashed border-crust pt-2.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-cinnamon">
+                    {st.live ? (
+                      <Link href={`/orders/${o.id}`} className="hover:text-espresso transition-colors">
+                        Track →
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleReorder(o.id)}
+                        className="font-bold text-cinnamon hover:text-espresso transition-colors"
+                      >
+                        Reorder
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+          {isFetchingMore && (
+            <div className="py-6 text-center font-editorial text-[14px] italic text-caramel flex items-center justify-center gap-2">
+              <span className="bkr-pulse inline-block h-1.5 w-1.5 rounded-full bg-cinnamon align-middle" aria-hidden="true" />
+              Loading more...
+            </div>
+          )}
+        </>
       )}
     </main>
   );

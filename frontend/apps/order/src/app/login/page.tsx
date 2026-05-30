@@ -1,10 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useTransitionRouter as useRouter } from "next-view-transitions";
+import { Link } from "next-view-transitions";
 import { useAuth } from "@/lib/auth";
 import { loginSchema } from "./schema";
+
+function getSafeNextPath(search: string) {
+  const next = new URLSearchParams(search).get("next");
+
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) {
+    return "/";
+  }
+
+  return next;
+}
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -38,7 +48,7 @@ export default function LoginPage() {
       setError(err);
       return;
     }
-    router.push("/");
+    router.push(getSafeNextPath(window.location.search));
   };
 
   return (

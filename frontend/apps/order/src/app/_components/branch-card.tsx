@@ -42,21 +42,24 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
     flushSync(() =>
       selectBranch({ id: branch.id, name: branch.name, address: branch.address, dist: distanceLabel, eta: etaLabel }),
     );
+    router.prefetch("/menu");
     router.push("/menu");
   };
 
   return (
     <button
       onClick={handleSelect}
-      aria-label={branch.name}
+      onPointerEnter={() => router.prefetch("/menu")}
+      onFocus={() => router.prefetch("/menu")}
+      aria-label={isSelected ? `${branch.name}, recommended` : branch.name}
       style={{ minHeight: 100, viewTransitionName: isMorphing ? "selected-branch" : undefined }}
-      className={`relative flex w-full overflow-hidden rounded-2xl text-left transition-colors transition-transform transition-shadow hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98] ${
-        isSelected ? "border-2 border-espresso bg-white" : "border border-crust bg-white"
-      }`}
+className={`relative flex w-full items-stretch rounded-2xl border-2 bg-white text-left transition-colors transition-transform hover:-translate-y-0.5 active:scale-[0.98] ${
+            isSelected ? "border-espresso" : "border-crust"
+          }`}
     >
       <div
-        className="relative h-[100px] w-[100px] flex-shrink-0"
-        style={{ height: 100, width: 100 }}
+        className="relative min-h-[100px] w-[100px] flex-shrink-0 self-stretch overflow-hidden rounded-l-[14px]"
+        style={{ width: 100 }}
       >
         <Image
           src={heroImage}
@@ -90,7 +93,7 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
         </div>
       </div>
       {isSelected && (
-        <span className="absolute right-0 top-0 rounded-bl-[12px] bg-espresso px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.16em] text-cream">
+        <span className="pointer-events-none absolute right-3 top-0 z-10 -translate-y-1/2 rounded-full border border-espresso bg-white px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-espresso">
           ✓ Recommended
         </span>
       )}

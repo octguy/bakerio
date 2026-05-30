@@ -119,6 +119,8 @@ vi.mock("lucide-react", () => ({
   Plus: () => <span>+</span>,
   Pencil: () => <span>✎</span>,
   Trash2: () => <span>🗑</span>,
+  ToggleLeft: () => <span>off</span>,
+  ToggleRight: () => <span>on</span>,
 }));
 
 import CategoriesPage from "./page";

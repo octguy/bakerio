@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { Croissant } from "lucide-react";
+import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
 import { maxRedeemableFor } from "@repo/api-client/mock/loyalty";
+import { CrossSells } from "@/components/cross-sells";
 
 export default function CartPage() {
   return (
@@ -18,12 +20,27 @@ export default function CartPage() {
 }
 
 function CartPageInner() {
+  const [hydrated, setHydrated] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => setHydrated(true), []);
+
   const items = useCartStore((s) => s.items);
-  const removeItem = useCartStore((s) => s.removeItem);
+  
+  const clearCart = useCartStore((s) => s.clearCart);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const subtotal = useCartStore((s) => s.subtotal());
+  const setCartOpen = useCartStore((s) => s.setCartOpen);
+  const router = useRouter();
 
   const [loyalty, setLoyalty] = useState(0);
+
+  useEffect(() => {
+    // If desktop (md: width >= 768px), redirect to /menu and slide open sidebar cart
+    if (typeof window !== "undefined" && window.innerWidth >= 768) {
+      setCartOpen(true);
+      router.replace("/menu");
+    }
+  }, [router, setCartOpen]);
 
   useEffect(() => {
     let active = true;
@@ -46,6 +63,9 @@ function CartPageInner() {
   }, [subtotal]);
 
   const total = Math.max(0, subtotal - loyalty);
+
+
+  if (!hydrated) return null;
 
   if (items.length === 0) {
     return (
@@ -76,7 +96,7 @@ function CartPageInner() {
           <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">step 2 / 3</div>
           <div className="font-display text-[16px] leading-none text-espresso">Your basket</div>
         </div>
-        <button onClick={() => items.forEach((it) => removeItem(it.id))} className="font-mono text-[11px] tracking-[0.1em] text-caramel">
+        <button onClick={() => clearCart(true)} className="font-mono text-[11px] tracking-[0.1em] text-caramel">
           Clear
         </button>
       </div>
@@ -150,6 +170,8 @@ function CartPageInner() {
           </div>
         ))}
       </div>
+      
+      <CrossSells />
 
       {/* Totals */}
       <div className="mt-3 rounded-2xl border border-crust bg-white p-4">

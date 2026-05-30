@@ -239,13 +239,14 @@ export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
 
 export async function createProduct(data: {
   name: string;
+  slug?: string;
   category_id: string;
   price: number;
   sort_order?: number;
 }) {
   const backendBody = {
     name: data.name,
-    slug: data.slug,
+    slug: data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
     category_id: data.category_id,
     price: String(data.price),
     sort_order: data.sort_order ?? 0,
@@ -677,3 +678,17 @@ export const getOrder = mockGetOrder;
 export const updateOrderStatus = mockUpdateOrderStatus;
 export const getOrderStats = mockGetOrderStats;
 export const reorderItems = mockReorderItems;
+
+// ===== CUSTOMER ADDRESSES (MOCK — backend not implemented) =====
+import {
+  getAddresses as mockGetAddresses,
+  addAddress as mockAddAddress,
+  removeAddress as mockRemoveAddress,
+  setDefaultAddress as mockSetDefaultAddress,
+} from "./mock";
+
+export const getAddresses = mockGetAddresses;
+export const addAddress = mockAddAddress;
+export const removeAddress = mockRemoveAddress;
+export const setDefaultAddress = mockSetDefaultAddress;
+

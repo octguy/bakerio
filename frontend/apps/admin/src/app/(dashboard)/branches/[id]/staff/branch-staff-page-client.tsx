@@ -163,12 +163,14 @@ export function BranchStaffPageClient({ branchId }: { branchId: string }) {
   useEffect(() => {
     if (!editing) {
       resetEdit({ display_name: "", phone: "", address: "" });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResetPassword("");
       return;
     }
 
     let active = true;
     resetEdit({ display_name: editing.name, phone: "", address: "" });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResetPassword("");
 
     getUserProfile(editing.userId)

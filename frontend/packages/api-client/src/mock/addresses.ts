@@ -1,14 +1,7 @@
 // Audit §III: saved customer addresses — missing on backend. Mock added so
 // order Profile and Checkout's delivery mode have data to render.
 
-export interface SavedAddress {
-  id: string;
-  label: string;
-  address: string;
-  is_default?: boolean;
-  lat?: number;
-  lng?: number;
-}
+import { SavedAddress } from "../types";
 
 const SEED: SavedAddress[] = [
   { id: "addr-home", label: "Home", address: "24 Nguyễn Đình Chiểu, Q.3", is_default: true, lat: 10.7869, lng: 106.6960 },

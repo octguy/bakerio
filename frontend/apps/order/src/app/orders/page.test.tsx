@@ -6,28 +6,30 @@ const mockPush = vi.fn();
 const mockAddItem = vi.fn();
 const mockSetBranch = vi.fn();
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({
+vi.mock("next-view-transitions", () => ({
+  useTransitionRouter: () => ({
     push: mockPush,
   }),
-}));
-
-vi.mock("next/link", () => ({
-  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+  Link: ({ children, ...props }: any) => <a {...props}>{children}</a>,
 }));
 
 vi.mock("@repo/api-client", () => ({
   getMockOrderSessionUser: vi.fn().mockReturnValue("user-1"),
-  getOrders: vi.fn().mockResolvedValue([
-    {
-      id: "order-1",
-      branch_id: "br-le-loi",
-      status: "COMPLETED",
-      total_amount: 75000,
-      created_at: "2024-01-01T00:00:00Z",
-      items: [{ id: "i1", product_id: "p-bmi-1", product_name: "Bread", quantity: 3, total_price: 75000 }],
-    },
-  ]),
+  getOrders: vi.fn().mockResolvedValue({
+    items: [
+      {
+        id: "order-1",
+        branch_id: "br-le-loi",
+        status: "COMPLETED",
+        total_amount: 75000,
+        created_at: "2024-01-01T00:00:00Z",
+        items: [{ id: "i1", product_id: "p-bmi-1", product_name: "Bread", quantity: 3, total_price: 75000 }],
+      },
+    ],
+    total: 1,
+    page: 1,
+    size: 10,
+  }),
   getOrderStats: vi.fn().mockResolvedValue({
     lifetime: 1,
     inProgress: 0,
@@ -39,8 +41,8 @@ vi.mock("@repo/api-client", () => ({
     name: "Bread",
     slug: "bread",
     description: "",
-    base_price: 25000,
-    category: { name: "Loaves" },
+    price: 25000,
+    category_id: "c-loaves",
     images: [{ url: "/bread.jpg" }],
   }),
   reorderItems: vi.fn().mockResolvedValue([{ product_id: "p-bmi-1", quantity: 3 }]),
@@ -91,7 +93,7 @@ describe("OrdersPage", () => {
 
   it("shows empty state when no orders", async () => {
     const { getOrders } = await import("@repo/api-client");
-    vi.mocked(getOrders).mockResolvedValueOnce([]);
+    vi.mocked(getOrders).mockResolvedValueOnce({ items: [], total: 0, page: 1, size: 10 });
     render(<OrdersPage />);
     expect(await screen.findByText("No orders to show.")).toBeInTheDocument();
   });

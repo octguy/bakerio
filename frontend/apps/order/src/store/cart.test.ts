@@ -22,7 +22,7 @@ const makeItem = (overrides = {}) => ({
 
 describe('useCartStore', () => {
   beforeEach(() => {
-    useCartStore.setState({ items: [], coupon: null, branchId: null });
+    useCartStore.setState({ items: [], coupon: null, branchId: null, undoSnapshot: null, selectedBranch: null, isCartOpen: false });
   });
 
   it('addItem adds an item with generated id', () => {
@@ -58,6 +58,12 @@ describe('useCartStore', () => {
     useCartStore.getState().addItem(makeItem({ unitPrice: 100000, quantity: 1 }));
     useCartStore.getState().applyCoupon({ code: 'OFF10', description: '', discountType: 'percent', discountValue: 10 });
     expect(useCartStore.getState().total()).toBe(90000);
+  });
+
+  it('total clamps to 0 if discount exceeds subtotal', () => {
+    useCartStore.getState().addItem(makeItem({ unitPrice: 10000, quantity: 1 }));
+    useCartStore.getState().applyCoupon({ code: 'HUGE_DISCOUNT', description: '', discountType: 'fixed', discountValue: 20000 });
+    expect(useCartStore.getState().total()).toBe(0);
   });
 
   it('discount respects minOrder', () => {
@@ -99,6 +105,19 @@ describe('useCartStore', () => {
     expect(useCartStore.getState().coupon).toBeNull();
   });
 
+  it('selectBranch sets selectedBranch', () => {
+    useCartStore.getState().selectBranch('br-hanoi');
+    expect(useCartStore.getState().selectedBranch).toBe('br-hanoi');
+  });
+
+  it('setCartOpen toggles cart visibility state', () => {
+    expect(useCartStore.getState().isCartOpen).toBe(false);
+    useCartStore.getState().setCartOpen(true);
+    expect(useCartStore.getState().isCartOpen).toBe(true);
+    useCartStore.getState().setCartOpen(false);
+    expect(useCartStore.getState().isCartOpen).toBe(false);
+  });
+
   it('removeCoupon clears only the coupon', () => {
     useCartStore.getState().addItem(makeItem());
     useCartStore.getState().applyCoupon({ code: 'TEST', description: '', discountType: 'fixed', discountValue: 5000 });
@@ -120,7 +139,7 @@ describe('useCartStore', () => {
   });
 
   it('discount applies coupon when subtotal meets minOrder limit', () => {
-    useCartStore.getState().addItem(makeItem({ unitPrice: 30000, quantity: 2 })); // subtotal 60000
+    useCartStore.getState().addItem(makeItem({ unitPrice: 30000, quantity: 2 }));
     useCartStore.getState().applyCoupon({ code: 'BIG', description: '', discountType: 'fixed', discountValue: 10000, minOrder: 50000 });
     expect(useCartStore.getState().discount()).toBe(10000);
   });
@@ -128,5 +147,73 @@ describe('useCartStore', () => {
   it('discount returns 0 if no coupon is active', () => {
     useCartStore.getState().addItem(makeItem({ unitPrice: 50000, quantity: 1 }));
     expect(useCartStore.getState().discount()).toBe(0);
+  });
+});
+
+describe('cart store undo snapshot invariants', () => {
+  beforeEach(() => {
+    useCartStore.setState({
+      items: [],
+      undoSnapshot: null,
+      branchId: null,
+      selectedBranch: null,
+      coupon: null,
+      isCartOpen: false
+    });
+  });
+
+  it('clearCart(true) creates snapshot and empties cart', () => {
+    useCartStore.getState().addItem(makeItem());
+    expect(useCartStore.getState().items.length).toBe(1);
+
+    useCartStore.getState().clearCart(true);
+    const state = useCartStore.getState();
+    expect(state.items.length).toBe(0);
+    expect(state.undoSnapshot).toBeTruthy();
+    expect(state.undoSnapshot?.items.length).toBe(1);
+  });
+
+  it('restoreCart successfully atomic restores snapshot and sets it to null', () => {
+    useCartStore.getState().addItem(makeItem());
+    useCartStore.getState().clearCart(true);
+    expect(useCartStore.getState().undoSnapshot).toBeTruthy();
+
+    useCartStore.getState().restoreCart();
+    const state = useCartStore.getState();
+    expect(state.undoSnapshot).toBeNull();
+    expect(state.items.length).toBe(1);
+  });
+
+  it('subsequent mutations clear the snapshot reliably', () => {
+    useCartStore.getState().addItem(makeItem());
+    useCartStore.getState().clearCart(true);
+    expect(useCartStore.getState().undoSnapshot).toBeTruthy();
+
+    useCartStore.getState().addItem(makeItem());
+    expect(useCartStore.getState().undoSnapshot).toBeNull();
+  });
+
+  it('dismissUndo clears the undoSnapshot explicitly', () => {
+    useCartStore.getState().addItem(makeItem());
+    useCartStore.getState().clearCart(true);
+    expect(useCartStore.getState().undoSnapshot).toBeTruthy();
+
+    useCartStore.getState().dismissUndo();
+    expect(useCartStore.getState().undoSnapshot).toBeNull();
+  });
+
+  it('partialize excludes undoSnapshot and isCartOpen', () => {
+    const partialize = useCartStore.persist.getOptions().partialize!;
+    const mockState = {
+      undoSnapshot: { items: [] },
+      isCartOpen: true,
+      items: [{ id: '1' }],
+      branchId: 'b1'
+    };
+    const result = partialize(mockState as any);
+    expect(result.undoSnapshot).toBeUndefined();
+    expect(result.isCartOpen).toBeUndefined();
+    expect(result.items).toBeDefined();
+    expect(result.branchId).toBe('b1');
   });
 });

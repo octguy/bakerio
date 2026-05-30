@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { useAuth } from "@/lib/auth";
 import { useCartStore } from "@/store/cart";
 import { ShoppingBag, LogOut } from "lucide-react";

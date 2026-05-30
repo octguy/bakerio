@@ -28,6 +28,11 @@ const DOT_MASK = "linear-gradient(to right, transparent, #000 18%, #000 82%, tra
 export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps) {
   const count = featuredLocations.length;
 
+  // Start with the middle copy first item (index = 6)
+  const middleOffset = count;
+  const [currentIndex, setCurrentIndex] = useState(middleOffset);
+  const [isTransitioning, setIsTransitioning] = useState(true);
+
   if (count === 0) {
     return (
       <div className="rounded-sm border border-crust bg-white p-10 text-center">
@@ -44,11 +49,6 @@ export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps)
   ];
 
   // Safe middle range is [6, 11] (corresponding to the middle copy)
-  const middleOffset = count;
-
-  // Start with the middle copy first item (index = 6)
-  const [currentIndex, setCurrentIndex] = useState(middleOffset);
-  const [isTransitioning, setIsTransitioning] = useState(true);
 
   // Unified circular navigation logic (Next/Prev/Dots)
   // Handles infinite boundary jumps instantly inside the click cycle

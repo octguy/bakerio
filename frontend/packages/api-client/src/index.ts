@@ -18,6 +18,9 @@ export type {
   LoginRequest,
   LoginResponse,
   ApiResponse,
+  GetOrdersOptions,
+  PaginatedOrders,
+  SavedAddress,
 } from "./types";
 
 export const VERSION = "1.0.0";
@@ -74,6 +77,11 @@ export {
   updateOrderStatus,
   getOrderStats,
   reorderItems,
+  // Addresses (MOCK — backend has no /addresses handler)
+  getAddresses,
+  addAddress,
+  removeAddress,
+  setDefaultAddress,
 } from "./client";
 
 // Mock data for seeding/testing

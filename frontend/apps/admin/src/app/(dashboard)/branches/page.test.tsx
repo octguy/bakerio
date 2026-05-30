@@ -125,7 +125,7 @@ vi.mock("lucide-react", () => ({
   Trash2: () => <span>🗑</span>,
   ToggleLeft: () => <span>off</span>,
   ToggleRight: () => <span>on</span>,
-  Users: () => <span>staff</span>,
+  PackageCheck: () => <span>package-check</span>,
 }));
 
 import BranchesPage from "./page";

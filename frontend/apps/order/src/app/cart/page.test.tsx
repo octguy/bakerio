@@ -47,12 +47,14 @@ const mockItems = [
 const mockRemoveItem = vi.fn();
 const mockUpdateQuantity = vi.fn();
 const mockSubtotal = vi.fn(() => 50000);
+const mockClearCart = vi.fn();
 
 vi.mock("@/store/cart", () => ({
-  useCartStore: vi.fn((selector: (s: unknown) => unknown) => {
+  useCartStore: vi.fn((selector: any) => {
     const state = {
       items: mockItems,
       removeItem: mockRemoveItem,
+      clearCart: mockClearCart,
       updateQuantity: mockUpdateQuantity,
       subtotal: mockSubtotal,
     };
@@ -65,10 +67,11 @@ import { useCartStore } from "@/store/cart";
 import CartPage from "./page";
 
 function mockFilledCartStore() {
-  vi.mocked(useCartStore).mockImplementation((selector: (s: unknown) => unknown) => {
+  vi.mocked(useCartStore).mockImplementation((selector: any) => {
     const state = {
       items: mockItems,
       removeItem: mockRemoveItem,
+      clearCart: mockClearCart,
       updateQuantity: mockUpdateQuantity,
       subtotal: mockSubtotal,
     };
@@ -79,6 +82,7 @@ function mockFilledCartStore() {
 beforeEach(() => {
   mockFilledCartStore();
   vi.mocked(maxRedeemableFor).mockResolvedValue(10000);
+  mockClearCart.mockClear();
   mockRemoveItem.mockClear();
   mockUpdateQuantity.mockClear();
   mockSubtotal.mockClear();
@@ -109,10 +113,10 @@ describe("CartPage", () => {
     expect(link.getAttribute("href")).toBe("/checkout");
   });
 
-  it("calls removeItem when Clear button clicked", () => {
+  it("calls clearCart when Clear button clicked", () => {
     render(<CartPage />);
     fireEvent.click(screen.getByRole("button", { name: /clear/i }));
-    expect(mockRemoveItem).toHaveBeenCalledWith("1");
+    expect(mockClearCart).toHaveBeenCalledWith(true);
   });
 
   it("calls updateQuantity with incremented value when + clicked", () => {
@@ -150,7 +154,7 @@ describe("CartPage", () => {
   });
 
   it("shows empty cart message and menu link when cart is empty", async () => {
-    vi.mocked(useCartStore).mockImplementation((selector: (s: unknown) => unknown) => {
+    vi.mocked(useCartStore).mockImplementation((selector: any) => {
       const state = {
         items: [],
         removeItem: mockRemoveItem,
