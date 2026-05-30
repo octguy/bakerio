@@ -215,6 +215,7 @@ export function MenuGrid({
     });
 
   const searchSlotRef = useRef<HTMLDivElement>(null);
+  const placeholderRef = useRef<HTMLDivElement>(null);
   const leftColRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -223,30 +224,45 @@ export function MenuGrid({
 
   useEffect(() => {
     const searchSlot = searchSlotRef.current;
-    if (!searchSlot) return;
+    const placeholder = placeholderRef.current;
+    if (!searchSlot || !placeholder) return;
 
     let wasStuck = false;
 
     const onScroll = () => {
-      // 0.5rem = 8px. Trigger when search bar reaches this top offset.
-      const rect = searchSlot.getBoundingClientRect();
+      // If stuck, read placeholder position. If in-flow, read search slot position.
+      const referenceNode = wasStuck ? placeholder : searchSlot;
+      const rect = referenceNode.getBoundingClientRect();
+      // On mobile, maybe we want it to stick at a slightly different offset? 0.5rem (8px) is fine.
       const isStuck = rect.top <= 8;
 
       if (isStuck !== wasStuck) {
+        // iOS Safari bug: changing position to/from fixed while an element is focused 
+        // forces a blur and closes the keyboard. If the user is actively using the search bar,
+        // we defer the sticky transition.
+        if (searchSlot.contains(document.activeElement)) {
+          return;
+        }
+
         wasStuck = isStuck;
-        const portal = document.getElementById("menu-search-portal");
-        if (!portal) return;
 
         if (isStuck) {
-          searchSlot.classList.remove("visible");
-          searchSlot.classList.add("invisible");
-          portal.classList.remove("invisible", "opacity-0", "pointer-events-none");
-          portal.classList.add("visible", "opacity-100");
+          placeholder.style.display = "block";
+          placeholder.style.height = `${searchSlot.offsetHeight}px`;
+          
+          searchSlot.style.position = "fixed";
+          searchSlot.style.top = "0.5rem";
+          searchSlot.style.left = "var(--menu-search-left)";
+          searchSlot.style.width = "var(--menu-search-w)";
+          searchSlot.style.zIndex = "50";
         } else {
-          searchSlot.classList.remove("invisible");
-          searchSlot.classList.add("visible");
-          portal.classList.add("invisible", "opacity-0", "pointer-events-none");
-          portal.classList.remove("visible", "opacity-100");
+          placeholder.style.display = "none";
+          
+          searchSlot.style.position = "";
+          searchSlot.style.top = "";
+          searchSlot.style.left = "";
+          searchSlot.style.width = "";
+          searchSlot.style.zIndex = "";
         }
       }
     };
@@ -254,11 +270,14 @@ export function MenuGrid({
     window.addEventListener("scroll", onScroll, { passive: true });
     // Also attach to window resize to re-check in case layout changes
     window.addEventListener("resize", onScroll, { passive: true });
+    // Re-evaluate when focus leaves the search bar in case we deferred a transition
+    searchSlot.addEventListener("focusout", onScroll);
     onScroll();
 
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      searchSlot.removeEventListener("focusout", onScroll);
     };
   }, []);
 
@@ -321,21 +340,6 @@ export function MenuGrid({
     </div>
   );
 
-  const portalSearch = mounted && createPortal(
-    <div
-      id="menu-search-portal"
-      className="fixed z-50 invisible opacity-0 pointer-events-none"
-      style={{
-        top: "0.5rem",
-        left: "var(--menu-search-left)",
-        width: "var(--menu-search-w)",
-      }}
-    >
-      {searchBar}
-    </div>,
-    document.body,
-  );
-
   return (
     <>
       {/* Hero + Filter Card */}
@@ -343,7 +347,7 @@ export function MenuGrid({
         {/* 2×2 Hero Grid */}
         <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,0.9fr)_1.1fr] lg:gap-5 lg:h-[50vh] lg:min-h-[320px] mb-3 sm:mb-4">
           {/* Carousel — order first on mobile, right column on lg+ */}
-          <div className="order-first lg:order-none lg:col-start-2 lg:row-span-full">
+          <div className="order-first h-[400px] sm:h-[450px] lg:h-auto lg:order-none lg:col-start-2 lg:row-span-full">
             <ProductBanner />
           </div>
 
@@ -360,20 +364,22 @@ export function MenuGrid({
               </span>
             </h2>
 
-            {/* Search bar slot — classes managed by scroll listener to avoid React latency */}
-            <div ref={searchSlotRef} className="mt-auto visible">
+            {/* Search bar placeholder — prevents layout jump when sticky */}
+            <div ref={placeholderRef} className="mt-auto" style={{ display: "none" }} />
+            {/* Search bar slot — styles managed by scroll listener to avoid React latency and preserve focus */}
+            <div ref={searchSlotRef} className="mt-auto">
               {searchBar}
             </div>
 
             {/* Category chips */}
-            <div className="relative mt-2 -mx-1 md:mx-0">
+            <div className="group relative mt-2 -mx-1 md:mx-0">
               {showLeftChevron && (
                 <>
-                  <div className="pointer-events-none absolute left-0 top-0 z-10 h-12 w-16 bg-gradient-to-r from-cream to-transparent" />
+                  <div className="pointer-events-none absolute left-0 top-0 z-10 hidden h-12 w-16 bg-gradient-to-r from-cream to-transparent opacity-0 transition-opacity duration-300 md:block md:group-hover:opacity-100" />
                   <button
                     type="button"
                     onClick={scrollLeft}
-                    className="absolute left-0 top-6 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-transform active:scale-90"
+                    className="absolute left-0 top-6 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-all active:scale-90 opacity-0 md:flex md:group-hover:opacity-100"
                     aria-label="Scroll categories left"
                   >
                     <ChevronLeft size={20} className="text-espresso" />
@@ -384,7 +390,7 @@ export function MenuGrid({
               <div
                 ref={scrollRef}
                 onScroll={checkScroll}
-                className="scrollbar-hide flex gap-2 overflow-x-auto px-1 md:flex-wrap md:overflow-visible"
+                className="scrollbar-hide flex gap-2 overflow-x-auto px-1"
               >
                 <button
                   type="button"
@@ -420,11 +426,11 @@ export function MenuGrid({
 
               {showRightChevron && (
                 <>
-                  <div className="pointer-events-none absolute right-0 top-0 z-10 h-12 w-16 bg-gradient-to-l from-cream to-transparent md:hidden" />
+                  <div className="pointer-events-none absolute right-0 top-0 z-10 hidden h-12 w-16 bg-gradient-to-l from-cream to-transparent opacity-0 transition-opacity duration-300 md:block md:group-hover:opacity-100" />
                   <button
                     type="button"
                     onClick={scrollRight}
-                    className="absolute right-0 top-6 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-transform active:scale-90 md:hidden"
+                    className="absolute right-0 top-6 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-all active:scale-90 opacity-0 md:flex md:group-hover:opacity-100"
                     aria-label="Scroll categories right"
                   >
                     <ChevronRight size={20} className="text-espresso" />
@@ -480,7 +486,7 @@ export function MenuGrid({
       </div>
 
       {/* Product grid */}
-      <div className="grid grid-cols-1 gap-3 pb-16 min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(min(100%,13.5rem),1fr))] 2xl:grid-cols-[repeat(auto-fit,minmax(min(100%,14.5rem),1fr))]">
+      <div className="grid grid-cols-1 gap-3 pb-16 min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
         {filteredAndSorted.map((product) => {
           const price = getProductPrice(product);
           const handleAdd = () => {
@@ -559,8 +565,6 @@ export function MenuGrid({
           }}
         />
       )}
-
-      {portalSearch}
 
       {/* Floating cart bar */}
       {totalCount > 0 && (
