@@ -4,8 +4,18 @@ import { useEffect, useState } from "react";
 import { getOrder, getBranches, getMockOrderSessionUser } from "@repo/api-client";
 import type { Order, Branch } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
+import dynamic from "next/dynamic";
 import { useOrderDetailsStore } from "@/store/orderDetails";
+
+const TrackingMap = dynamic(() => import("@/components/TrackingMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-[#fbf6ef] font-mono text-[11px] text-caramel">
+      Loading map...
+    </div>
+  ),
+});
 
 interface OrderTrackingPageClientProps {
   id: string;
@@ -117,13 +127,6 @@ export function OrderTrackingPageClient({ id }: OrderTrackingPageClientProps) {
     (order.fulfillment_mode == null && !order.delivery_address?.toLowerCase().includes("pickup"));
   const branch = branches.find((b) => b.id === order.branch_id);
 
-  // SVG coordinates for animating path
-  // Start: Branch position
-  // End: Delivery destination position
-  const branchCoords = { x: 80, y: 150 };
-  const destinationCoords = { x: 260, y: 70 };
-  const riderPath = `M ${branchCoords.x} ${branchCoords.y} Q 170 120 ${destinationCoords.x} ${destinationCoords.y}`;
-
   return (
     <main className="mx-auto max-w-md px-6 pt-4 pb-32 bg-cream min-h-screen flex flex-col">
       {/* Header */}
@@ -156,64 +159,11 @@ export function OrderTrackingPageClient({ id }: OrderTrackingPageClientProps) {
       </div>
 
       {/* Map visual section */}
-      <div className="relative mb-5 overflow-hidden rounded-2xl border border-crust bg-[#fbf6ef] p-4 h-[220px]">
-        {/* Animated Rider Map */}
-        <svg className="w-full h-full" viewBox="0 0 340 200" fill="none" aria-hidden="true">
-          {/* Abstract roads */}
-          <path d="M 20 180 L 320 80" stroke="#ebdcb9" strokeWidth="1.5" strokeDasharray="3 3" />
-          <path d="M 60 40 L 280 190" stroke="#ebdcb9" strokeWidth="1.5" strokeDasharray="3 3" />
-          <path d="M 120 20 L 120 180" stroke="#ebdcb9" strokeWidth="1.5" />
-          <path d="M 220 20 L 220 180" stroke="#ebdcb9" strokeWidth="1.5" />
-
-          {/* Delivery route path */}
-          {isDelivery && (
-            <path
-              id="delivery-route"
-              d={riderPath}
-              stroke="var(--golden)"
-              strokeWidth="2.5"
-              strokeDasharray="4 4"
-            />
-          )}
-
-          {/* Branch Marker */}
-          <circle cx={branchCoords.x} cy={branchCoords.y} r="8" fill="var(--espresso)" />
-          <circle cx={branchCoords.x} cy={branchCoords.y} r="4" fill="var(--honey)" />
-          <text x={branchCoords.x - 10} y={branchCoords.y + 20} className="font-mono text-[9px] fill-espresso font-bold">
-            {branch?.name.split(" ")[0] ?? "Branch"}
-          </text>
-
-          {/* Destination Marker */}
-          {isDelivery ? (
-            <>
-              <circle cx={destinationCoords.x} cy={destinationCoords.y} r="8" fill="var(--cinnamon)" />
-              <circle cx={destinationCoords.x} cy={destinationCoords.y} r="4" fill="white" />
-              <text x={destinationCoords.x - 20} y={destinationCoords.y - 12} className="font-mono text-[9px] fill-cinnamon font-bold">
-                Destination
-              </text>
-            </>
-          ) : (
-            <text x={branchCoords.x + 18} y={branchCoords.y + 4} className="font-editorial text-[11px] italic fill-cinnamon">
-              (Pickup at branch)
-            </text>
-          )}
-
-          {/* Rider Chip */}
-          {isDelivery && order.status === "OUT_FOR_DELIVERY" && (
-            <g>
-              <circle r="11" fill="var(--cinnamon)">
-                <animateMotion dur="10s" repeatCount="indefinite" path={riderPath} />
-              </circle>
-              {/* Rider Bike Icon Dot */}
-              <circle r="5" fill="white">
-                <animateMotion dur="10s" repeatCount="indefinite" path={riderPath} />
-              </circle>
-            </g>
-          )}
-        </svg>
+      <div className="relative mb-5 overflow-hidden rounded-2xl border border-crust bg-[#fbf6ef] h-[220px]">
+        <TrackingMap branch={branch} isDelivery={isDelivery} />
 
         {/* Floating details overlay */}
-        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg border border-crust p-2.5 max-w-[150px]">
+        <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg border border-crust p-2.5 max-w-[150px] z-10">
           <div className="font-mono text-[8px] uppercase tracking-[0.16em] text-caramel">Rider</div>
           <div className="text-[11.5px] font-bold text-espresso">
             {order.status === "OUT_FOR_DELIVERY" ? "Nguyễn Văn Hùng 🛵" : "Waiting for pickup…"}

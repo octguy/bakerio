@@ -1,6 +1,6 @@
 import { Croissant } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { Suspense } from "react";
 import { getProduct } from "@repo/api-client";
 import type { Product } from "@repo/api-client";

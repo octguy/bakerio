@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useTransitionRouter as useRouter } from "next-view-transitions";
+import { Link } from "next-view-transitions";
 import { z } from "zod";
 import { createOrder, type CreateOrderRequest, getMockOrderSessionUser } from "@repo/api-client";
 import { getLoyalty, maxRedeemableFor, redeemCrumbs } from "@repo/api-client/mock/loyalty";
 import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
+import { getAddresses } from "@repo/api-client";
+import type { SavedAddress } from "@repo/api-client";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { useOrderDetailsStore } from "@/store/orderDetails";
@@ -61,25 +63,39 @@ function CheckoutPageInner() {
 
   const [loyalty, setLoyalty] = useState<LoyaltyBalance | undefined>(undefined);
   const [maxDiscount, setMaxDiscount] = useState<number>(0);
+  const [addresses, setAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [fallbackAddress, setFallbackAddress] = useState("");
 
   useEffect(() => {
     if (items.length === 0 && !ordered) router.replace("/menu");
   }, [items, ordered, router]);
 
   useEffect(() => {
-    const loadLoyaltyData = async () => {
+    const loadData = async () => {
       try {
         const bal = await getLoyalty();
         setLoyalty(bal);
         const disc = await maxRedeemableFor(subtotal);
         setMaxDiscount(disc);
+        
+        const addrs = await getAddresses();
+        setAddresses(addrs);
+        const defaultAddr = addrs.find(a => a.is_default);
+        if (defaultAddr) {
+          setSelectedAddressId(defaultAddr.id);
+        } else if (addrs.length > 0) {
+          setSelectedAddressId(addrs[0].id);
+        } else {
+          setSelectedAddressId("custom");
+        }
       } catch (err) {
         if (process.env.NODE_ENV !== "production") {
-          console.error("Failed to load loyalty:", err);
+          console.error("Failed to load checkout data:", err);
         }
       }
     };
-    loadLoyaltyData();
+    loadData();
   }, [subtotal]);
 
 
@@ -118,12 +134,16 @@ function CheckoutPageInner() {
   const deliveryAddress =
     mode === "Pickup"
       ? "42 Lê Lợi, Bến Nghé, Quận 1, HCMC (Pickup)"
-      : "24 Nguyễn Đình Chiểu, Phường Đa Kao, Quận 1, HCMC";
+      : (selectedAddressId === "custom" ? fallbackAddress : addresses.find((a) => a.id === selectedAddressId)?.address || "");
 
   const handlePlaceOrder = async () => {
     const validation = checkoutSchema.safeParse({ items, branchId });
     if (!validation.success) {
       setError(validation.error.issues[0].message);
+      return;
+    }
+    if (mode === "Delivery" && !deliveryAddress.trim()) {
+      setError("Please provide a delivery address.");
       return;
     }
     setSubmitting(true);
@@ -188,9 +208,9 @@ function CheckoutPageInner() {
   };
 
   return (
-    <main className="mx-auto max-w-md px-6 pt-4 pb-44">
+    <main className="mx-auto max-w-md lg:max-w-5xl px-6 pt-4 pb-44 lg:pb-16 lg:grid lg:grid-cols-12 lg:gap-12 lg:items-start">
       {/* Header */}
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between lg:col-span-12">
         <Link href="/cart" className="text-[22px] text-espresso" aria-label="Back to cart">‹</Link>
         <div className="text-center">
           <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">step 3 / 3</div>
@@ -200,195 +220,270 @@ function CheckoutPageInner() {
       </div>
 
       {/* Progress */}
-      <div className="mb-4 flex items-center gap-1.5">
+      <div className="mb-8 flex items-center gap-1.5 lg:col-span-12">
         {[1, 2, 3].map((n) => (
           <div key={n} className="h-[3px] flex-1 rounded-sm bg-cinnamon" />
         ))}
       </div>
 
-      {/* Mode toggle */}
-      <div className="mb-3 flex rounded-full bg-butter p-1">
-        {(["Pickup", "Delivery"] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            aria-pressed={mode === tab}
-            onClick={() => setMode(tab)}
-            className={`flex-1 rounded-full py-2.5 text-center text-[13px] font-bold tracking-wide transition-colors ${
-              mode === tab ? "bg-espresso text-white" : "text-cocoa"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      <div className="lg:col-span-7 flex flex-col gap-3">
+        {/* Mode toggle */}
+        <div className="flex rounded-full bg-butter p-1">
+          {(["Pickup", "Delivery"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              aria-pressed={mode === tab}
+              onClick={() => setMode(tab)}
+              className={`flex-1 rounded-full py-2.5 text-center text-[13px] font-bold tracking-wide transition-colors ${
+                mode === tab ? "bg-espresso text-white" : "text-cocoa"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
 
-      {/* Location card */}
-      <div className="mb-3 rounded-2xl border border-crust bg-white p-4">
-        <div className="mb-1 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">
-          {mode === "Pickup" ? "Pickup at" : "Deliver to"}
-        </div>
-        <div className="font-display text-[22px] leading-[1.05] tracking-tight text-espresso">
-          {mode === "Pickup" ? "Lê Lợi Flagship" : "24 Nguyễn Đình Chiểu"}
-        </div>
-        <div className="mt-0.5 font-editorial text-[13px] text-cinnamon">
-          {mode === "Pickup" ? "42 Lê Lợi, Q.1 — 0.8 km" : "Q.3 · Home"}
-        </div>
-        <div className="mt-3 flex items-center gap-2.5 text-[12px] text-cocoa">
-          <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-sage">● OPEN</span>
-          <span className="font-mono text-[11px] text-caramel">06–22</span>
-          <span className="ml-auto font-mono text-[11px] font-bold tracking-[0.16em] text-cinnamon">
-            CHANGE
-          </span>
-        </div>
-      </div>
-
-      {/* When */}
-      <div className="mb-3 rounded-2xl border border-crust bg-white p-4">
-        <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">When?</div>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1">
-          {TIMES.map((s, i) => {
-            const active = i === selectedTime;
-            return (
-              <button
-                key={i}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setSelectedTime(i)}
-                className={`min-w-[78px] flex-shrink-0 rounded-lg px-3 py-2 text-center transition-colors ${
-                  active ? "bg-espresso text-white" : "border border-crust bg-butter text-espresso"
-                }`}
-              >
-                <div className="font-display text-[16px]">{s.l}</div>
-                <div className="font-mono text-[9.5px] tracking-[0.1em] opacity-80">{s.s}</div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Payment */}
-      <div className="mb-3">
-        <div className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.22em] text-caramel">Pay with</div>
-        <div className="flex flex-col gap-2">
-          {PAY_METHODS.map((p, i) => {
-            const active = i === payMethod;
-            const isStub = i < 3;
-            return (
-              <button
-                key={p.l}
-                type="button"
-                aria-pressed={active}
-                disabled={isStub}
-                onClick={() => setPayMethod(i)}
-                className={`flex items-center gap-3 rounded-xl p-3.5 text-left ${
-                  active ? "border-2 border-cinnamon bg-white shadow-sm" : "border border-crust bg-white"
-                } ${isStub ? "opacity-40 cursor-not-allowed" : ""}`}
-              >
-                <div
-                  className="flex h-6 w-9 items-center justify-center rounded text-[9px] font-bold tracking-wider text-white"
-                  style={{ background: p.color }}
+        {/* Location card */}
+        <div className="rounded-2xl border border-crust bg-white p-4">
+          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">
+            {mode === "Pickup" ? "Pickup at" : "Deliver to"}
+          </div>
+          
+          {mode === "Pickup" ? (
+            <>
+              <div className="font-display text-[22px] leading-[1.05] tracking-tight text-espresso">
+                Lê Lợi Flagship
+              </div>
+              <div className="mt-0.5 font-editorial text-[13px] text-cinnamon">
+                42 Lê Lợi, Q.1 — 0.8 km
+              </div>
+              <div className="mt-3 flex items-center gap-2.5 text-[12px] text-cocoa">
+                <span className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-sage">● OPEN</span>
+                <span className="font-mono text-[11px] text-caramel">06–22</span>
+                <span className="ml-auto font-mono text-[11px] font-bold tracking-[0.16em] text-cinnamon">
+                  CHANGE
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {addresses.map(addr => (
+                <button 
+                  key={addr.id}
+                  type="button"
+                  onClick={() => setSelectedAddressId(addr.id)}
+                  className={`text-left rounded-xl border p-3.5 transition-colors ${selectedAddressId === addr.id ? 'border-cinnamon bg-white shadow-sm' : 'border-crust bg-white hover:bg-butter/50'}`}
                 >
-                  {p.letters ?? ""}
-                </div>
-                <div className="flex-1">
-                  <div className="text-[13.5px] font-semibold text-espresso">{p.l}</div>
-                  <div className="font-mono text-[10px] tracking-[0.08em] text-caramel">{p.s}</div>
-                </div>
-                {isStub ? (
-                  <span className="rounded bg-caramel/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-caramel">
-                    coming soon
-                  </span>
-                ) : (
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13.5px] font-semibold text-espresso flex items-center gap-2">
+                        <span>{addr.label}</span>
+                        {addr.is_default && (
+                          <span className="rounded bg-golden px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-white">Default</span>
+                        )}
+                      </div>
+                      <div className="font-editorial text-[11.5px] italic text-caramel truncate mt-0.5">{addr.address}</div>
+                    </div>
+                    <span
+                      className="h-[18px] w-[18px] rounded-full border-[1.5px] transition-colors shrink-0"
+                      style={{
+                        background: selectedAddressId === addr.id ? "var(--cinnamon)" : "transparent",
+                        borderColor: selectedAddressId === addr.id ? "var(--cinnamon)" : "var(--crust-deep)",
+                      }}
+                    />
+                  </div>
+                </button>
+              ))}
+              
+              <div className={`rounded-xl border p-3.5 transition-colors ${selectedAddressId === 'custom' ? 'border-cinnamon bg-white shadow-sm' : 'border-crust bg-white hover:bg-butter/50'}`}>
+                <button 
+                  type="button" 
+                  onClick={() => setSelectedAddressId("custom")}
+                  className="flex items-center justify-between w-full text-left gap-3"
+                >
+                  <div className="text-[13.5px] font-semibold text-espresso">Other Address</div>
                   <span
-                    className="h-[18px] w-[18px] rounded-full border-[1.5px]"
+                    className="h-[18px] w-[18px] rounded-full border-[1.5px] transition-colors shrink-0"
                     style={{
-                      background: active ? "var(--cinnamon)" : "transparent",
-                      borderColor: active ? "var(--cinnamon)" : "var(--crust-deep)",
+                      background: selectedAddressId === 'custom' ? "var(--cinnamon)" : "transparent",
+                      borderColor: selectedAddressId === 'custom' ? "var(--cinnamon)" : "var(--crust-deep)",
                     }}
                   />
+                </button>
+                {selectedAddressId === 'custom' && (
+                  <div className="mt-3">
+                    <input
+                      value={fallbackAddress}
+                      onChange={(e) => setFallbackAddress(e.target.value)}
+                      placeholder="Enter your delivery address"
+                      className="w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+                    />
+                  </div>
                 )}
-              </button>
-            );
-          })}
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* When */}
+        <div className="rounded-2xl border border-crust bg-white p-4">
+          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">When?</div>
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 scrollbar-hide">
+            {TIMES.map((s, i) => {
+              const active = i === selectedTime;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setSelectedTime(i)}
+                  className={`min-w-[78px] flex-shrink-0 rounded-lg px-3 py-2 text-center transition-colors ${
+                    active ? "bg-espresso text-white" : "border border-crust bg-butter text-espresso"
+                  }`}
+                >
+                  <div className="font-display text-[16px]">{s.l}</div>
+                  <div className="font-mono text-[9.5px] tracking-[0.1em] opacity-80">{s.s}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Payment */}
+        <div>
+          <div className="mb-2 mt-2 font-mono text-[9.5px] uppercase tracking-[0.22em] text-caramel">Pay with</div>
+          <div className="flex flex-col gap-2">
+            {PAY_METHODS.map((p, i) => {
+              const active = i === payMethod;
+              const isStub = i < 3;
+              const label = p.value === "PAY_AT_COUNTER" && mode === "Delivery" ? "Pay on delivery" : p.l;
+              return (
+                <button
+                  key={p.l}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={isStub}
+                  onClick={() => setPayMethod(i)}
+                  className={`flex items-center gap-3 rounded-xl p-3.5 text-left transition-colors ${
+                    active ? "border-2 border-cinnamon bg-white shadow-sm" : "border border-crust bg-white hover:bg-butter/50"
+                  } ${isStub ? "opacity-40 cursor-not-allowed" : ""}`}
+                >
+                  <div
+                    className="flex h-6 w-9 items-center justify-center rounded text-[9px] font-bold tracking-wider text-white"
+                    style={{ background: p.color }}
+                  >
+                    {p.letters ?? ""}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[13.5px] font-semibold text-espresso">{label}</div>
+                    <div className="font-mono text-[10px] tracking-[0.08em] text-caramel">{p.s}</div>
+                  </div>
+                  {isStub ? (
+                    <span className="rounded bg-caramel/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-caramel">
+                      coming soon
+                    </span>
+                  ) : (
+                    <span
+                      className="h-[18px] w-[18px] rounded-full border-[1.5px] transition-colors"
+                      style={{
+                        background: active ? "var(--cinnamon)" : "transparent",
+                        borderColor: active ? "var(--cinnamon)" : "var(--crust-deep)",
+                      }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Loyalty */}
+        <button
+          type="button"
+          aria-pressed={useCrumbs}
+          onClick={() => setUseCrumbs((s) => !s)}
+          className="mt-1 flex w-full items-center gap-3 rounded-2xl border border-golden/30 bg-butter p-3 text-left transition-colors hover:bg-butter/80"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-honey font-display text-[15px] text-espresso" aria-hidden="true">
+            ✦
+          </div>
+          <div className="flex-1">
+            <div className="text-[13px] font-semibold text-espresso">
+              Use {potentialCrumbsNeeded} crumbs (−{formatVND(crumbsDiscount)})
+            </div>
+            <div className="font-editorial text-[11.5px] italic text-caramel">
+              You have {loyalty?.balance.toLocaleString() ?? "1,420"} in your jar.
+            </div>
+          </div>
+          <div
+            className="relative h-[22px] w-[36px] rounded-full transition-colors"
+            style={{ background: useCrumbs ? "var(--sage)" : "var(--crust-deep)" }}
+          >
+            <div
+              className="absolute top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow transition-all"
+              style={{ left: useCrumbs ? "16px" : "2px" }}
+            />
+          </div>
+        </button>
+
+        {error && (
+          <p className="mt-2 rounded-md border border-sienna/30 bg-sienna/10 px-3 py-2 text-center font-mono text-[11px] text-sienna">
+            {error}
+          </p>
+        )}
       </div>
 
-      {/* Loyalty */}
-      <button
-        type="button"
-        aria-pressed={useCrumbs}
-        onClick={() => setUseCrumbs((s) => !s)}
-        className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-golden/30 bg-butter p-3 text-left"
-      >
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-honey font-display text-[15px] text-espresso" aria-hidden="true">
-          ✦
-        </div>
-        <div className="flex-1">
-          <div className="text-[13px] font-semibold text-espresso">
-            Use {potentialCrumbsNeeded} crumbs (−{formatVND(crumbsDiscount)})
-          </div>
-          <div className="font-editorial text-[11.5px] italic text-caramel">
-            You have {loyalty?.balance.toLocaleString() ?? "1,420"} in your jar.
-          </div>
-        </div>
+      {/* Sticky bottom (mobile) / Static sticky sidebar (desktop) */}
+      <div className="lg:col-span-5 lg:sticky lg:top-8 mt-8 lg:mt-0">
         <div
-          className="relative h-[22px] w-[36px] rounded-full transition-colors"
-          style={{ background: useCrumbs ? "var(--sage)" : "var(--crust-deep)" }}
+          className="fixed bottom-16 left-0 right-0 px-6 pb-3 pt-3 lg:static lg:p-0 lg:bg-transparent"
+          style={{ background: "linear-gradient(180deg, transparent, var(--cream) 30%)" }}
         >
-          <div
-            className="absolute top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow"
-            style={{ left: useCrumbs ? "auto" : "2px", right: useCrumbs ? "2px" : "auto" }}
-          />
-        </div>
-      </button>
-
-      {error && (
-        <p className="mb-3 rounded-md border border-sienna/30 bg-sienna/10 px-3 py-2 text-center font-mono text-[11px] text-sienna">
-          {error}
-        </p>
-      )}
-
-      <div className="h-40" />
-
-      {/* Sticky bottom */}
-      <div
-        className="fixed bottom-16 left-0 right-0 px-6 pb-3 pt-3"
-        style={{ background: "linear-gradient(180deg, transparent, var(--cream) 30%)" }}
-      >
-        <div className="mb-3 rounded-2xl border border-crust bg-white p-3.5">
-          <div className="flex justify-between py-0.5 text-[12px] text-cocoa">
-            <span>Subtotal</span>
-            <span className="font-mono">{formatVND(subtotal)}</span>
+          {/* We only need the gradient wrapper on mobile. Let's make it more responsive. */}
+          <div className="hidden lg:block lg:mb-4 lg:font-mono lg:text-[10px] lg:uppercase lg:tracking-[0.2em] lg:text-caramel">
+            Order Summary
           </div>
-          {crumbsDiscount > 0 && (
-            <div className="flex justify-between py-0.5 text-[12px] font-semibold text-sage">
-              <span>Crumbs · {potentialCrumbsNeeded}</span>
-              <span className="font-mono">−{formatVND(crumbsDiscount)}</span>
+          <div className="mb-3 rounded-2xl border border-crust bg-white p-4 shadow-sm lg:shadow-none">
+            <div className="flex justify-between py-1 text-[13px] text-cocoa">
+              <span>Subtotal</span>
+              <span className="font-mono">{formatVND(subtotal)}</span>
             </div>
-          )}
-          {deliveryFee > 0 && (
-            <div className="flex justify-between py-0.5 text-[12px] text-cocoa">
-              <span>Delivery</span>
-              <span className="font-mono">{formatVND(deliveryFee)}</span>
+            {crumbsDiscount > 0 && (
+              <div className="flex justify-between py-1 text-[13px] font-semibold text-sage">
+                <span>Crumbs · {potentialCrumbsNeeded}</span>
+                <span className="font-mono">−{formatVND(crumbsDiscount)}</span>
+              </div>
+            )}
+            {deliveryFee > 0 && (
+              <div className="flex justify-between py-1 text-[13px] text-cocoa">
+                <span>Delivery</span>
+                <span className="font-mono">{formatVND(deliveryFee)}</span>
+              </div>
+            )}
+            <div className="mt-3 flex items-end justify-between border-t border-crust pt-3">
+              <span className="font-display text-[18px]">Total</span>
+              <span className="font-display text-[24px] text-espresso">
+                {formatVND(total)}
+              </span>
             </div>
-          )}
-          <div className="mt-2 flex justify-between border-t border-crust pt-2">
-            <span className="font-display text-[18px]">Total</span>
-            <span className="font-display text-[22px] text-espresso">
-              {formatVND(total)}
+          </div>
+
+          <button
+            onClick={handlePlaceOrder}
+            disabled={submitting}
+            className="bkr-press flex w-full items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-cream disabled:opacity-50 transition-colors hover:bg-espresso/90"
+          >
+            <span>
+              {submitting 
+                ? "Placing…" 
+                : (selectedPaymentMethod.value === "PAY_AT_COUNTER" && mode === "Delivery" 
+                    ? "Pay on delivery" 
+                    : `Pay with ${PAY_METHODS[payMethod].l}`)}
             </span>
-          </div>
+            <span aria-hidden="true">→</span>
+          </button>
         </div>
-
-        <button
-          onClick={handlePlaceOrder}
-          disabled={submitting}
-          className="bkr-press flex w-full items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream disabled:opacity-50"
-        >
-          <span>{submitting ? "Placing…" : `Pay with ${PAY_METHODS[payMethod].l}`}</span>
-          <span aria-hidden="true">→</span>
-        </button>
       </div>
     </main>
   );

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { Suspense } from "react";
 import VerifyEmailForm from "./verify-email-form";
 

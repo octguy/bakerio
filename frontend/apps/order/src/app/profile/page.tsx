@@ -5,9 +5,8 @@ import { useAuth } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getLoyalty } from "@repo/api-client/mock/loyalty";
 import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
-import { getAddresses } from "@repo/api-client/mock/addresses";
-import type { SavedAddress } from "@repo/api-client/mock/addresses";
-import { getOrderStats } from "@repo/api-client";
+import { getOrderStats, updateMyProfile, changePassword, getAddresses, addAddress, removeAddress, setDefaultAddress } from "@repo/api-client";
+import type { SavedAddress } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 
 export default function ProfilePage() {
@@ -27,14 +26,25 @@ function ProfileContent() {
   const [editOpen, setEditOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [newAddress, setNewAddress] = useState("");
+  const [newAddressLabel, setNewAddressLabel] = useState("");
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
   const phone = profileUser?.phone?.trim();
   const memberSince = formatMemberSince(profileUser?.created_at);
 
   const [loyalty, setLoyalty] = useState<LoyaltyBalance | undefined>(undefined);
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [lifetimeOrders, setLifetimeOrders] = useState<number | undefined>(undefined);
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -61,26 +71,96 @@ function ProfileContent() {
     };
   }, []);
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     const nextName = draftName.trim();
-    if (nextName) setDisplayName(nextName);
-    setEditOpen(false);
+    if (!nextName) return;
+    setIsSavingProfile(true);
+    try {
+      await updateMyProfile({ display_name: nextName });
+      setDisplayName(nextName);
+      setEditOpen(false);
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to update profile:", err);
+      }
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
-  const saveAddress = () => {
+  const saveAddress = async () => {
+    const trimmedLabel = newAddressLabel.trim() || "New Address";
     const trimmed = newAddress.trim();
     if (!trimmed) return;
-    setAddresses((current) => [
-      ...current,
-      {
-        id: `addr-${Date.now()}`,
-        label: "New address",
-        address: trimmed,
-        is_default: current.length === 0,
-      },
-    ]);
-    setNewAddress("");
-    setAddressOpen(false);
+    
+    setIsSavingAddress(true);
+    try {
+      const next = await addAddress(trimmedLabel, trimmed);
+      setAddresses((current) => [...current, next]);
+      setNewAddress("");
+      setNewAddressLabel("");
+      setAddressOpen(false);
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to add address:", err);
+      }
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
+  const handleRemoveAddress = async (id: string) => {
+    try {
+      await removeAddress(id);
+      setAddresses((current) => current.filter((a) => a.id !== id));
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to remove address:", err);
+      }
+    }
+  };
+
+  const handleSetDefaultAddress = async (id: string) => {
+    try {
+      const all = await setDefaultAddress(id);
+      setAddresses(all);
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("Failed to set default address:", err);
+      }
+    }
+  };
+
+  const savePassword = async () => {
+    setPasswordError("");
+    setPasswordSuccess(false);
+    
+    if (!currentPassword) {
+      setPasswordError("Current password is required.");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords do not match.");
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      
+      setPasswordSuccess(true);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : "Failed to change password. Please try again.");
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   return (
@@ -194,20 +274,38 @@ function ProfileContent() {
           {/* Addresses */}
           <Section title="Addresses" cta="+ Add" onCta={() => setAddressOpen(true)}>
             {addresses.map((r, idx, all) => (
-              <Row
-                key={r.id}
-                icon="📍"
-                label={
-                  <span className="flex items-center gap-2">
+              <div key={r.id} className={`flex w-full items-center gap-3 px-4 py-3.5 text-left ${idx === all.length - 1 ? "" : "border-b border-crust"}`}>
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-butter text-[14px] text-cinnamon shrink-0" aria-hidden="true">
+                  📍
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13.5px] font-semibold text-espresso flex items-center gap-2">
                     <span>{r.label}</span>
                     {r.is_default && (
                       <span className="rounded bg-golden px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-white">Default</span>
                     )}
-                  </span>
-                }
-                sub={r.address}
-                last={idx === all.length - 1}
-              />
+                  </div>
+                  <div className="font-editorial text-[11.5px] italic text-caramel truncate">{r.address}</div>
+                </div>
+                <div className="flex flex-col gap-2 shrink-0">
+                  {!r.is_default && (
+                    <button 
+                      type="button" 
+                      onClick={() => handleSetDefaultAddress(r.id)} 
+                      className="font-mono text-[9px] uppercase tracking-[0.1em] text-sage hover:text-espresso"
+                    >
+                      Set Default
+                    </button>
+                  )}
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoveAddress(r.id)} 
+                    className="font-mono text-[9px] uppercase tracking-[0.1em] text-cinnamon hover:text-espresso"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
             ))}
           </Section>
 
@@ -216,6 +314,7 @@ function ProfileContent() {
             <Row icon="🔔" label="Push notifications" sub={pushEnabled ? "order updates on" : "muted"} toggle on={pushEnabled} onClick={() => setPushEnabled((value) => !value)} />
             <Row icon="🌐" label="Language" sub="Tiếng Việt" badge="soon" />
             <Row icon="🥄" label="Dietary" sub="no peanut" badge="soon" />
+            <Row icon="🔑" label="Password" sub="Change password" onClick={() => setPasswordOpen(true)} />
             <Row icon="🔒" label="Privacy & data" badge="soon" last />
             <button
               type="button"
@@ -245,33 +344,50 @@ function ProfileContent() {
           <button
             type="button"
             onClick={saveProfile}
-            className="bkr-press mt-4 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream"
+            disabled={isSavingProfile || !draftName.trim()}
+            className="bkr-press mt-4 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
           >
-            Save profile
+            {isSavingProfile ? "Saving..." : "Save profile"}
           </button>
         </Modal>
       )}
 
       {addressOpen && (
         <Modal title="Add address" onClose={() => setAddressOpen(false)}>
-          <label htmlFor="profile-address" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-            Delivery address
-          </label>
-          <textarea
-            id="profile-address"
-            value={newAddress}
-            onChange={(e) => setNewAddress(e.target.value)}
-            rows={3}
-            className="mt-1 w-full resize-none rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
-          />
-          <button
-            type="button"
-            onClick={saveAddress}
-            disabled={!newAddress.trim()}
-            className="bkr-press mt-4 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
-          >
-            Save address
-          </button>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="profile-address-label" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                Label (e.g. Home, Office)
+              </label>
+              <input
+                id="profile-address-label"
+                value={newAddressLabel}
+                onChange={(e) => setNewAddressLabel(e.target.value)}
+                placeholder="Home"
+                className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-address" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                Delivery address
+              </label>
+              <textarea
+                id="profile-address"
+                value={newAddress}
+                onChange={(e) => setNewAddress(e.target.value)}
+                rows={3}
+                className="mt-1 w-full resize-none rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={saveAddress}
+              disabled={!newAddress.trim() || isSavingAddress}
+              className="bkr-press mt-4 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
+            >
+              {isSavingAddress ? "Saving..." : "Save address"}
+            </button>
+          </div>
         </Modal>
       )}
 
@@ -288,6 +404,90 @@ function ProfileContent() {
             </span>
             <span className="font-mono text-[11px] text-cinnamon">{pushEnabled ? "ON" : "OFF"}</span>
           </button>
+        </Modal>
+      )}
+
+      {passwordOpen && (
+        <Modal title="Change password" onClose={() => {
+          setPasswordOpen(false);
+          setPasswordError("");
+          setPasswordSuccess(false);
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+        }}>
+          {passwordSuccess ? (
+            <div className="py-6 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sage text-white text-[24px]">
+                ✓
+              </div>
+              <h3 className="font-display text-[20px] text-espresso">Password updated</h3>
+              <p className="mt-2 font-editorial text-[14px] italic text-caramel">
+                Your password has been changed successfully.
+              </p>
+              <button
+                type="button"
+                onClick={() => setPasswordOpen(false)}
+                className="bkr-press mt-6 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream"
+              >
+                Done
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="current-password" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                  Current password
+                </label>
+                <input
+                  id="current-password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+                />
+              </div>
+              <div>
+                <label htmlFor="new-password" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                  New password
+                </label>
+                <input
+                  id="new-password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+                />
+              </div>
+              <div>
+                <label htmlFor="confirm-password" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                  Confirm new password
+                </label>
+                <input
+                  id="confirm-password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+                />
+              </div>
+
+              {passwordError && (
+                <div className="rounded-lg bg-cinnamon/10 px-3 py-2 text-[13px] text-cinnamon">
+                  {passwordError}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={savePassword}
+                disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
+                className="bkr-press mt-2 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
+              >
+                {isChangingPassword ? "Saving..." : "Change password"}
+              </button>
+            </div>
+          )}
         </Modal>
       )}
     </main>

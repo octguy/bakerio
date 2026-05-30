@@ -5,6 +5,7 @@ import { display, editorial, news, sans, mono, script } from "@/lib/fonts";
 import { AuthProvider } from "@/lib/auth";
 import { DesktopSidebarNav } from "@/components/DesktopSidebarNav";
 import { LayoutShell } from "@/components/LayoutShell";
+import { UndoToast } from "@/components/undo-toast";
 
 export const metadata: Metadata = {
   title: "Bakerio — Order Fresh Baked Goods",
@@ -34,6 +35,7 @@ export default function RootLayout({
             </a>
             <DesktopSidebarNav />
             <LayoutShell>{children}</LayoutShell>
+            <UndoToast />
           </AuthProvider>
         </ViewTransitions>
       </body>

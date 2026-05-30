@@ -25,7 +25,6 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/", label: "Counter", glyph: "◆" },
       { href: "/orders", label: "Orders", glyph: "○" },
-      { href: "/kitchen", label: "Kitchen", glyph: "◇" },
     ],
   },
   {

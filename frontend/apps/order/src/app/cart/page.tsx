@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { Croissant } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
 import { maxRedeemableFor } from "@repo/api-client/mock/loyalty";
+import { CrossSells } from "@/components/cross-sells";
 
 export default function CartPage() {
   return (
@@ -24,7 +25,8 @@ function CartPageInner() {
   useEffect(() => setHydrated(true), []);
 
   const items = useCartStore((s) => s.items);
-  const removeItem = useCartStore((s) => s.removeItem);
+  
+  const clearCart = useCartStore((s) => s.clearCart);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const subtotal = useCartStore((s) => s.subtotal());
   const setCartOpen = useCartStore((s) => s.setCartOpen);
@@ -94,7 +96,7 @@ function CartPageInner() {
           <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">step 2 / 3</div>
           <div className="font-display text-[16px] leading-none text-espresso">Your basket</div>
         </div>
-        <button onClick={() => items.forEach((it) => removeItem(it.id))} className="font-mono text-[11px] tracking-[0.1em] text-caramel">
+        <button onClick={() => clearCart(true)} className="font-mono text-[11px] tracking-[0.1em] text-caramel">
           Clear
         </button>
       </div>
@@ -168,6 +170,8 @@ function CartPageInner() {
           </div>
         ))}
       </div>
+      
+      <CrossSells />
 
       {/* Totals */}
       <div className="mt-3 rounded-2xl border border-crust bg-white p-4">

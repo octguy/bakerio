@@ -32,9 +32,17 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
         </main>
 
         {/* Right Sidebar Cart for Desktop */}
-        {hydrated && isCartOpen && (
-          <aside className="sticky top-0 z-40 hidden h-screen w-[340px] shrink-0 overflow-y-auto border-l border-crust-deep bg-white lg:block xl:w-[380px]">
-            <SidebarCart />
+        {hydrated && (
+          <aside
+            className={`sticky top-0 z-40 hidden h-screen shrink-0 overflow-x-hidden overflow-y-auto bg-white transition-all duration-300 ease-in-out lg:block ${
+              isCartOpen
+                ? "w-[340px] border-l border-crust-deep xl:w-[380px]"
+                : "w-0 border-transparent"
+            }`}
+          >
+            <div className="w-[340px] xl:w-[380px]">
+              <SidebarCart />
+            </div>
           </aside>
         )}
       </div>
@@ -43,10 +51,12 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
       <BottomNav />
 
       {/* Floating Cart Button for Desktop */}
-      {hydrated && !isCartOpen && itemCount > 0 && (
+      {hydrated && itemCount > 0 && (
         <button
           onClick={() => setCartOpen(true)}
-          className="fixed right-6 bottom-6 z-50 hidden h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-espresso text-cream shadow-lg transition-all hover:bg-cinnamon lg:flex"
+          className={`fixed right-6 bottom-6 z-50 hidden h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-espresso text-cream shadow-lg transition-all duration-300 ease-in-out hover:bg-cinnamon lg:flex ${
+            isCartOpen ? "pointer-events-none scale-0 opacity-0" : "scale-100 opacity-100"
+          }`}
           aria-label="Open cart"
         >
           <div className="relative">

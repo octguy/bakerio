@@ -42,8 +42,33 @@ describe("LocationsPage", () => {
   it("shows location cards with addresses", async () => {
     render(<LocationsPage />);
     expect((await screen.findAllByText("Bakerio Nguyễn Huệ")).length).toBeGreaterThan(0);
-    expect(screen.getByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).toBeInTheDocument();
+    expect(screen.getAllByText("45 Nguyễn Huệ, Bến Nghé, Quận 1").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Bakerio Phú Mỹ Hưng").length).toBeGreaterThan(0);
+  });
+
+  it("displays address for selected location", async () => {
+    render(<LocationsPage />);
+    expect((await screen.findAllByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).length).toBeGreaterThan(0);
+
+    // Click on Phú Mỹ Hưng in the list to select it
+    const listButtons = screen.getAllByRole("button");
+    const pmhButton = listButtons.find((b) => b.textContent?.includes("Bakerio Phú Mỹ Hưng"));
+    if (pmhButton) fireEvent.click(pmhButton);
+
+    expect((await screen.findAllByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).length).toBeGreaterThan(0);
+  });
+
+  it("updates the selected callout when a shop is clicked", async () => {
+    render(<LocationsPage />);
+
+    const listButtons = await screen.findAllByRole("button");
+    const selectedButton = listButtons.find(
+      (b) => b.className.includes("text-left") && b.textContent?.includes("Phú Mỹ Hưng"),
+    );
+
+    if (selectedButton) fireEvent.click(selectedButton);
+
+    expect((await screen.findAllByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).length).toBeGreaterThan(0);
   });
 
   it("shows number tags for each location", async () => {

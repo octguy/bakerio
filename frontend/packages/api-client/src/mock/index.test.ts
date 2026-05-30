@@ -85,14 +85,14 @@ describe("Mock API client logic and localStorage persistence", () => {
 
       // Retrieve it
       const allOrders = await mockClient.getOrders();
-      expect(allOrders.length).toBe(1);
-      expect(allOrders[0]?.id).toBe(order.id);
+      expect(allOrders.items.length).toBe(1);
+      expect(allOrders.items[0]?.id).toBe(order.id);
     });
 
     it("handles invalid JSON stored in orders localStorage", async () => {
       localStorage.setItem("bakerio-mock-orders", "{invalid-json}");
       const orders = await mockClient.getOrders();
-      expect(orders).toEqual([]);
+      expect(orders.items).toEqual([]);
     });
 
     it("runs gracefully in server-side rendering mode when window/localStorage is undefined", async () => {
@@ -219,10 +219,10 @@ describe("Mock API client logic and localStorage persistence", () => {
       expect(JSON.parse(localStorage.getItem("bakerio-mock-orders:user-1") || "[]")).toHaveLength(1);
 
       mockClient.setMockOrderSessionUser(null);
-      await expect(mockClient.getOrders()).resolves.toEqual([]);
+      await expect(mockClient.getOrders()).resolves.toMatchObject({ items: [] });
 
       mockClient.setMockOrderSessionUser("user-2");
-      await expect(mockClient.getOrders()).resolves.toEqual([]);
+      await expect(mockClient.getOrders()).resolves.toMatchObject({ items: [] });
 
       mockClient.setMockOrderSessionUser("user-1");
       await expect(mockClient.getOrder(order.id)).resolves.toMatchObject({ id: order.id });

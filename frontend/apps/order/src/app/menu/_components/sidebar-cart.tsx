@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { Croissant } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
 import { maxRedeemableFor } from "@repo/api-client/mock/loyalty";
+import { CrossSells } from "@/components/cross-sells";
 
 export default function SidebarCart() {
   const items = useCartStore((s) => s.items);
@@ -84,7 +85,7 @@ export default function SidebarCart() {
         <div className="flex items-center gap-3.5">
           <button
             type="button"
-            onClick={clearCart}
+            onClick={() => clearCart(true)}
             className="font-mono text-[10px] tracking-[0.1em] text-caramel hover:text-espresso"
           >
             Clear
@@ -160,6 +161,7 @@ export default function SidebarCart() {
             </div>
           </div>
         ))}
+        <CrossSells />
       </div>
 
       {/* Totals */}

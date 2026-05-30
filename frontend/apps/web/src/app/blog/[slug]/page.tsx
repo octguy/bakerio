@@ -31,7 +31,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-espresso/60" />
       </div>
 
-      <div className="mx-auto -mt-40 grid max-w-[1280px] grid-cols-1 gap-12 px-6 pb-24 lg:grid-cols-[180px_minmax(0,1fr)_220px] lg:px-14">
+      <div className="relative z-10 mx-auto -mt-40 grid max-w-[1280px] grid-cols-1 gap-12 px-6 pb-24 lg:grid-cols-[180px_minmax(0,1fr)_220px] lg:px-14">
         {/* Left meta */}
         <aside className="hidden pt-52 lg:block">
           <span className="font-mono text-[10.5px] font-bold uppercase tracking-[0.22em] text-cinnamon">

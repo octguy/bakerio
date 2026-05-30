@@ -2,8 +2,10 @@ import type {
   Branch,
   Category,
   CreateOrderRequest,
+  GetOrdersOptions,
   Order,
   OrderItem,
+  PaginatedOrders,
   Product,
   ProductImage,
 } from "../types";
@@ -80,9 +82,9 @@ const mockProductImages: Record<string, ProductImage[]> = {
 };
 
 export const mockBranches: Branch[] = [
-  { id: "br-q1",       name: "Bakerio Quận 1",      address: "65 Lê Lợi, Quận 1",       lat: 10.7738, lng: 106.7030, status: "active", created_at: MOCK_TS },
-  { id: "br-hoankiem", name: "Bakerio Hoàn Kiếm",   address: "12 Hàng Bài, Hoàn Kiếm",  lat: 21.0245, lng: 105.8538, status: "active", created_at: MOCK_TS },
-  { id: "br-phunhuan", name: "Bakerio Phú Nhuận",   address: "100 Phan Xích Long",      lat: 10.8007, lng: 106.6805, status: "active", created_at: MOCK_TS },
+  { id: "br-q1",       name: "Bakerio Quận 1",      address: "65 Lê Lợi, Quận 1",       opening_hours: "07:00-21:00", lat: 10.7738, lng: 106.7030, status: "active", created_at: MOCK_TS },
+  { id: "br-hoankiem", name: "Bakerio Hoàn Kiếm",   address: "12 Hàng Bài, Hoàn Kiếm",  opening_hours: "07:00-12:00", lat: 21.0245, lng: 105.8538, status: "active", created_at: MOCK_TS },
+  { id: "br-phunhuan", name: "Bakerio Phú Nhuận",   address: "100 Phan Xích Long",      opening_hours: "07:00-21:00", lat: 10.8007, lng: 106.6805, status: "active", created_at: MOCK_TS },
 ];
 
 const ORDERS_STORAGE_KEY = "bakerio-mock-orders";
@@ -540,10 +542,37 @@ export async function createOrder(data: CreateOrderRequest): Promise<Order> {
   return order;
 }
 
-export async function getOrders(): Promise<Order[]> {
+export async function getOrders(opts?: GetOrdersOptions): Promise<PaginatedOrders> {
   await delay(200);
   const savedOrders = getSavedOrders();
-  return [...savedOrders].reverse();
+  let filtered = [...savedOrders].reverse();
+
+  if (opts?.status) {
+    const statuses = opts.status.split(",");
+    filtered = filtered.filter((o) => statuses.includes(o.status));
+  }
+
+  if (opts?.search) {
+    const s = opts.search.toLowerCase();
+    filtered = filtered.filter((o) => 
+      o.id.toLowerCase().includes(s) ||
+      o.status.toLowerCase().includes(s) ||
+      o.delivery_address?.toLowerCase().includes(s) ||
+      o.items.some(
+        (item) => item.product_name.toLowerCase().includes(s)
+      )
+    );
+  }
+
+  const page = opts?.page ?? 1;
+  const size = opts?.size ?? 10;
+  const total = filtered.length;
+  const pages = Math.ceil(total / size);
+
+  const start = (page - 1) * size;
+  const items = filtered.slice(start, start + size);
+
+  return { items, total, page, size, pages };
 }
 
 export async function getOrder(id: string): Promise<Order | null> {
@@ -634,3 +663,5 @@ export async function deleteProductImage(productId: string, imageId: string): Pr
   const existingImages = mockProductImages[productId] ?? [];
   mockProductImages[productId] = existingImages.filter((img) => img.id !== imageId);
 }
+
+export * from "./addresses";

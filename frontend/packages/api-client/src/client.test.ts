@@ -426,7 +426,7 @@ describe("API Client tests", () => {
       ]);
 
       await expect(client.getOrder(order.id)).resolves.toMatchObject({ id: order.id });
-      await expect(client.getOrders()).resolves.toEqual([expect.objectContaining({ id: order.id })]);
+      await expect(client.getOrders()).resolves.toMatchObject({ items: [expect.objectContaining({ id: order.id })] });
       await expect(client.updateOrderStatus(order.id, "READY")).resolves.toMatchObject({
         id: order.id,
         status: "READY",

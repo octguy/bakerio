@@ -678,3 +678,17 @@ export const getOrder = mockGetOrder;
 export const updateOrderStatus = mockUpdateOrderStatus;
 export const getOrderStats = mockGetOrderStats;
 export const reorderItems = mockReorderItems;
+
+// ===== CUSTOMER ADDRESSES (MOCK — backend not implemented) =====
+import {
+  getAddresses as mockGetAddresses,
+  addAddress as mockAddAddress,
+  removeAddress as mockRemoveAddress,
+  setDefaultAddress as mockSetDefaultAddress,
+} from "./mock";
+
+export const getAddresses = mockGetAddresses;
+export const addAddress = mockAddAddress;
+export const removeAddress = mockRemoveAddress;
+export const setDefaultAddress = mockSetDefaultAddress;
+

@@ -111,10 +111,10 @@ export default function OrdersPage() {
   const fetchOrders = async (showLoading = false) => {
     if (showLoading) setLoading(true);
     setError("");
-    try {
-      const data = await getOrders();
-      setOrders(data);
-    } catch (err) {
+      try {
+        const data = await getOrders();
+        setOrders(data.items || []);
+      } catch (err) {
       setError("Could not load live orders. Retry when the API is reachable.");
       if (process.env.NODE_ENV !== "production") {
         console.error("Failed to fetch orders:", err);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { useCartStore } from "@/store/cart";
 import type { Product } from "@repo/api-client";
 import { formatVND } from "@/lib/format";

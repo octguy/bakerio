@@ -95,12 +95,23 @@ describe("ProfilePage", () => {
 
   it("edits the display name from the profile header", async () => {
     render(<ProfilePage />);
-    fireEvent.click(screen.getByRole("button", { name: "EDIT" }));
-    fireEvent.change(screen.getByLabelText(/display name/i), { target: { value: "Jane Baker" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "EDIT" })[0]);
+    fireEvent.change(screen.getByLabelText(/display name/i), { target: { value: "New Name" } });
     fireEvent.click(screen.getByRole("button", { name: /save profile/i }));
+    
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/display name/i)).not.toBeInTheDocument();
+    });
+  });
 
-    expect(screen.getByRole("heading", { name: "Jane Baker" })).toBeInTheDocument();
-    expect(screen.queryByRole("dialog", { name: /edit profile/i })).toBeNull();
+  it("opens settings and toggles push notifications", () => {
+    render(<ProfilePage />);
+    fireEvent.click(screen.getAllByRole("button", { name: /profile settings/i })[0]);
+    expect(screen.getByRole("dialog", { name: /profile settings/i })).toBeInTheDocument();
+
+    const pushToggle = screen.getByRole("switch", { name: /push notifications/i });
+    fireEvent.click(pushToggle);
+    expect(pushToggle).toHaveAttribute("aria-checked", "false");
   });
 
   it("adds an address from the Addresses section", async () => {

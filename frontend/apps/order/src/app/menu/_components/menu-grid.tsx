@@ -1,18 +1,23 @@
 "use client";
 
 import { useState, useEffect, useRef, type MouseEvent } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Link } from "next-view-transitions";
+import { useTransitionRouter as useRouter } from "next-view-transitions";
+import { useSearchParams } from "next/navigation";;
 import { Croissant, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Product, Category } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import { useCartStore } from "@/store/cart";
+
+import { SortDropdown } from "./sort-dropdown";
+import { MenuEmptyState } from "./menu-empty-state";
 
 type MenuProduct = Product & {
   price?: number;
   base_price?: number;
   category_id?: string;
   category?: { id?: string; name?: string };
+  sort_order?: number;
 };
 
 const DESKTOP_CART_MEDIA_QUERY = "(min-width: 1024px)";
@@ -46,6 +51,8 @@ export function MenuGrid({
 }) {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"popular" | "priceLtoH" | "priceHtoL" | "nameAtoZ">("popular");
+  const [priceFilter, setPriceFilter] = useState<"all" | "under50k">("all");
   const items = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
   const searchParams = useSearchParams();
@@ -169,22 +176,40 @@ export function MenuGrid({
     0,
   );
   const normalizedSearch = search.trim().toLowerCase();
-  const searchedProducts = normalizedSearch
-    ? products.filter((product) =>
-        [
-          product.name,
-          product.slug,
-          getProductCategoryName(product, categories),
-        ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
-      )
-    : products;
-
-  const filtered =
-    activeCategory === "all"
-      ? searchedProducts
-      : searchedProducts.filter(
-          (p) => getProductCategoryId(p) === activeCategory,
-        );
+  
+  const filteredAndSorted = [...products]
+    .filter((product) => {
+      if (!normalizedSearch) return true;
+      return [
+        product.name,
+        product.slug,
+        getProductCategoryName(product, categories),
+      ].some((value) => value?.toLowerCase().includes(normalizedSearch));
+    })
+    .filter((product) => {
+      if (activeCategory === "all") return true;
+      return getProductCategoryId(product) === activeCategory;
+    })
+    .filter((product) => {
+      if (priceFilter === "all") return true;
+      if (priceFilter === "under50k") return getProductPrice(product) < 50000;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === "popular") {
+        return ((a as MenuProduct).sort_order || 0) - ((b as MenuProduct).sort_order || 0);
+      }
+      if (sortBy === "priceLtoH") {
+        return getProductPrice(a) - getProductPrice(b);
+      }
+      if (sortBy === "priceHtoL") {
+        return getProductPrice(b) - getProductPrice(a);
+      }
+      if (sortBy === "nameAtoZ") {
+        return a.name.localeCompare(b.name);
+      }
+      return 0;
+    });
 
   return (
     <>
@@ -286,15 +311,9 @@ export function MenuGrid({
                   : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
               }`}
             >
-              All{" "}
-              <span className="font-mono text-[10px] opacity-70">
-                {searchedProducts.length}
-              </span>
+              All
             </button>
             {categories.map((cat) => {
-              const count = searchedProducts.filter(
-                (p) => getProductCategoryId(p) === cat.id,
-              ).length;
               const isActive = activeCategory === cat.id;
               return (
                 <button
@@ -308,10 +327,7 @@ export function MenuGrid({
                       : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
                   }`}
                 >
-                  {cat.name}{" "}
-                  <span className="font-mono text-[10px] opacity-70">
-                    {count}
-                  </span>
+                  {cat.name}
                 </button>
               );
             })}
@@ -332,6 +348,33 @@ export function MenuGrid({
             </>
           )}
         </div>
+
+        {/* Advanced Filter Pills */}
+        <div className="mt-1 flex flex-wrap gap-2 border-t border-espresso/10 pt-3 md:mt-2 md:pt-4">
+          <span className="flex items-center font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">Price:</span>
+          <button
+            type="button"
+            onClick={() => setPriceFilter("all")}
+            className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors ${
+              priceFilter === "all"
+                ? "bg-espresso text-white"
+                : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
+            }`}
+          >
+            All Prices
+          </button>
+          <button
+            type="button"
+            onClick={() => setPriceFilter("under50k")}
+            className={`rounded-full px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider transition-colors ${
+              priceFilter === "under50k"
+                ? "bg-espresso text-white"
+                : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
+            }`}
+          >
+            Under 50k
+          </button>
+        </div>
       </div>
 
       {/* Section title */}
@@ -344,14 +387,12 @@ export function MenuGrid({
             From the counter
           </h2>
         </div>
-        <span className="rounded-full border border-crust-deep bg-white px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-caramel">
-          Sort · popular
-        </span>
+        <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
       </div>
 
       {/* Product grid */}
       <div className="grid grid-cols-1 gap-3 pb-16 min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(min(100%,13.5rem),1fr))] 2xl:grid-cols-[repeat(auto-fit,minmax(min(100%,14.5rem),1fr))]">
-        {filtered.map((product) => {
+        {filteredAndSorted.map((product) => {
           const price = getProductPrice(product);
           const handleAdd = () => {
             addItem({
@@ -420,12 +461,14 @@ export function MenuGrid({
         })}
       </div>
 
-      {filtered.length === 0 && (
-        <p className="py-8 text-center font-editorial text-[14px] italic text-caramel">
-          {normalizedSearch
-            ? "No products match your search"
-            : "No products found"}
-        </p>
+      {filteredAndSorted.length === 0 && (
+        <MenuEmptyState
+          onReset={() => {
+            setSearch("");
+            setActiveCategory("all");
+            setPriceFilter("all");
+          }}
+        />
       )}
 
       {/* Floating cart bar */}

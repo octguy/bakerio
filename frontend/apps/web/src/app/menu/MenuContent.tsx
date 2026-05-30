@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import type { Product, Category } from "@repo/api-client";
 import { getOrderUrl } from "@/lib/public-config";
@@ -16,13 +16,43 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
   const [productsList] = useState<Product[]>(initialProducts);
   const [categoriesList] = useState<Category[]>(initialCategories);
   const [active, setActive] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [visibleCount, setVisibleCount] = useState(12);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  
   const orderUrl = getOrderUrl();
 
   const filtered = productsList.filter((p) => {
     const pCategory = categoriesList.find((c) => c.id === p.category_id);
     const categoryMatch = active === "All" || pCategory?.slug === active;
-    return categoryMatch;
+    const searchMatch = !searchQuery || 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return categoryMatch && searchMatch;
   });
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => {
+            if (prev < filtered.length) {
+              return prev + 12;
+            }
+            return prev;
+          });
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [filtered.length]);
+
+  const visibleProducts = filtered.slice(0, visibleCount);
 
   return (
     <section className="px-6 pb-24 lg:px-14 bg-cream">
@@ -34,10 +64,27 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
         <div className="grid grid-cols-1 gap-9 md:grid-cols-[220px_1fr] items-start">
         {/* Sidebar */}
           <aside>
+          <div className="mb-8">
+            <input 
+              type="text" 
+              placeholder="Search our menu..." 
+              aria-label="Search menu"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setVisibleCount(12);
+              }}
+              className="w-full border-b border-espresso bg-transparent py-2.5 font-display text-[22px] text-espresso placeholder:text-caramel focus:outline-none focus:border-cinnamon transition-colors"
+            />
+          </div>
+
           <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-caramel">Category</div>
           
           <button
-            onClick={() => setActive("All")}
+            onClick={() => {
+              setActive("All");
+              setVisibleCount(12);
+            }}
             className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
               active === "All" ? "bg-butter font-semibold text-espresso" : "text-cocoa hover:bg-vanilla"
             }`}
@@ -57,7 +104,10 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
             return (
               <button
                 key={c.id}
-                onClick={() => setActive(c.slug)}
+                onClick={() => {
+                  setActive(c.slug);
+                  setVisibleCount(12);
+                }}
                 className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
                   isActive ? "bg-butter font-semibold text-espresso" : "text-cocoa hover:bg-vanilla"
                 }`}
@@ -82,9 +132,10 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
           </aside>
 
           {/* Product grid */}
-          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
-            {filtered.map((p, i) => (
-              <article
+          <div className="flex flex-col gap-6 w-full">
+            <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
+              {visibleProducts.map((p, i) => (
+                <article
                 key={p.slug}
                 className="bkr-lift flex flex-col overflow-hidden rounded-sm border border-crust bg-white"
               >
@@ -120,6 +171,13 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
                 </div>
               </article>
             ))}
+            </div>
+            
+            {visibleCount < filtered.length && (
+              <div ref={loadMoreRef} className="h-10 w-full flex items-center justify-center">
+                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">Loading more...</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

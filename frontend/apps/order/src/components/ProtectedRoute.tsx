@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/auth";
-import { useRouter } from "next/navigation";
+import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { useEffect, ReactNode } from "react";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
