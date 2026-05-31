@@ -16,6 +16,21 @@ definitions:
       name:
         type: string
     type: object
+  BranchListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/BranchResponse'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
   BranchMembersResponse:
     properties:
       branch_id:
@@ -24,6 +39,14 @@ definitions:
         items:
           $ref: '#/definitions/MemberInfo'
         type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
     type: object
   BranchProductResponse:
     properties:
@@ -239,6 +262,8 @@ definitions:
       size:
         type: integer
       total:
+        type: integer
+      total_pages:
         type: integer
     type: object
   ProductResponse:
@@ -597,17 +622,23 @@ paths:
       - auth
   /branch:
     get:
-      description: Retrieve all branches
+      parameters:
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: size
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/BranchResponse'
-            type: array
-      summary: Get branch list
+            $ref: '#/definitions/BranchListResponse'
+      summary: Get branch list (paginated)
       tags:
       - branch
     post:
@@ -710,14 +741,22 @@ paths:
       - branch
   /branch/{id}/members:
     get:
-      description: List the user IDs assigned to a branch. Admin sees any branch;
-        a branch_manager only their own.
+      description: Members of a branch. Admin sees any branch; a branch_manager only
+        their own.
       parameters:
       - description: Branch ID
         in: path
         name: id
         required: true
         type: string
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: size
+        type: integer
       produces:
       - application/json
       responses:
@@ -731,7 +770,7 @@ paths:
             $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
-      summary: List branch members
+      summary: List branch members (paginated)
       tags:
       - branch
     post:
@@ -940,8 +979,10 @@ paths:
       tags:
       - categories
     get:
+      description: The path segment is treated as a UUID if it parses as one, otherwise
+        as a slug.
       parameters:
-      - description: Category ID
+      - description: Category ID or slug
         in: path
         name: id
         required: true
@@ -953,7 +994,11 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/CategoryResponse'
-      summary: Get category by ID
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: Get category by ID or slug
       tags:
       - categories
     patch:
@@ -1030,7 +1075,7 @@ paths:
   /products:
     get:
       parameters:
-      - description: Filter by category ID
+      - description: Filter by category slug
         in: query
         name: category
         type: string

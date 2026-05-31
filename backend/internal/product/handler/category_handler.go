@@ -57,25 +57,29 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 }
 
 // GetCategory godoc
-// @Summary      Get category by ID
+// @Summary      Get category by ID or slug
+// @Description  The path segment is treated as a UUID if it parses as one, otherwise as a slug.
 // @Tags         categories
 // @Produce      json
-// @Param        id   path      string  true "Category ID"
+// @Param        id   path      string  true  "Category ID or slug"
 // @Success      200  {object}  dto.CategoryResponse
+// @Failure      404  {object}  response.ErrorResponse
 // @Router       /categories/{id} [get]
 func (h *CategoryHandler) GetCategory(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		response.Error(c, apperrors.Validation("invalid category id"))
-		return
+	param := c.Param("id")
+	var (
+		res dto.CategoryResponse
+		err error
+	)
+	if id, perr := uuid.Parse(param); perr == nil {
+		res, err = h.svc.GetCategory(c.Request.Context(), id)
+	} else {
+		res, err = h.svc.GetCategoryBySlug(c.Request.Context(), param)
 	}
-
-	res, err := h.svc.GetCategory(c.Request.Context(), id)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
-
 	response.Success(c, http.StatusOK, res)
 }
 

@@ -16,6 +16,7 @@ import (
 type CategoryService interface {
 	CreateCategory(ctx context.Context, req dto.CreateCategoryRequest) (dto.CategoryResponse, error)
 	GetCategory(ctx context.Context, id uuid.UUID) (dto.CategoryResponse, error)
+	GetCategoryBySlug(ctx context.Context, slug string) (dto.CategoryResponse, error)
 	ListCategories(ctx context.Context) ([]dto.CategoryResponse, error)
 	UpdateCategory(ctx context.Context, id uuid.UUID, req dto.UpdateCategoryRequest) (dto.CategoryResponse, error)
 	DeleteCategory(ctx context.Context, id uuid.UUID) error
@@ -43,6 +44,17 @@ func (s *categoryService) CreateCategory(ctx context.Context, req dto.CreateCate
 
 func (s *categoryService) GetCategory(ctx context.Context, id uuid.UUID) (dto.CategoryResponse, error) {
 	category, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return dto.CategoryResponse{}, apperrors.Internal("database error", err)
+	}
+	if category == nil {
+		return dto.CategoryResponse{}, apperrors.NotFound("category not found")
+	}
+	return toCategoryResponse(category), nil
+}
+
+func (s *categoryService) GetCategoryBySlug(ctx context.Context, slug string) (dto.CategoryResponse, error) {
+	category, err := s.repo.GetBySlug(ctx, slug)
 	if err != nil {
 		return dto.CategoryResponse{}, apperrors.Internal("database error", err)
 	}

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +17,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 type ProductHandler struct {
@@ -80,25 +80,17 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 // @Summary      List products
 // @Tags         product
 // @Produce      json
-// @Param        category  query     string  false  "Filter by category ID"
+// @Param        category  query     string  false  "Filter by category slug"
 // @Param        page      query     int     false  "Page (default 1)"
 // @Param        size      query     int     false  "Page size (default 20)"
 // @Success      200       {object}  dto.ProductListResponse
 // @Router       /products [get]
 func (h *ProductHandler) ListProducts(c *gin.Context) {
-	var categoryID *uuid.UUID
+	var categorySlug *string
 	if raw := c.Query("category"); raw != "" {
-		id, err := uuid.Parse(raw)
-		if err != nil {
-			response.Error(c, apperrors.Validation("invalid category id"))
-			return
-		}
-		categoryID = &id
+		categorySlug = &raw
 	}
-	page := atoi32(c.Query("page"), 1)
-	size := atoi32(c.Query("size"), 20)
-
-	res, err := h.svc.ListProducts(c.Request.Context(), categoryID, page, size)
+	res, err := h.svc.ListProducts(c.Request.Context(), categorySlug, pagination.FromQuery(c))
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -380,15 +372,4 @@ func (h *ProductHandler) ensureBranchScope(c *gin.Context, target uuid.UUID) err
 		return apperrors.Forbidden("you can only manage products of your own branch")
 	}
 	return nil
-}
-
-func atoi32(s string, def int32) int32 {
-	if s == "" {
-		return def
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return def
-	}
-	return int32(n)
 }
