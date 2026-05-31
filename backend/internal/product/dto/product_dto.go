@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 	"github.com/shopspring/decimal"
 )
 
@@ -36,9 +37,7 @@ type ProductResponse struct {
 
 type ProductListResponse struct {
 	Items []ProductResponse `json:"items"`
-	Total int64             `json:"total"`
-	Page  int32             `json:"page"`
-	Size  int32             `json:"size"`
+	pagination.Meta
 } // @name ProductListResponse
 
 type ProductImageResponse struct {

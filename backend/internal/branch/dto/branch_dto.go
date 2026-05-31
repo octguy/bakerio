@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 type CreateBranchRequest struct {
@@ -34,6 +35,11 @@ type BranchResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 } // @name BranchResponse
 
+type BranchListResponse struct {
+	Items []BranchResponse `json:"items"`
+	pagination.Meta
+} // @name BranchListResponse
+
 type AssignMemberRequest struct {
 	UserID uuid.UUID `json:"user_id" binding:"required"`
 } // @name AssignMemberRequest
@@ -48,6 +54,7 @@ type MemberInfo struct {
 type BranchMembersResponse struct {
 	BranchID uuid.UUID    `json:"branch_id"`
 	Members  []MemberInfo `json:"members"`
+	pagination.Meta
 } // @name BranchMembersResponse
 
 type MembershipResponse struct {

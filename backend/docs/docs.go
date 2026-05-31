@@ -246,22 +246,32 @@ const docTemplate = `{
         },
         "/branch": {
             "get": {
-                "description": "Retrieve all branches",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "branch"
                 ],
-                "summary": "Get branch list",
+                "summary": "Get branch list (paginated)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 100)",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/BranchResponse"
-                            }
+                            "$ref": "#/definitions/BranchListResponse"
                         }
                     }
                 }
@@ -426,14 +436,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "List the user IDs assigned to a branch. Admin sees any branch; a branch_manager only their own.",
+                "description": "Members of a branch. Admin sees any branch; a branch_manager only their own.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "branch"
                 ],
-                "summary": "List branch members",
+                "summary": "List branch members (paginated)",
                 "parameters": [
                     {
                         "type": "string",
@@ -441,6 +451,18 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 100)",
+                        "name": "size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -754,17 +776,18 @@ const docTemplate = `{
         },
         "/categories/{id}": {
             "get": {
+                "description": "The path segment is treated as a UUID if it parses as one, otherwise as a slug.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "categories"
                 ],
-                "summary": "Get category by ID",
+                "summary": "Get category by ID or slug",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Category ID",
+                        "description": "Category ID or slug",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -775,6 +798,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/CategoryResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -932,7 +961,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Filter by category ID",
+                        "description": "Filter by category slug",
                         "name": "category",
                         "in": "query"
                     },
@@ -1846,6 +1875,29 @@ const docTemplate = `{
                 }
             }
         },
+        "BranchListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/BranchResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
         "BranchMembersResponse": {
             "type": "object",
             "properties": {
@@ -1857,6 +1909,18 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/MemberInfo"
                     }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
                 }
             }
         },
@@ -2179,6 +2243,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
                     "type": "integer"
                 }
             }

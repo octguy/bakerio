@@ -10,6 +10,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/product/repository"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
@@ -41,7 +42,7 @@ type ProductService interface {
 	CreateProduct(ctx context.Context, req dto.CreateProductRequest) (dto.ProductResponse, error)
 	GetProduct(ctx context.Context, id uuid.UUID) (dto.ProductResponse, error)
 	GetProductBySlug(ctx context.Context, slug string) (dto.ProductResponse, error)
-	ListProducts(ctx context.Context, categoryID *uuid.UUID, page, size int32) (dto.ProductListResponse, error)
+	ListProducts(ctx context.Context, categorySlug *string, p pagination.Params) (dto.ProductListResponse, error)
 	UpdateProduct(ctx context.Context, id uuid.UUID, req dto.UpdateProductRequest) (dto.ProductResponse, error)
 	DeleteProduct(ctx context.Context, id uuid.UUID) error
 
@@ -119,27 +120,19 @@ func (s *productService) GetProductBySlug(ctx context.Context, slug string) (dto
 	return toProductResponse(p), nil
 }
 
-func (s *productService) ListProducts(ctx context.Context, categoryID *uuid.UUID, page, size int32) (dto.ProductListResponse, error) {
-	if page < 1 {
-		page = 1
-	}
-	if size < 1 || size > 100 {
-		size = 20
-	}
-	offset := (page - 1) * size
-
+func (s *productService) ListProducts(ctx context.Context, categorySlug *string, p pagination.Params) (dto.ProductListResponse, error) {
 	var (
 		items []*domain.Product
 		total int64
 		err   error
 	)
-	if categoryID != nil {
-		items, err = s.repo.ListByCategory(ctx, *categoryID, size, offset)
+	if categorySlug != nil && *categorySlug != "" {
+		items, err = s.repo.ListByCategorySlug(ctx, *categorySlug, p.Size, p.Offset())
 		if err == nil {
-			total, err = s.repo.CountByCategory(ctx, *categoryID)
+			total, err = s.repo.CountByCategorySlug(ctx, *categorySlug)
 		}
 	} else {
-		items, err = s.repo.List(ctx, size, offset)
+		items, err = s.repo.List(ctx, p.Size, p.Offset())
 		if err == nil {
 			total, err = s.repo.Count(ctx)
 		}
@@ -149,10 +142,10 @@ func (s *productService) ListProducts(ctx context.Context, categoryID *uuid.UUID
 	}
 
 	res := make([]dto.ProductResponse, 0, len(items))
-	for _, p := range items {
-		res = append(res, toProductResponse(p))
+	for _, prod := range items {
+		res = append(res, toProductResponse(prod))
 	}
-	return dto.ProductListResponse{Items: res, Total: total, Page: page, Size: size}, nil
+	return dto.ProductListResponse{Items: res, Meta: pagination.NewMeta(p, total)}, nil
 }
 
 func (s *productService) UpdateProduct(ctx context.Context, id uuid.UUID, req dto.UpdateProductRequest) (dto.ProductResponse, error) {

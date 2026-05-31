@@ -11,6 +11,17 @@ import (
 	"github.com/google/uuid"
 )
 
+const countBranches = `-- name: CountBranches :one
+SELECT COUNT(*) FROM branch.branches
+`
+
+func (q *Queries) CountBranches(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countBranches)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createBranch = `-- name: CreateBranch :one
 INSERT INTO branch.branches (
     name, address, lat, lng
@@ -96,6 +107,45 @@ func (q *Queries) GetBranchByID(ctx context.Context, id uuid.UUID) (BranchBranch
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listBranchesPaginated = `-- name: ListBranchesPaginated :many
+SELECT id, name, address, lat, lng, status, created_at FROM branch.branches
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListBranchesPaginatedParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListBranchesPaginated(ctx context.Context, arg ListBranchesPaginatedParams) ([]BranchBranch, error) {
+	rows, err := q.db.Query(ctx, listBranchesPaginated, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BranchBranch{}
+	for rows.Next() {
+		var i BranchBranch
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Address,
+			&i.Lat,
+			&i.Lng,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateBranch = `-- name: UpdateBranch :one

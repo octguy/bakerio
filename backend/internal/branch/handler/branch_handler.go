@@ -10,6 +10,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/middleware"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 type BranchHandler struct {
@@ -31,20 +32,21 @@ func (h *BranchHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
 	g.PATCH("/:id/status", middleware.RequirePermission("branch:manage:all"), h.UpdateStatus)
 }
 
-// GetBranchList returns all branches
-// @Summary      Get branch list
-// @Description  Retrieve all branches
+// GetBranchList returns a paginated list of branches.
+// @Summary      Get branch list (paginated)
 // @Tags         branch
 // @Produce      json
-// @Success      200  {array}   dto.BranchResponse
+// @Param        page  query     int  false  "Page (default 1)"
+// @Param        size  query     int  false  "Page size (default 20, max 100)"
+// @Success      200  {object}  dto.BranchListResponse
 // @Router       /branch [get]
 func (h *BranchHandler) GetBranchList(c *gin.Context) {
-	branches, err := h.svc.GetAllBranches(c.Request.Context())
+	res, err := h.svc.ListBranches(c.Request.Context(), pagination.FromQuery(c))
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, branches)
+	response.Success(c, http.StatusOK, res)
 }
 
 // GetBranchByID returns a branch by ID

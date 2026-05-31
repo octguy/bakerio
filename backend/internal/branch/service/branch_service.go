@@ -9,6 +9,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 	"go.uber.org/zap"
 )
@@ -24,6 +25,7 @@ type BranchService interface {
 	CreateBranch(ctx context.Context, req dto.CreateBranchRequest) (dto.BranchResponse, error)
 	GetBranchByID(ctx context.Context, id uuid.UUID) (dto.BranchResponse, error)
 	GetAllBranches(ctx context.Context) ([]dto.BranchResponse, error)
+	ListBranches(ctx context.Context, p pagination.Params) (dto.BranchListResponse, error)
 	ListBranchIDs(ctx context.Context) ([]uuid.UUID, error)
 	UpdateBranch(ctx context.Context, id uuid.UUID, req dto.UpdateBranchRequest) (dto.BranchResponse, error)
 	UpdateBranchStatus(ctx context.Context, id uuid.UUID, status string) error
@@ -103,6 +105,22 @@ func (b *branchService) GetAllBranches(ctx context.Context) ([]dto.BranchRespons
 	return branches, nil
 }
 
+func (b *branchService) ListBranches(ctx context.Context, p pagination.Params) (dto.BranchListResponse, error) {
+	rows, err := b.repo.ListBranches(ctx, p.Size, p.Offset())
+	if err != nil {
+		return dto.BranchListResponse{}, apperrors.Internal("database error", err)
+	}
+	total, err := b.repo.CountBranches(ctx)
+	if err != nil {
+		return dto.BranchListResponse{}, apperrors.Internal("database error", err)
+	}
+	items := make([]dto.BranchResponse, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, toResponse(row))
+	}
+	return dto.BranchListResponse{Items: items, Meta: pagination.NewMeta(p, total)}, nil
+}
+
 func (b *branchService) UpdateBranch(ctx context.Context, id uuid.UUID, req dto.UpdateBranchRequest) (dto.BranchResponse, error) {
 	current, err := b.repo.GetBranchByID(ctx, id)
 	if err != nil {
@@ -150,10 +168,12 @@ func (b *branchService) UpdateBranchStatus(ctx context.Context, id uuid.UUID, st
 
 func toResponse(branch *domain.Branch) dto.BranchResponse {
 	return dto.BranchResponse{
-		ID:      branch.ID,
-		Name:    branch.Name,
-		Address: branch.Address,
-		Lat:     branch.Lat,
-		Lng:     branch.Lng,
+		ID:        branch.ID,
+		Name:      branch.Name,
+		Address:   branch.Address,
+		Lat:       branch.Lat,
+		Lng:       branch.Lng,
+		Status:    branch.Status,
+		CreatedAt: branch.CreatedAt,
 	}
 }

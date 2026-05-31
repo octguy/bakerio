@@ -77,6 +77,39 @@ func (q *Queries) ListUsersByBranch(ctx context.Context, branchID uuid.UUID) ([]
 	return items, nil
 }
 
+const listUsersByBranchPaginated = `-- name: ListUsersByBranchPaginated :many
+SELECT user_id FROM branch.branch_memberships
+WHERE branch_id = $1
+ORDER BY created_at ASC
+LIMIT $2 OFFSET $3
+`
+
+type ListUsersByBranchPaginatedParams struct {
+	BranchID uuid.UUID `json:"branch_id"`
+	Limit    int32     `json:"limit"`
+	Offset   int32     `json:"offset"`
+}
+
+func (q *Queries) ListUsersByBranchPaginated(ctx context.Context, arg ListUsersByBranchPaginatedParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listUsersByBranchPaginated, arg.BranchID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var user_id uuid.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertBranchMembership = `-- name: UpsertBranchMembership :one
 INSERT INTO branch.branch_memberships (user_id, branch_id)
 VALUES ($1, $2)
