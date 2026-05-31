@@ -1,6 +1,12 @@
 **/.DS_Store
 .DS_Store
-.env*
+
+# Local env overrides — never commit these
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 **/node_modules/
 **/.claude/
 **/.idea/
@@ -11,3 +17,7 @@
 
 **/CLAUDE.md
 secrets-template.txt
+.gitnexus
+backend/.env
+backend/bin/server
+backend/deployments/.env.prod

@@ -10,6 +10,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/middleware"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 type BranchHandler struct {
@@ -20,31 +21,32 @@ func NewBranchHandler(svc service.BranchService) *BranchHandler {
 	return &BranchHandler{svc: svc}
 }
 
-func (h *BranchHandler) RegisterRoutes(protected *gin.RouterGroup) {
+func (h *BranchHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
+	publicBranches := public.Group("/branch")
+	publicBranches.GET("", h.GetBranchList)
+	publicBranches.GET("/:id", h.GetBranchByID)
+
 	g := protected.Group("/branch")
-	g.GET("", middleware.RequirePermission("branch:view:all"), h.GetBranchList)
-	g.GET("/:id", middleware.RequirePermission("branch:view:all"), h.GetBranchByID)
 	g.POST("", middleware.RequirePermission("branch:manage:all"), h.CreateBranch)
 	g.PATCH("/:id", middleware.RequirePermission("branch:manage:all"), h.UpdateBranch)
 	g.PATCH("/:id/status", middleware.RequirePermission("branch:manage:all"), h.UpdateStatus)
 }
 
-// GetBranchList returns all branches
-// @Summary      Get branch list
-// @Description  Retrieve all branches
+// GetBranchList returns a paginated list of branches.
+// @Summary      Get branch list (paginated)
 // @Tags         branch
 // @Produce      json
-// @Security     BearerAuth
-// @Success      200  {array}   dto.BranchResponse
-// @Failure      401  {object}  response.ErrorResponse
+// @Param        page  query     int  false  "Page (default 1)"
+// @Param        size  query     int  false  "Page size (default 20, max 100)"
+// @Success      200  {object}  dto.BranchListResponse
 // @Router       /branch [get]
 func (h *BranchHandler) GetBranchList(c *gin.Context) {
-	branches, err := h.svc.GetAllBranches(c.Request.Context())
+	res, err := h.svc.ListBranches(c.Request.Context(), pagination.FromQuery(c))
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
-	response.Success(c, http.StatusOK, branches)
+	response.Success(c, http.StatusOK, res)
 }
 
 // GetBranchByID returns a branch by ID
@@ -53,7 +55,6 @@ func (h *BranchHandler) GetBranchList(c *gin.Context) {
 // @Tags         branch
 // @Produce      json
 // @Param        id   path      string  true  "Branch ID"
-// @Security     BearerAuth
 // @Success      200  {object}  dto.BranchResponse
 // @Failure      400  {object}  response.ErrorResponse
 // @Failure      404  {object}  response.ErrorResponse

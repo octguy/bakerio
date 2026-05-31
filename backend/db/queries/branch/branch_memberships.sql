@@ -19,6 +19,12 @@ WHERE user_id = $1;
 SELECT user_id FROM branch.branch_memberships
 WHERE branch_id = $1;
 
+-- name: ListUsersByBranchPaginated :many
+SELECT user_id FROM branch.branch_memberships
+WHERE branch_id = $1
+ORDER BY created_at ASC
+LIMIT $2 OFFSET $3;
+
 -- name: CountUsersByBranch :one
 SELECT COUNT(*) FROM branch.branch_memberships
 WHERE branch_id = $1;

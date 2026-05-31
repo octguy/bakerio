@@ -1,0 +1,8 @@
+RewriteEngine On
+
+# Map clean URLs to .html files if they exist on disk (e.g., /about -> /about.html)
+RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+RewriteRule ^([^/]+)/?$ /$1.html [L]
+
+# Redirect fallback to 404.html for non-existent files
+ErrorDocument 404 /404.html

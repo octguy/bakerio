@@ -1,20 +1,158 @@
 @import "tailwindcss";
 @import "@repo/ui/tokens.css";
 
-@theme inline {
-  --color-cream: #FDF8F3;
-  --color-golden: #D4943A;
-  --color-golden-dark: #B8802E;
-  --color-espresso: #2C1810;
-  --color-cocoa: #5C3D2E;
-  --color-crust: #E8C496;
-  --color-latte: #F5EDE4;
-  --font-heading: "Lora", serif;
-  --font-body: "Inter", sans-serif;
+/* aria-label: styling */
+:root {
+  --cream: #FDF8F3;
+  --vanilla: #FAF3EB;
+  --butter: #F5EBD9;
+  --crust: #EDE0CC;
+  --crust-deep: #D9C4A3;
+  --espresso: #2C1810;
+  --cocoa: #4A3228;
+  --caramel: #7A5C3E;
+  --golden: #D4943A;
+  --honey: #E8A94E;
+  --cinnamon: #B5722A;
+  --rose: #C97B6B;
+  --sage: #6B8F5E;
+  --sienna: #C45B4A;
+  --ink: #1A1410;
+  --paper: #FDF8F3;
 }
 
-body {
-  background-color: var(--color-cream);
-  color: var(--color-espresso);
-  font-family: var(--font-body);
+@theme inline {
+  --color-cream: var(--cream);
+  --color-vanilla: var(--vanilla);
+  --color-butter: var(--butter);
+  --color-crust: var(--crust);
+  --color-crust-deep: var(--crust-deep);
+  --color-espresso: var(--espresso);
+  --color-cocoa: var(--cocoa);
+  --color-caramel: var(--caramel);
+  --color-golden: var(--golden);
+  --color-honey: var(--honey);
+  --color-cinnamon: var(--cinnamon);
+  --color-rose: var(--rose);
+  --color-sage: var(--sage);
+  --color-sienna: var(--sienna);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-foreground: var(--espresso);
+  --color-background: var(--cream);
+  --color-muted: var(--caramel);
+  --color-border: var(--crust);
+
+  --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
+  --font-editorial: var(--font-editorial);
+  --font-news: var(--font-news);
+  --font-mono: var(--font-mono);
+  --font-script: var(--font-script);
 }
+
+html, body { background-color: var(--cream); color: var(--espresso); }
+
+body {
+  font-family : var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+::selection {
+  background: rgba(212, 148, 58, 0.25);
+  color: var(--espresso);
+}
+
+.font-display    { font-family : var(--font-display), Georgia, serif; }
+.font-editorial  { font-family : var(--font-editorial), Georgia, serif; font-style: italic; }
+.font-news       { font-family : var(--font-news), Georgia, serif; }
+.font-mono       { font-family : var(--font-mono), ui-monospace, monospace; }
+.font-script     { font-family : var(--font-script), cursive; }
+
+/* ── Bakerio motion vocabulary ──────────────────────────── */
+@keyframes bkr-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.85); }
+}
+.bkr-pulse { animation: bkr-pulse 1.6s ease-in-out infinite; transform-origin: center; }
+
+@keyframes bkr-ping {
+  0%   { transform: scale(0.6); opacity: 0.7; }
+  80%  { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.bkr-ping { animation: bkr-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite; transform-origin: center; }
+
+@keyframes bkr-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.bkr-marquee { display: flex; width: max-content; animation: bkr-marquee 38s linear infinite; }
+
+@keyframes bkr-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bkr-rise   { animation: bkr-rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.bkr-rise-1 { animation: bkr-rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 100ms both; }
+.bkr-rise-2 { animation: bkr-rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 240ms both; }
+.bkr-rise-3 { animation: bkr-rise 800ms cubic-bezier(0.2, 0.7, 0.2, 1) 380ms both; }
+
+@keyframes bkr-fill { from { transform: scaleX(0); } to { transform: scaleX(var(--fill-scale, 1)); } }
+.bkr-fill { transform-origin: left center; animation: bkr-fill 1400ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+.bkr-lift { transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1), box-shadow 0.3s; }
+.bkr-lift:hover { transform: translateY(-3px); box-shadow: 0 16px 32px -16px rgba(44,24,16,0.3); }
+
+.bkr-press { transition: transform 0.12s ease, filter 0.12s ease; }
+.bkr-press:hover  { filter: brightness(1.05); }
+.bkr-press:active { transform: scale(0.97); }
+
+/* Cross-route morph for the branch card -> menu header (next-view-transitions).
+   500ms: the tapped card ascends into the compact header while the branch list
+   cross-fades to the menu's loading template. The template then holds (see
+   MIN_LOADING_MS in menu/page.tsx) for ~1s before the catalog swaps in. */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 500ms;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Keep the morphing location card above the page cross-fade for the whole run. */
+::view-transition-group(selected-branch) {
+  z-index: 2147483647;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bkr-pulse, .bkr-ping, .bkr-marquee, .bkr-rise, .bkr-rise-1, .bkr-rise-2,
+  .bkr-rise-3, .bkr-fill { animation: none !important; }
+
+  /* View Transitions ignore reduced-motion unless we opt out explicitly. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}
+
+@custom-variant can-hover {
+  @media (hover: hover) {
+    @slot;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+

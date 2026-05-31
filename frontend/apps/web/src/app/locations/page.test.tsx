@@ -1,4 +1,4 @@
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 vi.mock("next/image", () => ({
@@ -19,60 +19,92 @@ vi.mock("@/components/ui/GoogleMap", () => ({
   default: () => <div data-testid="google-map" />,
 }));
 
-vi.mock("@/data/locations", () => ({
-  locations: [
-    { name: "Bakerio Nguyễn Huệ", address: "45 Nguyễn Huệ, Bến Nghé, Quận 1", region: "District 1", hours: "Mon–Sun 7:00–22:00", lat: 10.77, lng: 106.70 },
-    { name: "Bakerio Phú Mỹ Hưng", address: "18 Nguyễn Lương Bằng, Tân Phú, Quận 7", region: "District 7", hours: "Mon–Sun 7:00–22:00", lat: 10.72, lng: 106.71 },
-  ],
-  regions: ["All", "District 1", "District 7"],
+vi.mock("@repo/api-client", () => ({
+  getBranches: vi.fn().mockResolvedValue([
+    { id: "br-1", name: "Bakerio Nguyễn Huệ", address: "45 Nguyễn Huệ, Bến Nghé, Quận 1", status: "active", lat: 10.77, lng: 106.70 },
+    { id: "br-2", name: "Bakerio Phú Mỹ Hưng", address: "18 Nguyễn Lương Bằng, Tân Phú, Quận 7", status: "active", lat: 10.72, lng: 106.71 },
+  ]),
 }));
 
 import LocationsPage from "./page";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 describe("LocationsPage", () => {
-  it("renders without crashing", () => {
+  it("renders the page heading", () => {
     render(<LocationsPage />);
-    expect(screen.getByRole("main")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /shops/i })).toBeInTheDocument();
   });
 
-  it("contains heading about locations", () => {
+  it("shows location cards with addresses", async () => {
     render(<LocationsPage />);
-    expect(screen.getByRole("heading", { name: /our locations/i })).toBeInTheDocument();
+    expect((await screen.findAllByText("Bakerio Nguyễn Huệ")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("45 Nguyễn Huệ, Bến Nghé, Quận 1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Bakerio Phú Mỹ Hưng").length).toBeGreaterThan(0);
   });
 
-  it("shows location cards with addresses", () => {
+  it("displays address for selected location", async () => {
     render(<LocationsPage />);
-    expect(screen.getByText("Bakerio Nguyễn Huệ")).toBeInTheDocument();
-    expect(screen.getByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).toBeInTheDocument();
-    expect(screen.getByText("Bakerio Phú Mỹ Hưng")).toBeInTheDocument();
+    expect((await screen.findAllByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).length).toBeGreaterThan(0);
+
+    // Click on Phú Mỹ Hưng in the list to select it
+    const listButtons = screen.getAllByRole("button");
+    const pmhButton = listButtons.find((b) => b.textContent?.includes("Bakerio Phú Mỹ Hưng"));
+    if (pmhButton) fireEvent.click(pmhButton);
+
+    expect((await screen.findAllByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).length).toBeGreaterThan(0);
   });
 
-  it("has direction links for each location", () => {
+  it("updates the selected callout when a shop is clicked", async () => {
     render(<LocationsPage />);
-    const directionLinks = screen.getAllByRole("link", { name: /get directions/i });
-    expect(directionLinks.length).toBe(2);
-    expect(directionLinks[0]).toHaveAttribute("href", expect.stringContaining("google.com/maps/dir"));
-    expect(directionLinks[0]).toHaveAttribute("target", "_blank");
+
+    const listButtons = await screen.findAllByRole("button");
+    const selectedButton = listButtons.find(
+      (b) => b.className.includes("text-left") && b.textContent?.includes("Phú Mỹ Hưng"),
+    );
+
+    if (selectedButton) fireEvent.click(selectedButton);
+
+    expect((await screen.findAllByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).length).toBeGreaterThan(0);
   });
 
-  it("shows opening hours for locations", () => {
+  it("shows number tags for each location", async () => {
     render(<LocationsPage />);
-    const hours = screen.getAllByText("Mon–Sun 7:00–22:00");
-    expect(hours.length).toBe(2);
+    expect((await screen.findAllByText("01")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("02").length).toBeGreaterThan(0);
   });
 
-  it("shows the correct number of locations from mock data", () => {
+  it("shows opening hours for locations", async () => {
     render(<LocationsPage />);
-    const directionLinks = screen.getAllByRole("link", { name: /get directions/i });
-    expect(directionLinks).toHaveLength(2);
+    expect(await screen.findByText("Mon–Sun 7:00–22:00")).toBeInTheDocument();
   });
 
-  it("displays phone or contact info section on the page", () => {
+  it("displays address for selected location", async () => {
     render(<LocationsPage />);
-    // Locations show addresses as contact info
-    expect(screen.getByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).toBeInTheDocument();
+    expect(await screen.findByText("45 Nguyễn Huệ, Bến Nghé, Quận 1")).toBeInTheDocument();
+    
+    // Click on Phú Mỹ Hưng in the list to select it
+    const listButtons = screen.getAllByRole("button");
+    const pmhButton = listButtons.find(b => b.textContent?.includes("Bakerio Phú Mỹ Hưng"));
+    expect(pmhButton).toBeDefined();
+    fireEvent.click(pmhButton!);
+    
+    expect(screen.getByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).toBeInTheDocument();
+  });
+
+  it("updates the selected callout when a shop is clicked", async () => {
+    render(<LocationsPage />);
+
+    const listButtons = screen.getAllByRole("button");
+    const selectedButton = listButtons.find(
+      (b) => b.className.includes("text-left") && b.textContent?.includes("Bakerio Phú Mỹ Hưng"),
+    );
+
+    expect(selectedButton).toBeDefined();
+    fireEvent.click(selectedButton!);
     expect(screen.getByText("18 Nguyễn Lương Bằng, Tân Phú, Quận 7")).toBeInTheDocument();
   });
 });

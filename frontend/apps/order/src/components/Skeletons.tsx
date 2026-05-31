@@ -1,3 +1,4 @@
+// aria-label: skeleton
 export function ProductCardSkeleton() {
   return (
     <div className="bg-white border border-crust rounded-[10px] overflow-hidden animate-pulse">

@@ -1,17 +1,5 @@
 basePath: /api/v1
 definitions:
-  AddItemRequest:
-    properties:
-      product_id:
-        type: string
-      quantity:
-        maximum: 99
-        minimum: 1
-        type: integer
-    required:
-    - product_id
-    - quantity
-    type: object
   AssignMemberRequest:
     properties:
       user_id:
@@ -28,6 +16,21 @@ definitions:
       name:
         type: string
     type: object
+  BranchListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/BranchResponse'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
   BranchMembersResponse:
     properties:
       branch_id:
@@ -36,6 +39,14 @@ definitions:
         items:
           $ref: '#/definitions/MemberInfo'
         type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
     type: object
   BranchProductResponse:
     properties:
@@ -62,32 +73,6 @@ definitions:
         type: string
       status:
         type: string
-    type: object
-  CartItemResponse:
-    properties:
-      available:
-        type: boolean
-      line_total:
-        type: number
-      name:
-        type: string
-      price:
-        type: number
-      product_id:
-        type: string
-      quantity:
-        type: integer
-    type: object
-  CartResponse:
-    properties:
-      count:
-        type: integer
-      items:
-        items:
-          $ref: '#/definitions/CartItemResponse'
-        type: array
-      total:
-        type: number
     type: object
   CategoryResponse:
     properties:
@@ -163,6 +148,16 @@ definitions:
     - name
     - price
     type: object
+  CreateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 50
+        type: string
+    required:
+    - name
+    type: object
   CreateUserRequest:
     properties:
       branch_id:
@@ -236,6 +231,13 @@ definitions:
       user_id:
         type: string
     type: object
+  PermissionResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
   ProductImageResponse:
     properties:
       alt_text:
@@ -260,6 +262,8 @@ definitions:
       size:
         type: integer
       total:
+        type: integer
+      total_pages:
         type: integer
     type: object
   ProductResponse:
@@ -334,6 +338,15 @@ definitions:
       id:
         type: string
     type: object
+  RoleResponse:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
   SetAvailabilityRequest:
     properties:
       is_active:
@@ -375,14 +388,6 @@ definitions:
     required:
     - name
     type: object
-  UpdateItemRequest:
-    properties:
-      quantity:
-        description: 0 removes the item; 1..99 sets the quantity.
-        maximum: 99
-        minimum: 0
-        type: integer
-    type: object
   UpdateProductRequest:
     properties:
       category_id:
@@ -413,6 +418,25 @@ definitions:
         type: string
       phone:
         type: string
+    type: object
+  UpdateRolePermissionsRequest:
+    properties:
+      permission_ids:
+        items:
+          type: string
+        type: array
+    required:
+    - permission_ids
+    type: object
+  UpdateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 50
+        type: string
+    required:
+    - name
     type: object
   UpdateStatusRequest:
     properties:
@@ -598,23 +622,23 @@ paths:
       - auth
   /branch:
     get:
-      description: Retrieve all branches
+      parameters:
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: size
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/BranchResponse'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get branch list
+            $ref: '#/definitions/BranchListResponse'
+      summary: Get branch list (paginated)
       tags:
       - branch
     post:
@@ -672,8 +696,6 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Get branch by ID
       tags:
       - branch
@@ -719,14 +741,22 @@ paths:
       - branch
   /branch/{id}/members:
     get:
-      description: List the user IDs assigned to a branch. Admin sees any branch;
-        a branch_manager only their own.
+      description: Members of a branch. Admin sees any branch; a branch_manager only
+        their own.
       parameters:
       - description: Branch ID
         in: path
         name: id
         required: true
         type: string
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: size
+        type: integer
       produces:
       - application/json
       responses:
@@ -740,7 +770,7 @@ paths:
             $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
-      summary: List branch members
+      summary: List branch members (paginated)
       tags:
       - branch
     post:
@@ -896,93 +926,6 @@ paths:
       summary: Update branch status
       tags:
       - branch
-  /cart:
-    delete:
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      summary: Empty the cart
-      tags:
-      - cart
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/CartResponse'
-      security:
-      - BearerAuth: []
-      summary: Get the current user's cart
-      tags:
-      - cart
-  /cart/items:
-    post:
-      consumes:
-      - application/json
-      description: Upserts; quantity sums on conflict (capped at 99).
-      parameters:
-      - description: Item
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/AddItemRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/CartResponse'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Add an item to the cart
-      tags:
-      - cart
-  /cart/items/{productId}:
-    patch:
-      consumes:
-      - application/json
-      parameters:
-      - description: Product ID
-        in: path
-        name: productId
-        required: true
-        type: string
-      - description: Quantity
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/UpdateItemRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/CartResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Set an item's quantity (0 removes it)
-      tags:
-      - cart
   /categories:
     get:
       produces:
@@ -994,8 +937,6 @@ paths:
             items:
               $ref: '#/definitions/CategoryResponse'
             type: array
-      security:
-      - BearerAuth: []
       summary: List all active categories
       tags:
       - categories
@@ -1038,8 +979,10 @@ paths:
       tags:
       - categories
     get:
+      description: The path segment is treated as a UUID if it parses as one, otherwise
+        as a slug.
       parameters:
-      - description: Category ID
+      - description: Category ID or slug
         in: path
         name: id
         required: true
@@ -1051,9 +994,11 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/CategoryResponse'
-      security:
-      - BearerAuth: []
-      summary: Get category by ID
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: Get category by ID or slug
       tags:
       - categories
     patch:
@@ -1083,10 +1028,54 @@ paths:
       summary: Update a category
       tags:
       - categories
+  /permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/PermissionResponse'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all permissions
+      tags:
+      - rbac
+  /permissions/{id}:
+    get:
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PermissionResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get permission details by ID
+      tags:
+      - rbac
   /products:
     get:
       parameters:
-      - description: Filter by category ID
+      - description: Filter by category slug
         in: query
         name: category
         type: string
@@ -1105,8 +1094,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/ProductListResponse'
-      security:
-      - BearerAuth: []
       summary: List products
       tags:
       - product
@@ -1170,8 +1157,6 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Get product by ID or slug
       tags:
       - product
@@ -1223,8 +1208,6 @@ paths:
             items:
               $ref: '#/definitions/ProductImageResponse'
             type: array
-      security:
-      - BearerAuth: []
       summary: List product images
       tags:
       - product
@@ -1347,6 +1330,180 @@ paths:
       summary: Update own profile
       tags:
       - profile
+  /roles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/RoleResponse'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all roles
+      tags:
+      - rbac
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/RoleResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new role
+      tags:
+      - rbac
+  /roles/{id}:
+    get:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RoleResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get role details by ID
+      tags:
+      - rbac
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RoleResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an existing role
+      tags:
+      - rbac
+  /roles/{id}/permissions:
+    get:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/PermissionResponse'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all permissions assigned to a role
+      tags:
+      - rbac
+    put:
+      consumes:
+      - application/json
+      description: Replaces the role's permission set with the provided list. Send
+        the full desired set (PUT semantics).
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Desired permission IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateRolePermissionsRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update the set of permissions assigned to a role
+      tags:
+      - rbac
   /users:
     post:
       consumes:

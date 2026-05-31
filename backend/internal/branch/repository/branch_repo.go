@@ -15,6 +15,8 @@ type BranchRepository interface {
 	CreateBranch(ctx context.Context, name, address string, lat, lng *float64) (*domain.Branch, error)
 	GetBranchByID(ctx context.Context, id uuid.UUID) (*domain.Branch, error)
 	GetAllBranches(ctx context.Context) ([]*domain.Branch, error)
+	ListBranches(ctx context.Context, limit, offset int32) ([]*domain.Branch, error)
+	CountBranches(ctx context.Context) (int64, error)
 	UpdateBranch(ctx context.Context, branchID uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error)
 	UpdateBranchStatus(ctx context.Context, branchID uuid.UUID, status string) error
 }
@@ -81,6 +83,25 @@ func (b *branchRepo) GetAllBranches(ctx context.Context) ([]*domain.Branch, erro
 	}
 
 	return branches, nil
+}
+
+func (b *branchRepo) ListBranches(ctx context.Context, limit, offset int32) ([]*domain.Branch, error) {
+	rows, err := b.queries(ctx).ListBranchesPaginated(ctx, branchdb.ListBranchesPaginatedParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	branches := make([]*domain.Branch, 0, len(rows))
+	for _, row := range rows {
+		branches = append(branches, toEntity(row))
+	}
+	return branches, nil
+}
+
+func (b *branchRepo) CountBranches(ctx context.Context) (int64, error) {
+	return b.queries(ctx).CountBranches(ctx)
 }
 
 func (b *branchRepo) UpdateBranch(ctx context.Context, id uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error) {

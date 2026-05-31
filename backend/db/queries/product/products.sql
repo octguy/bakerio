@@ -33,6 +33,18 @@ LIMIT $2 OFFSET $3;
 SELECT COUNT(*) FROM product.products
 WHERE deleted_at IS NULL AND category_id = $1;
 
+-- name: ListProductsByCategorySlug :many
+SELECT p.* FROM product.products p
+JOIN product.categories c ON p.category_id = c.id
+WHERE p.deleted_at IS NULL AND c.slug = $1
+ORDER BY p.sort_order ASC, p.name ASC
+LIMIT $2 OFFSET $3;
+
+-- name: CountProductsByCategorySlug :one
+SELECT COUNT(*) FROM product.products p
+JOIN product.categories c ON p.category_id = c.id
+WHERE p.deleted_at IS NULL AND c.slug = $1;
+
 -- name: UpdateProduct :one
 UPDATE product.products
 SET

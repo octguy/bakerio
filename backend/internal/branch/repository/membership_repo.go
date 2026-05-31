@@ -15,6 +15,7 @@ type MembershipRepository interface {
 	UpdateMembership(ctx context.Context, userID, branchID uuid.UUID) error
 	DeleteMembership(ctx context.Context, userID uuid.UUID) error
 	ListUsersByBranch(ctx context.Context, branchID uuid.UUID) ([]uuid.UUID, error)
+	ListUsersByBranchPaged(ctx context.Context, branchID uuid.UUID, limit, offset int32) ([]uuid.UUID, error)
 	CountByBranch(ctx context.Context, branchID uuid.UUID) (int64, error)
 }
 
@@ -60,6 +61,14 @@ func (r *membershipRepo) DeleteMembership(ctx context.Context, userID uuid.UUID)
 
 func (r *membershipRepo) ListUsersByBranch(ctx context.Context, branchID uuid.UUID) ([]uuid.UUID, error) {
 	return r.queries(ctx).ListUsersByBranch(ctx, branchID)
+}
+
+func (r *membershipRepo) ListUsersByBranchPaged(ctx context.Context, branchID uuid.UUID, limit, offset int32) ([]uuid.UUID, error) {
+	return r.queries(ctx).ListUsersByBranchPaginated(ctx, branchdb.ListUsersByBranchPaginatedParams{
+		BranchID: branchID,
+		Limit:    limit,
+		Offset:   offset,
+	})
 }
 
 func (r *membershipRepo) CountByBranch(ctx context.Context, branchID uuid.UUID) (int64, error) {

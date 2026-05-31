@@ -1,79 +1,126 @@
 import { test, expect } from "@playwright/test";
 
-const mockBranches = [
-  { id: "br-1", name: "Bakerio Quận 1", address: "65 Lê Lợi, Quận 1", lat: 10.77, lng: 106.70, status: "active", region: "south" },
-  { id: "br-2", name: "Bakerio Hoàn Kiếm", address: "12 Hàng Bài, Hoàn Kiếm", lat: 21.02, lng: 105.85, status: "active", region: "north" },
-];
-
-const mockProducts = [
-  { id: "p-1", sku: "CAKE-001", name: "Vanilla Sponge Cake", slug: "vanilla-sponge-cake", description: "Light and fluffy", base_price: 185000, unit: "piece", is_active: true, category: { id: "cat-1", name: "Cakes", slug: "cakes", sort_order: 1, is_active: true }, images: [{ id: "img-1", url: "https://via.placeholder.com/300", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-  { id: "p-2", sku: "PAST-001", name: "Butter Croissant", slug: "butter-croissant", description: "Flaky and buttery", base_price: 45000, unit: "piece", is_active: true, category: { id: "cat-2", name: "Pastries", slug: "pastries", sort_order: 2, is_active: true }, images: [{ id: "img-2", url: "https://via.placeholder.com/300", is_primary: true, sort_order: 0 }], created_at: "2024-01-01T00:00:00Z" },
-];
-
-const mockCategories = [
-  { id: "cat-1", name: "Cakes", slug: "cakes", sort_order: 1, is_active: true },
-  { id: "cat-2", name: "Pastries", slug: "pastries", sort_order: 2, is_active: true },
-];
-
-test.beforeEach(async ({ page }) => {
-  await page.route("**/api/v1/branches**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: mockBranches }) })
-  );
-  await page.route("**/api/v1/products**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: mockProducts }) })
-  );
-  await page.route("**/api/v1/products/*", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: mockProducts[0] }) })
-  );
-  await page.route("**/api/v1/categories**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: mockCategories }) })
-  );
-  await page.route("**/api/v1/orders**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { id: "order-1", status: "PENDING_PAYMENT" } }) })
-  );
-});
+// NOTE: branch/products/categories READS are PUBLIC (PR #24), so a backend built from current main
+// serves REAL branch/product data to the guest (unauthenticated) SSR homepage. The api-client
+// only falls back to MOCK fixtures if the backend is unreachable or running a STALE build that
+// predates PR #24. The name assertions below assume a current backend; navigation, structure,
+// and keyboard assertions remain valid regardless.
 
 test.describe("Order — Customer Ordering App", () => {
+  async function loginCustomer(page: import("@playwright/test").Page) {
+    const res = await page.request.post("/api/auth", {
+      data: {
+        action: "login",
+        email: process.env.E2E_CUSTOMER_EMAIL,
+        password: process.env.E2E_CUSTOMER_PASSWORD,
+      },
+    });
+
+    expect(
+      res.ok(),
+      `customer auth failed: ${res.status()} ${await res.text()}`,
+    ).toBe(true);
+  }
+
   test("homepage shows branch selection", async ({ page }) => {
     await page.goto("/");
-    await expect(page.locator("h1")).toContainText("Order from Bakerio");
-    await expect(page.getByText("Bakerio Quận 1")).toBeVisible();
-    await expect(page.getByText("Bakerio Hoàn Kiếm")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i }),
+    ).toBeVisible();
+
+    const branchButtons = page.locator("main button");
+    await expect(branchButtons).toHaveCount(3);
+
+    await expect(
+      page.getByRole("button", { name: /Bakerio Quận 1/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Bakerio Hoàn Kiếm/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Bakerio Phú Nhuận/ }),
+    ).toBeVisible();
   });
 
   test("selecting a branch navigates to menu", async ({ page }) => {
     await page.goto("/");
-    await page.getByText("Bakerio Quận 1").click();
+    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
     await expect(page).toHaveURL(/\/menu/);
   });
 
   test("menu page shows products", async ({ page }) => {
     await page.goto("/");
-    await page.getByText("Bakerio Quận 1").click();
+    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
     await expect(page).toHaveURL(/\/menu/);
-    await expect(page.locator("main")).toBeVisible();
+    await expect(page.locator("a[href*='/menu/'] h3").first()).toBeVisible();
   });
 
-  test("can navigate to cart page", async ({ page }) => {
+  test("cart requires auth -> redirects to login", async ({ page }) => {
     await page.goto("/cart");
-    await expect(page.locator("main")).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
   });
 
-  test("can navigate to checkout page", async ({ page }) => {
+  test("checkout requires auth -> redirects to login", async ({ page }) => {
     await page.goto("/checkout");
-    await expect(page.locator("main")).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
   });
 
-  test("full ordering flow: branch → menu → product detail", async ({ page }) => {
+  test("full ordering flow: branch → menu → product detail", async ({
+    page,
+  }) => {
     await page.goto("/");
-    await page.getByText("Bakerio Quận 1").click();
+    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
     await expect(page).toHaveURL(/\/menu/);
 
     const productLink = page.locator("a[href*='/menu/']").first();
-    if (await productLink.isVisible()) {
-      await productLink.click();
-      await expect(page).toHaveURL(/\/menu\/.+/);
-      await expect(page.locator("main")).toBeVisible();
-    }
+    await productLink.click();
+    await expect(page).toHaveURL(/\/menu\/.+/);
+    await expect(page.locator("main")).toBeVisible();
+  });
+
+  test("authenticated customer can add, review, and place an order", async ({
+    page,
+  }) => {
+    await loginCustomer(page);
+
+    await page.goto("/");
+    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
+    await expect(page).toHaveURL(/\/menu/);
+
+    await page.goto("/menu/traditional-croissant");
+    await expect(
+      page.getByRole("heading", { name: "Traditional Croissant" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Increase quantity" }).click();
+    await page.getByRole("button", { name: "Add to Cart" }).click();
+    await expect(page.getByText("Added to cart!")).toBeVisible();
+
+    await page.getByRole("button", { name: "View Cart" }).click();
+    await expect(page).toHaveURL(/\/cart/);
+    await expect(
+      page.getByRole("heading", { name: /2 items, baked fresh/i }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Increase quantity" }).click();
+    await expect(
+      page.getByRole("heading", { name: /3 items, baked fresh/i }),
+    ).toBeVisible();
+
+    await page.locator("a[href='/checkout']").click();
+    await expect(page).toHaveURL(/\/checkout/);
+    await expect(
+      page.getByRole("button", { name: /Pay with Pay at counter/i }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Delivery" }).click();
+    await expect(page.getByText("Deliver to")).toBeVisible();
+
+    await page
+      .getByRole("button", { name: /Pay with Pay at counter/i })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: /Order placed/i }),
+    ).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole("link", { name: /Track my order/i }),
+    ).toBeVisible();
   });
 });

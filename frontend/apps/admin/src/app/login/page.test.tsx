@@ -1,59 +1,108 @@
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockPush = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mockPush }) }));
+let mockSearch = "";
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => new URLSearchParams(mockSearch),
+}));
 
 const mockLogin = vi.fn();
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ login: mockLogin }) }));
 
-vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-}));
-vi.mock("@/components/ui/input", () => ({
-  Input: (props: any) => <input {...props} />,
-}));
-vi.mock("@/components/ui/label", () => ({
-  Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
-}));
-vi.mock("@/components/ui/card", () => ({
-  Card: ({ children }: any) => <div>{children}</div>,
-  CardHeader: ({ children }: any) => <div>{children}</div>,
-  CardTitle: ({ children }: any) => <h1>{children}</h1>,
-  CardContent: ({ children }: any) => <div>{children}</div>,
+vi.mock("next/image", () => ({
+  default: ({ alt = "", ...props }: any) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img alt={alt} {...props} />;
+  },
 }));
 
 import LoginPage from "./page";
+
+beforeEach(() => {
+  mockSearch = "";
+  vi.clearAllMocks();
+});
 
 afterEach(cleanup);
 
 describe("Admin Login Page", () => {
   it("renders the admin login heading", () => {
     render(<LoginPage />);
-    expect(screen.getByText("Bakerio Admin")).toBeInTheDocument();
+    expect(screen.getByText(/Bakerio Ops/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /welcome back, baker/i }),
+    ).toBeInTheDocument();
   });
 
   it("has email and password inputs with labels", () => {
     render(<LoginPage />);
-    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    expect(screen.getByLabelText("Work email")).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
   });
 
   it("has a sign in button", () => {
     render(<LoginPage />);
-    expect(screen.getByRole("button", { name: "Sign In" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /sign in to ops/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the UI-only remember device checkbox", () => {
+    render(<LoginPage />);
+    expect(
+      screen.queryByLabelText(/remember this device/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("has a disabled forgot password button with accessible description", () => {
+    render(<LoginPage />);
+    const forgotButton = screen.getByRole("button", {
+      name: "Forgot password? Reset is unavailable/coming soon.",
+    });
+
+    expect(forgotButton).toBeDisabled();
   });
 
   it("redirects to dashboard on successful login", async () => {
     mockLogin.mockResolvedValue(null);
     render(<LoginPage />);
 
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "admin@bakerio.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "password123" } });
-    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+    fireEvent.change(screen.getByLabelText("Work email"), {
+      target: { value: "admin@bakerio.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sign in to ops/i }));
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/");
+    });
+  });
+
+  it("redirects to next param on successful login", async () => {
+    mockSearch = "next=%2Forders";
+    mockLogin.mockResolvedValue(null);
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Work email"), {
+      target: { value: "admin@bakerio.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sign in to ops/i }));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/orders");
     });
   });
 
@@ -61,12 +110,36 @@ describe("Admin Login Page", () => {
     mockLogin.mockResolvedValue("Invalid credentials");
     render(<LoginPage />);
 
-    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@b.com" } });
-    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "wrong" } });
-    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+    fireEvent.change(screen.getByLabelText("Work email"), {
+      target: { value: "a@b.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "wrong" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sign in to ops/i }));
 
     await waitFor(() => {
       expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
+    });
+  });
+
+  it("shows error message when login rejects", async () => {
+    mockLogin.mockRejectedValue(new Error("Network failed"));
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Work email"), {
+      target: { value: "a@b.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "wrong" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /sign in to ops/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Network failed")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /sign in to ops/i }),
+      ).not.toBeDisabled();
     });
   });
 });

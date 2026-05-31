@@ -1,79 +1,109 @@
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { getProducts, getCategories } from "@repo/api-client";
+
+const apiCategories = vi.hoisted(() => [
+  { id: "cat-bread", name: "Bread", slug: "bread", sort_order: 1, is_active: true },
+  { id: "cat-pastries", name: "Pastries", slug: "pastries", sort_order: 2, is_active: true },
+  { id: "cat-drinks", name: "Drinks", slug: "drinks", sort_order: 3, is_active: true },
+]);
+
+const apiProducts = vi.hoisted(() => [
+  {
+    id: "p-sourdough",
+    name: "Sourdough Loaf",
+    slug: "sourdough-loaf",
+    price: 110000,
+    is_active: true,
+    category_id: apiCategories[0].id,
+    created_at: "2026-01-01T00:00:00Z",
+  },
+  {
+    id: "p-croissant",
+    name: "Butter Croissant",
+    slug: "butter-croissant",
+    price: 48000,
+    is_active: true,
+    category_id: apiCategories[1].id,
+    created_at: "2026-01-01T00:00:00Z",
+  },
+  {
+    id: "p-coffee",
+    name: "Iced Latte",
+    slug: "iced-latte",
+    price: 42000,
+    is_active: true,
+    category_id: apiCategories[2].id,
+    created_at: "2026-01-01T00:00:00Z",
+  },
+]);
 
 vi.mock("next/image", () => ({
-  default: ({ fill, priority, ...props }: Record<string, unknown>) => <img {...props} />,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  default: ({ fill: _fill, priority: _priority, ...props }: Record<string, unknown>) => <img {...props} />,
 }));
 
 vi.mock("next/link", () => ({
   default: ({ children, ...props }: { children: React.ReactNode; href: string }) => <a {...props}>{children}</a>,
 }));
 
-vi.mock("./MenuContent", () => ({
-  default: () => (
-    <section>
-      <div>
-        {["All", "Cakes", "Pastries", "Bread", "Drinks"].map((cat) => (
-          <button key={cat}>{cat}</button>
-        ))}
-      </div>
-      <div>
-        <div><img src="/img1.jpg" alt="Vanilla Sponge" /><span>Cakes</span><h3>Vanilla Sponge</h3></div>
-        <div><img src="/img2.jpg" alt="Butter Croissant" /><span>Pastries</span><h3>Butter Croissant</h3></div>
-        <div><img src="/img3.jpg" alt="Sourdough Loaf" /><span>Bread</span><h3>Sourdough Loaf</h3></div>
-        <div><img src="/img4.jpg" alt="Iced Latte" /><span>Drinks</span><h3>Iced Latte</h3></div>
-      </div>
-    </section>
-  ),
+vi.mock("@repo/api-client", () => ({
+  getProducts: vi.fn().mockResolvedValue(apiProducts),
+  getCategories: vi.fn().mockResolvedValue(apiCategories),
+}));
+
+vi.mock("@/lib/public-config", () => ({
+  getOrderUrl: () => "https://order.bakerio.test",
 }));
 
 import MenuPage from "./page";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+const renderMenuPage = async () => render(await MenuPage());
 
 describe("MenuPage", () => {
-  it("renders without crashing", () => {
-    const { container } = render(<MenuPage />);
-    expect(container.querySelector("main")).toBeInTheDocument();
-  });
-
-  it("displays the menu heading", () => {
-    render(<MenuPage />);
+  it("displays the menu heading", async () => {
+    await renderMenuPage();
     expect(
-      screen.getByRole("heading", { level: 1, name: /our menu/i })
+      screen.getByRole("heading", { level: 1, name: /menu/i })
     ).toBeInTheDocument();
   });
 
-  it("shows product items with names", () => {
-    render(<MenuPage />);
-    expect(screen.getByText("Vanilla Sponge")).toBeInTheDocument();
+  it("renders products and category counts from api-client data", async () => {
+    await renderMenuPage();
+    expect(getProducts).toHaveBeenCalledTimes(1);
+    expect(getCategories).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Showing 3 of 3")).toBeInTheDocument();
     expect(screen.getByText("Butter Croissant")).toBeInTheDocument();
     expect(screen.getByText("Sourdough Loaf")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /bread1/i })).toBeInTheDocument();
   });
 
-  it("renders category filter buttons", () => {
-    render(<MenuPage />);
-    expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cakes" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Pastries" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Bread" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Drinks" })).toBeInTheDocument();
+  it("category filtering hides non-matching products", async () => {
+    await renderMenuPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /bread1/i }));
+
+    expect(screen.getByText("Showing 1 of 3")).toBeInTheDocument();
+    expect(screen.getByText("Sourdough Loaf")).toBeInTheDocument();
+    expect(screen.queryByText("Butter Croissant")).toBeNull();
+    expect(screen.queryByText("Iced Latte")).toBeNull();
   });
 
-  it("displays product images with alt text", () => {
-    render(<MenuPage />);
-    expect(screen.getByAltText("Vanilla Sponge")).toBeInTheDocument();
-    expect(screen.getByAltText("Iced Latte")).toBeInTheDocument();
+  it("links order actions to the configured order app", async () => {
+    await renderMenuPage();
+    const orderLinks = screen.getAllByRole("link", { name: /add \+/i });
+
+    expect(orderLinks).toHaveLength(3);
+    expect(orderLinks[0]).toHaveAttribute("href", "https://order.bakerio.test/menu?add-to-cart=sourdough-loaf");
   });
 
-  it("renders the hero section with description text", () => {
-    render(<MenuPage />);
-    expect(screen.getByText("what we offer")).toBeInTheDocument();
-  });
-
-  it("has a link or CTA related to ordering", () => {
-    render(<MenuPage />);
-    // The menu page has category filter buttons as the primary CTA interaction
-    expect(screen.getByRole("button", { name: "All" })).toBeInTheDocument();
+  it("renders the hero section with description text", async () => {
+    await renderMenuPage();
+    expect(screen.getByText(/refreshed daily/i)).toBeInTheDocument();
   });
 });

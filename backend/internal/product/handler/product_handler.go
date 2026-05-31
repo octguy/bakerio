@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +17,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 type ProductHandler struct {
@@ -29,16 +29,18 @@ func NewProductHandler(svc service.ProductService, membershipSvc branchSvc.Membe
 	return &ProductHandler{svc: svc, membershipSvc: membershipSvc}
 }
 
-func (h *ProductHandler) RegisterRoutes(protected *gin.RouterGroup) {
+func (h *ProductHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
+	publicProducts := public.Group("/products")
+	publicProducts.GET("", h.ListProducts)
+	publicProducts.GET("/:id", h.GetProduct)
+	publicProducts.GET("/:id/images", h.ListImages)
+
 	g := protected.Group("/products")
-	g.GET("", middleware.RequirePermission("product:view:all"), h.ListProducts)
-	g.GET("/:id", middleware.RequirePermission("product:view:all"), h.GetProduct)
 	g.POST("", middleware.RequirePermission("product:manage:all"), h.CreateProduct)
 	g.PATCH("/:id", middleware.RequirePermission("product:manage:all"), h.UpdateProduct)
 	g.DELETE("/:id", middleware.RequirePermission("product:manage:all"), h.DeleteProduct)
 
 	// Images
-	g.GET("/:id/images", middleware.RequirePermission("product:view:all"), h.ListImages)
 	g.POST("/:id/images", middleware.RequirePermission("product:manage:all"), h.AddImages)
 	g.DELETE("/:id/images/:imageId", middleware.RequirePermission("product:manage:all"), h.DeleteImage)
 
@@ -77,27 +79,18 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 // ListProducts godoc
 // @Summary      List products
 // @Tags         product
-// @Security     BearerAuth
 // @Produce      json
-// @Param        category  query     string  false  "Filter by category ID"
+// @Param        category  query     string  false  "Filter by category slug"
 // @Param        page      query     int     false  "Page (default 1)"
 // @Param        size      query     int     false  "Page size (default 20)"
 // @Success      200       {object}  dto.ProductListResponse
 // @Router       /products [get]
 func (h *ProductHandler) ListProducts(c *gin.Context) {
-	var categoryID *uuid.UUID
+	var categorySlug *string
 	if raw := c.Query("category"); raw != "" {
-		id, err := uuid.Parse(raw)
-		if err != nil {
-			response.Error(c, apperrors.Validation("invalid category id"))
-			return
-		}
-		categoryID = &id
+		categorySlug = &raw
 	}
-	page := atoi32(c.Query("page"), 1)
-	size := atoi32(c.Query("size"), 20)
-
-	res, err := h.svc.ListProducts(c.Request.Context(), categoryID, page, size)
+	res, err := h.svc.ListProducts(c.Request.Context(), categorySlug, pagination.FromQuery(c))
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -108,7 +101,6 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 // GetProduct godoc
 // @Summary      Get product by ID or slug
 // @Tags         product
-// @Security     BearerAuth
 // @Produce      json
 // @Param        id   path      string  true  "Product ID or slug"
 // @Success      200  {object}  dto.ProductResponse
@@ -315,7 +307,6 @@ func (h *ProductHandler) AddImages(c *gin.Context) {
 // ListImages godoc
 // @Summary      List product images
 // @Tags         product
-// @Security     BearerAuth
 // @Produce      json
 // @Param        id   path      string  true  "Product ID"
 // @Success      200  {array}   dto.ProductImageResponse
@@ -381,15 +372,4 @@ func (h *ProductHandler) ensureBranchScope(c *gin.Context, target uuid.UUID) err
 		return apperrors.Forbidden("you can only manage products of your own branch")
 	}
 	return nil
-}
-
-func atoi32(s string, def int32) int32 {
-	if s == "" {
-		return def
-	}
-	n, err := strconv.Atoi(s)
-	if err != nil {
-		return def
-	}
-	return int32(n)
 }

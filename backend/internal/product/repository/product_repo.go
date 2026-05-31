@@ -21,6 +21,8 @@ type ProductRepository interface {
 	Count(ctx context.Context) (int64, error)
 	ListByCategory(ctx context.Context, categoryID uuid.UUID, limit, offset int32) ([]*domain.Product, error)
 	CountByCategory(ctx context.Context, categoryID uuid.UUID) (int64, error)
+	ListByCategorySlug(ctx context.Context, slug string, limit, offset int32) ([]*domain.Product, error)
+	CountByCategorySlug(ctx context.Context, slug string) (int64, error)
 	Update(ctx context.Context, id uuid.UUID, name, slug string, categoryID uuid.UUID, price decimal.Decimal, sortOrder int32, isActive bool) (*domain.Product, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	GetActiveByIDs(ctx context.Context, ids []uuid.UUID) ([]*domain.Product, error)
@@ -118,6 +120,22 @@ func (r *productRepo) ListByCategory(ctx context.Context, categoryID uuid.UUID, 
 
 func (r *productRepo) CountByCategory(ctx context.Context, categoryID uuid.UUID) (int64, error) {
 	return r.queries(ctx).CountProductsByCategory(ctx, categoryID)
+}
+
+func (r *productRepo) ListByCategorySlug(ctx context.Context, slug string, limit, offset int32) ([]*domain.Product, error) {
+	rows, err := r.queries(ctx).ListProductsByCategorySlug(ctx, productdb.ListProductsByCategorySlugParams{
+		Slug:   slug,
+		Limit:  limit,
+		Offset: offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return toProductEntities(rows), nil
+}
+
+func (r *productRepo) CountByCategorySlug(ctx context.Context, slug string) (int64, error) {
+	return r.queries(ctx).CountProductsByCategorySlug(ctx, slug)
 }
 
 func (r *productRepo) Update(ctx context.Context, id uuid.UUID, name, slug string, categoryID uuid.UUID, price decimal.Decimal, sortOrder int32, isActive bool) (*domain.Product, error) {

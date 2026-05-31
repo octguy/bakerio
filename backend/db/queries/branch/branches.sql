@@ -12,6 +12,14 @@ LIMIT 1;
 -- name: GetAllBranches :many
 SELECT * FROM branch.branches;
 
+-- name: ListBranchesPaginated :many
+SELECT * FROM branch.branches
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: CountBranches :one
+SELECT COUNT(*) FROM branch.branches;
+
 -- name: UpdateBranchStatus :exec
 UPDATE branch.branches
 SET status = $1

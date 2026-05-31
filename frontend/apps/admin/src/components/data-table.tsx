@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 interface DataTableProps<T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<T, any>[];
   data: T[];
   searchKey?: string;
@@ -20,6 +21,8 @@ interface DataTableProps<T> {
 }
 
 export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: DataTableProps<T>) {
+  "use no memo";
+
   const [globalFilter, setGlobalFilter] = useState("");
 
   const table = useReactTable({
@@ -37,6 +40,7 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: Da
       {searchKey && (
         <Input
           placeholder={searchPlaceholder || "Search..."}
+          aria-label={searchPlaceholder || "Search..."}
           value={globalFilter}
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-sm"
@@ -77,7 +81,7 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: Da
         </table>
       </div>
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground tabular-nums">
           {table.getFilteredRowModel().rows.length} row(s)
         </p>
         <div className="flex gap-2">

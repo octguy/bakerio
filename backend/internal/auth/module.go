@@ -17,6 +17,7 @@ import (
 
 type Module struct {
 	handler     *handler.AuthHandler
+	rbacHandler *handler.RbacHandler
 	authSvc     service.AuthService
 	RBACService service.RBACService
 }
@@ -34,14 +35,16 @@ func NewModule(
 	queries := authdb.New(pool)
 	authRepo := repository.NewAuthRepo(queries)
 	rbacRepo := repository.NewRBACRepo(queries)
-	rbacSvc := service.NewRBACService(rbacRepo, redis)
+	rbacSvc := service.NewRBACService(rbacRepo, redis, tx)
 	svc := service.NewAuthService(authRepo, rbacSvc, redis, tx, profSvc, outboxRepo, otpSvc, jwtSecret, tokenTTL)
 	h := handler.NewAuthHandler(svc)
-	return &Module{handler: h, authSvc: svc, RBACService: rbacSvc}
+	rbacH := handler.NewRbacHandler(rbacSvc)
+	return &Module{handler: h, rbacHandler: rbacH, authSvc: svc, RBACService: rbacSvc}
 }
 
 func (m *Module) Service() service.AuthService { return m.authSvc }
 
 func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
 	m.handler.RegisterRoutes(public, protected)
+	m.rbacHandler.RegisterRoutes(protected)
 }

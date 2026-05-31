@@ -42,7 +42,7 @@ func (m *Module) WireDirectory(dir service.UserDirectory) {
 	m.mh = handler.NewMembershipHandler(m.membershipSvc, dir)
 }
 
-func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
-	m.h.RegisterRoutes(protected)
+func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
+	m.h.RegisterRoutes(public, protected)
 	m.mh.RegisterRoutes(protected)
 }

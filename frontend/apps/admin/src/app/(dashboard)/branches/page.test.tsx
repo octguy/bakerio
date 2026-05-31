@@ -1,100 +1,405 @@
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { useQuery } from '@tanstack/react-query';
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { useQuery } from "@tanstack/react-query";
+import {
+  createBranch,
+  updateBranch,
+  updateBranchStatus,
+} from "@repo/api-client";
 
-vi.mock('@tanstack/react-query', () => ({
-  useQuery: vi.fn(() => ({ data: [{ id: '1', name: 'Downtown', address: '123 Main St', region: 'north', status: 'active' }], isLoading: false })),
-  useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-  useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
+const mockToast = vi.fn();
+const mockInvalidate = vi.fn();
+const mockSetQueryData = vi.fn();
+
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: vi.fn(() => ({
+    data: [
+      {
+        id: "br-1",
+        name: "Downtown",
+        address: "123 Main St",
+        lat: 10.7738,
+        lng: 106.703,
+        status: "active",
+      },
+    ],
+    isLoading: false,
+  })),
+  useMutation: vi.fn(({ mutationFn, onSuccess, onError }: any) => ({
+    mutate: async (variables: any) => {
+      try {
+        const result = await mutationFn(variables);
+        if (onSuccess) onSuccess(result, variables);
+      } catch (err: any) {
+        if (onError) onError(err);
+      }
+    },
+    isPending: false,
+  })),
+  useQueryClient: vi.fn(() => ({
+    invalidateQueries: mockInvalidate,
+    setQueryData: mockSetQueryData,
+  })),
 }));
 
-vi.mock('@tanstack/react-table', () => ({}));
-
-vi.mock('@repo/api-client', () => ({
+vi.mock("@repo/api-client", () => ({
   getBranches: vi.fn(),
   createBranch: vi.fn(),
   updateBranch: vi.fn(),
-  deleteBranch: vi.fn(),
+  updateBranchStatus: vi.fn(),
 }));
 
-vi.mock('@/components/data-table', () => ({
-  DataTable: ({ data }: { data: any[] }) => (
-    <table><tbody>{data.map((d: any) => <tr key={d.id}><td>{d.name}</td></tr>)}</tbody></table>
+vi.mock("@/components/data-table", () => ({
+  DataTable: ({ columns, data }: any) => (
+    <table>
+      <tbody>
+        {data.map((row: any, rIdx: number) => (
+          <tr key={row.id || rIdx}>
+            {columns.map((col: any, cIdx: number) => (
+              <td key={cIdx}>
+                {col.cell
+                  ? col.cell({ row: { original: row } })
+                  : row[col.accessorKey]}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   ),
 }));
 
-vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+vi.mock("@/components/ui/button", () => ({
+  Button: ({ children, onClick, ...props }: any) => (
+    <button onClick={onClick} {...props}>
+      {children}
+    </button>
+  ),
+  buttonVariants: () => "",
 }));
 
-vi.mock('@/components/ui/badge', () => ({
+vi.mock("@/components/ui/badge", () => ({
   Badge: ({ children }: any) => <span>{children}</span>,
 }));
 
-vi.mock('@/components/ui/dialog', () => ({
-  Dialog: ({ children, open }: any) => open ? <div>{children}</div> : null,
+vi.mock("@/components/ui/dialog", () => ({
+  Dialog: ({ children, open, onOpenChange }: any) =>
+    open ? (
+      <div data-testid="dialog">
+        <button
+          data-testid="close-dialog"
+          onClick={() => onOpenChange?.(false)}
+        >
+          X
+        </button>
+        {children}
+      </div>
+    ) : null,
   DialogContent: ({ children }: any) => <div>{children}</div>,
   DialogHeader: ({ children }: any) => <div>{children}</div>,
+  DialogDescription: ({ children }: any) => <div>{children}</div>,
   DialogTitle: ({ children }: any) => <div>{children}</div>,
 }));
 
-vi.mock('@/components/ui/input', () => ({
+vi.mock("@/components/ui/input", () => ({
   Input: (props: any) => <input {...props} />,
 }));
 
-vi.mock('@/components/ui/label', () => ({
-  Label: ({ children }: any) => <label>{children}</label>,
+vi.mock("@/components/ui/label", () => ({
+  Label: ({ children, ...props }: any) => <label {...props}>{children}</label>,
 }));
 
-vi.mock('@/components/ui/select', () => ({
-  Select: ({ children, ...props }: any) => <select {...props}>{children}</select>,
+vi.mock("@/components/ui/toast", () => ({
+  useToast: () => ({ toast: mockToast }),
 }));
 
-vi.mock('@/components/ui/toast', () => ({
-  useToast: () => ({ toast: vi.fn() }),
-}));
-
-vi.mock('lucide-react', () => ({
+vi.mock("lucide-react", () => ({
   Plus: () => <span>+</span>,
   Pencil: () => <span>✎</span>,
   Trash2: () => <span>🗑</span>,
+  ToggleLeft: () => <span>off</span>,
+  ToggleRight: () => <span>on</span>,
+  PackageCheck: () => <span>package-check</span>,
 }));
 
-import BranchesPage from './page';
+import BranchesPage from "./page";
 
-afterEach(cleanup);
-
-describe('BranchesPage', () => {
-  it('renders the branches heading', () => {
-    render(<BranchesPage />);
-    expect(screen.getByRole('heading', { name: /branches/i })).toBeInTheDocument();
+describe("BranchesPage CRUD flow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(useQuery).mockReturnValue({
+      data: [
+        {
+          id: "br-1",
+          name: "Downtown",
+          address: "123 Main St",
+          lat: 10.7738,
+          lng: 106.703,
+          status: "active",
+        },
+      ],
+      isLoading: false,
+    } as any);
   });
 
-  it('shows branch data from query', () => {
+  afterEach(cleanup);
+
+  it("renders correctly and lists branches", () => {
     render(<BranchesPage />);
-    expect(screen.getByText('Downtown')).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /branches/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Downtown")).toBeInTheDocument();
+    expect(screen.getByText("123 Main St")).toBeInTheDocument();
+    expect(screen.getByText("10.7738")).toBeInTheDocument();
+    expect(screen.getByText("106.703")).toBeInTheDocument();
   });
 
-  it('has an add branch button', () => {
-    render(<BranchesPage />);
-    expect(screen.getByRole('button', { name: /add branch/i })).toBeInTheDocument();
-  });
-
-  it('opens dialog when clicking Add Branch', () => {
-    render(<BranchesPage />);
-    fireEvent.click(screen.getByRole('button', { name: /add branch/i }));
-    expect(screen.getByText('New Branch')).toBeInTheDocument();
-  });
-
-  it('shows loading state when data is loading', () => {
+  it("handles Loading state", () => {
     vi.mocked(useQuery).mockReturnValue({ data: [], isLoading: true } as any);
     render(<BranchesPage />);
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
-  it('shows no data when query fails', () => {
-    vi.mocked(useQuery).mockReturnValue({ data: [], isLoading: false, error: new Error('Failed') } as any);
+  it("opens and closes the dialog when Cancel is clicked", () => {
     render(<BranchesPage />);
-    expect(screen.queryByText('Downtown')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /add branch/i }));
+    expect(screen.getByText("New Branch")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(screen.queryByText("New Branch")).not.toBeInTheDocument();
+  });
+
+  it("submits createBranch successfully", async () => {
+    vi.mocked(createBranch).mockResolvedValue({ id: "br-2" } as any);
+    const { container } = render(<BranchesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /add branch/i }));
+
+    const nameInput = container.querySelector('input[name="name"]')!;
+    const addrInput = container.querySelector('input[name="address"]')!;
+    const latInput = container.querySelector('input[name="lat"]')!;
+    const lngInput = container.querySelector('input[name="lng"]')!;
+
+    fireEvent.change(nameInput, { target: { value: "Saigon Centre" } });
+    fireEvent.change(addrInput, { target: { value: "District 1" } });
+    fireEvent.change(latInput, { target: { value: "10.7738" } });
+    fireEvent.change(lngInput, { target: { value: "106.703" } });
+
+    fireEvent.submit(container.querySelector("form")!);
+
+    await waitFor(() => {
+      expect(createBranch).toHaveBeenCalledWith({
+        name: "Saigon Centre",
+        address: "District 1",
+        lat: 10.7738,
+        lng: 106.703,
+      });
+      expect(mockToast).toHaveBeenCalledWith("Branch created");
+      expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: ["branches"] });
+    });
+  });
+
+  it("handles createBranch failure gracefully", async () => {
+    vi.mocked(createBranch).mockRejectedValue(
+      new Error("Server error creation"),
+    );
+    const { container } = render(<BranchesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /add branch/i }));
+    fireEvent.change(container.querySelector('input[name="name"]')!, {
+      target: { value: "Failing Branch" },
+    });
+    fireEvent.change(container.querySelector('input[name="address"]')!, {
+      target: { value: "Addr" },
+    });
+
+    fireEvent.submit(container.querySelector("form")!);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith("Server error creation", "error");
+    });
+  });
+
+  it("submits updateBranch successfully when editing", async () => {
+    vi.mocked(updateBranch).mockResolvedValue({ id: "br-1" } as any);
+    const { container } = render(<BranchesPage />);
+
+    // Click edit button
+    fireEvent.click(screen.getByText("✎"));
+    expect(screen.getByText("Edit Branch")).toBeInTheDocument();
+
+    const nameInput = container.querySelector('input[name="name"]')!;
+    fireEvent.change(nameInput, { target: { value: "Downtown Upd" } });
+
+    fireEvent.submit(container.querySelector("form")!);
+
+    await waitFor(() => {
+      expect(updateBranch).toHaveBeenCalledWith("br-1", {
+        name: "Downtown Upd",
+        address: "123 Main St",
+        lat: 10.7738,
+        lng: 106.703,
+      });
+      expect(mockToast).toHaveBeenCalledWith("Branch updated");
+    });
+  });
+
+  it("handles updateBranch failure", async () => {
+    vi.mocked(updateBranch).mockRejectedValue(
+      new Error("Update network error"),
+    );
+    const { container } = render(<BranchesPage />);
+
+    fireEvent.click(screen.getByText("✎"));
+    fireEvent.submit(container.querySelector("form")!);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith("Update network error", "error");
+    });
+  });
+
+  it("toggles branch status", async () => {
+    vi.mocked(updateBranchStatus).mockResolvedValue(null as any);
+    render(<BranchesPage />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /deactivate downtown/i }),
+    );
+
+    await waitFor(() => {
+      expect(updateBranchStatus).toHaveBeenCalledWith("br-1", "inactive");
+      expect(mockSetQueryData).toHaveBeenCalledWith(
+        ["branches"],
+        expect.any(Function),
+      );
+      expect(mockToast).toHaveBeenCalledWith("Branch status updated");
+      expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: ["branches"] });
+    });
+  });
+
+  it("reverses branch status in the local query cache", async () => {
+    vi.mocked(updateBranchStatus).mockResolvedValue(null as any);
+    render(<BranchesPage />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /deactivate downtown/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockSetQueryData).toHaveBeenCalledWith(
+        ["branches"],
+        expect.any(Function),
+      );
+    });
+
+    const updater = mockSetQueryData.mock.calls.at(-1)?.[1] as (
+      branches: Array<{
+        id: string;
+        name: string;
+        address: string;
+        lat?: number;
+        lng?: number;
+        status: string;
+      }>,
+    ) => Array<{
+      id: string;
+      name: string;
+      address: string;
+      lat?: number;
+      lng?: number;
+      status: string;
+    }>;
+
+    expect(
+      updater([
+        {
+          id: "br-1",
+          name: "Downtown",
+          address: "123 Main St",
+          lat: 10.7738,
+          lng: 106.703,
+          status: "active",
+        },
+      ]),
+    ).toEqual([
+      {
+        id: "br-1",
+        name: "Downtown",
+        address: "123 Main St",
+        lat: 10.7738,
+        lng: 106.703,
+        status: "inactive",
+      },
+    ]);
+  });
+
+  it("activates an inactive branch", async () => {
+    vi.mocked(updateBranchStatus).mockResolvedValue(null as any);
+    vi.mocked(useQuery).mockReturnValue({
+      data: [
+        {
+          id: "br-2",
+          name: "Uptown",
+          address: "456 Side St",
+          lat: 10.7295,
+          lng: 106.7186,
+          status: "inactive",
+        },
+      ],
+      isLoading: false,
+    } as any);
+    render(<BranchesPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /activate uptown/i }));
+
+    await waitFor(() => {
+      expect(updateBranchStatus).toHaveBeenCalledWith("br-2", "active");
+      expect(mockToast).toHaveBeenCalledWith("Branch status updated");
+      expect(mockInvalidate).toHaveBeenCalledWith({ queryKey: ["branches"] });
+    });
+  });
+
+  it("handles branch status update failure", async () => {
+    vi.mocked(updateBranchStatus).mockRejectedValue(
+      new Error("Status update failed"),
+    );
+    render(<BranchesPage />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /deactivate downtown/i }),
+    );
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith("Status update failed", "error");
+    });
+  });
+
+  it("disables branch delete action", () => {
+    render(<BranchesPage />);
+
+    const disabledDelete = screen.getByRole("button", {
+      name: /delete downtown/i,
+    });
+    expect(disabledDelete).toBeDisabled();
+    expect(disabledDelete).toHaveAttribute(
+      "title",
+      "Use Deactivate - backend has no delete",
+    );
+  });
+
+  it("closes edit dialog on backdrop / openChange callback", () => {
+    render(<BranchesPage />);
+    fireEvent.click(screen.getByRole("button", { name: /add branch/i }));
+    expect(screen.getByText("New Branch")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("close-dialog"));
+    expect(screen.queryByText("New Branch")).not.toBeInTheDocument();
   });
 });

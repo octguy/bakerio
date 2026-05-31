@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
+import { setMockOrderSessionUser } from "@repo/api-client/mock";
 
 interface User {
   id: string;
@@ -13,8 +14,14 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<string | null>;
-  register: (email: string, password: string, fullName: string) => Promise<string | null>;
+  register: (email: string, password: string, fullName: string) => Promise<RegisterResult>;
   logout: () => Promise<void>;
+}
+
+interface RegisterResult {
+  error: string | null;
+  userId?: string;
+  email?: string;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -31,37 +38,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ action: "me" }),
       });
       const data = await res.json();
+      setMockOrderSessionUser(data.user?.id ?? null);
       setUser(data.user ?? null);
     } catch {
+      setMockOrderSessionUser(null);
       setUser(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchUser(); }, [fetchUser]);
+  useEffect(() => { void fetchUser(); }, [fetchUser]); // eslint-disable-line react-hooks/set-state-in-effect
 
   const login = async (email: string, password: string): Promise<string | null> => {
-    const res = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "login", email, password }),
-    });
-    const data = await res.json();
-    if (data.error) return data.error;
-    await fetchUser();
-    return null;
+    try {
+      setLoading(true);
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "login", email, password }),
+      });
+      const data = await res.json().catch(() => ({ error: "Unexpected response from server" }));
+      if (!res.ok || data.error) return data.error ?? "Unable to sign in. Please try again.";
+      await fetchUser();
+      return null;
+    } catch {
+      return "Unable to reach Bakerio. Check your connection and try again.";
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const register = async (email: string, password: string, fullName: string): Promise<string | null> => {
-    const res = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "register", email, password, full_name: fullName }),
-    });
-    const data = await res.json();
-    if (data.error) return data.error;
-    return null;
+  const register = async (email: string, password: string, fullName: string): Promise<RegisterResult> => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "register", email, password, full_name: fullName }),
+      });
+      const data = await res.json().catch(() => ({ error: "Unexpected response from server" }));
+      if (!res.ok || data.error) {
+        return { error: data.error ?? "Unable to create your account. Please try again." };
+      }
+      return { error: null, userId: data.user_id, email: data.email ?? email };
+    } catch {
+      return { error: "Unable to reach Bakerio. Check your connection and try again." };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = async () => {
@@ -70,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "logout" }),
     });
+    setMockOrderSessionUser(null);
     setUser(null);
   };
 

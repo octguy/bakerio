@@ -7,6 +7,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/branch/repository"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 // MembershipService is the data layer for a user's branch assignment.
@@ -18,6 +19,7 @@ type MembershipService interface {
 	SetMembership(ctx context.Context, userID, branchID uuid.UUID) error
 	RemoveMembership(ctx context.Context, userID uuid.UUID) error
 	ListUsersByBranch(ctx context.Context, branchID uuid.UUID) ([]uuid.UUID, error)
+	ListUsersByBranchPaged(ctx context.Context, branchID uuid.UUID, p pagination.Params) (ids []uuid.UUID, total int64, err error)
 }
 
 type membershipService struct {
@@ -61,4 +63,16 @@ func (m *membershipService) RemoveMembership(ctx context.Context, userID uuid.UU
 
 func (m *membershipService) ListUsersByBranch(ctx context.Context, branchID uuid.UUID) ([]uuid.UUID, error) {
 	return m.repo.ListUsersByBranch(ctx, branchID)
+}
+
+func (m *membershipService) ListUsersByBranchPaged(ctx context.Context, branchID uuid.UUID, p pagination.Params) ([]uuid.UUID, int64, error) {
+	ids, err := m.repo.ListUsersByBranchPaged(ctx, branchID, p.Size, p.Offset())
+	if err != nil {
+		return nil, 0, apperrors.Internal("database error", err)
+	}
+	total, err := m.repo.CountByBranch(ctx, branchID)
+	if err != nil {
+		return nil, 0, apperrors.Internal("database error", err)
+	}
+	return ids, total, nil
 }

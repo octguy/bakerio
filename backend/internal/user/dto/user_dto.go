@@ -33,3 +33,8 @@ type BranchBrief struct {
 type SetPasswordRequest struct {
 	Password string `json:"password" binding:"required,min=6"`
 } // @name SetPasswordRequest
+
+type SetRoleRequest struct {
+	Role     string     `json:"role" binding:"required"`
+	BranchID *uuid.UUID `json:"branch_id" binding:"omitempty"`
+} // @name SetRoleRequest

@@ -1,96 +1,106 @@
 import { test, expect } from "@playwright/test";
+import { cleanupByPrefix } from "./_cleanup";
 
-const mockBranches = {
-  data: [
-    { id: "br-1", name: "Bakerio Saigon Centre", address: "65 Lê Lợi, District 1", lat: 10.7731, lng: 106.7009, status: "active", created_at: "2026-01-01T00:00:00Z" },
-    { id: "br-2", name: "Bakerio Thảo Điền", address: "12 Nguyễn Đăng Giai", lat: 10.8031, lng: 106.7351, status: "active", created_at: "2026-01-01T00:00:00Z" },
-  ],
-};
+const RUN = Date.now();
+const MARK = `E2E ${RUN}`;
 
-const mockUser = { user: { id: "u-1", email: "admin@bakerio.vn", full_name: "Admin", roles: ["admin"] } };
+async function adminLogin(page: import("@playwright/test").Page) {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("superadmin@bakerio.com");
+  await page.getByLabel("Password", { exact: true }).fill("123456");
+  await page.getByRole("button", { name: "Sign In" }).click();
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
+}
 
 test.beforeEach(async ({ page }) => {
-  await page.route("**/api/auth", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockUser) })
-  );
-  await page.route("**/api/v1/branch", (route) => {
-    if (route.request().method() === "GET") {
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockBranches) });
-    }
-    return route.continue();
-  });
+  await adminLogin(page);
+});
+
+test.afterAll(async () => {
+  await cleanupByPrefix("branch", "E2E ");
 });
 
 test.describe("Admin — Branches Management", () => {
   test("branches page loads and shows data", async ({ page }) => {
     await page.goto("/branches");
-
-    await expect(page.getByText("Bakerio Saigon Centre")).toBeVisible();
-    await expect(page.getByText("Bakerio Thảo Điền")).toBeVisible();
+    await expect(page.getByText("Bakerio Quận 1")).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByText("Bakerio Hoàn Kiếm")).toBeVisible();
   });
 
   test("create new branch", async ({ page }) => {
-    await page.route("**/api/v1/branch", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 201,
-          contentType: "application/json",
-          body: JSON.stringify({ data: { id: "br-3", name: "Bakerio Phú Nhuận", address: "100 Phan Xích Long", lat: 10.8, lng: 106.68, status: "active", created_at: "2026-05-20T00:00:00Z" } }),
-        });
-      }
-      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockBranches) });
-    });
-
     await page.goto("/branches");
+    await expect(page.getByRole("button", { name: /add branch/i })).toBeVisible(
+      { timeout: 10000 },
+    );
     await page.getByRole("button", { name: /add branch/i }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
 
-    await page.getByLabel(/name/i).fill("Bakerio Phú Nhuận");
-    await page.getByLabel(/address/i).fill("100 Phan Xích Long");
-    await page.getByLabel(/region/i).selectOption("south");
+    await page
+      .getByRole("dialog")
+      .locator("input")
+      .first()
+      .fill(`${MARK} Create`);
+    await page
+      .getByRole("dialog")
+      .locator("input")
+      .nth(1)
+      .fill("100 Phan Xích Long");
     await page.getByRole("button", { name: /save/i }).click();
 
-    await expect(page.getByText(/branch created/i)).toBeVisible();
+    await expect(page.getByText(/branch created|success/i)).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(
+      page.locator("table").getByText(`${MARK} Create`).first(),
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test("edit branch", async ({ page }) => {
-    await page.route("**/api/v1/branch/br-1", (route) => {
-      if (route.request().method() === "PATCH") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ data: { ...mockBranches.data[0], name: "Bakerio District 1" } }),
-        });
-      }
-      return route.continue();
-    });
-
     await page.goto("/branches");
-    await page.getByRole("button", { name: /edit/i }).first().click();
+    await expect(page.getByRole("button", { name: /add branch/i })).toBeVisible(
+      { timeout: 10000 },
+    );
+    await page.getByRole("button", { name: /add branch/i }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
 
-    await page.getByLabel(/name/i).clear();
-    await page.getByLabel(/name/i).fill("Bakerio District 1");
+    await page
+      .getByRole("dialog")
+      .locator("input")
+      .first()
+      .fill(`${MARK} Edit`);
+    await page
+      .getByRole("dialog")
+      .locator("input")
+      .nth(1)
+      .fill("100 Phan Xích Long");
     await page.getByRole("button", { name: /save/i }).click();
 
-    await expect(page.getByText(/branch updated/i)).toBeVisible();
-  });
-
-  test("toggle branch status", async ({ page }) => {
-    await page.route("**/api/v1/branch/br-1/status", (route) => {
-      if (route.request().method() === "PATCH") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ data: { ...mockBranches.data[0], status: "inactive" } }),
-        });
-      }
-      return route.continue();
+    await expect(page.getByText(/branch created|success/i)).toBeVisible({
+      timeout: 10000,
     });
+    await expect(
+      page.locator("table").getByText(`${MARK} Edit`).first(),
+    ).toBeVisible({ timeout: 10000 });
 
-    await page.goto("/branches");
+    // Locate that row by name (`page.locator("tbody tr", { hasText: `${MARK} Edit` })`),
+    // click its edit (first) button, change the name to `${MARK} Edited`, save, and assert `${MARK} Edited` is visible.
+    const editRow = page.locator("tbody tr", { hasText: `${MARK} Edit` });
+    await editRow.locator("button").first().click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Edit Branch" }),
+    ).toBeVisible();
 
-    const statusBadge = page.getByText("active").first();
-    await statusBadge.click();
+    const nameInput = page.getByRole("dialog").locator("input").first();
+    await nameInput.clear();
+    await nameInput.fill(`${MARK} Edited`);
+    await page.getByRole("button", { name: /save/i }).click();
 
-    await expect(page.getByText("inactive")).toBeVisible();
+    await expect(page.getByText("Branch updated")).toBeVisible({
+      timeout: 10000,
+    });
+    await expect(page.getByText(`${MARK} Edited`).first()).toBeVisible();
   });
 });

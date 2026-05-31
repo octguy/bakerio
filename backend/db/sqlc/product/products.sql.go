@@ -36,6 +36,19 @@ func (q *Queries) CountProductsByCategory(ctx context.Context, categoryID uuid.U
 	return count, err
 }
 
+const countProductsByCategorySlug = `-- name: CountProductsByCategorySlug :one
+SELECT COUNT(*) FROM product.products p
+JOIN product.categories c ON p.category_id = c.id
+WHERE p.deleted_at IS NULL AND c.slug = $1
+`
+
+func (q *Queries) CountProductsByCategorySlug(ctx context.Context, slug string) (int64, error) {
+	row := q.db.QueryRow(ctx, countProductsByCategorySlug, slug)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createProduct = `-- name: CreateProduct :one
 INSERT INTO product.products (
     name, slug, category_id, price, sort_order, created_by, updated_by
@@ -229,6 +242,53 @@ type ListProductsByCategoryParams struct {
 
 func (q *Queries) ListProductsByCategory(ctx context.Context, arg ListProductsByCategoryParams) ([]ProductProduct, error) {
 	rows, err := q.db.Query(ctx, listProductsByCategory, arg.CategoryID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ProductProduct{}
+	for rows.Next() {
+		var i ProductProduct
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.CategoryID,
+			&i.Price,
+			&i.SortOrder,
+			&i.IsActive,
+			&i.DeletedAt,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.UpdatedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductsByCategorySlug = `-- name: ListProductsByCategorySlug :many
+SELECT p.id, p.name, p.slug, p.category_id, p.price, p.sort_order, p.is_active, p.deleted_at, p.created_at, p.created_by, p.updated_at, p.updated_by FROM product.products p
+JOIN product.categories c ON p.category_id = c.id
+WHERE p.deleted_at IS NULL AND c.slug = $1
+ORDER BY p.sort_order ASC, p.name ASC
+LIMIT $2 OFFSET $3
+`
+
+type ListProductsByCategorySlugParams struct {
+	Slug   string `json:"slug"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+}
+
+func (q *Queries) ListProductsByCategorySlug(ctx context.Context, arg ListProductsByCategorySlugParams) ([]ProductProduct, error) {
+	rows, err := q.db.Query(ctx, listProductsByCategorySlug, arg.Slug, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

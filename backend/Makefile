@@ -61,6 +61,12 @@ sqlc:
 run:
 	go run ./cmd/server
 
+# Compile-check the whole project without producing a binary.
+# Useful as a quick "does it build?" gate before running.
+#   make build
+build:
+	go build -o /dev/null ./...
+
 # Stop the server (kills whatever listens on SERVER_PORT + the `go run` wrapper).
 # `go run` spawns a compiled child binary; killing only the wrapper leaves it
 # bound to the port, so we kill the port listener directly.
@@ -113,3 +119,10 @@ docker-mail:
 #	make docker-minio
 docker-minio:
 	cd deployments && docker compose --env-file ../.env up -d minio
+
+# Start backend containers, run migrations, and seed the database for E2E tests
+test-setup:
+	cd deployments && docker compose --env-file ../.env up -d
+	@echo "Waiting for PostgreSQL container to be healthy..."
+	@until docker exec bakerio-postgres pg_isready -U postgres -d bakerio-db >/dev/null 2>&1; do sleep 1; done
+	docker exec -i bakerio-postgres psql -U postgres -d bakerio-db < ../db/seed_e2e.sql

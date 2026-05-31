@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
 
+// NOTE: branch/products/categories READS are PUBLIC (PR #24), so a backend built from current main
+// serves REAL branch/product data to the guest (unauthenticated) SSR homepage. The api-client
+// only falls back to MOCK fixtures if the backend is unreachable or running a STALE build that
+// predates PR #24. The name assertions below assume a current backend; navigation, structure,
+// and keyboard assertions remain valid regardless.
+
 /**
  * Branch Selection Flow — Order App Homepage
  *
@@ -9,49 +15,44 @@ import { test, expect } from "@playwright/test";
  */
 
 test.describe("Branch Selection — Homepage", () => {
-  test("renders the branch selection heading and subtitle", async ({ page }) => {
+  test("renders the branch selection heading and ordering modes", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Order from Bakerio" })).toBeVisible();
-    await expect(page.getByText("Select a branch to start your order")).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i })).toBeVisible();
+    await expect(page.getByRole("main").getByText("Pickup").first()).toBeVisible();
+    
+    // Assert real branch count and count text
+    await expect(page.locator("main button")).toHaveCount(3);
+    await expect(page.getByText("3 open")).toBeVisible();
   });
 
-  test("handles API failure gracefully with error message", async ({ page }) => {
-    // SSR fetch will fail if backend is unavailable — page should show error text, not crash
-    await page.goto("/");
-
-    const heading = page.getByRole("heading", { name: "Order from Bakerio" });
-    await expect(heading).toBeVisible();
-
-    // Page either shows branches or an error message — never a blank crash
-    const hasBranches = await page.locator("button").count() > 0;
-    const hasError = await page.locator("text=Failed to load").isVisible().catch(() => false);
-
-    expect(hasBranches || hasError).toBe(true);
-  });
+  // NOTE: The order home page fetches branches in an SSR server component and getBranches()
+  // falls back to mock data on error, so the "couldn't load branch availability" error path is
+  // not reachable via Playwright page.route. It is covered by the unit test apps/order/src/app/page.test.tsx.
 
   test("branch cards display name, address, and region", async ({ page }) => {
     await page.goto("/");
 
     const branchButtons = page.locator("main button");
-    const count = await branchButtons.count();
-
-    // Skip if no branches loaded (backend unavailable)
-    test.skip(count === 0, "No branches loaded — backend unavailable");
+    await expect(branchButtons).toHaveCount(3);
 
     const firstBranch = branchButtons.first();
     // Each card has a heading (name), address text, and region badge
     await expect(firstBranch.locator("h2")).toBeVisible();
     await expect(firstBranch.locator("p")).toBeVisible();
-    await expect(firstBranch.locator("span")).toBeVisible();
+    
+    // Assert backend-provided address
+    await expect(page.getByText("65 Lê Lợi, Quận 1")).toBeVisible();
+    
+    // Assert derived region tag instead of static "Open" text
+    await expect(firstBranch.getByText(/Coffee bar|Flagship/).first()).toBeVisible();
   });
 
   test("clicking a branch navigates to /menu", async ({ page }) => {
     await page.goto("/");
 
     const branchButtons = page.locator("main button");
-    const count = await branchButtons.count();
-    test.skip(count === 0, "No branches loaded — backend unavailable");
+    await expect(branchButtons).not.toHaveCount(0);
 
     await branchButtons.first().click();
     await expect(page).toHaveURL(/\/menu/);
@@ -61,8 +62,7 @@ test.describe("Branch Selection — Homepage", () => {
     await page.goto("/");
 
     const branchButtons = page.locator("main button");
-    const count = await branchButtons.count();
-    test.skip(count === 0, "No branches loaded — backend unavailable");
+    await expect(branchButtons).not.toHaveCount(0);
 
     // Buttons are natively focusable and activatable via keyboard
     await branchButtons.first().focus();

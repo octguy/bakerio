@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 vi.mock("next/image", () => ({
@@ -22,17 +22,22 @@ vi.mock("@/hooks/useScrollReveal", () => ({
 
 import ContactPage from "./page";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe("ContactPage", () => {
   it("renders without crashing", () => {
-    render(<ContactPage />);
-    expect(screen.getByText("Get in Touch")).toBeInTheDocument();
+    const { container } = render(<ContactPage />);
+    expect(container.firstChild).toBeInTheDocument();
+    expect(screen.getByText(/hear from you/i)).toBeInTheDocument();
   });
 
   it("renders form inputs with associated labels", () => {
     render(<ContactPage />);
-    expect(screen.getByLabelText("Name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Your name")).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(screen.getByLabelText("Subject")).toBeInTheDocument();
     expect(screen.getByLabelText("Message")).toBeInTheDocument();
@@ -52,19 +57,33 @@ describe("ContactPage", () => {
     expect(screen.getByText("Message is required")).toBeInTheDocument();
   });
 
-  it("shows success message after valid form submission", () => {
+  it("shows a configuration error when no contact endpoint is configured", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: () =>
+          Promise.resolve({
+            error: { message: "Contact form is not configured yet. Please email hello@bakerio.vn directly." },
+          }),
+      }),
+    );
+
     render(<ContactPage />);
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "John" } });
+    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Hello" } });
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
-    expect(screen.getByText(/thank you! your message has been sent/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/contact form is not configured yet/i);
+    });
   });
 
   it("shows email-specific error for invalid email format", () => {
     render(<ContactPage />);
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "John" } });
+    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Hello" } });
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
@@ -74,14 +93,25 @@ describe("ContactPage", () => {
     expect(screen.queryByText("Message is required")).not.toBeInTheDocument();
   });
 
-  it("hides the form after successful submission", () => {
+  it("hides the form after successful submission", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
     render(<ContactPage />);
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "John" } });
+    fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
     fireEvent.change(screen.getByLabelText("Subject"), { target: { value: "Hello" } });
     fireEvent.change(screen.getByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
-    expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Thank you.")).toBeInTheDocument();
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/contact",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(screen.getByText(/we'll write back/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Your name")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /send message/i })).not.toBeInTheDocument();
   });
 });

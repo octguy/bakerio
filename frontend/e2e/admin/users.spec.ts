@@ -1,45 +1,55 @@
 import { test, expect } from "@playwright/test";
 
-const mockAuthUser = {
-  user: { id: "user-1", email: "admin@bakerio.vn", full_name: "Admin User", roles: ["admin"] },
-};
+const RUN = Date.now();
 
-const mockCreateUser = {
-  data: { id: "user-1", email: "staff@bakerio.vn", full_name: "Staff Member", role: "staff", branch_id: "br-1", created_at: "2026-05-20T00:00:00Z" },
-};
+async function adminLogin(page: import("@playwright/test").Page) {
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("superadmin@bakerio.com");
+  await page.getByLabel("Password", { exact: true }).fill("123456");
+  await page.getByRole("button", { name: "Sign In" }).click();
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
+}
 
 test.beforeEach(async ({ page }) => {
-  await page.route("**/api/auth", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(mockAuthUser) })
-  );
+  await adminLogin(page);
 });
 
 test.describe("Admin — Users Management", () => {
   test("users page loads with heading", async ({ page }) => {
     await page.goto("/users");
-    await expect(page.getByRole("heading", { name: /users/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /staff/i })).toBeVisible({ timeout: 10000 });
+
+    // Assert that the staff list container renders at least one real user row (e.g. Super Admin)
+    const staffContainer = page.locator("div.rounded-lg.border.bg-white");
+    await expect(staffContainer.getByText("Super Admin").first()).toBeVisible({ timeout: 10000 });
   });
 
+  // NOTE: backend exposes no deleteUser endpoint (frozen), so created staff cannot be cleaned up; use a unique name/email per run so rows are identifiable and never collide.
   test("create staff user via dialog form", async ({ page }) => {
-    await page.route("**/api/v1/users", (route) =>
-      route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(mockCreateUser) })
-    );
-
     await page.goto("/users");
+    await expect(page.getByRole("button", { name: /add user/i })).toBeVisible({ timeout: 10000 });
     await page.getByRole("button", { name: /add user/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 
-    await page.getByLabel(/full name/i).fill("Staff Member");
-    await page.getByLabel(/email/i).fill("staff@bakerio.vn");
-    await page.getByLabel(/password/i).fill("secure123");
-    await page.getByLabel(/role/i).selectOption("staff");
+    const dialog = page.getByRole("dialog");
+    const inputs = dialog.locator("input");
+    await inputs.nth(0).fill(`E2E Staff ${RUN}`);       // Full Name
+    await inputs.nth(1).fill(`staff-${RUN}@bakerio.vn`); // Email
+    await inputs.nth(2).fill("secure123");           // Password
+    await dialog.locator("select#create-user-role").selectOption("branch_staff");
+    await dialog.locator("select#create-user-branch").selectOption({ label: "Bakerio Quận 1" });
 
     await page.getByRole("button", { name: /create user/i }).click();
-    await expect(page.getByText("User created")).toBeVisible();
+    await expect(page.getByText("User created")).toBeVisible({ timeout: 10000 });
+
+    // Assert that the newly created user is visible in the staff list
+    const staffContainer = page.locator("div.rounded-lg.border.bg-white");
+    await expect(staffContainer.getByText(`E2E Staff ${RUN}`).first()).toBeVisible({ timeout: 10000 });
   });
 
   test("create user with invalid data shows validation errors", async ({ page }) => {
     await page.goto("/users");
+    await expect(page.getByRole("button", { name: /add user/i })).toBeVisible({ timeout: 10000 });
     await page.getByRole("button", { name: /add user/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
 

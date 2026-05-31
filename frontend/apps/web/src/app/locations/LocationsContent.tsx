@@ -1,80 +1,159 @@
 'use client';
 
-import { useState } from "react";
-import { MapPin } from "lucide-react";
-import ScrollReveal from "@/components/ui/ScrollReveal";
-import GoogleMap from "@/components/ui/GoogleMap";
-import { locations, regions } from "@/data/locations";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { getBranches } from "@repo/api-client";
+import type { WebLocation } from "@/lib/locations";
+import { toWebLocations } from "@/lib/locations";
+
+const LocationMap = dynamic(() => import("./LocationMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-butter font-mono text-[11px] text-caramel">
+      Loading Atlas...
+    </div>
+  ),
+});
+
+// Editorial atlas: SVG abstract HCMC map + tabular shop list.
+// Positions are normalised (0..1) — picked to roughly correspond to district.
+const PIN_LAYOUT = [
+  { x: 0.42, y: 0.55, tag: "Flagship" },
+  { x: 0.5, y: 0.5 },
+  { x: 0.46, y: 0.42, tag: "Coffee bar" },
+  { x: 0.72, y: 0.45 },
+  { x: 0.55, y: 0.78, tag: "Family" },
+  { x: 0.35, y: 0.35 },
+  { x: 0.32, y: 0.45 },
+  { x: 0.28, y: 0.28 },
+];
 
 export default function LocationsContent() {
-  const [active, setActive] = useState<string>("All");
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const filtered = active === "All" ? locations : locations.filter((l) => l.region === active);
+  const [locations, setLocations] = useState<WebLocation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedLocationName, setSelectedLocationName] = useState<string>(locations[0]?.name ?? "");
 
-  const selected = selectedIdx !== null ? locations[selectedIdx] : null;
+  useEffect(() => {
+    let isMounted = true;
+
+    getBranches()
+      .then((branches) => {
+        if (!isMounted) return;
+        const nextLocations = toWebLocations(branches);
+        setLocations(nextLocations);
+        setSelectedLocationName(nextLocations[0]?.name ?? "");
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setLocations([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+  const selectedLocation = locations.find((location) => location.name === selectedLocationName) ?? locations[0] ?? null;
+  const selectedIdx = selectedLocation ? locations.findIndex((location) => location.name === selectedLocation.name) : -1;
+
+  if (loading) {
+    return (
+      <section className="px-6 pb-24 lg:px-14">
+        <div className="mx-auto max-w-[1400px] rounded-sm border border-crust bg-white p-10 text-center">
+          <p className="font-editorial text-[16px] italic text-caramel">Loading shops from the bakery network...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (locations.length === 0) {
+    return (
+      <section className="px-6 pb-24 lg:px-14">
+        <div className="mx-auto max-w-[1400px] rounded-sm border border-crust bg-white p-10 text-center">
+          <p className="font-editorial text-[16px] italic text-caramel">No shops are available right now.</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section className="py-20 md:py-28 px-4 max-w-6xl mx-auto">
-      <div className="flex gap-2 justify-center flex-wrap mb-12">
-        {regions.map((region) => (
-          <button
-            key={region}
-            onClick={() => setActive(region)}
-            className={`px-6 py-2.5 rounded-full text-sm font-medium tracking-wide transition-all ${
-              active === region
-                ? "bg-golden text-white shadow-md"
-                : "bg-white text-cocoa border border-crust hover:border-golden hover:text-golden"
-            }`}
-          >
-            {region}
-          </button>
-        ))}
-      </div>
+    <section className="px-6 pb-24 lg:px-14">
+      <div className="mx-auto max-w-[1400px]">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.25fr_1fr]">
+          {/* Map */}
+          <div className="relative h-[500px] overflow-hidden rounded-sm border border-crust-deep bg-butter lg:h-[630px] z-0">
+            <LocationMap
+              locations={locations}
+              selectedLocation={selectedLocation}
+              onSelectLocation={setSelectedLocationName}
+            />
 
-      <div className="mb-10">
-        <GoogleMap
-          lat={selected?.lat ?? 10.78}
-          lng={selected?.lng ?? 106.71}
-          name={selected?.address}
-          zoom={selected ? 16 : 12}
-          className="h-[400px] w-full"
-        />
-      </div>
-
-      <ScrollReveal>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((l) => {
-            const globalIdx = locations.indexOf(l);
-            const isSelected = selectedIdx === globalIdx;
-
-            return (
-              <div
-                key={l.name}
-                onClick={() => setSelectedIdx(isSelected ? null : globalIdx)}
-                className={`cursor-pointer rounded-[10px] border bg-white p-6 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(44,24,16,0.10)] ${
-                  isSelected ? "ring-2 ring-golden border-golden" : "border-crust"
-                }`}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <MapPin className="text-golden shrink-0" size={20} />
-                  <h3 className="font-[family-name:var(--font-display)] font-bold text-espresso">{l.name}</h3>
+            {/* Callout */}
+            {selectedLocation && (
+              <div className="absolute bottom-6 left-6 w-[280px] rounded-sm border border-crust bg-white p-4 shadow-[0_12px_30px_-10px_rgba(44,24,16,0.3)] z-20">
+                <div className="mb-2 flex items-center gap-2.5">
+                  <span className="flex h-[22px] w-[22px] items-center justify-center rounded bg-golden font-mono text-[10px] font-bold text-white">
+                    {String(selectedIdx + 1).padStart(2, "0")}
+                  </span>
+                  <span className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-cinnamon">
+                    ★ {PIN_LAYOUT[locations.findIndex((item) => item.name === selectedLocation.name)]?.tag ?? "Bakerio shop"}
+                  </span>
                 </div>
-                <p className="text-sm text-cocoa mb-1">{l.address}</p>
-                <p className="text-sm text-caramel mb-4">{l.hours}</p>
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(l.address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-block text-sm font-semibold uppercase tracking-wider text-golden hover:text-cinnamon transition-colors"
-                >
-                  Get Directions →
-                </a>
+                <h4 className="font-display text-[22px] tracking-tight text-espresso">{selectedLocation.name}</h4>
+                <div className="mb-2 font-editorial text-[13px] text-cinnamon">{selectedLocation.address}</div>
+                <div className="flex gap-3 font-mono text-[11px] text-cocoa">
+                  <span>● OPEN</span>
+                  <span>{selectedLocation.hours}</span>
+                </div>
               </div>
-            );
-          })}
+            )}
+          </div>
+
+          {/* Shop list */}
+          <div className="flex flex-col">
+            <div className="mb-3 flex justify-between border-b border-crust pb-3 font-mono text-[9.5px] uppercase tracking-[0.2em] text-caramel">
+              <span>№</span>
+              <span className="flex-1 pl-4">SHOP</span>
+              <span className="w-[110px]">HOURS</span>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {locations.map((s, i) => {
+                const isSel = s.name === selectedLocation?.name;
+                return (
+                  <button
+                    key={s.name}
+                    onClick={() => setSelectedLocationName(s.name)}
+                    className={`flex w-full items-center py-3.5 text-left ${
+                      i < locations.length - 1 ? "border-b border-crust" : ""
+                    } ${isSel ? "-mx-3 rounded bg-vanilla px-3" : ""}`}
+                  >
+                    <span
+                      className="w-7 font-mono text-[11px] font-bold"
+                      style={{ color: isSel ? "var(--golden)" : "var(--espresso)" }}
+                    >
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <div className="flex-1 pl-4">
+                      <div className="font-display text-[18px] leading-tight tracking-tight text-espresso">
+                        {s.name}
+                      </div>
+                      <div className="mt-0.5 font-editorial text-[13px] text-cinnamon">{s.address}</div>
+                    </div>
+                    <span className="w-[110px] font-mono text-[11px] text-cocoa">{s.hours.replace(/Mon.Sun /, "")}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex justify-between border-t border-crust pt-3.5 font-mono text-[10.5px] uppercase tracking-[0.16em] text-caramel">
+              <span>Three more opening · Đà Nẵng · Hà Nội · 2026</span>
+              <span className="text-espresso">Use my location ↗</span>
+            </div>
+          </div>
         </div>
-      </ScrollReveal>
+      </div>
     </section>
   );
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 type MembershipHandler struct {
@@ -73,12 +74,14 @@ func (h *MembershipHandler) ensureBranchScope(c *gin.Context, target uuid.UUID) 
 }
 
 // ListMembers godoc
-// @Summary      List branch members
-// @Description  List the user IDs assigned to a branch. Admin sees any branch; a branch_manager only their own.
+// @Summary      List branch members (paginated)
+// @Description  Members of a branch. Admin sees any branch; a branch_manager only their own.
 // @Tags         branch
 // @Security     BearerAuth
 // @Produce      json
-// @Param        id   path      string  true  "Branch ID"
+// @Param        id    path      string  true   "Branch ID"
+// @Param        page  query     int     false  "Page (default 1)"
+// @Param        size  query     int     false  "Page size (default 20, max 100)"
 // @Success      200  {object}  dto.BranchMembersResponse
 // @Failure      403  {object}  response.ErrorResponse
 // @Router       /branch/{id}/members [get]
@@ -93,7 +96,8 @@ func (h *MembershipHandler) ListMembers(c *gin.Context) {
 		return
 	}
 
-	userIDs, err := h.svc.ListUsersByBranch(c.Request.Context(), branchID)
+	p := pagination.FromQuery(c)
+	userIDs, total, err := h.svc.ListUsersByBranchPaged(c.Request.Context(), branchID, p)
 	if err != nil {
 		response.Error(c, err)
 		return
@@ -108,7 +112,11 @@ func (h *MembershipHandler) ListMembers(c *gin.Context) {
 	for _, u := range infos {
 		members = append(members, toMemberInfo(u))
 	}
-	response.Success(c, http.StatusOK, dto.BranchMembersResponse{BranchID: branchID, Members: members})
+	response.Success(c, http.StatusOK, dto.BranchMembersResponse{
+		BranchID: branchID,
+		Members:  members,
+		Meta:     pagination.NewMeta(p, total),
+	})
 }
 
 // AssignMember godoc

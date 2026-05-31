@@ -14,13 +14,13 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os/signal"
 	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/octguy/bakerio/backend/internal/auth"
 	"github.com/octguy/bakerio/backend/internal/branch"
-	"github.com/octguy/bakerio/backend/internal/cart"
 	"github.com/octguy/bakerio/backend/internal/notification"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
 	"github.com/octguy/bakerio/backend/internal/platform/database"
@@ -132,14 +132,11 @@ func main() {
 	productModule.Wire(branchModule.BranchService(), branchModule.MembershipService())
 	branchModule.BranchService().SetProductSeeder(productModule.Service())
 
-	// Cart depends on the product catalog (read-only) to validate items + prices.
-	cartModule := cart.New(pool, productModule.Service())
-
 	if err := authModule.RBACService.WarmPermissionCache(ctx); err != nil {
 		logger.Log.Fatal("rbac: failed to warm permission cache", zap.Error(err))
 	}
 
-	seedAdmins(ctx, authModule.Service())
+	seedAdmins(ctx, authModule.Service(), pool)
 
 	// 7. Background workers
 	go outbox.NewWorker(publisher, logger.Log, authOutbox).Run(ctx)
@@ -150,6 +147,34 @@ func main() {
 
 	// 8. HTTP server
 	r := gin.Default()
+
+	// CORS — allow-all (dev/CI). Tighten in prod via env-driven origin list.
+	r.Use(func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept, Origin, X-Requested-With")
+		c.Header("Access-Control-Expose-Headers", "Content-Length, Content-Type")
+		c.Header("Access-Control-Max-Age", "86400")
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+		c.Next()
+	})
+
+	// Liveness — process is up. Used by docker-compose healthcheck + CI wait loop.
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+	// Readiness — dependencies reachable.
+	r.GET("/health/ready", func(c *gin.Context) {
+		if err := pool.Ping(c.Request.Context()); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "down", "error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ready"})
+	})
+
 	v1 := r.Group("/api/v1")
 
 	// Public group
@@ -163,9 +188,8 @@ func main() {
 
 	authModule.RegisterRoutes(public, authed)
 	userModule.RegisterRoutes(authed)
-	branchModule.RegisterRoutes(authed)
-	productModule.RegisterRoutes(authed)
-	cartModule.RegisterRoutes(authed)
+	branchModule.RegisterRoutes(public, authed)
+	productModule.RegisterRoutes(public, authed)
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
