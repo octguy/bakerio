@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useId, useRef } from "react";
+import { useState, useEffect, useId, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getLoyalty } from "@repo/api-client/mock/loyalty";
 import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
-import { getOrderStats, updateMyProfile, changePassword, getAddresses, addAddress, removeAddress, setDefaultAddress } from "@repo/api-client";
-import type { SavedAddress } from "@repo/api-client";
+import { getMyProfile, getOrderStats, updateMyProfile, changePassword, getAddresses, addAddress, removeAddress, setDefaultAddress } from "@repo/api-client";
+import type { Profile, SavedAddress } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 
 export default function ProfilePage() {
@@ -23,6 +23,14 @@ function ProfileContent() {
   const initial = (user?.full_name?.[0] ?? user?.email?.[0] ?? "T").toUpperCase();
   const [displayName, setDisplayName] = useState(user?.display_name || user?.full_name || "Friend");
   const [draftName, setDraftName] = useState(displayName);
+  const [phone, setPhone] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [bio, setBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [draftPhone, setDraftPhone] = useState("");
+  const [draftProfileAddress, setDraftProfileAddress] = useState("");
+  const [draftBio, setDraftBio] = useState("");
+  const [draftAvatarUrl, setDraftAvatarUrl] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [addressOpen, setAddressOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -30,7 +38,7 @@ function ProfileContent() {
   const [newAddress, setNewAddress] = useState("");
   const [newAddressLabel, setNewAddressLabel] = useState("");
   const [isSavingAddress, setIsSavingAddress] = useState(false);
-  const phone = profileUser?.phone?.trim();
+  const [profileError, setProfileError] = useState("");
   const memberSince = formatMemberSince(profileUser?.created_at);
 
   const [loyalty, setLoyalty] = useState<LoyaltyBalance | undefined>(undefined);
@@ -45,9 +53,26 @@ function ProfileContent() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  const applyProfile = useCallback((profile: Profile) => {
+    if (profile.display_name) setDisplayName(profile.display_name);
+    setPhone(profile.phone ?? "");
+    setProfileAddress(profile.address ?? "");
+    setBio(profile.bio ?? "");
+    setAvatarUrl(profile.avatar_url ?? "");
+  }, []);
+
   useEffect(() => {
     let active = true;
     const loadProfileData = async () => {
+      try {
+        const profile = await getMyProfile();
+        if (!active) return;
+        applyProfile(profile);
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to load profile:", err);
+        }
+      }
       try {
         const loy = await getLoyalty();
         if (!active) return;
@@ -68,17 +93,35 @@ function ProfileContent() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [applyProfile]);
+
+  const openEdit = () => {
+    setProfileError("");
+    setDraftName(displayName);
+    setDraftPhone(phone);
+    setDraftProfileAddress(profileAddress);
+    setDraftBio(bio);
+    setDraftAvatarUrl(avatarUrl);
+    setEditOpen(true);
+  };
 
   const saveProfile = async () => {
     const nextName = draftName.trim();
     if (!nextName) return;
+    setProfileError("");
     setIsSavingProfile(true);
     try {
-      await updateMyProfile({ display_name: nextName });
-      setDisplayName(nextName);
+      const updated = await updateMyProfile({
+        display_name: nextName,
+        phone: draftPhone.trim(),
+        address: draftProfileAddress.trim(),
+        bio: draftBio.trim(),
+        avatar_url: draftAvatarUrl.trim(),
+      });
+      applyProfile(updated);
       setEditOpen(false);
     } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Failed to update profile. Please try again.");
       if (process.env.NODE_ENV !== "production") {
         console.error("Failed to update profile:", err);
       }
@@ -168,10 +211,7 @@ function ProfileContent() {
       <div className="mb-2 flex items-center justify-between md:hidden">
         <button
           type="button"
-          onClick={() => {
-            setDraftName(displayName);
-            setEditOpen(true);
-          }}
+          onClick={openEdit}
           className="font-mono text-[11px] font-bold tracking-[0.16em] text-cinnamon"
         >
           EDIT
@@ -189,24 +229,29 @@ function ProfileContent() {
             <div className="hidden md:flex absolute top-3 right-4">
               <button
                 type="button"
-                onClick={() => {
-                  setDraftName(displayName);
-                  setEditOpen(true);
-                }}
+                onClick={openEdit}
                 className="font-mono text-[10px] font-bold tracking-[0.12em] text-cinnamon hover:text-espresso transition-colors cursor-pointer"
               >
                 EDIT
               </button>
             </div>
 
-            <div className="mx-auto flex h-[92px] w-[92px] items-center justify-center rounded-full bg-cinnamon font-display text-[38px] text-white shadow-[0_12px_24px_-6px_rgba(196,91,74,0.4)]">
-              {initial}
+            <div className="mx-auto flex h-[92px] w-[92px] items-center justify-center overflow-hidden rounded-full bg-cinnamon font-display text-[38px] text-white shadow-[0_12px_24px_-6px_rgba(196,91,74,0.4)]">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+              ) : (
+                initial
+              )}
             </div>
             <h1 className="mt-4 font-display text-[30px] leading-none tracking-tight">{displayName}</h1>
             {(memberSince || lifetimeOrders !== undefined) && (
               <div className="mt-1 font-editorial text-[13px] italic text-cinnamon">
                 {[memberSince ? `member since ${memberSince}` : null, lifetimeOrders !== undefined ? `${lifetimeOrders} orders` : null].filter(Boolean).join(" · ")}
               </div>
+            )}
+            {bio && (
+              <p className="mx-auto mt-2 max-w-[34ch] px-4 font-editorial text-[13px] italic leading-snug text-caramel">{bio}</p>
             )}
           </div>
 
@@ -321,23 +366,85 @@ function ProfileContent() {
 
       {editOpen && (
         <Modal title="Edit profile" onClose={() => setEditOpen(false)}>
-          <label htmlFor="profile-name" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-            Display name
-          </label>
-          <input
-            id="profile-name"
-            value={draftName}
-            onChange={(e) => setDraftName(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
-          />
-          <button
-            type="button"
-            onClick={saveProfile}
-            disabled={isSavingProfile || !draftName.trim()}
-            className="bkr-press mt-4 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
-          >
-            {isSavingProfile ? "Saving..." : "Save profile"}
-          </button>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="profile-name" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                Display name
+              </label>
+              <input
+                id="profile-name"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-avatar" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                Avatar URL
+              </label>
+              <input
+                id="profile-avatar"
+                type="url"
+                value={draftAvatarUrl}
+                onChange={(e) => setDraftAvatarUrl(e.target.value)}
+                placeholder="https://…/photo.jpg"
+                className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-phone" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                Phone
+              </label>
+              <input
+                id="profile-phone"
+                type="tel"
+                value={draftPhone}
+                onChange={(e) => setDraftPhone(e.target.value)}
+                placeholder="+84 901 234 567"
+                className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-default-address" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                Address
+              </label>
+              <input
+                id="profile-default-address"
+                value={draftProfileAddress}
+                onChange={(e) => setDraftProfileAddress(e.target.value)}
+                placeholder="Your default address"
+                className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-bio" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                Bio
+              </label>
+              <textarea
+                id="profile-bio"
+                value={draftBio}
+                onChange={(e) => setDraftBio(e.target.value)}
+                rows={3}
+                placeholder="A little about you"
+                className="mt-1 w-full resize-none rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+              />
+            </div>
+
+            {profileError && (
+              <div role="alert" className="rounded-lg bg-cinnamon/10 px-3 py-2 text-[13px] text-cinnamon">
+                {profileError}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={saveProfile}
+              disabled={isSavingProfile || !draftName.trim()}
+              className="bkr-press mt-2 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
+            >
+              {isSavingProfile ? "Saving..." : "Save profile"}
+            </button>
+          </div>
         </Modal>
       )}
 

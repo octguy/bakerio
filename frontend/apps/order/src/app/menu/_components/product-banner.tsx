@@ -122,17 +122,17 @@ const prev = () => {
       type="button"
       onClick={prev}
       aria-label="Previous slide"
-      className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-espresso/70 p-2 text-cream opacity-0 transition-opacity duration-200 hover:bg-espresso group-hover:opacity-100"
+      className="absolute left-4 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-espresso/60 text-cream shadow-md backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-espresso/80 active:scale-95 can-hover:opacity-0 can-hover:group-hover:opacity-100 focus-visible:opacity-100"
     >
-      <ChevronLeft size={20} />
+      <ChevronLeft size={24} />
     </button>
     <button
       type="button"
       onClick={next}
       aria-label="Next slide"
-      className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-espresso/70 p-2 text-cream opacity-0 transition-opacity duration-200 hover:bg-espresso group-hover:opacity-100"
+      className="absolute right-4 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-espresso/60 text-cream shadow-md backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:bg-espresso/80 active:scale-95 can-hover:opacity-0 can-hover:group-hover:opacity-100 focus-visible:opacity-100"
     >
-      <ChevronRight size={20} />
+      <ChevronRight size={24} />
     </button>
 
     {/* Dots indicator */}

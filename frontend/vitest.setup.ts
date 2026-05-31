@@ -8,3 +8,11 @@ const MockIntersectionObserver = class {
 };
 global.IntersectionObserver = MockIntersectionObserver as any;
 
+const MockResizeObserver = class {
+  constructor() {}
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+global.ResizeObserver = MockResizeObserver as any;
+

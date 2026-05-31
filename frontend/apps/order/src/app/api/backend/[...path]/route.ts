@@ -10,6 +10,9 @@ const BODYLESS_METHODS = new Set(["GET", "HEAD"]);
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
   "content-length",
+  // Token is re-injected below as a Bearer header; the backend authenticates via
+  // Authorization, not cookies, so don't forward the raw cookie jar.
+  "cookie",
   "host",
   "keep-alive",
   "proxy-authenticate",
@@ -36,9 +39,18 @@ function forwardedHeaders(req: NextRequest): Headers {
 
 async function proxy(req: NextRequest, context: RouteContext) {
   const { path = [] } = await context.params;
+  const requestHeaders = forwardedHeaders(req);
+  // The JWT lives in an httpOnly `token` cookie (set by /api/auth). The Go
+  // backend authenticates via `Authorization: Bearer`, not cookies, so inject
+  // the bearer here. This keeps the token httpOnly while letting authenticated
+  // client calls (profile, password, …) reach the backend.
+  if (!requestHeaders.has("authorization")) {
+    const token = req.cookies.get("token")?.value;
+    if (token) requestHeaders.set("authorization", `Bearer ${token}`);
+  }
   const res = await fetch(targetUrl(req, path), {
     method: req.method,
-    headers: forwardedHeaders(req),
+    headers: requestHeaders,
     body: BODYLESS_METHODS.has(req.method) ? undefined : await req.arrayBuffer(),
     cache: "no-store",
   });
