@@ -2,9 +2,27 @@ import { getProducts, getCategories, type Product, type Category } from "@repo/a
 import { MenuGrid } from "./_components/menu-grid";
 import { MenuLayoutClient } from "./_components/menu-layout-client";
 import { Link } from "next-view-transitions";
+import { cacheLife } from "next/cache";
 import { Suspense } from "react";
 
 export const unstable_instant = { prefetch: "static" };
+
+// Cache the catalog across navigations so the branch -> menu transition lands on
+// warm data instead of re-suspending into the loading fallback every time. The
+// branch list (app/page.tsx) caches the same way; without this the Suspense
+// fallback flashes on each visit.
+async function getCachedCatalog(): Promise<{
+  products: Product[];
+  categories: Category[];
+}> {
+  "use cache";
+  cacheLife("hours");
+  const [products, categories] = await Promise.all([
+    getProducts(),
+    getCategories(),
+  ]);
+  return { products, categories };
+}
 
 async function MenuCatalog() {
   let products: Product[] = [];
@@ -12,7 +30,7 @@ async function MenuCatalog() {
   let loadError = false;
 
   try {
-    [products, categories] = await Promise.all([getProducts(), getCategories()]);
+    ({ products, categories } = await getCachedCatalog());
   } catch {
     loadError = true;
   }
