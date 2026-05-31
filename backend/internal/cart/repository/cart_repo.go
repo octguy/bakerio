@@ -20,6 +20,11 @@ type CartRepository interface {
 	DeleteItem(ctx context.Context, cartID, productID uuid.UUID) error
 	ListItems(ctx context.Context, cartID uuid.UUID) ([]*domain.CartItem, error)
 	ClearItems(ctx context.Context, cartID uuid.UUID) error
+
+	// By cart-item id (cart_id is in the WHERE clause too, so callers can't
+	// touch items in another user's cart). Both return nil on not-found.
+	SetItemQuantityByID(ctx context.Context, itemID, cartID uuid.UUID, qty int32) (*domain.CartItem, error)
+	DeleteItemByID(ctx context.Context, itemID, cartID uuid.UUID) (bool, error)
 }
 
 type cartRepo struct {
@@ -103,6 +108,35 @@ func (r *cartRepo) ListItems(ctx context.Context, cartID uuid.UUID) ([]*domain.C
 
 func (r *cartRepo) ClearItems(ctx context.Context, cartID uuid.UUID) error {
 	return r.queries(ctx).ClearCartItems(ctx, cartID)
+}
+
+func (r *cartRepo) SetItemQuantityByID(ctx context.Context, itemID, cartID uuid.UUID, qty int32) (*domain.CartItem, error) {
+	row, err := r.queries(ctx).SetCartItemQuantityByID(ctx, cartdb.SetCartItemQuantityByIDParams{
+		ID:       itemID,
+		CartID:   cartID,
+		Quantity: qty,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return toItemEntity(&row), nil
+}
+
+func (r *cartRepo) DeleteItemByID(ctx context.Context, itemID, cartID uuid.UUID) (bool, error) {
+	_, err := r.queries(ctx).DeleteCartItemByID(ctx, cartdb.DeleteCartItemByIDParams{
+		ID:     itemID,
+		CartID: cartID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 func toCartEntity(c *cartdb.CartCart) *domain.Cart {

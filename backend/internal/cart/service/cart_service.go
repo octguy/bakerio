@@ -21,7 +21,8 @@ type Catalog interface {
 type CartService interface {
 	GetCart(ctx context.Context, userID uuid.UUID) (dto.CartResponse, error)
 	AddItem(ctx context.Context, userID uuid.UUID, req dto.AddItemRequest) (dto.CartResponse, error)
-	UpdateItem(ctx context.Context, userID, productID uuid.UUID, quantity int32) (dto.CartResponse, error)
+	UpdateItem(ctx context.Context, userID, itemID uuid.UUID, quantity int32) (dto.CartResponse, error)
+	RemoveItem(ctx context.Context, userID, itemID uuid.UUID) (dto.CartResponse, error)
 	Clear(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -75,7 +76,9 @@ func (s *cartService) AddItem(ctx context.Context, userID uuid.UUID, req dto.Add
 	return s.buildCart(ctx, cart)
 }
 
-func (s *cartService) UpdateItem(ctx context.Context, userID, productID uuid.UUID, quantity int32) (dto.CartResponse, error) {
+// UpdateItem sets the quantity of a single cart item by its item id. The
+// price snapshot is intentionally left alone — only the quantity changes.
+func (s *cartService) UpdateItem(ctx context.Context, userID, itemID uuid.UUID, quantity int32) (dto.CartResponse, error) {
 	cart, err := s.repo.GetCartByUser(ctx, userID)
 	if err != nil {
 		return dto.CartResponse{}, apperrors.Internal("database error", err)
@@ -84,22 +87,31 @@ func (s *cartService) UpdateItem(ctx context.Context, userID, productID uuid.UUI
 		return dto.CartResponse{}, apperrors.NotFound("cart is empty")
 	}
 
-	if quantity == 0 {
-		if err := s.repo.DeleteItem(ctx, cart.ID, productID); err != nil {
-			return dto.CartResponse{}, apperrors.Internal("failed to remove item", err)
-		}
-		return s.buildCart(ctx, cart)
-	}
-
-	product, err := s.activeProduct(ctx, productID)
-	if err != nil {
-		return dto.CartResponse{}, err
-	}
-	item, err := s.repo.SetItemQuantity(ctx, cart.ID, productID, quantity, product.Price)
+	item, err := s.repo.SetItemQuantityByID(ctx, itemID, cart.ID, quantity)
 	if err != nil {
 		return dto.CartResponse{}, apperrors.Internal("failed to update item", err)
 	}
 	if item == nil {
+		return dto.CartResponse{}, apperrors.NotFound("item not in cart")
+	}
+	return s.buildCart(ctx, cart)
+}
+
+// RemoveItem removes a single cart item by its item id.
+func (s *cartService) RemoveItem(ctx context.Context, userID, itemID uuid.UUID) (dto.CartResponse, error) {
+	cart, err := s.repo.GetCartByUser(ctx, userID)
+	if err != nil {
+		return dto.CartResponse{}, apperrors.Internal("database error", err)
+	}
+	if cart == nil {
+		return dto.CartResponse{}, apperrors.NotFound("cart is empty")
+	}
+
+	deleted, err := s.repo.DeleteItemByID(ctx, itemID, cart.ID)
+	if err != nil {
+		return dto.CartResponse{}, apperrors.Internal("failed to remove item", err)
+	}
+	if !deleted {
 		return dto.CartResponse{}, apperrors.NotFound("item not in cart")
 	}
 	return s.buildCart(ctx, cart)
@@ -155,7 +167,7 @@ func (s *cartService) buildCart(ctx context.Context, cart *domain.Cart) (dto.Car
 	resItems := make([]dto.CartItemResponse, 0, len(items))
 	total := decimal.Zero
 	for _, it := range items {
-		ri := dto.CartItemResponse{ProductID: it.ProductID, Quantity: it.Quantity}
+		ri := dto.CartItemResponse{ID: it.ID, ProductID: it.ProductID, Quantity: it.Quantity}
 		if p, ok := products[it.ProductID]; ok {
 			line := p.Price.Mul(decimal.NewFromInt(int64(it.Quantity)))
 			ri.Name = p.Name

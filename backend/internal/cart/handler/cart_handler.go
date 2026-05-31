@@ -24,9 +24,11 @@ func NewCartHandler(svc service.CartService) *CartHandler {
 func (h *CartHandler) RegisterRoutes(protected *gin.RouterGroup) {
 	g := protected.Group("/cart", middleware.RequirePermission("cart:manage:own"))
 	g.GET("", h.GetCart)
-	g.POST("/items", h.AddItem)
-	g.PATCH("/items/:productId", h.UpdateItem)
 	g.DELETE("", h.Clear)
+
+	g.POST("/items", h.AddItem)
+	g.PATCH("/items/:itemId", h.UpdateItem)
+	g.DELETE("/items/:itemId", h.RemoveItem)
 }
 
 func callerID(c *gin.Context) (uuid.UUID, bool) {
@@ -85,26 +87,27 @@ func (h *CartHandler) AddItem(c *gin.Context) {
 }
 
 // UpdateItem godoc
-// @Summary      Set an item's quantity (0 removes it)
+// @Summary      Update an item's quantity
+// @Description  Sets the quantity of a single cart item. Use DELETE to remove.
 // @Tags         cart
 // @Security     BearerAuth
 // @Accept       json
 // @Produce      json
-// @Param        productId  path      string                  true  "Product ID"
-// @Param        request    body      dto.UpdateItemRequest   true  "Quantity"
-// @Success      200        {object}  dto.CartResponse
-// @Failure      404        {object}  response.ErrorResponse
-// @Failure      422        {object}  response.ErrorResponse
-// @Router       /cart/items/{productId} [patch]
+// @Param        itemId   path      string                 true  "Cart item ID"
+// @Param        request  body      dto.UpdateItemRequest  true  "Quantity"
+// @Success      200      {object}  dto.CartResponse
+// @Failure      404      {object}  response.ErrorResponse
+// @Failure      422      {object}  response.ErrorResponse
+// @Router       /cart/items/{itemId} [patch]
 func (h *CartHandler) UpdateItem(c *gin.Context) {
 	userID, ok := callerID(c)
 	if !ok {
 		response.Error(c, apperrors.Unauthorized("caller identity missing"))
 		return
 	}
-	productID, err := uuid.Parse(c.Param("productId"))
+	itemID, err := uuid.Parse(c.Param("itemId"))
 	if err != nil {
-		response.Error(c, apperrors.Validation("invalid product id"))
+		response.Error(c, apperrors.Validation("invalid item id"))
 		return
 	}
 	var req dto.UpdateItemRequest
@@ -112,7 +115,35 @@ func (h *CartHandler) UpdateItem(c *gin.Context) {
 		response.Error(c, apperrors.Validation(err.Error()))
 		return
 	}
-	res, err := h.svc.UpdateItem(c.Request.Context(), userID, productID, req.Quantity)
+	res, err := h.svc.UpdateItem(c.Request.Context(), userID, itemID, req.Quantity)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, http.StatusOK, res)
+}
+
+// RemoveItem godoc
+// @Summary      Remove a single item from the cart
+// @Tags         cart
+// @Security     BearerAuth
+// @Produce      json
+// @Param        itemId  path      string  true  "Cart item ID"
+// @Success      200     {object}  dto.CartResponse
+// @Failure      404     {object}  response.ErrorResponse
+// @Router       /cart/items/{itemId} [delete]
+func (h *CartHandler) RemoveItem(c *gin.Context) {
+	userID, ok := callerID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("caller identity missing"))
+		return
+	}
+	itemID, err := uuid.Parse(c.Param("itemId"))
+	if err != nil {
+		response.Error(c, apperrors.Validation("invalid item id"))
+		return
+	}
+	res, err := h.svc.RemoveItem(c.Request.Context(), userID, itemID)
 	if err != nil {
 		response.Error(c, err)
 		return

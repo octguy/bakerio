@@ -55,6 +55,41 @@ func (q *Queries) DeleteCartItem(ctx context.Context, arg DeleteCartItemParams) 
 	return err
 }
 
+const deleteCartItemByID = `-- name: DeleteCartItemByID :one
+DELETE FROM cart.cart_items
+WHERE id = $1 AND cart_id = $2
+RETURNING id
+`
+
+type DeleteCartItemByIDParams struct {
+	ID     uuid.UUID `json:"id"`
+	CartID uuid.UUID `json:"cart_id"`
+}
+
+func (q *Queries) DeleteCartItemByID(ctx context.Context, arg DeleteCartItemByIDParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteCartItemByID, arg.ID, arg.CartID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getCartByID = `-- name: GetCartByID :one
+SELECT id, user_id, created_at, updated_at FROM cart.carts
+WHERE id = $1
+`
+
+func (q *Queries) GetCartByID(ctx context.Context, id uuid.UUID) (CartCart, error) {
+	row := q.db.QueryRow(ctx, getCartByID, id)
+	var i CartCart
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getCartByUser = `-- name: GetCartByUser :one
 SELECT id, user_id, created_at, updated_at FROM cart.carts
 WHERE user_id = $1
@@ -128,6 +163,35 @@ func (q *Queries) SetCartItemQuantity(ctx context.Context, arg SetCartItemQuanti
 		arg.Quantity,
 		arg.UnitPriceSnap,
 	)
+	var i CartCartItem
+	err := row.Scan(
+		&i.ID,
+		&i.CartID,
+		&i.ProductID,
+		&i.Quantity,
+		&i.UnitPriceSnap,
+		&i.AddedAt,
+	)
+	return i, err
+}
+
+const setCartItemQuantityByID = `-- name: SetCartItemQuantityByID :one
+UPDATE cart.cart_items
+SET quantity = $3,
+    added_at = NOW()
+WHERE id = $1 AND cart_id = $2
+RETURNING id, cart_id, product_id, quantity, unit_price_snap, added_at
+`
+
+type SetCartItemQuantityByIDParams struct {
+	ID       uuid.UUID `json:"id"`
+	CartID   uuid.UUID `json:"cart_id"`
+	Quantity int32     `json:"quantity"`
+}
+
+// Cart-keyed update: cart_id in WHERE prevents touching another user's cart.
+func (q *Queries) SetCartItemQuantityByID(ctx context.Context, arg SetCartItemQuantityByIDParams) (CartCartItem, error) {
+	row := q.db.QueryRow(ctx, setCartItemQuantityByID, arg.ID, arg.CartID, arg.Quantity)
 	var i CartCartItem
 	err := row.Scan(
 		&i.ID,

@@ -1,3 +1,7 @@
+-- name: GetCartByID :one
+SELECT * FROM cart.carts
+WHERE id = $1;
+
 -- name: GetCartByUser :one
 SELECT * FROM cart.carts
 WHERE user_id = $1;
@@ -27,6 +31,19 @@ RETURNING *;
 -- name: DeleteCartItem :exec
 DELETE FROM cart.cart_items
 WHERE cart_id = $1 AND product_id = $2;
+
+-- name: SetCartItemQuantityByID :one
+-- Cart-keyed update: cart_id in WHERE prevents touching another user's cart.
+UPDATE cart.cart_items
+SET quantity = $3,
+    added_at = NOW()
+WHERE id = $1 AND cart_id = $2
+RETURNING *;
+
+-- name: DeleteCartItemByID :one
+DELETE FROM cart.cart_items
+WHERE id = $1 AND cart_id = $2
+RETURNING id;
 
 -- name: ListCartItems :many
 SELECT * FROM cart.cart_items

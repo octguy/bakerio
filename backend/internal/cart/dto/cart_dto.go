@@ -11,11 +11,11 @@ type AddItemRequest struct {
 } // @name AddItemRequest
 
 type UpdateItemRequest struct {
-	// 0 removes the item; 1..99 sets the quantity.
-	Quantity int32 `json:"quantity" binding:"min=0,max=99"`
+	Quantity int32 `json:"quantity" binding:"required,min=1,max=99"`
 } // @name UpdateItemRequest
 
 type CartItemResponse struct {
+	ID        uuid.UUID       `json:"id"`
 	ProductID uuid.UUID       `json:"product_id"`
 	Name      string          `json:"name"`
 	Price     decimal.Decimal `json:"price"`

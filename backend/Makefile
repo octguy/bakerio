@@ -67,6 +67,11 @@ run:
 build:
 	go build -o /dev/null ./...
 
+# Regenerate Swagger docs from handler annotations.
+#   make swagger
+swagger:
+	swag init -g cmd/server/main.go -o docs
+
 # Stop the server (kills whatever listens on SERVER_PORT + the `go run` wrapper).
 # `go run` spawns a compiled child binary; killing only the wrapper leaves it
 # bound to the port, so we kill the port listener directly.
