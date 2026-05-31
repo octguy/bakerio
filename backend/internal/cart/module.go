@@ -10,24 +10,26 @@ import (
 )
 
 // Module owns the (member-only) shopping cart. It depends on a product Catalog
-// to validate items and read current prices.
+// (read-only, one-way downward dep) to validate items and read current prices.
 type Module struct {
-	svc service.CartService
-	h   *handler.CartHandler
+	cartSvc service.CartService
+	cartH   *handler.CartHandler
 }
 
-func New(pool *pgxpool.Pool, catalog service.Catalog) *Module {
-	repo := repository.NewCartRepository(cartdb.New(pool))
-	svc := service.NewCartService(repo, catalog)
-	return &Module{
-		svc: svc,
-		h:   handler.NewCartHandler(svc),
-	}
+type Deps struct {
+	Pool    *pgxpool.Pool
+	Catalog service.Catalog
 }
 
-// Service exposes the cart service for the order module (Stage 3).
-func (m *Module) Service() service.CartService { return m.svc }
+func New(deps Deps) *Module {
+	repo := repository.NewCartRepository(cartdb.New(deps.Pool))
+	svc := service.NewCartService(repo, deps.Catalog)
+	return &Module{cartSvc: svc, cartH: handler.NewCartHandler(svc)}
+}
 
-func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
-	m.h.RegisterRoutes(protected)
+// CartService exposes the cart for the order module (Stage 3) to consume.
+func (m *Module) CartService() service.CartService { return m.cartSvc }
+
+func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
+	m.cartH.RegisterRoutes(protected)
 }

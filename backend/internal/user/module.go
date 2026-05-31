@@ -12,12 +12,10 @@ import (
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
-// Module owns user identity-adjacent concerns: profile and admin user mgmt.
-//
-// Construction is two-stage because auth depends on the profile service
-// (to seed a profile when an account is created), while user_service depends
-// on auth. main.go calls New first, passes ProfileService() into auth, then
-// calls Wire(authSvc) to finish.
+// Module owns user identity-adjacent concerns: profile and admin user
+// management. Construction is two-stage because auth depends on the profile
+// service: main calls New first, hands ProfileService() to auth, then calls
+// Wire once auth + branch are available.
 type Module struct {
 	profileSvc service.ProfileService
 	userDir    branchSvc.UserDirectory
@@ -25,36 +23,36 @@ type Module struct {
 	userH      *handler.UserHandler
 }
 
-func New(pool *pgxpool.Pool, tx *txmanager.TxManager) *Module {
-	repo := repository.NewProfileRepository(usersdb.New(pool))
-	svc := service.NewProfileService(tx, repo)
-	return &Module{
-		profileSvc: svc,
-	}
+type Deps struct {
+	Pool *pgxpool.Pool
+	TX   *txmanager.TxManager
+}
+
+// LateDeps are the cross-module services injected by main after every module
+// has been constructed.
+type LateDeps struct {
+	Auth       authSvc.AuthService
+	RBAC       authSvc.RBACService
+	Membership branchSvc.MembershipService
+	Branch     branchSvc.BranchService
+}
+
+func New(deps Deps) *Module {
+	repo := repository.NewProfileRepository(usersdb.New(deps.Pool))
+	return &Module{profileSvc: service.NewProfileService(deps.TX, repo)}
 }
 
 func (m *Module) ProfileService() service.ProfileService { return m.profileSvc }
-
-// Wire finishes construction once the auth and branch services are available.
-// The own-profile handler is built here too, since enrichment (role + branch)
-// needs the auth and branch services.
-func (m *Module) Wire(
-	auth authSvc.AuthService,
-	rbac authSvc.RBACService,
-	membership branchSvc.MembershipService,
-	branch branchSvc.BranchService,
-) {
-	userSvc := service.NewUserService(m.profileSvc, auth, rbac, membership, branch)
-	m.userH = handler.NewUserHandler(userSvc)
-	m.profileH = handler.NewProfileHandler(userSvc)
-	m.userDir = service.NewUserDirectory(m.profileSvc, auth, rbac)
-}
-
-// UserDirectory exposes the adapter the branch module consumes to enrich its
-// member responses. Available after Wire.
 func (m *Module) UserDirectory() branchSvc.UserDirectory { return m.userDir }
 
-func (m *Module) RegisterRoutes(protected *gin.RouterGroup) {
+func (m *Module) Wire(late LateDeps) {
+	userSvc := service.NewUserService(m.profileSvc, late.Auth, late.RBAC, late.Membership, late.Branch)
+	m.userH = handler.NewUserHandler(userSvc)
+	m.profileH = handler.NewProfileHandler(userSvc)
+	m.userDir = service.NewUserDirectory(m.profileSvc, late.Auth, late.RBAC)
+}
+
+func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
 	m.profileH.RegisterRoutes(protected)
 	m.userH.RegisterRoutes(protected)
 }

@@ -11,12 +11,9 @@ import (
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
-// Module owns the product catalog: categories, products, images, and per-branch
-// availability (branch_products).
-//
-// Construction is two-stage: New builds the self-contained pieces (category +
-// product repos/services); Wire finishes the product handler once the branch
-// services (BranchLister + MembershipService) are available.
+// Module owns the product catalog (categories, products, images) and per-branch
+// availability (branch_products). Two-stage: New builds the catalog side;
+// Wire finishes the product side once the branch module is available.
 type Module struct {
 	tx          *txmanager.TxManager
 	productRepo repository.ProductRepository
@@ -27,29 +24,37 @@ type Module struct {
 	productH   *handler.ProductHandler
 }
 
-func New(pool *pgxpool.Pool, tx *txmanager.TxManager, store service.ObjectStore) *Module {
-	queries := productdb.New(pool)
+type Deps struct {
+	Pool  *pgxpool.Pool
+	TX    *txmanager.TxManager
+	Store service.ObjectStore
+}
 
+type LateDeps struct {
+	BranchLister service.BranchLister
+	Membership   branchSvc.MembershipService
+}
+
+func New(deps Deps) *Module {
+	queries := productdb.New(deps.Pool)
 	catRepo := repository.NewCategoryRepository(queries)
-	catSvc := service.NewCategoryService(tx, catRepo)
-
+	catSvc := service.NewCategoryService(deps.TX, catRepo)
 	return &Module{
-		tx:          tx,
+		tx:          deps.TX,
 		productRepo: repository.NewProductRepository(queries),
-		store:       store,
+		store:       deps.Store,
 		categoryH:   handler.NewCategoryHandler(catSvc),
 	}
 }
 
-// Wire finishes construction once the branch module's services exist.
-func (m *Module) Wire(branchLister service.BranchLister, membership branchSvc.MembershipService) {
-	m.productSvc = service.NewProductService(m.tx, m.productRepo, branchLister, m.store)
-	m.productH = handler.NewProductHandler(m.productSvc, membership)
+func (m *Module) Wire(late LateDeps) {
+	m.productSvc = service.NewProductService(m.tx, m.productRepo, late.BranchLister, m.store)
+	m.productH = handler.NewProductHandler(m.productSvc, late.Membership)
 }
 
-// Service exposes the product service. It satisfies branch.ProductSeeder
-// (SeedBranch), used by the branch module's fan-out on branch creation.
-func (m *Module) Service() service.ProductService { return m.productSvc }
+// ProductService satisfies branch.ProductSeeder (SeedBranch), used by the
+// branch module's fan-out on branch creation.
+func (m *Module) ProductService() service.ProductService { return m.productSvc }
 
 func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
 	m.categoryH.RegisterRoutes(public, protected)
