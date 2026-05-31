@@ -1,10 +1,8 @@
-package domain
+package dto
 
-import (
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
-type Role struct {
+type RoleResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
 	Description *string   `json:"description"`

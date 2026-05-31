@@ -395,6 +395,15 @@ definitions:
       verified:
         type: boolean
     type: object
+  github_com_octguy_bakerio_backend_internal_auth_dto.RoleResponse:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -562,12 +571,6 @@ paths:
             items:
               $ref: '#/definitions/BranchResponse'
             type: array
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Get branch list
       tags:
       - branch
@@ -626,8 +629,6 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Get branch by ID
       tags:
       - branch
@@ -861,8 +862,6 @@ paths:
             items:
               $ref: '#/definitions/CategoryResponse'
             type: array
-      security:
-      - BearerAuth: []
       summary: List all active categories
       tags:
       - categories
@@ -918,8 +917,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/CategoryResponse'
-      security:
-      - BearerAuth: []
       summary: Get category by ID
       tags:
       - categories
@@ -972,8 +969,6 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/ProductListResponse'
-      security:
-      - BearerAuth: []
       summary: List products
       tags:
       - product
@@ -1037,8 +1032,6 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/ErrorResponse'
-      security:
-      - BearerAuth: []
       summary: Get product by ID or slug
       tags:
       - product
@@ -1090,8 +1083,6 @@ paths:
             items:
               $ref: '#/definitions/ProductImageResponse'
             type: array
-      security:
-      - BearerAuth: []
       summary: List product images
       tags:
       - product
@@ -1214,6 +1205,27 @@ paths:
       summary: Update own profile
       tags:
       - profile
+  /rbac/roles:
+    get:
+      description: Returns all roles defined in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_octguy_bakerio_backend_internal_auth_dto.RoleResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all roles
+      tags:
+      - rbac
   /users:
     post:
       consumes:

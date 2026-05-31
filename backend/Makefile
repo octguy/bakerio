@@ -61,6 +61,11 @@ sqlc:
 run:
 	go run ./cmd/server
 
+# Build the server binary (for production or manual execution)
+#   make build
+build:
+	go build ./cmd/server
+
 # Stop the server (kills whatever listens on SERVER_PORT + the `go run` wrapper).
 # `go run` spawns a compiled child binary; killing only the wrapper leaves it
 # bound to the port, so we kill the port listener directly.
