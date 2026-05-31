@@ -189,6 +189,34 @@ func (q *Queries) GetPermissionsByRole(ctx context.Context, name string) ([]stri
 	return items, nil
 }
 
+const getPermissionsByRoleId = `-- name: GetPermissionsByRoleId :many
+SELECT p.id, p.name
+FROM auth.permissions p
+JOIN auth.role_permissions rp ON rp.permission_id = p.id
+WHERE rp.role_id = $1
+ORDER BY p.name
+`
+
+func (q *Queries) GetPermissionsByRoleId(ctx context.Context, roleID uuid.UUID) ([]AuthPermission, error) {
+	rows, err := q.db.Query(ctx, getPermissionsByRoleId, roleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AuthPermission{}
+	for rows.Next() {
+		var i AuthPermission
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPermissionsByUserId = `-- name: GetPermissionsByUserId :many
 SELECT p.id, p.name
 FROM auth.permissions p
@@ -271,4 +299,25 @@ type RemoveRoleByNameParams struct {
 func (q *Queries) RemoveRoleByName(ctx context.Context, arg RemoveRoleByNameParams) error {
 	_, err := q.db.Exec(ctx, removeRoleByName, arg.UserID, arg.Name)
 	return err
+}
+
+const updateRole = `-- name: UpdateRole :one
+UPDATE auth.roles
+SET name        = $2,
+    description = $3
+WHERE id = $1
+RETURNING id, name, description
+`
+
+type UpdateRoleParams struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description *string   `json:"description"`
+}
+
+func (q *Queries) UpdateRole(ctx context.Context, arg UpdateRoleParams) (AuthRole, error) {
+	row := q.db.QueryRow(ctx, updateRole, arg.ID, arg.Name, arg.Description)
+	var i AuthRole
+	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	return i, err
 }

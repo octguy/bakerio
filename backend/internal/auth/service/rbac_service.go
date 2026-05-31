@@ -31,12 +31,16 @@ type RBACService interface {
 	AssignRole(ctx context.Context, userID uuid.UUID, roleName string) error
 	RemoveRole(ctx context.Context, userID uuid.UUID, roleName string) error
 
-	// CreateRole Role + permission management (admin).
+	// Role + permission management (admin).
 	CreateRole(ctx context.Context, name string, description *string) (*domain.Role, error)
-	// UpdatePermissionsForRole AddPermissionsToRole(ctx context.Context, roleName string, permissionNames []string) error
-	// RemovePermissionsFromRole (ctx context.Context, roleName string, permissionNames []string) error
-	UpdatePermissionsForRole(ctx context.Context, roleName string, permissionNames []string) error
+	UpdateRole(ctx context.Context, roleID uuid.UUID, name string, description *string) (*domain.Role, error)
+	UpdatePermissionsForRole(ctx context.Context, roleID uuid.UUID, permissionIds []uuid.UUID) error
+
 	GetAllRoles(ctx context.Context) ([]*domain.Role, error)
+	GetRoleByID(ctx context.Context, roleID uuid.UUID) (*domain.Role, error)
+	GetAllPermissions(ctx context.Context) ([]*domain.Permission, error)
+	GetPermissionByID(ctx context.Context, permissionID uuid.UUID) (*domain.Permission, error)
+	GetPermissionsByRoleID(ctx context.Context, roleID uuid.UUID) ([]*domain.Permission, error)
 }
 
 type rbacService struct {
@@ -53,35 +57,55 @@ func (s *rbacService) GetAllRoles(ctx context.Context) ([]*domain.Role, error) {
 	return roleNames, nil
 }
 
-func (s *rbacService) UpdatePermissionsForRole(ctx context.Context, roleName string, permissionNames []string) error {
-	role, permIDs, err := s.resolveRoleAndPermissions(ctx, roleName, permissionNames)
+func (s *rbacService) UpdatePermissionsForRole(ctx context.Context, roleID uuid.UUID, permissionIds []uuid.UUID) error {
+	role, permIDs, err := s.resolveRoleAndPermissions(ctx, roleID, permissionIds)
 	if err != nil {
 		return err
 	}
 
 	currentPerms, err := s.repo.GetPermissionIdsByRoleId(ctx, role.ID)
 	if err != nil {
+		logger.Log.Error("rbac: failed to read current permissions",
+			zap.String("role_id", role.ID.String()), zap.Error(err))
 		return apperrors.Internal("failed to get current permissions", err)
 	}
 
 	toAdd := utils.Difference(permIDs, currentPerms)
 	toRemove := utils.Difference(currentPerms, permIDs)
 
+	if len(toAdd) == 0 && len(toRemove) == 0 {
+		logger.Log.Info("rbac: role permissions unchanged",
+			zap.String("role", role.Name), zap.String("role_id", role.ID.String()))
+		return nil
+	}
+
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		err = s.repo.AddPermissionsForRole(txCtx, role.ID, toAdd)
-		if err != nil {
+		if err := s.repo.AddPermissionsForRole(txCtx, role.ID, toAdd); err != nil {
+			logger.Log.Error("rbac: add permissions failed",
+				zap.String("role_id", role.ID.String()),
+				zap.Int("count", len(toAdd)), zap.Error(err))
 			return apperrors.Internal("failed to add permissions", err)
 		}
 
-		err = s.repo.RemovePermissionsForRole(txCtx, role.ID, toRemove)
-		if err != nil {
+		if err := s.repo.RemovePermissionsForRole(txCtx, role.ID, toRemove); err != nil {
+			logger.Log.Error("rbac: remove permissions failed",
+				zap.String("role_id", role.ID.String()),
+				zap.Int("count", len(toRemove)), zap.Error(err))
 			return apperrors.Internal("failed to remove permissions", err)
 		}
 
-		s.invalidateRoleCache(ctx, roleName)
+		s.invalidateRoleCache(ctx, roleID)
 		return nil
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	logger.Log.Info("rbac: role permissions updated",
+		zap.String("role", role.Name),
+		zap.String("role_id", role.ID.String()),
+		zap.Int("added", len(toAdd)),
+		zap.Int("removed", len(toRemove)))
+	return nil
 }
 
 func NewRBACService(repo repository.RBACRepository, redis *cache.Client, tx *txmanager.TxManager) RBACService {
@@ -168,16 +192,24 @@ func (s *rbacService) WarmPermissionCache(ctx context.Context) error {
 
 func (s *rbacService) AssignRole(ctx context.Context, userID uuid.UUID, roleName string) error {
 	if err := s.repo.AssignRole(ctx, userID, roleName); err != nil {
+		logger.Log.Error("rbac: assign role failed",
+			zap.String("user_id", userID.String()), zap.String("role", roleName), zap.Error(err))
 		return err
 	}
+	logger.Log.Info("rbac: role assigned",
+		zap.String("user_id", userID.String()), zap.String("role", roleName))
 	return nil
 }
 
 func (s *rbacService) RemoveRole(ctx context.Context, userID uuid.UUID, roleName string) error {
 	if err := s.repo.RemoveRole(ctx, userID, roleName); err != nil {
+		logger.Log.Error("rbac: remove role failed",
+			zap.String("user_id", userID.String()), zap.String("role", roleName), zap.Error(err))
 		return err
 	}
 	_ = s.redis.Del(ctx, permCachePrefix+roleName)
+	logger.Log.Info("rbac: role removed",
+		zap.String("user_id", userID.String()), zap.String("role", roleName))
 	return nil
 }
 
@@ -194,8 +226,11 @@ func (s *rbacService) CreateRole(ctx context.Context, name string, description *
 
 	role, err := s.repo.AddRole(ctx, name, description)
 	if err != nil {
+		logger.Log.Error("rbac: create role failed", zap.String("name", name), zap.Error(err))
 		return nil, apperrors.Internal("failed to create role", err)
 	}
+	logger.Log.Info("rbac: role created",
+		zap.String("role_id", role.ID.String()), zap.String("name", role.Name))
 	return role, nil
 }
 
@@ -227,40 +262,133 @@ func (s *rbacService) CreateRole(ctx context.Context, name string, description *
 //	return nil
 //}
 
-// resolveRoleAndPermissions looks up the role by name (404 if missing) and
-// every permission by name (404 if any are missing), returning their UUIDs.
-func (s *rbacService) resolveRoleAndPermissions(ctx context.Context, roleName string, permissionNames []string) (*domain.Role, []uuid.UUID, error) {
-	role, err := s.repo.GetRoleByName(ctx, roleName)
+// resolveRoleAndPermissions looks up the role by id (404 if missing) and
+// every permission by id (404 if any are missing), return successfully only if all exist.
+// Returns the role and the list of permission IDs (which may be empty if no permissions were requested).
+func (s *rbacService) resolveRoleAndPermissions(ctx context.Context, roleId uuid.UUID, permissionIds []uuid.UUID) (*domain.Role, []uuid.UUID, error) {
+	role, err := s.repo.GetRoleById(ctx, roleId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil, apperrors.NotFound("role not found: " + roleName)
+			return nil, nil, apperrors.NotFound("role not found with id: " + roleId.String())
 		}
 		return nil, nil, apperrors.Internal("database error", err)
 	}
 
-	if len(permissionNames) == 0 {
+	if len(permissionIds) == 0 {
 		return role, nil, nil
 	}
 
-	ids := make([]uuid.UUID, 0, len(permissionNames))
-	for _, name := range permissionNames {
-		p, err := s.repo.GetPermissionByName(ctx, name)
+	for _, permId := range permissionIds {
+		_, err := s.repo.GetPermissionById(ctx, permId)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, nil, apperrors.NotFound("permission not found: " + name)
+				return nil, nil, apperrors.NotFound("permission not found with id: " + permId.String())
 			}
 			return nil, nil, apperrors.Internal("database error", err)
 		}
-		ids = append(ids, p.ID)
 	}
-	return role, ids, nil
+	return role, permissionIds, nil
 }
 
 // invalidateRoleCache drops the cached permission list for the role so the next
 // resolve call rebuilds it from the DB.
-func (s *rbacService) invalidateRoleCache(ctx context.Context, roleName string) {
-	if err := s.redis.Del(ctx, permCachePrefix+roleName); err != nil {
-		logger.Log.Warn("rbac: failed to invalidate role cache",
-			zap.String("role", roleName), zap.Error(err))
+func (s *rbacService) invalidateRoleCache(ctx context.Context, roleId uuid.UUID) {
+	role, err := s.repo.GetRoleById(ctx, roleId)
+	if err != nil {
+		logger.Log.Warn("rbac: failed to invalidate role", zap.String("role", roleId.String()))
+		return
 	}
+
+	if err := s.redis.Del(ctx, permCachePrefix+role.Name); err != nil {
+		logger.Log.Warn("rbac: failed to invalidate role cache",
+			zap.String("role", role.Name), zap.Error(err))
+	}
+}
+
+// UpdateRole renames / re-describes a role by ID. Returns Conflict if the new
+// name is already used by another role; NotFound if the role doesn't exist.
+func (s *rbacService) UpdateRole(ctx context.Context, roleID uuid.UUID, name string, description *string) (*domain.Role, error) {
+	current, err := s.repo.GetRoleById(ctx, roleID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperrors.NotFound("role not found")
+		}
+		return nil, apperrors.Internal("database error", err)
+	}
+
+	// If the name is changing, make sure no other role uses it.
+	if name != current.Name {
+		other, err := s.repo.GetRoleByName(ctx, name)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperrors.Internal("database error", err)
+		}
+		if other != nil {
+			return nil, apperrors.Conflict("role name already in use")
+		}
+	}
+
+	updated, err := s.repo.UpdateRole(ctx, roleID, name, description)
+	if err != nil {
+		logger.Log.Error("rbac: update role failed",
+			zap.String("role_id", roleID.String()), zap.Error(err))
+		return nil, apperrors.Internal("failed to update role", err)
+	}
+
+	// If the name actually changed, the cache key was keyed by the *old* name.
+	if updated.Name != current.Name {
+		if err := s.redis.Del(ctx, permCachePrefix+current.Name); err != nil {
+			logger.Log.Warn("rbac: failed to invalidate old role cache",
+				zap.String("role", current.Name), zap.Error(err))
+		}
+	}
+	logger.Log.Info("rbac: role updated",
+		zap.String("role_id", updated.ID.String()),
+		zap.String("old_name", current.Name),
+		zap.String("new_name", updated.Name))
+	return updated, nil
+}
+
+func (s *rbacService) GetRoleByID(ctx context.Context, roleID uuid.UUID) (*domain.Role, error) {
+	role, err := s.repo.GetRoleById(ctx, roleID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperrors.NotFound("role not found")
+		}
+		return nil, apperrors.Internal("database error", err)
+	}
+	return role, nil
+}
+
+func (s *rbacService) GetAllPermissions(ctx context.Context) ([]*domain.Permission, error) {
+	perms, err := s.repo.GetAllPermissions(ctx)
+	if err != nil {
+		return nil, apperrors.Internal("failed to list permissions", err)
+	}
+	return perms, nil
+}
+
+func (s *rbacService) GetPermissionByID(ctx context.Context, permissionID uuid.UUID) (*domain.Permission, error) {
+	perm, err := s.repo.GetPermissionById(ctx, permissionID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperrors.NotFound("permission not found")
+		}
+		return nil, apperrors.Internal("database error", err)
+	}
+	return perm, nil
+}
+
+func (s *rbacService) GetPermissionsByRoleID(ctx context.Context, roleID uuid.UUID) ([]*domain.Permission, error) {
+	// 404 if the role doesn't exist, rather than silently returning an empty list.
+	if _, err := s.repo.GetRoleById(ctx, roleID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperrors.NotFound("role not found")
+		}
+		return nil, apperrors.Internal("database error", err)
+	}
+	perms, err := s.repo.GetPermissionsByRoleId(ctx, roleID)
+	if err != nil {
+		return nil, apperrors.Internal("failed to list role permissions", err)
+	}
+	return perms, nil
 }

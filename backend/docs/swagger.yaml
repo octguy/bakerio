@@ -125,6 +125,16 @@ definitions:
     - name
     - price
     type: object
+  CreateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 50
+        type: string
+    required:
+    - name
+    type: object
   CreateUserRequest:
     properties:
       branch_id:
@@ -196,6 +206,13 @@ definitions:
           type: string
         type: array
       user_id:
+        type: string
+    type: object
+  PermissionResponse:
+    properties:
+      id:
+        type: string
+      name:
         type: string
     type: object
   ProductImageResponse:
@@ -296,6 +313,15 @@ definitions:
       id:
         type: string
     type: object
+  RoleResponse:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
   SetAvailabilityRequest:
     properties:
       is_active:
@@ -368,6 +394,25 @@ definitions:
       phone:
         type: string
     type: object
+  UpdateRolePermissionsRequest:
+    properties:
+      permission_ids:
+        items:
+          type: string
+        type: array
+    required:
+    - permission_ids
+    type: object
+  UpdateRoleRequest:
+    properties:
+      description:
+        type: string
+      name:
+        maxLength: 50
+        type: string
+    required:
+    - name
+    type: object
   UpdateStatusRequest:
     properties:
       status:
@@ -394,15 +439,6 @@ definitions:
         type: string
       verified:
         type: boolean
-    type: object
-  github_com_octguy_bakerio_backend_internal_auth_dto.RoleResponse:
-    properties:
-      description:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
     type: object
 host: localhost:8080
 info:
@@ -947,6 +983,50 @@ paths:
       summary: Update a category
       tags:
       - categories
+  /permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/PermissionResponse'
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all permissions
+      tags:
+      - rbac
+  /permissions/{id}:
+    get:
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PermissionResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get permission details by ID
+      tags:
+      - rbac
   /products:
     get:
       parameters:
@@ -1205,9 +1285,8 @@ paths:
       summary: Update own profile
       tags:
       - profile
-  /rbac/roles:
+  /roles:
     get:
-      description: Returns all roles defined in the system
       produces:
       - application/json
       responses:
@@ -1215,15 +1294,169 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_octguy_bakerio_backend_internal_auth_dto.RoleResponse'
+              $ref: '#/definitions/RoleResponse'
             type: array
-        "401":
-          description: Unauthorized
+        "403":
+          description: Forbidden
           schema:
             $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
       summary: List all roles
+      tags:
+      - rbac
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CreateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/RoleResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new role
+      tags:
+      - rbac
+  /roles/{id}:
+    get:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RoleResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get role details by ID
+      tags:
+      - rbac
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/RoleResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an existing role
+      tags:
+      - rbac
+  /roles/{id}/permissions:
+    get:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/PermissionResponse'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get all permissions assigned to a role
+      tags:
+      - rbac
+    put:
+      consumes:
+      - application/json
+      description: Replaces the role's permission set with the provided list. Send
+        the full desired set (PUT semantics).
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Desired permission IDs
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateRolePermissionsRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update the set of permissions assigned to a role
       tags:
       - rbac
   /users:

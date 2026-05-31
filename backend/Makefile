@@ -61,10 +61,11 @@ sqlc:
 run:
 	go run ./cmd/server
 
-# Build the server binary (for production or manual execution)
+# Compile-check the whole project without producing a binary.
+# Useful as a quick "does it build?" gate before running.
 #   make build
 build:
-	go build ./cmd/server
+	go build -o /dev/null ./...
 
 # Stop the server (kills whatever listens on SERVER_PORT + the `go run` wrapper).
 # `go run` spawns a compiled child binary; killing only the wrapper leaves it

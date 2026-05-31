@@ -12,6 +12,7 @@ import (
 
 type RBACRepository interface {
 	AddRole(ctx context.Context, roleName string, description *string) (*domain.Role, error)
+	UpdateRole(ctx context.Context, roleID uuid.UUID, name string, description *string) (*domain.Role, error)
 
 	GetRoleById(ctx context.Context, roleID uuid.UUID) (*domain.Role, error)
 	GetRoleByName(ctx context.Context, name string) (*domain.Role, error)
@@ -19,6 +20,7 @@ type RBACRepository interface {
 	GetPermissionById(ctx context.Context, permissionID uuid.UUID) (*domain.Permission, error)
 	GetPermissionByName(ctx context.Context, name string) (*domain.Permission, error)
 	GetPermissionsByUser(ctx context.Context, userID uuid.UUID) ([]*domain.Permission, error)
+	GetPermissionsByRoleId(ctx context.Context, roleID uuid.UUID) ([]*domain.Permission, error)
 	GetPermissionIdsByRoleId(ctx context.Context, roleID uuid.UUID) ([]uuid.UUID, error)
 	GetAllPermissions(ctx context.Context) ([]*domain.Permission, error)
 
@@ -130,9 +132,38 @@ func (r *rbacRepo) GetRoleById(ctx context.Context, roleID uuid.UUID) (*domain.R
 		return nil, err
 	}
 	return &domain.Role{
-		ID:   row.ID,
-		Name: row.Name,
+		ID:          row.ID,
+		Name:        row.Name,
+		Description: row.Description,
 	}, nil
+}
+
+func (r *rbacRepo) UpdateRole(ctx context.Context, roleID uuid.UUID, name string, description *string) (*domain.Role, error) {
+	row, err := r.queries(ctx).UpdateRole(ctx, authdb.UpdateRoleParams{
+		ID:          roleID,
+		Name:        name,
+		Description: description,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &domain.Role{
+		ID:          row.ID,
+		Name:        row.Name,
+		Description: row.Description,
+	}, nil
+}
+
+func (r *rbacRepo) GetPermissionsByRoleId(ctx context.Context, roleID uuid.UUID) ([]*domain.Permission, error) {
+	rows, err := r.queries(ctx).GetPermissionsByRoleId(ctx, roleID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.Permission, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, &domain.Permission{ID: row.ID, Name: row.Name})
+	}
+	return out, nil
 }
 
 func (r *rbacRepo) GetPermissionById(ctx context.Context, permissionID uuid.UUID) (*domain.Permission, error) {

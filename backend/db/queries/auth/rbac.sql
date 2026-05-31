@@ -65,3 +65,17 @@ WHERE rp.role_id = $1;
 
 -- name: GetAllPermissions :many
 SELECT id, name FROM auth.permissions;
+
+-- name: UpdateRole :one
+UPDATE auth.roles
+SET name        = $2,
+    description = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: GetPermissionsByRoleId :many
+SELECT p.id, p.name
+FROM auth.permissions p
+JOIN auth.role_permissions rp ON rp.permission_id = p.id
+WHERE rp.role_id = $1
+ORDER BY p.name;
