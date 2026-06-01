@@ -6,7 +6,13 @@ import { Link } from "next-view-transitions";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { useSearchParams } from "next/navigation";
 import { Croissant, ChevronLeft, ChevronRight } from "lucide-react";
-import type { Product, Category } from "@repo/api-client";
+import {
+  getProductsPage,
+  getProduct,
+  type Product,
+  type Category,
+  type PaginatedResponse,
+} from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import { useCartStore } from "@/store/cart";
 
@@ -47,10 +53,17 @@ function getProductPrice(product: Product) {
 export function MenuGrid({
   products,
   categories,
+  initialPage,
+  pageSize,
 }: {
   products: Product[];
   categories: Category[];
+  initialPage: PaginatedResponse<Product>;
+  pageSize: number;
 }) {
+  const [productsPage, setProductsPage] = useState(initialPage);
+  const [isPageLoading, setIsPageLoading] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"popular" | "priceLtoH" | "priceHtoL" | "nameAtoZ">("popular");
@@ -98,6 +111,7 @@ export function MenuGrid({
     categoryId: string,
   ) => {
     setActiveCategory(categoryId);
+    loadPage(1, categoryId);
 
     const button = e.currentTarget;
     const container = scrollRef.current;
@@ -133,54 +147,87 @@ export function MenuGrid({
     const slug = searchParams.get("add-to-cart");
     if (!slug) return;
 
-    const product = products.find((p) => p.slug === slug);
-    if (!product) return;
+    let cancelled = false;
+    const addSlugToCart = async () => {
+      const product = products.find((p) => p.slug === slug) ?? await getProduct(slug);
+      if (cancelled || !product) return;
 
-    const price = getProductPrice(product);
+      const price = getProductPrice(product);
 
-    addItem({
-      product: {
-        id: product.id,
-        name: product.name,
-        slug: product.slug,
-        description: "",
-        basePrice: price,
-        image: "",
-        category: getProductCategoryId(product),
-        options: [],
-      },
-      choices: [],
-      quantity: 1,
-      unitPrice: price,
-    });
+      addItem({
+        product: {
+          id: product.id,
+          name: product.name,
+          slug: product.slug,
+          description: "",
+          basePrice: price,
+          image: "",
+          category: getProductCategoryId(product),
+          options: [],
+        },
+        choices: [],
+        quantity: 1,
+        unitPrice: price,
+      });
 
-    // Clean query param from URL
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete("add-to-cart");
-    const queryStr = params.toString();
-    const cleanPath = queryStr ? `/menu?${queryStr}` : "/menu";
-    window.history.replaceState(null, "", cleanPath);
+      // Clean query param from URL
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("add-to-cart");
+      const queryStr = params.toString();
+      const cleanPath = queryStr ? `/menu?${queryStr}` : "/menu";
+      window.history.replaceState(null, "", cleanPath);
 
-    // Transition user to cart
-    if (window.matchMedia(DESKTOP_CART_MEDIA_QUERY).matches) {
-      const cartState = useCartStore.getState?.();
-      if (cartState?.setCartOpen) {
-        cartState.setCartOpen(true);
+      // Transition user to cart
+      if (window.matchMedia(DESKTOP_CART_MEDIA_QUERY).matches) {
+        const cartState = useCartStore.getState?.();
+        if (cartState?.setCartOpen) {
+          cartState.setCartOpen(true);
+        } else {
+          router.push("/cart");
+        }
       } else {
         router.push("/cart");
       }
-    } else {
-      router.push("/cart");
-    }
+    };
+    addSlugToCart();
+    return () => {
+      cancelled = true;
+    };
   }, [searchParams, products, addItem, router]);
   const totalCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = items.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0,
   );
+  const page = productsPage.page;
+  const totalPages = productsPage.total_pages;
+  const total = productsPage.total;
+  const pageProducts = productsPage.items;
+  const hasPreviousPage = page > 1;
+  const hasNextPage = page < totalPages;
   const normalizedSearch = search.trim().toLowerCase();
 
-  const filteredAndSorted = [...products]
+  const loadPage = async (nextPage: number, category = activeCategory) => {
+    if (nextPage < 1 || nextPage > totalPages || (nextPage === page && category === activeCategory)) return;
+    setIsPageLoading(true);
+    setPageError(null);
+    try {
+      const categorySlug = categories.find((cat) => cat.id === category)?.slug ?? category;
+      const nextProductsPage = await getProductsPage({
+        category: category === "all" ? undefined : categorySlug,
+        page: nextPage,
+        size: pageSize,
+      });
+      setProductsPage(nextProductsPage);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setPageError("Could not load more bakes. Please retry.");
+    } finally {
+      setIsPageLoading(false);
+    }
+  };
+
+  const filteredAndSorted = [...pageProducts]
     .filter((product) => {
       if (!normalizedSearch) return true;
       return [
@@ -476,7 +523,7 @@ export function MenuGrid({
       <div className="mb-3 flex items-end justify-between gap-3 md:mb-4">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">
-            counter map
+            Page {page} of {Math.max(totalPages, 1)} · {total} bakes
           </div>
           <h2 className="font-display text-[26px] leading-none tracking-tight text-espresso md:text-[34px]">
             From the counter
@@ -486,7 +533,13 @@ export function MenuGrid({
       </div>
 
       {/* Product grid */}
-      <div className="grid grid-cols-1 gap-3 pb-16 min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+      {pageError && (
+        <div role="alert" className="mb-3 rounded-2xl border border-sienna/30 bg-sienna/10 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-sienna">
+          {pageError}
+        </div>
+      )}
+
+      <div className={`grid grid-cols-1 gap-3 pb-16 transition-opacity min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 ${isPageLoading ? "opacity-55" : "opacity-100"}`}>
         {filteredAndSorted.map((product) => {
           const price = getProductPrice(product);
           const handleAdd = () => {
@@ -519,7 +572,7 @@ export function MenuGrid({
                 >
                   <div className="flex h-full w-full items-center justify-center transition-transform duration-500 group-hover:rotate-[-6deg] group-hover:scale-110">
                     <Croissant
-                      className="text-golden drop-shadow-[0_18px_24px_rgba(180,114,42,0.25)]"
+                      className="text-golden"
                       size={44}
                       aria-hidden="true"
                     />
@@ -564,6 +617,47 @@ export function MenuGrid({
             setPriceFilter("all");
           }}
         />
+      )}
+
+      {totalPages > 1 && (
+        <nav
+          aria-label="Menu pagination"
+          className="mb-16 flex items-center justify-between gap-3 rounded-[1.5rem] border border-crust-deep bg-white px-4 py-3 shadow-[0_16px_36px_-30px_rgba(44,24,16,0.85)]"
+        >
+          <Link
+            href="/menu"
+            onClick={(event) => {
+              event.preventDefault();
+              loadPage(page - 1);
+            }}
+            aria-disabled={!hasPreviousPage}
+            className={`rounded-full px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] transition-colors ${
+              hasPreviousPage
+                ? "border border-espresso text-espresso hover:bg-espresso hover:text-white"
+                : "pointer-events-none border border-crust text-caramel opacity-45"
+            }`}
+          >
+            Prev
+          </Link>
+          <span className="text-center font-editorial text-[13px] italic text-caramel">
+            Showing {(page - 1) * pageSize + 1}-{(page - 1) * pageSize + pageProducts.length} of {total}
+          </span>
+          <Link
+            href="/menu"
+            onClick={(event) => {
+              event.preventDefault();
+              loadPage(page + 1);
+            }}
+            aria-disabled={!hasNextPage}
+            className={`rounded-full px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] transition-colors ${
+              hasNextPage
+                ? "border border-espresso bg-espresso text-white hover:bg-cinnamon"
+                : "pointer-events-none border border-crust text-caramel opacity-45"
+            }`}
+          >
+            Next
+          </Link>
+        </nav>
       )}
 
       {/* Floating cart bar */}

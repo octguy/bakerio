@@ -13,6 +13,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { useOrderDetailsStore } from "@/store/orderDetails";
 import { formatVND } from "@/lib/format";
+import Loading from "./loading";
 
 const checkoutSchema = z.object({
   items: z.array(z.any()).min(1, "Cart cannot be empty"),
@@ -99,7 +100,7 @@ function CheckoutPageInner() {
   }, [subtotal]);
 
 
-  if (!hydrated) return null;
+  if (!hydrated) return <Loading />;
 
   if (ordered) {
     return (
@@ -124,6 +125,26 @@ function CheckoutPageInner() {
   }
 
   if (items.length === 0) return null;
+
+  if (!branchId) {
+    return (
+      <main className="mx-auto max-w-md px-6 pt-16 pb-32 text-center">
+        <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">Pickup branch</div>
+        <h1 className="font-display text-[36px] leading-[0.95] tracking-tight text-espresso">
+          Choose where <span className="font-editorial text-cinnamon">we bake.</span>
+        </h1>
+        <p className="mx-auto mt-3 max-w-xs font-editorial text-[14px] italic text-caramel">
+          Select a branch before checkout so pickup time and availability stay accurate.
+        </p>
+        <Link
+          href="/"
+          className="bkr-press mt-8 inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream"
+        >
+          Select branch <span aria-hidden="true">→</span>
+        </Link>
+      </main>
+    );
+  }
 
   const crumbsDiscount = useCrumbs ? maxDiscount : 0;
   const potentialCrumbsNeeded = useCrumbs ? Math.ceil(maxDiscount / 50) : 0;

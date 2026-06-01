@@ -163,6 +163,14 @@ export interface ApiResponse<T> {
   error?: { code: string; message: string };
 }
 
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
+  total_pages: number;
+}
+
 export interface GetOrdersOptions {
   page?: number;
   size?: number;

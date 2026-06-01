@@ -2,18 +2,30 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import type { Product, Category } from "@repo/api-client";
+import {
+  getProductsPage,
+  type Product,
+  type Category,
+  type PaginatedResponse,
+} from "@repo/api-client";
 import { getOrderUrl } from "@/lib/public-config";
 
 const PRODUCT_IMAGE = "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80";
 
 interface MenuContentProps {
-  initialProducts: Product[];
   initialCategories: Category[];
+  initialPage: PaginatedResponse<Product>;
+  pageSize: number;
 }
 
-export default function MenuContent({ initialProducts, initialCategories }: MenuContentProps) {
-  const [productsList] = useState<Product[]>(initialProducts);
+export default function MenuContent({
+  initialCategories,
+  initialPage,
+  pageSize,
+}: MenuContentProps) {
+  const [productsPage, setProductsPage] = useState(initialPage);
+  const [isPageLoading, setIsPageLoading] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
   const [categoriesList] = useState<Category[]>(initialCategories);
   const [active, setActive] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,6 +33,32 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
   const loadMoreRef = useRef<HTMLDivElement>(null);
   
   const orderUrl = getOrderUrl();
+  const page = productsPage.page;
+  const totalPages = productsPage.total_pages;
+  const total = productsPage.total;
+  const productsList = productsPage.items;
+  const hasPreviousPage = page > 1;
+  const hasNextPage = page < totalPages;
+
+  const loadPage = async (nextPage: number, categorySlug = active) => {
+    if (nextPage < 1 || nextPage > totalPages || (nextPage === page && categorySlug === active)) return;
+    setIsPageLoading(true);
+    setPageError(null);
+    try {
+      const nextProductsPage = await getProductsPage({
+        category: categorySlug === "All" ? undefined : categorySlug,
+        page: nextPage,
+        size: pageSize,
+      });
+      setProductsPage(nextProductsPage);
+      setVisibleCount(12);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      setPageError("Could not load more menu items. Please retry.");
+    } finally {
+      setIsPageLoading(false);
+    }
+  };
 
   const filtered = productsList.filter((p) => {
     const pCategory = categoriesList.find((c) => c.id === p.category_id);
@@ -57,8 +95,9 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
   return (
     <section className="px-6 pb-24 lg:px-14 bg-cream">
       <div className="mx-auto max-w-[1400px]">
-        <div className="mb-6 flex items-center justify-end border-b border-crust pb-3 font-mono text-[10.5px] uppercase tracking-[0.16em] text-caramel">
-          Showing {filtered.length} of {productsList.length}
+        <div className="mb-6 flex items-center justify-between gap-4 border-b border-crust pb-3 font-mono text-[10.5px] uppercase tracking-[0.16em] text-caramel">
+          <span>Page {page} of {Math.max(totalPages, 1)}</span>
+          <span>Showing {filtered.length} of {total || productsList.length}</span>
         </div>
 
         <div className="grid grid-cols-1 gap-9 md:grid-cols-[220px_1fr] items-start">
@@ -84,6 +123,7 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
             onClick={() => {
               setActive("All");
               setVisibleCount(12);
+              loadPage(1, "All");
             }}
             className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
               active === "All" ? "bg-butter font-semibold text-espresso" : "text-cocoa hover:bg-vanilla"
@@ -107,6 +147,7 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
                 onClick={() => {
                   setActive(c.slug);
                   setVisibleCount(12);
+                  loadPage(1, c.slug);
                 }}
                 className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
                   isActive ? "bg-butter font-semibold text-espresso" : "text-cocoa hover:bg-vanilla"
@@ -133,7 +174,12 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
 
           {/* Product grid */}
           <div className="flex flex-col gap-6 w-full">
-            <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4">
+            {pageError && (
+              <div role="alert" className="rounded-md border border-sienna/30 bg-sienna/10 p-3 font-mono text-[10px] uppercase tracking-[0.14em] text-sienna">
+                {pageError}
+              </div>
+            )}
+            <div className={`grid grid-cols-2 gap-3.5 transition-opacity sm:grid-cols-3 lg:grid-cols-4 ${isPageLoading ? "opacity-55" : "opacity-100"}`}>
               {visibleProducts.map((p, i) => (
                 <article
                 key={p.slug}
@@ -177,6 +223,44 @@ export default function MenuContent({ initialProducts, initialCategories }: Menu
               <div ref={loadMoreRef} className="h-10 w-full flex items-center justify-center">
                 <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">Loading more...</span>
               </div>
+            )}
+
+            {totalPages > 1 && (
+              <nav aria-label="Menu pagination" className="mt-4 flex items-center justify-between gap-3 border-t border-crust pt-5">
+                <a
+                  href="/menu"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    loadPage(page - 1);
+                  }}
+                  aria-disabled={!hasPreviousPage}
+                  className={`rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                    hasPreviousPage
+                      ? "border border-espresso text-espresso hover:bg-espresso hover:text-white"
+                      : "pointer-events-none border border-crust text-caramel opacity-45"
+                  }`}
+                >
+                  Prev
+                </a>
+                <span className="font-editorial text-[13px] italic text-caramel">
+                  {(page - 1) * pageSize + 1}-{(page - 1) * pageSize + productsList.length} of {total}
+                </span>
+                <a
+                  href="/menu"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    loadPage(page + 1);
+                  }}
+                  aria-disabled={!hasNextPage}
+                  className={`rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                    hasNextPage
+                      ? "border border-espresso bg-espresso text-white hover:bg-cinnamon"
+                      : "pointer-events-none border border-crust text-caramel opacity-45"
+                  }`}
+                >
+                  Next
+                </a>
+              </nav>
             )}
           </div>
         </div>

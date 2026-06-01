@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 import { useTransitionRouter } from "next-view-transitions";
 import { useCartStore } from "@/store/cart";
@@ -22,6 +22,7 @@ const regionTags: Record<string, string> = {
 export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLabel }: Props) {
   const router = useTransitionRouter();
   const selectBranch = useCartStore((s) => s.selectBranch);
+  const [isTransitionSource, setIsTransitionSource] = useState(false);
   // Exactly one card matches the store, so only the tapped card claims the
   // shared morph name — no duplicate view-transition-name across the page.
   const isMorphing = useCartStore((s) => s.selectedBranch?.id === branch.id);
@@ -39,9 +40,10 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
     // flushSync so this card carries `selected-branch` in the DOM *before* the
     // view-transition snapshot is taken; then navigate (the menu header shares
     // the same name, so the snapshot morphs card -> header).
-    flushSync(() =>
-      selectBranch({ id: branch.id, name: branch.name, address: branch.address, dist: distanceLabel, eta: etaLabel }),
-    );
+    flushSync(() => {
+      setIsTransitionSource(true);
+      selectBranch({ id: branch.id, name: branch.name, address: branch.address, dist: distanceLabel, eta: etaLabel });
+    });
     router.prefetch("/menu");
     router.push("/menu");
   };
@@ -52,7 +54,7 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
       onPointerEnter={() => router.prefetch("/menu")}
       onFocus={() => router.prefetch("/menu")}
       aria-label={isSelected ? `${branch.name}, recommended` : branch.name}
-      style={{ minHeight: 100, viewTransitionName: isMorphing ? "selected-branch" : undefined }}
+      style={{ minHeight: 100, viewTransitionName: isMorphing || isTransitionSource ? "selected-branch" : undefined }}
 className={`relative flex w-full items-stretch rounded-2xl border-2 bg-white text-left transition-colors transition-transform hover:-translate-y-0.5 active:scale-[0.98] ${
             isSelected ? "border-espresso" : "border-crust"
           }`}

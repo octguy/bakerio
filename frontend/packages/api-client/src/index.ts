@@ -18,6 +18,7 @@ export type {
   LoginRequest,
   LoginResponse,
   ApiResponse,
+  PaginatedResponse,
   GetOrdersOptions,
   PaginatedOrders,
   SavedAddress,
