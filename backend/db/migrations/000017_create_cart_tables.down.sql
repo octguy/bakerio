@@ -1,3 +1,0 @@
-DROP TABLE IF EXISTS cart.cart_items;
-DROP TABLE IF EXISTS cart.carts;
-DROP SCHEMA IF EXISTS cart;
