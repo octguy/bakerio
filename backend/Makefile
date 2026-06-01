@@ -105,6 +105,16 @@ docker-down:
 docker-reset:
 	cd deployments && docker compose --env-file ../.env down -v && docker compose --env-file ../.env up -d --build
 
+# Full nuclear reset — stop everything, wipe ALL volumes (DB / Redis / RabbitMQ /
+# MinIO), rebuild every image with NO Docker cache, and bring everything back
+# up. Use after big source changes or when you suspect a stale image.
+# Slower than docker-reset (because of --no-cache) but guarantees a fresh build.
+#   make docker-rebuild
+docker-rebuild:
+	cd deployments && docker compose --env-file ../.env down -v --remove-orphans
+	cd deployments && docker compose --env-file ../.env build --no-cache
+	cd deployments && docker compose --env-file ../.env up -d
+
 # Rebuild and restart only the app container (keeps DB/Redis/RabbitMQ data)
 #   make deploy
 deploy:

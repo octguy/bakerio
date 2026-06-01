@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -10,6 +11,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/shared/response"
 	"github.com/octguy/bakerio/backend/internal/user/dto"
 	"github.com/octguy/bakerio/backend/internal/user/service"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 type UserHandler struct {
@@ -26,6 +28,10 @@ func (h *UserHandler) RegisterRoutes(protected *gin.RouterGroup) {
 		middleware.RequireAnyPermission("user:manage:all", "user:manage:branch"),
 		h.CreateUser,
 	)
+	g.GET("",
+		middleware.RequirePermission("user:view:all"),
+		h.SearchAllUsers,
+	)
 	g.GET("/:id/profile",
 		middleware.RequireAnyPermission("user:view:all", "user:manage:branch"),
 		h.GetUserProfile,
@@ -37,6 +43,13 @@ func (h *UserHandler) RegisterRoutes(protected *gin.RouterGroup) {
 	g.PATCH("/:id/password",
 		middleware.RequireAnyPermission("user:manage:all", "user:manage:branch"),
 		h.SetUserPassword,
+	)
+
+	// Staff list (siblings of /users but auto-scopes for managers + excludes
+	// pure customers/guests).
+	protected.GET("/staff",
+		middleware.RequireAnyPermission("user:view:all", "user:manage:branch"),
+		h.SearchStaff,
 	)
 }
 
@@ -169,4 +182,95 @@ func (h *UserHandler) SetUserPassword(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+// SearchAllUsers godoc
+// @Summary      Search all users (admin)
+// @Description  Search across every user (customers + staff). Admin only.
+// @Tags         users
+// @Security     BearerAuth
+// @Produce      json
+// @Param        q          query     string  false  "Email or display name (ILIKE %q%)"
+// @Param        role       query     string  false  "Filter by exact role name"
+// @Param        branch_id  query     string  false  "Filter by branch UUID (user must be a member)"
+// @Param        staff_only query     bool    false  "If true, excludes pure customer/guest accounts (default false for /users)"
+// @Param        page       query     int     false  "Page (default 1)"
+// @Param        size       query     int     false  "Page size (default 20, max 100)"
+// @Success      200        {object}  dto.UserListResponse
+// @Failure      403        {object}  response.ErrorResponse
+// @Router       /users [get]
+func (h *UserHandler) SearchAllUsers(c *gin.Context) {
+	filter, ok := buildUserFilter(c, false)
+	if !ok {
+		return // buildUserFilter already wrote the 4xx response
+	}
+	// /users default = all users; ?staff_only=true narrows to staff.
+	raw, _ := c.Get(middleware.PermissionsKey)
+	perms, _ := raw.([]string)
+
+	res, err := h.svc.SearchUsers(c.Request.Context(), perms, filter, pagination.FromQuery(c))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, http.StatusOK, res)
+}
+
+// SearchStaff godoc
+// @Summary      Search staff (admin or branch manager)
+// @Description  Search non-customer accounts. Admin sees all branches; a branch_manager is scoped to their own branch.
+// @Tags         users
+// @Security     BearerAuth
+// @Produce      json
+// @Param        q          query     string  false  "Email or display name (ILIKE %q%)"
+// @Param        role       query     string  false  "Filter by exact staff role (branch_manager, branch_staff, product_manager, …)"
+// @Param        branch_id  query     string  false  "Filter by branch UUID — ignored for branch_manager callers (forced to own branch)"
+// @Param        staff_only query     bool    false  "Default true on /staff. Set false to include customers/guests in the result"
+// @Param        page       query     int     false  "Page (default 1)"
+// @Param        size       query     int     false  "Page size (default 20, max 100)"
+// @Success      200        {object}  dto.UserListResponse
+// @Failure      403        {object}  response.ErrorResponse
+// @Router       /staff [get]
+func (h *UserHandler) SearchStaff(c *gin.Context) {
+	filter, ok := buildUserFilter(c, true) // /staff default = staff-only; can be overridden via ?staff_only=false
+	if !ok {
+		return
+	}
+	raw, _ := c.Get(middleware.PermissionsKey)
+	perms, _ := raw.([]string)
+
+	res, err := h.svc.SearchUsers(c.Request.Context(), perms, filter, pagination.FromQuery(c))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, http.StatusOK, res)
+}
+
+// buildUserFilter reads ?q=&role=&branch_id=&staff_only= and returns the filter.
+// `defaultStaffOnly` is what the endpoint resolves to when ?staff_only= is omitted.
+// Writes a 4xx response and returns ok=false if any param is malformed.
+func buildUserFilter(c *gin.Context, defaultStaffOnly bool) (dto.UserListFilter, bool) {
+	f := dto.UserListFilter{
+		Q:         c.Query("q"),
+		Role:      c.Query("role"),
+		StaffOnly: defaultStaffOnly,
+	}
+	if raw := c.Query("staff_only"); raw != "" {
+		v, err := strconv.ParseBool(raw)
+		if err != nil {
+			response.Error(c, apperrors.Validation("invalid staff_only (use true/false)"))
+			return f, false
+		}
+		f.StaffOnly = v
+	}
+	if raw := c.Query("branch_id"); raw != "" {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			response.Error(c, apperrors.Validation("invalid branch_id"))
+			return f, false
+		}
+		f.BranchID = &id
+	}
+	return f, true
 }

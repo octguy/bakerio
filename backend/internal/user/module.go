@@ -18,6 +18,7 @@ import (
 // Wire once auth + branch are available.
 type Module struct {
 	profileSvc service.ProfileService
+	searchRepo repository.UserSearchRepository
 	userDir    branchSvc.UserDirectory
 	profileH   *handler.ProfileHandler
 	userH      *handler.UserHandler
@@ -39,14 +40,17 @@ type LateDeps struct {
 
 func New(deps Deps) *Module {
 	repo := repository.NewProfileRepository(usersdb.New(deps.Pool))
-	return &Module{profileSvc: service.NewProfileService(deps.TX, repo)}
+	return &Module{
+		profileSvc: service.NewProfileService(deps.TX, repo),
+		searchRepo: repository.NewUserSearchRepository(deps.Pool),
+	}
 }
 
 func (m *Module) ProfileService() service.ProfileService { return m.profileSvc }
 func (m *Module) UserDirectory() branchSvc.UserDirectory { return m.userDir }
 
 func (m *Module) Wire(late LateDeps) {
-	userSvc := service.NewUserService(m.profileSvc, late.Auth, late.RBAC, late.Membership, late.Branch)
+	userSvc := service.NewUserService(m.profileSvc, m.searchRepo, late.Auth, late.RBAC, late.Membership, late.Branch)
 	m.userH = handler.NewUserHandler(userSvc)
 	m.profileH = handler.NewProfileHandler(userSvc)
 	m.userDir = service.NewUserDirectory(m.profileSvc, late.Auth, late.RBAC)

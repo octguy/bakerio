@@ -521,6 +521,36 @@ definitions:
     required:
     - status
     type: object
+  UserListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/UserSummary'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  UserSummary:
+    properties:
+      branch_id:
+        type: string
+      display_name:
+        type: string
+      email:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      user_id:
+        type: string
+    type: object
   VerifyEmailRequest:
     properties:
       otp:
@@ -1738,7 +1768,99 @@ paths:
       summary: Update the set of permissions assigned to a role
       tags:
       - rbac
+  /staff:
+    get:
+      description: Search non-customer accounts. Admin sees all branches; a branch_manager
+        is scoped to their own branch.
+      parameters:
+      - description: Email or display name (ILIKE %q%)
+        in: query
+        name: q
+        type: string
+      - description: Filter by exact staff role (branch_manager, branch_staff, product_manager,
+          …)
+        in: query
+        name: role
+        type: string
+      - description: Filter by branch UUID — ignored for branch_manager callers (forced
+          to own branch)
+        in: query
+        name: branch_id
+        type: string
+      - description: Default true on /staff. Set false to include customers/guests
+          in the result
+        in: query
+        name: staff_only
+        type: boolean
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserListResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search staff (admin or branch manager)
+      tags:
+      - users
   /users:
+    get:
+      description: Search across every user (customers + staff). Admin only.
+      parameters:
+      - description: Email or display name (ILIKE %q%)
+        in: query
+        name: q
+        type: string
+      - description: Filter by exact role name
+        in: query
+        name: role
+        type: string
+      - description: Filter by branch UUID (user must be a member)
+        in: query
+        name: branch_id
+        type: string
+      - description: If true, excludes pure customer/guest accounts (default false
+          for /users)
+        in: query
+        name: staff_only
+        type: boolean
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserListResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search all users (admin)
+      tags:
+      - users
     post:
       consumes:
       - application/json
