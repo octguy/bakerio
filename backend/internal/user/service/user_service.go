@@ -11,6 +11,8 @@ import (
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/user/dto"
+	"github.com/octguy/bakerio/backend/internal/user/repository"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 // allowedRolesByPermission defines which roles each permission level may assign.
@@ -36,10 +38,16 @@ type UserService interface {
 	// and gains role + branch for staff.
 	GetOwnProfile(ctx context.Context, userID uuid.UUID) (dto.ProfileResponse, error)
 	UpdateOwnProfile(ctx context.Context, userID uuid.UUID, req dto.UpdateProfileRequest) (dto.ProfileResponse, error)
+
+	// SearchUsers powers GET /users and GET /staff. If the caller lacks
+	// cross-branch privileges, the filter is silently scoped to the caller's
+	// own branch — managers can only see their own staff.
+	SearchUsers(ctx context.Context, callerPerms []string, filter dto.UserListFilter, p pagination.Params) (dto.UserListResponse, error)
 }
 
 type userService struct {
 	profileSvc    ProfileService
+	searchRepo    repository.UserSearchRepository
 	authSvc       authSvc.AuthService
 	rbacSvc       authSvc.RBACService
 	membershipSvc branchSvc.MembershipService
@@ -48,6 +56,7 @@ type userService struct {
 
 func NewUserService(
 	profileSvc ProfileService,
+	searchRepo repository.UserSearchRepository,
 	authSvc authSvc.AuthService,
 	rbacSvc authSvc.RBACService,
 	membershipSvc branchSvc.MembershipService,
@@ -55,6 +64,7 @@ func NewUserService(
 ) UserService {
 	return &userService{
 		profileSvc:    profileSvc,
+		searchRepo:    searchRepo,
 		authSvc:       authSvc,
 		rbacSvc:       rbacSvc,
 		membershipSvc: membershipSvc,
@@ -172,6 +182,57 @@ func (s *userService) UpdateOwnProfile(ctx context.Context, userID uuid.UUID, re
 		return dto.ProfileResponse{}, err
 	}
 	return prof, nil
+}
+
+// SearchUsers powers GET /users and GET /staff. The repo runs one cross-schema
+// query; the caller's permissions decide whether the filter is scoped to their
+// own branch.
+func (s *userService) SearchUsers(ctx context.Context, callerPerms []string, filter dto.UserListFilter, p pagination.Params) (dto.UserListResponse, error) {
+	// Branch-scoped manager: override any branch_id in the filter with the
+	// caller's own branch. This silently restricts the view — the manager
+	// can't widen by passing a different branch_id.
+	if !hasCrossBranchUserPerm(callerPerms) {
+		callerID, ok := authcontext.CallerID(ctx)
+		if !ok {
+			return dto.UserListResponse{}, apperrors.Forbidden("caller identity missing")
+		}
+		mb, err := s.membershipSvc.GetMembership(ctx, callerID)
+		if err != nil {
+			var ae *apperrors.AppError
+			if errors.As(err, &ae) && ae.Code == apperrors.CodeNotFound {
+				return dto.UserListResponse{}, apperrors.Forbidden("you must belong to a branch")
+			}
+			return dto.UserListResponse{}, err
+		}
+		bid := mb.BranchID
+		filter.BranchID = &bid
+	}
+
+	items, err := s.searchRepo.SearchUsers(ctx, filter, p.Size, p.Offset())
+	if err != nil {
+		return dto.UserListResponse{}, apperrors.Internal("failed to search users", err)
+	}
+	total, err := s.searchRepo.CountUsers(ctx, filter)
+	if err != nil {
+		return dto.UserListResponse{}, apperrors.Internal("failed to count users", err)
+	}
+
+	out := make([]dto.UserSummary, 0, len(items))
+	for _, it := range items {
+		out = append(out, *it)
+	}
+	return dto.UserListResponse{Items: out, Meta: pagination.NewMeta(p, total)}, nil
+}
+
+// hasCrossBranchUserPerm returns true if the caller can see users across any
+// branch (admin / user:view:all / user:manage:all).
+func hasCrossBranchUserPerm(perms []string) bool {
+	for _, p := range perms {
+		if slices.Contains(crossBranchUserPerms, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *userService) AdminSetPassword(ctx context.Context, callerPerms []string, targetID uuid.UUID, newPassword string) error {
