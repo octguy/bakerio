@@ -18,6 +18,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
 	"github.com/octguy/bakerio/backend/pkg/pagination"
+	"github.com/shopspring/decimal"
 )
 
 type ProductHandler struct {
@@ -77,20 +78,35 @@ func (h *ProductHandler) CreateProduct(c *gin.Context) {
 }
 
 // ListProducts godoc
-// @Summary      List products
+// @Summary      List / search products
 // @Tags         product
 // @Produce      json
-// @Param        category  query     string  false  "Filter by category slug"
-// @Param        page      query     int     false  "Page (default 1)"
-// @Param        size      query     int     false  "Page size (default 20)"
-// @Success      200       {object}  dto.ProductListResponse
+// @Param        q          query     string   false  "Search name or slug (ILIKE %q%)"
+// @Param        category   query     string   false  "Filter by category slug"
+// @Param        min_price  query     number   false  "Inclusive lower price bound"
+// @Param        max_price  query     number   false  "Inclusive upper price bound"
+// @Param        active     query     boolean  false  "If true, only globally-active products"
+// @Param        page       query     int      false  "Page (default 1)"
+// @Param        size       query     int      false  "Page size (default 20)"
+// @Success      200        {object}  dto.ProductListResponse
 // @Router       /products [get]
 func (h *ProductHandler) ListProducts(c *gin.Context) {
-	var categorySlug *string
-	if raw := c.Query("category"); raw != "" {
-		categorySlug = &raw
+	filter := dto.ProductListFilter{
+		Q:            c.Query("q"),
+		CategorySlug: c.Query("category"),
+		ActiveOnly:   c.Query("active") == "true",
 	}
-	res, err := h.svc.ListProducts(c.Request.Context(), categorySlug, pagination.FromQuery(c))
+	if v := c.Query("min_price"); v != "" {
+		if d, err := decimal.NewFromString(v); err == nil {
+			filter.MinPrice = &d
+		}
+	}
+	if v := c.Query("max_price"); v != "" {
+		if d, err := decimal.NewFromString(v); err == nil {
+			filter.MaxPrice = &d
+		}
+	}
+	res, err := h.svc.ListProducts(c.Request.Context(), filter, pagination.FromQuery(c))
 	if err != nil {
 		response.Error(c, err)
 		return

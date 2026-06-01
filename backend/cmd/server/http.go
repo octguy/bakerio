@@ -31,6 +31,11 @@ func runHTTPServer(cfg *config.Config, i *infra, mods *modules) {
 	mods.product.RegisterRoutes(public, authed)
 	mods.cart.RegisterRoutes(public, authed)
 
+	// Admin-only dev tooling — super_admin (or any holder of *:*:all) only.
+	dev := newDevHandler(mods, i.pool)
+	adminOnly := authed.Group("", middleware.RequirePermission("*:*:all"))
+	adminOnly.POST("/admin/seed-demo", dev.SeedDemo)
+
 	logger.Log.Info("starting http server", zap.String("port", cfg.Server.Port))
 	if err := r.Run(":" + cfg.Server.Port); err != nil {
 		logger.Log.Fatal("server failed", zap.Error(err))

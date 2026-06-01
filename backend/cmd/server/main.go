@@ -43,6 +43,9 @@ func main() {
 
 	// Startup tasks.
 	must("rbac cache warm", mods.auth.RBACService().WarmPermissionCache(ctx))
+	// Bootstrap only the system accounts (super_admin / product_manager / a few
+	// customers). The large demo seed (branches, products, staff, …) is exposed
+	// as an admin-triggered endpoint: POST /admin/seed-demo.
 	seedAdmins(ctx, mods.auth.AuthService(), i.pool)
 
 	// Background workers.

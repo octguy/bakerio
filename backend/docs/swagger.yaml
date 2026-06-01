@@ -387,6 +387,30 @@ definitions:
       name:
         type: string
     type: object
+  SeedDemoSummary:
+    properties:
+      branch_products:
+        description: (product × branch) availability rows
+        type: integer
+      branches:
+        description: number of branches now in DB
+        type: integer
+      categories:
+        description: number of categories now in DB
+        type: integer
+      customers:
+        description: number of customer accounts
+        type: integer
+      products:
+        description: number of products now in DB
+        type: integer
+      skipped:
+        description: true if branches already existed → no inserts done
+        type: boolean
+      staff:
+        description: managers + staff combined
+        type: integer
+    type: object
   SetAvailabilityRequest:
     properties:
       is_active:
@@ -521,6 +545,27 @@ info:
   title: Bakerio API
   version: "1.0"
 paths:
+  /admin/seed-demo:
+    post:
+      description: 'Populates branches, categories, products, customers, and staff
+        for manual API testing. Idempotent: if any branch exists, the call is a no-op
+        and `skipped` is true. Super-admin only.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SeedDemoSummary'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Seed sample data (admin)
+      tags:
+      - dev
   /auth/login:
     post:
       consumes:
@@ -672,6 +717,14 @@ paths:
   /branch:
     get:
       parameters:
+      - description: Search name or address (ILIKE %q%)
+        in: query
+        name: q
+        type: string
+      - description: Filter by exact status (e.g. active, inactive)
+        in: query
+        name: status
+        type: string
       - description: Page (default 1)
         in: query
         name: page
@@ -687,7 +740,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/BranchListResponse'
-      summary: Get branch list (paginated)
+      summary: List / search branches
       tags:
       - branch
     post:
@@ -1088,6 +1141,11 @@ paths:
       - cart
   /categories:
     get:
+      parameters:
+      - description: Search name or slug (ILIKE %q%)
+        in: query
+        name: q
+        type: string
       produces:
       - application/json
       responses:
@@ -1097,7 +1155,7 @@ paths:
             items:
               $ref: '#/definitions/CategoryResponse'
             type: array
-      summary: List all active categories
+      summary: List / search categories
       tags:
       - categories
     post:
@@ -1235,10 +1293,26 @@ paths:
   /products:
     get:
       parameters:
+      - description: Search name or slug (ILIKE %q%)
+        in: query
+        name: q
+        type: string
       - description: Filter by category slug
         in: query
         name: category
         type: string
+      - description: Inclusive lower price bound
+        in: query
+        name: min_price
+        type: number
+      - description: Inclusive upper price bound
+        in: query
+        name: max_price
+        type: number
+      - description: If true, only globally-active products
+        in: query
+        name: active
+        type: boolean
       - description: Page (default 1)
         in: query
         name: page
@@ -1254,7 +1328,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/ProductListResponse'
-      summary: List products
+      summary: List / search products
       tags:
       - product
     post:

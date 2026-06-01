@@ -25,7 +25,7 @@ type BranchService interface {
 	CreateBranch(ctx context.Context, req dto.CreateBranchRequest) (dto.BranchResponse, error)
 	GetBranchByID(ctx context.Context, id uuid.UUID) (dto.BranchResponse, error)
 	GetAllBranches(ctx context.Context) ([]dto.BranchResponse, error)
-	ListBranches(ctx context.Context, p pagination.Params) (dto.BranchListResponse, error)
+	ListBranches(ctx context.Context, filter dto.BranchListFilter, p pagination.Params) (dto.BranchListResponse, error)
 	ListBranchIDs(ctx context.Context) ([]uuid.UUID, error)
 	UpdateBranch(ctx context.Context, id uuid.UUID, req dto.UpdateBranchRequest) (dto.BranchResponse, error)
 	UpdateBranchStatus(ctx context.Context, id uuid.UUID, status string) error
@@ -105,12 +105,12 @@ func (b *branchService) GetAllBranches(ctx context.Context) ([]dto.BranchRespons
 	return branches, nil
 }
 
-func (b *branchService) ListBranches(ctx context.Context, p pagination.Params) (dto.BranchListResponse, error) {
-	rows, err := b.repo.ListBranches(ctx, p.Size, p.Offset())
+func (b *branchService) ListBranches(ctx context.Context, filter dto.BranchListFilter, p pagination.Params) (dto.BranchListResponse, error) {
+	rows, err := b.repo.SearchBranches(ctx, filter, p.Size, p.Offset())
 	if err != nil {
 		return dto.BranchListResponse{}, apperrors.Internal("database error", err)
 	}
-	total, err := b.repo.CountBranches(ctx)
+	total, err := b.repo.CountSearchBranches(ctx, filter)
 	if err != nil {
 		return dto.BranchListResponse{}, apperrors.Internal("database error", err)
 	}

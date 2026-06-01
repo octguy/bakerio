@@ -32,7 +32,7 @@ type LateDeps struct {
 
 func New(deps Deps) *Module {
 	queries := branchdb.New(deps.Pool)
-	branchRepo := repository.NewBranchRepository(queries)
+	branchRepo := repository.NewBranchRepository(deps.Pool)
 	membershipRepo := repository.NewMembershipRepository(queries)
 	branchSvc := service.NewBranchService(deps.TX, branchRepo)
 	membershipSvc := service.NewMembershipService(membershipRepo, branchRepo)
