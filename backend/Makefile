@@ -125,9 +125,10 @@ docker-mail:
 docker-minio:
 	cd deployments && docker compose --env-file ../.env up -d minio
 
-# Start backend containers, run migrations, and seed the database for E2E tests
-test-setup:
-	cd deployments && docker compose --env-file ../.env up -d
-	@echo "Waiting for PostgreSQL container to be healthy..."
-	@until docker exec bakerio-postgres pg_isready -U postgres -d bakerio-db >/dev/null 2>&1; do sleep 1; done
-	docker exec -i bakerio-postgres psql -U postgres -d bakerio-db < ../db/seed_e2e.sql
+# Open an interactive psql shell inside the Postgres container.
+# DB user / name come from .env (DB_USER, DB_NAME). Container name from
+# deployments/docker-compose.yml (bakerio-postgres).
+# Exit with \q or Ctrl-D.
+#	make docker-psql
+docker-psql:
+	docker exec -it bakerio-postgres psql -U $(DB_USER) -d $(DB_NAME)
