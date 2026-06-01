@@ -42,7 +42,7 @@ type ProductService interface {
 	CreateProduct(ctx context.Context, req dto.CreateProductRequest) (dto.ProductResponse, error)
 	GetProduct(ctx context.Context, id uuid.UUID) (dto.ProductResponse, error)
 	GetProductBySlug(ctx context.Context, slug string) (dto.ProductResponse, error)
-	ListProducts(ctx context.Context, categorySlug *string, p pagination.Params) (dto.ProductListResponse, error)
+	ListProducts(ctx context.Context, filter dto.ProductListFilter, p pagination.Params) (dto.ProductListResponse, error)
 	UpdateProduct(ctx context.Context, id uuid.UUID, req dto.UpdateProductRequest) (dto.ProductResponse, error)
 	DeleteProduct(ctx context.Context, id uuid.UUID) error
 
@@ -120,25 +120,14 @@ func (s *productService) GetProductBySlug(ctx context.Context, slug string) (dto
 	return toProductResponse(p), nil
 }
 
-func (s *productService) ListProducts(ctx context.Context, categorySlug *string, p pagination.Params) (dto.ProductListResponse, error) {
-	var (
-		items []*domain.Product
-		total int64
-		err   error
-	)
-	if categorySlug != nil && *categorySlug != "" {
-		items, err = s.repo.ListByCategorySlug(ctx, *categorySlug, p.Size, p.Offset())
-		if err == nil {
-			total, err = s.repo.CountByCategorySlug(ctx, *categorySlug)
-		}
-	} else {
-		items, err = s.repo.List(ctx, p.Size, p.Offset())
-		if err == nil {
-			total, err = s.repo.Count(ctx)
-		}
-	}
+func (s *productService) ListProducts(ctx context.Context, filter dto.ProductListFilter, p pagination.Params) (dto.ProductListResponse, error) {
+	items, err := s.repo.SearchProducts(ctx, filter, p.Size, p.Offset())
 	if err != nil {
 		return dto.ProductListResponse{}, apperrors.Internal("failed to list products", err)
+	}
+	total, err := s.repo.CountSearchProducts(ctx, filter)
+	if err != nil {
+		return dto.ProductListResponse{}, apperrors.Internal("failed to count products", err)
 	}
 
 	res := make([]dto.ProductResponse, 0, len(items))

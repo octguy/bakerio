@@ -3,12 +3,16 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	productdb "github.com/octguy/bakerio/backend/db/sqlc/product"
+	"github.com/octguy/bakerio/backend/internal/product/dto"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	"github.com/octguy/bakerio/backend/pkg/dbq"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 	"github.com/shopspring/decimal"
 )
@@ -39,14 +43,89 @@ type ProductRepository interface {
 	ListImages(ctx context.Context, productID uuid.UUID) ([]*domain.ProductImage, error)
 	GetImage(ctx context.Context, id uuid.UUID) (*domain.ProductImage, error)
 	DeleteImage(ctx context.Context, id uuid.UUID) error
+
+	// search (dynamic WHERE — see SearchProducts / CountSearchProducts)
+	SearchProducts(ctx context.Context, f dto.ProductListFilter, limit, offset int32) ([]*domain.Product, error)
+	CountSearchProducts(ctx context.Context, f dto.ProductListFilter) (int64, error)
 }
 
 type productRepo struct {
-	db *productdb.Queries
+	db   *productdb.Queries
+	pool *pgxpool.Pool // for dynamic search queries
 }
 
-func NewProductRepository(db *productdb.Queries) ProductRepository {
-	return &productRepo{db: db}
+func NewProductRepository(pool *pgxpool.Pool) ProductRepository {
+	return &productRepo{db: productdb.New(pool), pool: pool}
+}
+
+// productSearchWhereAndJoin returns the WHERE builder and any JOIN clause
+// needed for the filter (a category-slug filter triggers a JOIN to categories).
+// Shared by SearchProducts + CountSearchProducts so they filter identically.
+func productSearchWhereAndJoin(f dto.ProductListFilter) (*dbq.Where, string) {
+	w := dbq.NewWhere()
+	join := ""
+
+	w.AddRaw("p.deleted_at IS NULL")
+
+	if f.Q != "" {
+		n := w.Next()
+		w.AddRaw(fmt.Sprintf("(p.name ILIKE $%d OR p.slug ILIKE $%d)", n, n), "%"+f.Q+"%")
+	}
+	if f.CategorySlug != "" {
+		join = " JOIN product.categories c ON p.category_id = c.id"
+		w.AddIfNotEmpty("c.slug = ", f.CategorySlug)
+	}
+	if f.MinPrice != nil {
+		w.Add("p.price >= ", *f.MinPrice)
+	}
+	if f.MaxPrice != nil {
+		w.Add("p.price <= ", *f.MaxPrice)
+	}
+	if f.ActiveOnly {
+		w.AddRaw("p.is_active = TRUE")
+	}
+	return w, join
+}
+
+func (r *productRepo) SearchProducts(ctx context.Context, f dto.ProductListFilter, limit, offset int32) ([]*domain.Product, error) {
+	w, join := productSearchWhereAndJoin(f)
+	limitN := w.Next()
+	offsetN := limitN + 1
+	args := append(w.Args(), limit, offset)
+	sql := "SELECT p.id, p.name, p.slug, p.category_id, p.price, p.sort_order, p.is_active, " +
+		"p.deleted_at, p.created_at, p.created_by, p.updated_at, p.updated_by " +
+		"FROM product.products p" + join + w.SQL() +
+		fmt.Sprintf(" ORDER BY p.sort_order ASC, p.name ASC LIMIT $%d OFFSET $%d", limitN, offsetN)
+
+	rows, err := r.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []productdb.ProductProduct
+	for rows.Next() {
+		var p productdb.ProductProduct
+		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.CategoryID, &p.Price, &p.SortOrder,
+			&p.IsActive, &p.DeletedAt, &p.CreatedAt, &p.CreatedBy, &p.UpdatedAt, &p.UpdatedBy); err != nil {
+			return nil, err
+		}
+		out = append(out, p)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return toProductEntities(out), nil
+}
+
+func (r *productRepo) CountSearchProducts(ctx context.Context, f dto.ProductListFilter) (int64, error) {
+	w, join := productSearchWhereAndJoin(f)
+	sql := "SELECT COUNT(*) FROM product.products p" + join + w.SQL()
+	var total int64
+	if err := r.pool.QueryRow(ctx, sql, w.Args()...).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
 }
 
 func (r *productRepo) queries(ctx context.Context) *productdb.Queries {

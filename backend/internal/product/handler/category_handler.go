@@ -84,18 +84,19 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 }
 
 // ListCategories godoc
-// @Summary      List all active categories
+// @Summary      List / search categories
 // @Tags         categories
 // @Produce      json
+// @Param        q    query     string  false  "Search name or slug (ILIKE %q%)"
 // @Success      200  {array}   dto.CategoryResponse
 // @Router       /categories [get]
 func (h *CategoryHandler) ListCategories(c *gin.Context) {
-	res, err := h.svc.ListCategories(c.Request.Context())
+	filter := dto.CategoryListFilter{Q: c.Query("q")}
+	res, err := h.svc.ListCategories(c.Request.Context(), filter)
 	if err != nil {
 		response.Error(c, err)
 		return
 	}
-
 	response.Success(c, http.StatusOK, res)
 }
 

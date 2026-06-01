@@ -26,3 +26,8 @@ type CategoryResponse struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 } // @name CategoryResponse
+
+// CategoryListFilter holds optional search params for GET /categories.
+type CategoryListFilter struct {
+	Q string // matches name OR slug (ILIKE %q%)
+}

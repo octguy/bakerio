@@ -15,6 +15,37 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/seed-demo": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Populates branches, categories, products, customers, and staff for manual API testing. Idempotent: if any branch exists, the call is a no-op and ` + "`" + `skipped` + "`" + ` is true. Super-admin only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dev"
+                ],
+                "summary": "Seed sample data (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SeedDemoSummary"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticates a user and returns a JWT access token",
@@ -252,8 +283,20 @@ const docTemplate = `{
                 "tags": [
                     "branch"
                 ],
-                "summary": "Get branch list (paginated)",
+                "summary": "List / search branches",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search name or address (ILIKE %q%)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by exact status (e.g. active, inactive)",
+                        "name": "status",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "description": "Page (default 1)",
@@ -904,7 +947,15 @@ const docTemplate = `{
                 "tags": [
                     "categories"
                 ],
-                "summary": "List all active categories",
+                "summary": "List / search categories",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search name or slug (ILIKE %q%)",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1137,12 +1188,36 @@ const docTemplate = `{
                 "tags": [
                     "product"
                 ],
-                "summary": "List products",
+                "summary": "List / search products",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search name or slug (ILIKE %q%)",
+                        "name": "q",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "description": "Filter by category slug",
                         "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Inclusive lower price bound",
+                        "name": "min_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Inclusive upper price bound",
+                        "name": "max_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "If true, only globally-active products",
+                        "name": "active",
                         "in": "query"
                     },
                     {
@@ -2606,6 +2681,39 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "SeedDemoSummary": {
+            "type": "object",
+            "properties": {
+                "branch_products": {
+                    "description": "(product × branch) availability rows",
+                    "type": "integer"
+                },
+                "branches": {
+                    "description": "number of branches now in DB",
+                    "type": "integer"
+                },
+                "categories": {
+                    "description": "number of categories now in DB",
+                    "type": "integer"
+                },
+                "customers": {
+                    "description": "number of customer accounts",
+                    "type": "integer"
+                },
+                "products": {
+                    "description": "number of products now in DB",
+                    "type": "integer"
+                },
+                "skipped": {
+                    "description": "true if branches already existed → no inserts done",
+                    "type": "boolean"
+                },
+                "staff": {
+                    "description": "managers + staff combined",
+                    "type": "integer"
                 }
             }
         },

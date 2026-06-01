@@ -3,7 +3,6 @@ package product
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	productdb "github.com/octguy/bakerio/backend/db/sqlc/product"
 	branchSvc "github.com/octguy/bakerio/backend/internal/branch/service"
 	"github.com/octguy/bakerio/backend/internal/product/handler"
 	"github.com/octguy/bakerio/backend/internal/product/repository"
@@ -36,12 +35,11 @@ type LateDeps struct {
 }
 
 func New(deps Deps) *Module {
-	queries := productdb.New(deps.Pool)
-	catRepo := repository.NewCategoryRepository(queries)
+	catRepo := repository.NewCategoryRepository(deps.Pool)
 	catSvc := service.NewCategoryService(deps.TX, catRepo)
 	return &Module{
 		tx:          deps.TX,
-		productRepo: repository.NewProductRepository(queries),
+		productRepo: repository.NewProductRepository(deps.Pool),
 		store:       deps.Store,
 		categoryH:   handler.NewCategoryHandler(catSvc),
 	}

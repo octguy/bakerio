@@ -40,6 +40,16 @@ type ProductListResponse struct {
 	pagination.Meta
 } // @name ProductListResponse
 
+// ProductListFilter holds optional search params for GET /products.
+// All fields are optional; empty/nil means "no filter on that column".
+type ProductListFilter struct {
+	Q            string           // matches name OR slug (ILIKE %q%)
+	CategorySlug string           // exact match on the joined category slug
+	MinPrice     *decimal.Decimal // inclusive lower bound
+	MaxPrice     *decimal.Decimal // inclusive upper bound
+	ActiveOnly   bool             // if true, only products with is_active = TRUE
+}
+
 type ProductImageResponse struct {
 	ID        uuid.UUID `json:"id"`
 	ProductID uuid.UUID `json:"product_id"`
