@@ -27,8 +27,30 @@ jobs:
             echo "deploy=false" >> "$GITHUB_OUTPUT"
           fi
 
-  docker:
+  validate:
     needs: gate
+    if: needs.gate.outputs.should_deploy == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate required secrets
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          set -euo pipefail
+          for name in DOCKER_USERNAME DOCKER_PASSWORD VPS_HOST VPS_USER VPS_SSH_KEY VPS_PORT; do
+            if [ -z "${!name}" ]; then
+              echo "Missing required secret: $name"
+              exit 1
+            fi
+          done
+
+  docker:
+    needs: [gate, validate]
     if: needs.gate.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
 
@@ -68,9 +90,13 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd ~/bakerio
-            git pull origin main
+            cd /home/deploy/bakerio
+            git fetch origin main
+            git reset --hard origin/main
             cd backend/deployments
+            grep -v '^IMAGE_TAG=' .env.prod > .env.prod.tmp || true
+            printf 'IMAGE_TAG=%s\n' '${{ github.sha }}' >> .env.prod.tmp
+            mv .env.prod.tmp .env.prod
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull app
 
   migrate:
@@ -88,7 +114,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd ~/bakerio/backend/deployments
+            cd /home/deploy/bakerio/backend/deployments
             docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm migrate
 
   deploy:
@@ -106,7 +132,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd ~/bakerio/backend/deployments
+            cd /home/deploy/bakerio/backend/deployments
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app
             sleep 3
             docker compose -f docker-compose.prod.yml --env-file .env.prod logs app --tail 10
