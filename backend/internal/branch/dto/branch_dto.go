@@ -40,6 +40,13 @@ type BranchListResponse struct {
 	pagination.Meta
 } // @name BranchListResponse
 
+// BranchListFilter holds optional search params for GET /branch.
+// Empty string fields mean "no filter on this column".
+type BranchListFilter struct {
+	Q      string // matches name OR address (ILIKE %q%)
+	Status string // exact match
+}
+
 type AssignMemberRequest struct {
 	UserID uuid.UUID `json:"user_id" binding:"required"`
 } // @name AssignMemberRequest

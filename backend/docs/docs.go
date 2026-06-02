@@ -15,6 +15,37 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/seed-demo": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Populates branches, categories, products, customers, and staff for manual API testing. Idempotent: if any branch exists, the call is a no-op and ` + "`" + `skipped` + "`" + ` is true. Super-admin only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dev"
+                ],
+                "summary": "Seed sample data (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SeedDemoSummary"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticates a user and returns a JWT access token",
@@ -252,8 +283,20 @@ const docTemplate = `{
                 "tags": [
                     "branch"
                 ],
-                "summary": "Get branch list (paginated)",
+                "summary": "List / search branches",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search name or address (ILIKE %q%)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by exact status (e.g. active, inactive)",
+                        "name": "status",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "description": "Page (default 1)",
@@ -716,6 +759,186 @@ const docTemplate = `{
                 }
             }
         },
+        "/cart": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Get the current user's cart",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/CartResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Empty the cart",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/cart/items": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upserts; quantity sums on conflict (capped at 99).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Add an item to the cart",
+                "parameters": [
+                    {
+                        "description": "Item",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/AddItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/CartResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cart/items/{itemId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Remove a single item from the cart",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cart item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/CartResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Sets the quantity of a single cart item. Use DELETE to remove.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cart"
+                ],
+                "summary": "Update an item's quantity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Cart item ID",
+                        "name": "itemId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Quantity",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateItemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/CartResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/categories": {
             "get": {
                 "produces": [
@@ -724,7 +947,15 @@ const docTemplate = `{
                 "tags": [
                     "categories"
                 ],
-                "summary": "List all active categories",
+                "summary": "List / search categories",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search name or slug (ILIKE %q%)",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -957,12 +1188,36 @@ const docTemplate = `{
                 "tags": [
                     "product"
                 ],
-                "summary": "List products",
+                "summary": "List / search products",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search name or slug (ILIKE %q%)",
+                        "name": "q",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "description": "Filter by category slug",
                         "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Inclusive lower price bound",
+                        "name": "min_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Inclusive upper price bound",
+                        "name": "max_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "If true, only globally-active products",
+                        "name": "active",
                         "in": "query"
                     },
                     {
@@ -1628,7 +1883,143 @@ const docTemplate = `{
                 }
             }
         },
+        "/staff": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Search non-customer accounts. Admin sees all branches; a branch_manager is scoped to their own branch.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Search staff (admin or branch manager)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email or display name (ILIKE %q%)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by exact staff role (branch_manager, branch_staff, product_manager, …)",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by branch UUID — ignored for branch_manager callers (forced to own branch)",
+                        "name": "branch_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Default true on /staff. Set false to include customers/guests in the result",
+                        "name": "staff_only",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 100)",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserListResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Search across every user (customers + staff). Admin only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Search all users (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email or display name (ILIKE %q%)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by exact role name",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by branch UUID (user must be a member)",
+                        "name": "branch_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "If true, excludes pure customer/guest accounts (default false for /users)",
+                        "name": "staff_only",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 100)",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/UserListResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1850,6 +2241,23 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "AddItemRequest": {
+            "type": "object",
+            "required": [
+                "product_id",
+                "quantity"
+            ],
+            "properties": {
+                "product_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "maximum": 99,
+                    "minimum": 1
+                }
+            }
+        },
         "AssignMemberRequest": {
             "type": "object",
             "required": [
@@ -1961,6 +2369,49 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
+                }
+            }
+        },
+        "CartItemResponse": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "line_total": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                }
+            }
+        },
+        "CartResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/CartItemResponse"
+                    }
+                },
+                "total": {
+                    "type": "number"
                 }
             }
         },
@@ -2369,6 +2820,39 @@ const docTemplate = `{
                 }
             }
         },
+        "SeedDemoSummary": {
+            "type": "object",
+            "properties": {
+                "branch_products": {
+                    "description": "(product × branch) availability rows",
+                    "type": "integer"
+                },
+                "branches": {
+                    "description": "number of branches now in DB",
+                    "type": "integer"
+                },
+                "categories": {
+                    "description": "number of categories now in DB",
+                    "type": "integer"
+                },
+                "customers": {
+                    "description": "number of customer accounts",
+                    "type": "integer"
+                },
+                "products": {
+                    "description": "number of products now in DB",
+                    "type": "integer"
+                },
+                "skipped": {
+                    "description": "true if branches already existed → no inserts done",
+                    "type": "boolean"
+                },
+                "staff": {
+                    "description": "managers + staff combined",
+                    "type": "integer"
+                }
+            }
+        },
         "SetAvailabilityRequest": {
             "type": "object",
             "properties": {
@@ -2426,6 +2910,19 @@ const docTemplate = `{
                 },
                 "sort_order": {
                     "type": "integer"
+                }
+            }
+        },
+        "UpdateItemRequest": {
+            "type": "object",
+            "required": [
+                "quantity"
+            ],
+            "properties": {
+                "quantity": {
+                    "type": "integer",
+                    "maximum": 99,
+                    "minimum": 1
                 }
             }
         },
@@ -2516,6 +3013,52 @@ const docTemplate = `{
                         "active",
                         "inactive"
                     ]
+                }
+            }
+        },
+        "UserListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/UserSummary"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "UserSummary": {
+            "type": "object",
+            "properties": {
+                "branch_id": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },

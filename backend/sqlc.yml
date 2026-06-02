@@ -47,6 +47,8 @@ sql:
             go_type: { type: "float64", pointer: true}
           - column: "product.products.price"
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
+          - column: "cart.cart_items.unit_price_snap"
+            go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
 
   - engine: "postgresql"
     queries: "db/queries/users"
@@ -79,6 +81,18 @@ sql:
       go:
         package: "productdb"
         out: "db/sqlc/product"
+        emit_json_tags: true
+        emit_empty_slices: true
+        sql_package: "pgx/v5"
+        overrides: *overrides
+
+  - engine: "postgresql"
+    queries: "db/queries/cart"
+    schema: "db/migrations"
+    gen:
+      go:
+        package: "cartdb"
+        out: "db/sqlc/cart"
         emit_json_tags: true
         emit_empty_slices: true
         sql_package: "pgx/v5"

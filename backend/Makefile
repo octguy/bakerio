@@ -67,6 +67,11 @@ run:
 build:
 	go build -o /dev/null ./...
 
+# Regenerate Swagger docs from handler annotations.
+#   make swagger
+swagger:
+	swag init -g cmd/server/main.go -o docs
+
 # Stop the server (kills whatever listens on SERVER_PORT + the `go run` wrapper).
 # `go run` spawns a compiled child binary; killing only the wrapper leaves it
 # bound to the port, so we kill the port listener directly.
@@ -100,6 +105,16 @@ docker-down:
 docker-reset:
 	cd deployments && docker compose --env-file ../.env down -v && docker compose --env-file ../.env up -d --build
 
+# Full nuclear reset — stop everything, wipe ALL volumes (DB / Redis / RabbitMQ /
+# MinIO), rebuild every image with NO Docker cache, and bring everything back
+# up. Use after big source changes or when you suspect a stale image.
+# Slower than docker-reset (because of --no-cache) but guarantees a fresh build.
+#   make docker-rebuild
+docker-rebuild:
+	cd deployments && docker compose --env-file ../.env down -v --remove-orphans
+	cd deployments && docker compose --env-file ../.env build --no-cache
+	cd deployments && docker compose --env-file ../.env up -d
+
 # Rebuild and restart only the app container (keeps DB/Redis/RabbitMQ data)
 #   make deploy
 deploy:
@@ -120,9 +135,10 @@ docker-mail:
 docker-minio:
 	cd deployments && docker compose --env-file ../.env up -d minio
 
-# Start backend containers, run migrations, and seed the database for E2E tests
-test-setup:
-	cd deployments && docker compose --env-file ../.env up -d
-	@echo "Waiting for PostgreSQL container to be healthy..."
-	@until docker exec bakerio-postgres pg_isready -U postgres -d bakerio-db >/dev/null 2>&1; do sleep 1; done
-	docker exec -i bakerio-postgres psql -U postgres -d bakerio-db < ../db/seed_e2e.sql
+# Open an interactive psql shell inside the Postgres container.
+# DB user / name come from .env (DB_USER, DB_NAME). Container name from
+# deployments/docker-compose.yml (bakerio-postgres).
+# Exit with \q or Ctrl-D.
+#	make docker-psql
+docker-psql:
+	docker exec -it bakerio-postgres psql -U $(DB_USER) -d $(DB_NAME)

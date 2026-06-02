@@ -9,23 +9,22 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/otp"
 )
 
+// Module owns outbound transactional notifications (email today). It is a
+// consumer-side module: no HTTP routes; subscribes to MQ events via
+// RegisterConsumers.
 type Module struct {
 	emailSvc service.EmailService
 }
 
-func New(
-	email *email.MailService,
-	otp *otp.Service,
-) *Module {
-	svc := service.NewEmailService(email, otp)
-	return &Module{emailSvc: svc}
+type Deps struct {
+	Mail *email.MailService
+	OTP  *otp.Service
 }
 
-// RegisterConsumers registers all MQ consumers for the notification module.
+func New(deps Deps) *Module {
+	return &Module{emailSvc: service.NewEmailService(deps.Mail, deps.OTP)}
+}
+
 func (m *Module) RegisterConsumers(ctx context.Context, consumer *mq.Consumer) error {
 	return consumer.Consume(ctx, "user.notifications", m.emailSvc.HandleUserRegistered)
 }
-
-//func (m *Module) EmailService() service.EmailService {
-//	return m.emailSvc
-//}

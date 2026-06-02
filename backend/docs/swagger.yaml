@@ -1,5 +1,17 @@
 basePath: /api/v1
 definitions:
+  AddItemRequest:
+    properties:
+      product_id:
+        type: string
+      quantity:
+        maximum: 99
+        minimum: 1
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
   AssignMemberRequest:
     properties:
       user_id:
@@ -73,6 +85,34 @@ definitions:
         type: string
       status:
         type: string
+    type: object
+  CartItemResponse:
+    properties:
+      available:
+        type: boolean
+      id:
+        type: string
+      line_total:
+        type: number
+      name:
+        type: string
+      price:
+        type: number
+      product_id:
+        type: string
+      quantity:
+        type: integer
+    type: object
+  CartResponse:
+    properties:
+      count:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/CartItemResponse'
+        type: array
+      total:
+        type: number
     type: object
   CategoryResponse:
     properties:
@@ -347,6 +387,30 @@ definitions:
       name:
         type: string
     type: object
+  SeedDemoSummary:
+    properties:
+      branch_products:
+        description: (product × branch) availability rows
+        type: integer
+      branches:
+        description: number of branches now in DB
+        type: integer
+      categories:
+        description: number of categories now in DB
+        type: integer
+      customers:
+        description: number of customer accounts
+        type: integer
+      products:
+        description: number of products now in DB
+        type: integer
+      skipped:
+        description: true if branches already existed → no inserts done
+        type: boolean
+      staff:
+        description: managers + staff combined
+        type: integer
+    type: object
   SetAvailabilityRequest:
     properties:
       is_active:
@@ -387,6 +451,15 @@ definitions:
         type: integer
     required:
     - name
+    type: object
+  UpdateItemRequest:
+    properties:
+      quantity:
+        maximum: 99
+        minimum: 1
+        type: integer
+    required:
+    - quantity
     type: object
   UpdateProductRequest:
     properties:
@@ -448,6 +521,36 @@ definitions:
     required:
     - status
     type: object
+  UserListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/UserSummary'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  UserSummary:
+    properties:
+      branch_id:
+        type: string
+      display_name:
+        type: string
+      email:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      user_id:
+        type: string
+    type: object
   VerifyEmailRequest:
     properties:
       otp:
@@ -472,6 +575,27 @@ info:
   title: Bakerio API
   version: "1.0"
 paths:
+  /admin/seed-demo:
+    post:
+      description: 'Populates branches, categories, products, customers, and staff
+        for manual API testing. Idempotent: if any branch exists, the call is a no-op
+        and `skipped` is true. Super-admin only.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SeedDemoSummary'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Seed sample data (admin)
+      tags:
+      - dev
   /auth/login:
     post:
       consumes:
@@ -623,6 +747,14 @@ paths:
   /branch:
     get:
       parameters:
+      - description: Search name or address (ILIKE %q%)
+        in: query
+        name: q
+        type: string
+      - description: Filter by exact status (e.g. active, inactive)
+        in: query
+        name: status
+        type: string
       - description: Page (default 1)
         in: query
         name: page
@@ -638,7 +770,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/BranchListResponse'
-      summary: Get branch list (paginated)
+      summary: List / search branches
       tags:
       - branch
     post:
@@ -926,8 +1058,124 @@ paths:
       summary: Update branch status
       tags:
       - branch
+  /cart:
+    delete:
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Empty the cart
+      tags:
+      - cart
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CartResponse'
+      security:
+      - BearerAuth: []
+      summary: Get the current user's cart
+      tags:
+      - cart
+  /cart/items:
+    post:
+      consumes:
+      - application/json
+      description: Upserts; quantity sums on conflict (capped at 99).
+      parameters:
+      - description: Item
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/AddItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CartResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Add an item to the cart
+      tags:
+      - cart
+  /cart/items/{itemId}:
+    delete:
+      parameters:
+      - description: Cart item ID
+        in: path
+        name: itemId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CartResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a single item from the cart
+      tags:
+      - cart
+    patch:
+      consumes:
+      - application/json
+      description: Sets the quantity of a single cart item. Use DELETE to remove.
+      parameters:
+      - description: Cart item ID
+        in: path
+        name: itemId
+        required: true
+        type: string
+      - description: Quantity
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/CartResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an item's quantity
+      tags:
+      - cart
   /categories:
     get:
+      parameters:
+      - description: Search name or slug (ILIKE %q%)
+        in: query
+        name: q
+        type: string
       produces:
       - application/json
       responses:
@@ -937,7 +1185,7 @@ paths:
             items:
               $ref: '#/definitions/CategoryResponse'
             type: array
-      summary: List all active categories
+      summary: List / search categories
       tags:
       - categories
     post:
@@ -1075,10 +1323,26 @@ paths:
   /products:
     get:
       parameters:
+      - description: Search name or slug (ILIKE %q%)
+        in: query
+        name: q
+        type: string
       - description: Filter by category slug
         in: query
         name: category
         type: string
+      - description: Inclusive lower price bound
+        in: query
+        name: min_price
+        type: number
+      - description: Inclusive upper price bound
+        in: query
+        name: max_price
+        type: number
+      - description: If true, only globally-active products
+        in: query
+        name: active
+        type: boolean
       - description: Page (default 1)
         in: query
         name: page
@@ -1094,7 +1358,7 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/ProductListResponse'
-      summary: List products
+      summary: List / search products
       tags:
       - product
     post:
@@ -1504,7 +1768,99 @@ paths:
       summary: Update the set of permissions assigned to a role
       tags:
       - rbac
+  /staff:
+    get:
+      description: Search non-customer accounts. Admin sees all branches; a branch_manager
+        is scoped to their own branch.
+      parameters:
+      - description: Email or display name (ILIKE %q%)
+        in: query
+        name: q
+        type: string
+      - description: Filter by exact staff role (branch_manager, branch_staff, product_manager,
+          …)
+        in: query
+        name: role
+        type: string
+      - description: Filter by branch UUID — ignored for branch_manager callers (forced
+          to own branch)
+        in: query
+        name: branch_id
+        type: string
+      - description: Default true on /staff. Set false to include customers/guests
+          in the result
+        in: query
+        name: staff_only
+        type: boolean
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserListResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search staff (admin or branch manager)
+      tags:
+      - users
   /users:
+    get:
+      description: Search across every user (customers + staff). Admin only.
+      parameters:
+      - description: Email or display name (ILIKE %q%)
+        in: query
+        name: q
+        type: string
+      - description: Filter by exact role name
+        in: query
+        name: role
+        type: string
+      - description: Filter by branch UUID (user must be a member)
+        in: query
+        name: branch_id
+        type: string
+      - description: If true, excludes pure customer/guest accounts (default false
+          for /users)
+        in: query
+        name: staff_only
+        type: boolean
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserListResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Search all users (admin)
+      tags:
+      - users
     post:
       consumes:
       - application/json

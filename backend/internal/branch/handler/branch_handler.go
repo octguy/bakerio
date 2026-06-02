@@ -32,16 +32,22 @@ func (h *BranchHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
 	g.PATCH("/:id/status", middleware.RequirePermission("branch:manage:all"), h.UpdateStatus)
 }
 
-// GetBranchList returns a paginated list of branches.
-// @Summary      Get branch list (paginated)
+// GetBranchList returns a paginated list of branches with optional filters.
+// @Summary      List / search branches
 // @Tags         branch
 // @Produce      json
-// @Param        page  query     int  false  "Page (default 1)"
-// @Param        size  query     int  false  "Page size (default 20, max 100)"
-// @Success      200  {object}  dto.BranchListResponse
+// @Param        q       query     string  false  "Search name or address (ILIKE %q%)"
+// @Param        status  query     string  false  "Filter by exact status (e.g. active, inactive)"
+// @Param        page    query     int     false  "Page (default 1)"
+// @Param        size    query     int     false  "Page size (default 20, max 100)"
+// @Success      200     {object}  dto.BranchListResponse
 // @Router       /branch [get]
 func (h *BranchHandler) GetBranchList(c *gin.Context) {
-	res, err := h.svc.ListBranches(c.Request.Context(), pagination.FromQuery(c))
+	filter := dto.BranchListFilter{
+		Q:      c.Query("q"),
+		Status: c.Query("status"),
+	}
+	res, err := h.svc.ListBranches(c.Request.Context(), filter, pagination.FromQuery(c))
 	if err != nil {
 		response.Error(c, err)
 		return

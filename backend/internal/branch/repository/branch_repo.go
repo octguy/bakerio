@@ -3,11 +3,15 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	branchdb "github.com/octguy/bakerio/backend/db/sqlc/branch"
+	"github.com/octguy/bakerio/backend/internal/branch/dto"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	"github.com/octguy/bakerio/backend/pkg/dbq"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
@@ -17,12 +21,15 @@ type BranchRepository interface {
 	GetAllBranches(ctx context.Context) ([]*domain.Branch, error)
 	ListBranches(ctx context.Context, limit, offset int32) ([]*domain.Branch, error)
 	CountBranches(ctx context.Context) (int64, error)
+	SearchBranches(ctx context.Context, f dto.BranchListFilter, limit, offset int32) ([]*domain.Branch, error)
+	CountSearchBranches(ctx context.Context, f dto.BranchListFilter) (int64, error)
 	UpdateBranch(ctx context.Context, branchID uuid.UUID, name, address string, lat, lng *float64) (*domain.Branch, error)
 	UpdateBranchStatus(ctx context.Context, branchID uuid.UUID, status string) error
 }
 
 type branchRepo struct {
-	db *branchdb.Queries
+	db   *branchdb.Queries
+	pool *pgxpool.Pool // for dynamic search queries (sqlc doesn't model multi-optional WHERE)
 }
 
 func (r *branchRepo) queries(ctx context.Context) *branchdb.Queries {
@@ -32,8 +39,59 @@ func (r *branchRepo) queries(ctx context.Context) *branchdb.Queries {
 	return r.db
 }
 
-func NewBranchRepository(db *branchdb.Queries) BranchRepository {
-	return &branchRepo{db: db}
+func NewBranchRepository(pool *pgxpool.Pool) BranchRepository {
+	return &branchRepo{db: branchdb.New(pool), pool: pool}
+}
+
+// branchSearchWhere is the shared dynamic-WHERE for both SearchBranches and
+// CountSearchBranches so the two queries are guaranteed to filter identically.
+func branchSearchWhere(f dto.BranchListFilter) *dbq.Where {
+	w := dbq.NewWhere()
+	if f.Q != "" {
+		n := w.Next()
+		w.AddRaw(fmt.Sprintf("(name ILIKE $%d OR address ILIKE $%d)", n, n), "%"+f.Q+"%")
+	}
+	w.AddIfNotEmpty("status = ", f.Status)
+	return w
+}
+
+func (b *branchRepo) SearchBranches(ctx context.Context, f dto.BranchListFilter, limit, offset int32) ([]*domain.Branch, error) {
+	w := branchSearchWhere(f)
+	limitN := w.Next()
+	offsetN := limitN + 1
+	args := append(w.Args(), limit, offset)
+	sql := "SELECT id, name, address, lat, lng, status, created_at FROM branch.branches" +
+		w.SQL() +
+		fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", limitN, offsetN)
+
+	rows, err := b.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []*domain.Branch
+	for rows.Next() {
+		var row branchdb.BranchBranch
+		if err := rows.Scan(&row.ID, &row.Name, &row.Address, &row.Lat, &row.Lng, &row.Status, &row.CreatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, toEntity(row))
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	return out, nil
+}
+
+func (b *branchRepo) CountSearchBranches(ctx context.Context, f dto.BranchListFilter) (int64, error) {
+	w := branchSearchWhere(f)
+	sql := "SELECT COUNT(*) FROM branch.branches" + w.SQL()
+	var total int64
+	if err := b.pool.QueryRow(ctx, sql, w.Args()...).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
 }
 
 func (b *branchRepo) CreateBranch(ctx context.Context, name, address string, lat, lng *float64) (*domain.Branch, error) {

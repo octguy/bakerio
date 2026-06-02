@@ -17,7 +17,7 @@ type CategoryService interface {
 	CreateCategory(ctx context.Context, req dto.CreateCategoryRequest) (dto.CategoryResponse, error)
 	GetCategory(ctx context.Context, id uuid.UUID) (dto.CategoryResponse, error)
 	GetCategoryBySlug(ctx context.Context, slug string) (dto.CategoryResponse, error)
-	ListCategories(ctx context.Context) ([]dto.CategoryResponse, error)
+	ListCategories(ctx context.Context, filter dto.CategoryListFilter) ([]dto.CategoryResponse, error)
 	UpdateCategory(ctx context.Context, id uuid.UUID, req dto.UpdateCategoryRequest) (dto.CategoryResponse, error)
 	DeleteCategory(ctx context.Context, id uuid.UUID) error
 }
@@ -64,8 +64,8 @@ func (s *categoryService) GetCategoryBySlug(ctx context.Context, slug string) (d
 	return toCategoryResponse(category), nil
 }
 
-func (s *categoryService) ListCategories(ctx context.Context) ([]dto.CategoryResponse, error) {
-	categories, err := s.repo.List(ctx)
+func (s *categoryService) ListCategories(ctx context.Context, filter dto.CategoryListFilter) ([]dto.CategoryResponse, error) {
+	categories, err := s.repo.Search(ctx, filter)
 	if err != nil {
 		return nil, apperrors.Internal("failed to list categories", err)
 	}

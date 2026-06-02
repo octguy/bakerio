@@ -90,4 +90,3 @@ func (p *MailService) sendPlain(to, msg string) error {
 
 	return smtp.SendMail(addr, auth, p.cfg.From, []string{to}, []byte(msg))
 }
-

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/octguy/bakerio/backend/pkg/pagination"
 )
 
 type CreateUserRequest struct {
@@ -38,3 +39,25 @@ type SetRoleRequest struct {
 	Role     string     `json:"role" binding:"required"`
 	BranchID *uuid.UUID `json:"branch_id" binding:"omitempty"`
 } // @name SetRoleRequest
+
+// UserListFilter holds optional search params for GET /users and GET /staff.
+type UserListFilter struct {
+	Q         string     // matches auth.users.email OR users.profiles.display_name (ILIKE %q%)
+	Role      string     // exact role name (e.g. "branch_manager")
+	BranchID  *uuid.UUID // user must be a member of this branch
+	StaffOnly bool       // /staff path sets this — excludes pure-customer/guest accounts
+}
+
+// UserSummary is one row in /users and /staff list responses.
+type UserSummary struct {
+	UserID      uuid.UUID  `json:"user_id"`
+	Email       string     `json:"email"`
+	DisplayName string     `json:"display_name"`
+	Roles       []string   `json:"roles"`
+	BranchID    *uuid.UUID `json:"branch_id,omitempty"`
+} // @name UserSummary
+
+type UserListResponse struct {
+	Items []UserSummary `json:"items"`
+	pagination.Meta
+} // @name UserListResponse

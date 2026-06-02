@@ -15,36 +15,49 @@ import (
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
+// Module owns authentication (JWT login, registration, password ops) and the
+// RBAC role/permission system.
 type Module struct {
-	handler     *handler.AuthHandler
-	rbacHandler *handler.RbacHandler
-	authSvc     service.AuthService
-	RBACService service.RBACService
+	authSvc service.AuthService
+	rbacSvc service.RBACService
+	authH   *handler.AuthHandler
+	rbacH   *handler.RbacHandler
 }
 
-func NewModule(
-	pool *pgxpool.Pool,
-	redis *cache.Client,
-	tx *txmanager.TxManager,
-	profSvc service.ProfileCreator,
-	outboxRepo *outbox.Repository,
-	otpSvc *otp.Service,
-	jwtSecret string,
-	tokenTTL time.Duration,
-) *Module {
-	queries := authdb.New(pool)
+// Deps is the construction-time dependency set.
+type Deps struct {
+	Pool           *pgxpool.Pool
+	Redis          *cache.Client
+	TX             *txmanager.TxManager
+	ProfileCreator service.ProfileCreator
+	AuthOutbox     *outbox.Repository
+	OTP            *otp.Service
+	JWTSecret      string
+	JWTExpiry      time.Duration
+}
+
+func New(deps Deps) *Module {
+	queries := authdb.New(deps.Pool)
 	authRepo := repository.NewAuthRepo(queries)
 	rbacRepo := repository.NewRBACRepo(queries)
-	rbacSvc := service.NewRBACService(rbacRepo, redis, tx)
-	svc := service.NewAuthService(authRepo, rbacSvc, redis, tx, profSvc, outboxRepo, otpSvc, jwtSecret, tokenTTL)
-	h := handler.NewAuthHandler(svc)
-	rbacH := handler.NewRbacHandler(rbacSvc)
-	return &Module{handler: h, rbacHandler: rbacH, authSvc: svc, RBACService: rbacSvc}
+	rbacSvc := service.NewRBACService(rbacRepo, deps.Redis, deps.TX)
+	authSvc := service.NewAuthService(
+		authRepo, rbacSvc, deps.Redis, deps.TX,
+		deps.ProfileCreator, deps.AuthOutbox, deps.OTP,
+		deps.JWTSecret, deps.JWTExpiry,
+	)
+	return &Module{
+		authSvc: authSvc,
+		rbacSvc: rbacSvc,
+		authH:   handler.NewAuthHandler(authSvc),
+		rbacH:   handler.NewRbacHandler(rbacSvc),
+	}
 }
 
-func (m *Module) Service() service.AuthService { return m.authSvc }
+func (m *Module) AuthService() service.AuthService { return m.authSvc }
+func (m *Module) RBACService() service.RBACService { return m.rbacSvc }
 
 func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
-	m.handler.RegisterRoutes(public, protected)
-	m.rbacHandler.RegisterRoutes(protected)
+	m.authH.RegisterRoutes(public, protected)
+	m.rbacH.RegisterRoutes(protected)
 }

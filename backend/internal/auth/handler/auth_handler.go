@@ -93,7 +93,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	logger.Log.Info("register: success", zap.String("email", req.Email))
+	logger.Log.Info("login: success", zap.String("email", req.Email))
 	response.Success(c, http.StatusOK, res)
 }
 

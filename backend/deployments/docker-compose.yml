@@ -38,25 +38,6 @@ services:
       - bakerio_network
     restart: on-failure
 
-  seed-branding:
-    image: postgres:16-alpine
-    depends_on:
-      postgres:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    environment:
-      PGPASSWORD: ${DB_PASSWORD}
-    volumes:
-      - ${PWD}/../db/seed_branding.sql:/seed/seed_branding.sql:ro
-    command:
-      - sh
-      - -c
-      - psql -h postgres -U ${DB_USER} -d ${DB_NAME} -v ON_ERROR_STOP=1 -f /seed/seed_branding.sql
-    networks:
-      - bakerio_network
-    restart: on-failure
-
   redis:
     image: redis:7-alpine
     container_name: bakerio-redis
@@ -93,6 +74,16 @@ services:
       - bakerio_network
     restart: unless-stopped
 
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: bakerio-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
   minio:
     image: minio/minio:latest
     container_name: bakerio-minio
@@ -101,8 +92,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
     volumes:
       - minio_data:/data
     healthcheck:
@@ -110,16 +101,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - bakerio_network
-    restart: unless-stopped
-
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: bakerio-mailhog
-    ports:
-      - "1025:1025"
-      - "8025:8025"
     networks:
       - bakerio_network
     restart: unless-stopped
@@ -133,8 +114,6 @@ services:
       postgres:
         condition: service_healthy
       migrate:
-        condition: service_completed_successfully
-      seed-branding:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
