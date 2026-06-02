@@ -108,7 +108,7 @@ services:
         max-file: "3"
 
   app:
-    image: ${DOCKER_USERNAME}/bakerio:latest
+    image: ${DOCKER_USERNAME}/bakerio:${IMAGE_TAG:-latest}
     container_name: bakerio-app
     depends_on:
       postgres:
@@ -158,10 +158,14 @@ services:
         max-file: "3"
 
   order:
-    image: ${DOCKER_USERNAME}/bakerio-order:latest
+    image: ${DOCKER_USERNAME}/bakerio-order:${IMAGE_TAG:-latest}
     container_name: bakerio-order
     environment:
       NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_PUBLIC_BRANDING_URL: ${BRANDING_URL:-}
+      NEXT_PUBLIC_ORDER_URL: ${ORDER_URL:-}
+      NEXT_PUBLIC_ADMIN_URL: ${ADMIN_URL:-}
+      NEXT_PUBLIC_CONTACT_ENDPOINT: ${CONTACT_ENDPOINT:-}
     ports:
       - "3001:3000"
     networks:
@@ -174,10 +178,14 @@ services:
         max-file: "3"
 
   admin:
-    image: ${DOCKER_USERNAME}/bakerio-admin:latest
+    image: ${DOCKER_USERNAME}/bakerio-admin:${IMAGE_TAG:-latest}
     container_name: bakerio-admin
     environment:
       NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_PUBLIC_BRANDING_URL: ${BRANDING_URL:-}
+      NEXT_PUBLIC_ORDER_URL: ${ORDER_URL:-}
+      NEXT_PUBLIC_ADMIN_URL: ${ADMIN_URL:-}
+      NEXT_PUBLIC_CONTACT_ENDPOINT: ${CONTACT_ENDPOINT:-}
     ports:
       - "3002:3000"
     networks:
