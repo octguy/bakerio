@@ -1,4 +1,10 @@
-import { getProducts, getCategories, type Product, type Category } from "@repo/api-client";
+import {
+  getProductsPage,
+  getCategories,
+  type Product,
+  type Category,
+  type PaginatedResponse,
+} from "@repo/api-client";
 import { MenuGrid } from "./_components/menu-grid";
 import { MenuLayoutClient } from "./_components/menu-layout-client";
 import { Link } from "next-view-transitions";
@@ -7,6 +13,8 @@ import { Suspense } from "react";
 
 export const unstable_instant = { prefetch: "static" };
 
+const MENU_PAGE_SIZE = 12;
+
 // Cache the catalog across navigations so the branch -> menu transition lands on
 // warm data instead of re-suspending into the loading fallback every time. The
 // branch list (app/page.tsx) caches the same way; without this the Suspense
@@ -14,23 +22,35 @@ export const unstable_instant = { prefetch: "static" };
 async function getCachedCatalog(): Promise<{
   products: Product[];
   categories: Category[];
+  productsPage: PaginatedResponse<Product>;
 }> {
   "use cache";
   cacheLife("hours");
-  const [products, categories] = await Promise.all([
-    getProducts(),
+  const [productsPage, categories] = await Promise.all([
+    getProductsPage({ size: MENU_PAGE_SIZE }),
     getCategories(),
   ]);
-  return { products, categories };
+  return {
+    products: productsPage.items,
+    categories,
+    productsPage,
+  };
 }
 
 async function MenuCatalog() {
   let products: Product[] = [];
   let categories: Category[] = [];
+  let productsPage: PaginatedResponse<Product> = {
+    items: [],
+    total: 0,
+    page: 1,
+    size: MENU_PAGE_SIZE,
+    total_pages: 1,
+  };
   let loadError = false;
 
   try {
-    ({ products, categories } = await getCachedCatalog());
+    ({ products, categories, productsPage } = await getCachedCatalog());
   } catch {
     loadError = true;
   }
@@ -49,15 +69,19 @@ async function MenuCatalog() {
       </Link>
     </div>
   ) : (
-    <MenuGrid products={products} categories={categories} />
+    <MenuGrid
+      products={products}
+      categories={categories}
+      initialPage={productsPage}
+      pageSize={MENU_PAGE_SIZE}
+    />
   );
 }
 
 export default async function MenuPage() {
   return (
-    <main className="relative isolate min-h-screen overflow-x-clip px-4 pt-3 pb-28 sm:px-6 md:px-8 md:pt-8 md:pb-16 xl:px-10">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_8%_12%,rgba(232,169,78,0.28),transparent_24%),radial-gradient(circle_at_92%_0%,rgba(196,91,74,0.18),transparent_26%),linear-gradient(135deg,var(--cream)_0%,var(--vanilla)_46%,#f4dfbd_100%)]" />
-      <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.18] [background-image:linear-gradient(90deg,rgba(44,24,16,0.09)_1px,transparent_1px),linear-gradient(rgba(44,24,16,0.06)_1px,transparent_1px)] [background-size:34px_34px]" />
+    <main className="relative isolate min-h-screen overflow-x-clip bg-vanilla px-4 pt-3 pb-28 sm:px-6 md:px-8 md:pt-8 md:pb-16 xl:px-10">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(135deg,var(--cream)_0%,var(--vanilla)_58%,#f4dfbd_100%)]" />
 
       <MenuLayoutClient
         catalogSection={

@@ -37,7 +37,7 @@ describe("API Client DTO Adapters and Mock Fallback tests", () => {
   };
 
   describe("adaptProduct price->base_price and getProducts envelope extraction", () => {
-    it("adapts product price as a string and no base_price to base_price number, and passes through products with base_price", async () => {
+    it("normalizes product price strings and extracts products from envelopes", async () => {
       const backendResponse = {
         data: {
           items: [
@@ -70,14 +70,13 @@ describe("API Client DTO Adapters and Mock Fallback tests", () => {
       expect(Array.isArray(products)).toBe(true);
       expect(products).toHaveLength(2);
 
-      // 1. price string -> base_price number conversion
+      // 1. price string -> number conversion
       expect(products[0]).toEqual({
         id: "p-1",
         name: "Product with Price String",
         sku: "SKU1",
-        price: "150.00",
+        price: 150,
         unit: "pcs",
-        base_price: 150,
       });
 
       // 2. already frontend shape -> passed through unchanged
@@ -89,10 +88,27 @@ describe("API Client DTO Adapters and Mock Fallback tests", () => {
         unit: "pcs",
       });
     });
+
+    it("normalizes paginated product metadata and price strings", async () => {
+      mockResponse(200, {
+        data: {
+          items: [{ id: "p-1", name: "Croissant", price: "48000" }],
+          total: 1,
+          page: 1,
+          size: 20,
+          total_pages: 1,
+        },
+      });
+
+      const page = await client.getProductsPage();
+
+      expect(page.total_pages).toBe(1);
+      expect(page.items[0]?.price).toBe(48000);
+    });
   });
 
   describe("adaptBranch lat->region inference", () => {
-    it("infers regions correctly based on latitude boundaries and passes through pre-assigned region", async () => {
+    it("passes through branch fields without client-side region inference", async () => {
       const backendBranches = [
         { id: "br-north", name: "Northern Branch", lat: 21.0, lng: 105.8 },
         { id: "br-central", name: "Central Branch", lat: 16.0, lng: 108.2 },
@@ -107,20 +123,26 @@ describe("API Client DTO Adapters and Mock Fallback tests", () => {
 
       expect(branches).toHaveLength(5);
 
-      // Northern lat (>= 20) -> 'north'
-      expect(branches[0]?.region).toBe("north");
-
-      // Central lat (>= 14 and < 20) -> 'central'
-      expect(branches[1]?.region).toBe("central");
-
-      // Southern lat (< 14) -> 'south'
-      expect(branches[2]?.region).toBe("south");
-
-      // Pre-assigned region -> passed through unchanged
+      expect(branches[0]?.region).toBeUndefined();
+      expect(branches[1]?.region).toBeUndefined();
+      expect(branches[2]?.region).toBeUndefined();
       expect(branches[3]?.region).toBe("south");
-
-      // No lat -> passed through unchanged (region is undefined/not set)
       expect(branches[4]?.region).toBeUndefined();
+    });
+
+    it("extracts branches from backend paginated envelopes", async () => {
+      const branches = [{ id: "br-1", name: "Saigon" }];
+      mockResponse(200, {
+        data: {
+          items: branches,
+          total: 1,
+          page: 1,
+          size: 20,
+          total_pages: 1,
+        },
+      });
+
+      await expect(client.getBranches()).resolves.toEqual(branches);
     });
   });
 

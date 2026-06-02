@@ -14,6 +14,7 @@ import type {
   CreateOrderRequest,
   CreateUserResponse,
   Order,
+  PaginatedResponse,
   Profile,
   Product,
   ProductImage,
@@ -161,20 +162,30 @@ import {
   mockCategories,
 } from "./mock";
 
+type ProductListResponse = PaginatedResponse<Product>;
+type BranchListResponse = PaginatedResponse<Branch>;
+
+function normalizeProduct(product: Product): Product {
+  if (product.price == null) return product;
+  return {
+    ...product,
+    price: Number(product.price),
+  };
+}
+
+function unwrapItems<T>(raw: T[] | { items?: T[] } | null): T[] {
+  if (raw == null) return [];
+  return Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : [];
+}
+
 export const getProducts = cache(async (): Promise<Product[]> => {
   try {
-    // Backend returns ProductListResponse {items,total,page,size}; legacy test
-    // mocks return a bare array. Honor either; pass through 204→null.
-    const raw = await request<Product[] | { items?: Product[] } | null>(
-      "/products?size=500",
+    // Backend clamps size to 100 and returns ProductListResponse; legacy tests
+    // may return a bare array. Honor either; pass through 204→[].
+    const raw = await request<Product[] | ProductListResponse | null>(
+      "/products?size=100",
     );
-    if (raw == null) return raw as unknown as Product[];
-    const arr = Array.isArray(raw)
-      ? raw
-      : Array.isArray(raw.items)
-        ? raw.items
-        : [];
-    return arr;
+    return unwrapItems(raw).map(normalizeProduct);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback(
@@ -190,7 +201,7 @@ export async function getProductsPage(opts?: {
   category?: string;
   page?: number;
   size?: number;
-}): Promise<{ items: Product[]; total: number; page: number; size: number }> {
+}): Promise<ProductListResponse> {
   const params = new URLSearchParams();
   if (opts?.category) params.set("category", opts.category);
   if (opts?.page != null) params.set("page", String(opts.page));
@@ -198,12 +209,14 @@ export async function getProductsPage(opts?: {
   const query = params.toString();
 
   try {
-    return await request<{
-      items: Product[];
-      total: number;
-      page: number;
-      size: number;
-    }>(`/products${query ? `?${query}` : ""}`);
+    const page = await request<ProductListResponse>(
+      `/products${query ? `?${query}` : ""}`,
+    );
+    return {
+      ...page,
+      items: unwrapItems(page).map(normalizeProduct),
+      total_pages: page.total_pages ?? Math.ceil(page.total / page.size),
+    };
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback(
@@ -217,13 +230,14 @@ export async function getProductsPage(opts?: {
       total: items.length,
       page: opts?.page ?? 1,
       size: opts?.size ?? 20,
+      total_pages: Math.ceil(items.length / (opts?.size ?? 20)),
     };
   }
 }
 
 export const getProduct = cache(async (idOrSlug: string): Promise<Product> => {
   try {
-    return await request<Product>(`/products/${idOrSlug}`);
+    return normalizeProduct(await request<Product>(`/products/${idOrSlug}`));
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback(
@@ -246,7 +260,6 @@ export async function createProduct(data: {
 }) {
   const backendBody = {
     name: data.name,
-    slug: data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
     category_id: data.category_id,
     price: String(data.price),
     sort_order: data.sort_order ?? 0,
@@ -256,7 +269,7 @@ export async function createProduct(data: {
       method: "POST",
       body: JSON.stringify(backendBody),
     });
-    return res;
+    return normalizeProduct(res);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback(
@@ -290,7 +303,7 @@ export async function updateProduct(
       method: "PATCH",
       body: JSON.stringify(backendBody),
     });
-    return res;
+    return normalizeProduct(res);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback(
@@ -469,9 +482,10 @@ export async function deleteCategory(id: string) {
 
 export const getBranches = cache(async (): Promise<Branch[]> => {
   try {
-    const raw = await request<Branch[] | null>("/branch");
-    if (!Array.isArray(raw)) return raw as unknown as Branch[];
-    return raw;
+    const raw = await request<Branch[] | BranchListResponse | null>(
+      "/branch?size=100",
+    );
+    return unwrapItems(raw);
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback(

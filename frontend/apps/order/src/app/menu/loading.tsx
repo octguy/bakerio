@@ -5,8 +5,8 @@ import { MenuLayoutClient } from "./_components/menu-layout-client";
 // into place immediately, with the menu streaming in behind it.
 export default function Loading() {
   return (
-    <main className="relative isolate min-h-screen overflow-x-clip px-4 pt-3 pb-28 sm:px-6 md:px-8 md:pt-8 md:pb-16 xl:px-10">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_8%_12%,rgba(232,169,78,0.22),transparent_24%),linear-gradient(135deg,var(--cream)_0%,var(--vanilla)_52%,#f4dfbd_100%)]" />
+    <main className="relative isolate min-h-screen overflow-x-clip bg-vanilla px-4 pt-3 pb-28 sm:px-6 md:px-8 md:pt-8 md:pb-16 xl:px-10">
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(135deg,var(--cream)_0%,var(--vanilla)_58%,#f4dfbd_100%)]" />
       <MenuLayoutClient
         catalogSection={
           <div className="space-y-6 lg:pt-2">

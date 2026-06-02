@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getOrders, updateOrderStatus } from "@repo/api-client";
 import type { Order } from "@repo/api-client";
 import { formatCurrency } from "@/lib/utils";
@@ -60,6 +60,8 @@ const TERMINAL_STATUSES: Order["status"][] = [
   "CANCELLED",
 ];
 
+const ORDERS_PAGE_SIZE = 24;
+
 const isTerminalOrder = (status: Order["status"]) =>
   TERMINAL_STATUSES.includes(status);
 
@@ -107,13 +109,24 @@ export default function OrdersPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageRef = useRef(1);
 
-  const fetchOrders = async (showLoading = false) => {
+  const fetchOrders = async (showLoading = false, requestedPage = pageRef.current) => {
     if (showLoading) setLoading(true);
     setError("");
       try {
-        const data = await getOrders();
+        const data = await getOrders({
+          page: requestedPage,
+          size: ORDERS_PAGE_SIZE,
+        });
         setOrders(data.items || []);
+        pageRef.current = data.page;
+        setPage(data.page);
+        setTotalOrders(data.total);
+        setTotalPages(data.pages || Math.ceil(data.total / data.size) || 1);
       } catch (err) {
       setError("Could not load live orders. Retry when the API is reachable.");
       if (process.env.NODE_ENV !== "production") {
@@ -397,6 +410,7 @@ export default function OrdersPage() {
           Loading orders...
         </div>
       ) : view === "list" ? (
+        <>
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white">
           <div
             className="grid items-center border-b border-[var(--admin-line)] px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--admin-muted)]"
@@ -488,6 +502,7 @@ export default function OrdersPage() {
             })}
           </div>
         </div>
+        </>
       ) : (
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {COLS.map((col) => (
@@ -637,6 +652,32 @@ export default function OrdersPage() {
             </div>
           ))}
         </div>
+      )}
+      {!loading && totalPages > 1 && (
+        <nav
+          aria-label="Orders pagination"
+          className="mt-4 flex items-center justify-between rounded-lg border border-[var(--admin-line)] bg-white px-4 py-3"
+        >
+          <button
+            type="button"
+            disabled={page <= 1}
+            onClick={() => fetchOrders(true, page - 1)}
+            className="rounded-full border border-[var(--admin-line)] px-4 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-espresso disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Prev
+          </button>
+          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--admin-muted)]">
+            Page {page} of {totalPages} · {totalOrders} orders
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages}
+            onClick={() => fetchOrders(true, page + 1)}
+            className="rounded-full border border-espresso bg-espresso px-4 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-white disabled:cursor-not-allowed disabled:border-[var(--admin-line)] disabled:bg-white disabled:text-espresso disabled:opacity-40"
+          >
+            Next
+          </button>
+        </nav>
       )}
     </div>
   );

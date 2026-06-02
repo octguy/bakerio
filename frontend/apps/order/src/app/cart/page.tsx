@@ -10,6 +10,7 @@ import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
 import { maxRedeemableFor } from "@repo/api-client/mock/loyalty";
 import { CrossSells } from "@/components/cross-sells";
+import Loading from "./loading";
 
 export default function CartPage() {
   return (
@@ -25,6 +26,7 @@ function CartPageInner() {
   useEffect(() => setHydrated(true), []);
 
   const items = useCartStore((s) => s.items);
+  const branchId = useCartStore((s) => s.branchId);
   
   const clearCart = useCartStore((s) => s.clearCart);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
@@ -65,7 +67,7 @@ function CartPageInner() {
   const total = Math.max(0, subtotal - loyalty);
 
 
-  if (!hydrated) return null;
+  if (!hydrated) return <Loading />;
 
   if (items.length === 0) {
     return (
@@ -208,7 +210,7 @@ function CartPageInner() {
         }}
       >
         <Link
-          href="/checkout"
+          href={branchId ? "/checkout" : "/"}
           className="bkr-press flex items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream"
         >
           <span className="tabular-nums">Pay {formatVND(total)}</span>
@@ -217,7 +219,9 @@ function CartPageInner() {
             <span aria-hidden="true">→</span>
           </span>
         </Link>
-        <div className="mt-2 text-center font-editorial text-[12.5px] italic text-caramel">Final pickup total is confirmed at checkout.</div>
+        <div className="mt-2 text-center font-editorial text-[12.5px] italic text-caramel">
+          {branchId ? "Final pickup total is confirmed at checkout." : "Choose a branch before checkout."}
+        </div>
       </div>
     </main>
   );
