@@ -49,6 +49,14 @@ type ProductService interface {
 	// GetActiveProducts is consumed by cart/order to validate & snapshot.
 	GetActiveProducts(ctx context.Context, ids []uuid.UUID) ([]dto.ProductResponse, error)
 
+	// Stock — order/confirm calls these inside its own tx. tx context flows
+	// via pkg/txmanager so the SELECT + atomic UPDATE both run on the
+	// order's transaction. ReadBranchStock is informational; the actual
+	// safety is the row-level lock that DecrementBranchStock's UPDATE takes
+	// implicitly.
+	ReadBranchStock(ctx context.Context, branchID uuid.UUID, productIDs []uuid.UUID) ([]repository.BranchStockRow, error)
+	DecrementBranchStock(ctx context.Context, branchID, productID uuid.UUID, qty int32) (int64, error)
+
 	// SeedBranch fans out branch_products rows for a newly-created branch.
 	// Satisfies branch.ProductSeeder; called by the branch module.
 	SeedBranch(ctx context.Context, branchID uuid.UUID) error
@@ -160,6 +168,17 @@ func (s *productService) GetActiveProducts(ctx context.Context, ids []uuid.UUID)
 		res = append(res, toProductResponse(p))
 	}
 	return res, nil
+}
+
+// ReadBranchStock and DecrementBranchStock are thin pass-throughs so the
+// order module can run them inside its own tx without depending on the
+// product repo directly. tx context (pkg/txmanager) flows through ctx.
+func (s *productService) ReadBranchStock(ctx context.Context, branchID uuid.UUID, productIDs []uuid.UUID) ([]repository.BranchStockRow, error) {
+	return s.repo.ReadBranchStock(ctx, branchID, productIDs)
+}
+
+func (s *productService) DecrementBranchStock(ctx context.Context, branchID, productID uuid.UUID, qty int32) (int64, error) {
+	return s.repo.DecrementBranchStock(ctx, branchID, productID, qty)
 }
 
 func (s *productService) SeedBranch(ctx context.Context, branchID uuid.UUID) error {

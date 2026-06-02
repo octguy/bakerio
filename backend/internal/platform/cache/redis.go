@@ -50,6 +50,14 @@ func (c *Client) Del(ctx context.Context, key string) error {
 	return c.rdb.Del(ctx, key).Err()
 }
 
+// GetDel atomically reads a key and deletes it. Returns ("", redis.Nil) if
+// the key does not exist or has expired. Order-checkout sessions use this
+// to make confirm exactly-once — even a double-tap returns SESSION_EXPIRED
+// on the second call.
+func (c *Client) GetDel(ctx context.Context, key string) (string, error) {
+	return c.rdb.GetDel(ctx, key).Result()
+}
+
 // Close releases the connection pool. Call this on app shutdown.
 func (c *Client) Close() error {
 	return c.rdb.Close()

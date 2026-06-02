@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	cryptoRand "crypto/rand"
 	"fmt"
+	"math"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -11,6 +15,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
+	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
 
@@ -24,6 +29,7 @@ type SeedDemoSummary struct {
 	Customers      int  `json:"customers"`       // number of customer accounts
 	Staff          int  `json:"staff"`           // managers + staff combined
 	Addresses      int  `json:"addresses"`       // saved customer addresses
+	Orders         int  `json:"orders"`          // placed orders
 } // @name SeedDemoSummary
 
 // seedDemoData populates a fresh database with realistic sample data for manual
@@ -60,6 +66,7 @@ func seedDemoData(ctx context.Context, mods *modules, pool *pgxpool.Pool) SeedDe
 	seedExtraCustomers(ctx, mods)
 	seedBranchStaff(ctx, mods, branchIDs)
 	seedCustomerAddresses(ctx, pool)
+	seedDemoOrders(ctx, pool)
 
 	return readSeedCounts(ctx, pool, false)
 }
@@ -82,6 +89,7 @@ func readSeedCounts(ctx context.Context, pool *pgxpool.Pool, skipped bool) SeedD
 	scan(`SELECT COUNT(DISTINCT ur.user_id) FROM auth.user_roles ur
 	      JOIN auth.roles r ON r.id = ur.role_id WHERE r.name NOT IN ('customer', 'guest')`, &s.Staff)
 	scan("SELECT COUNT(*) FROM users.addresses", &s.Addresses)
+	scan("SELECT COUNT(*) FROM orders.orders", &s.Orders)
 	return s
 }
 
@@ -462,6 +470,309 @@ func seedCustomerAddresses(ctx context.Context, pool *pgxpool.Pool) {
 		inserted++
 	}
 	logger.Log.Info("seed demo: addresses inserted", zap.Int("count", inserted), zap.Int("customers", len(userIDs)))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Orders — ~100 historic orders spread over the last 30 days.
+//
+// Direct SQL inside one tx per order; mirrors what /orders/confirm does
+// (atomic stock decrement + insert order + items) so the seed data is
+// internally consistent: branch_products.quantity drops by what the order
+// took, totals match price snapshots, code is unique. Tries up to N*3
+// attempts so unfittable carts retry rather than abort the whole seed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+func seedDemoOrders(ctx context.Context, pool *pgxpool.Pool) {
+	const targetOrders = 100
+	const maxAttempts = targetOrders * 3
+
+	type custRow struct {
+		id       uuid.UUID
+		address  string
+		lat, lng float64
+		phone    *string
+	}
+	type branchRow struct {
+		id       uuid.UUID
+		lat, lng float64
+	}
+	type prodRow struct {
+		id    uuid.UUID
+		name  string
+		price decimal.Decimal
+	}
+
+	// 1. Customers with a default address.
+	custs := []custRow{}
+	rows, err := pool.Query(ctx, `
+		SELECT u.id, a.address, a.latitude, a.longitude
+		FROM auth.users u
+		JOIN auth.user_roles ur ON ur.user_id = u.id
+		JOIN auth.roles r       ON r.id = ur.role_id
+		JOIN users.addresses a  ON a.user_id = u.id AND a.is_default = TRUE
+		WHERE r.name = 'customer'`)
+	if err != nil {
+		logger.Log.Warn("seed demo: order customers query failed", zap.Error(err))
+		return
+	}
+	for rows.Next() {
+		var c custRow
+		if err := rows.Scan(&c.id, &c.address, &c.lat, &c.lng); err == nil {
+			custs = append(custs, c)
+		}
+	}
+	rows.Close()
+
+	// 2. Active branches with coords (filtered by routing eligibility later).
+	branches := []branchRow{}
+	rows, err = pool.Query(ctx, `
+		SELECT id, lat, lng FROM branch.branches
+		WHERE status = 'active' AND lat IS NOT NULL AND lng IS NOT NULL`)
+	if err != nil {
+		logger.Log.Warn("seed demo: order branches query failed", zap.Error(err))
+		return
+	}
+	for rows.Next() {
+		var b branchRow
+		if err := rows.Scan(&b.id, &b.lat, &b.lng); err == nil {
+			branches = append(branches, b)
+		}
+	}
+	rows.Close()
+
+	// 3. Products (active + undeleted).
+	prods := []prodRow{}
+	rows, err = pool.Query(ctx, `
+		SELECT id, name, price FROM product.products
+		WHERE is_active = TRUE AND deleted_at IS NULL`)
+	if err != nil {
+		logger.Log.Warn("seed demo: order products query failed", zap.Error(err))
+		return
+	}
+	for rows.Next() {
+		var p prodRow
+		if err := rows.Scan(&p.id, &p.name, &p.price); err == nil {
+			prods = append(prods, p)
+		}
+	}
+	rows.Close()
+
+	if len(custs) == 0 || len(branches) == 0 || len(prods) == 0 {
+		logger.Log.Warn("seed demo: order preconditions missing",
+			zap.Int("customers", len(custs)), zap.Int("branches", len(branches)), zap.Int("products", len(prods)))
+		return
+	}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	placed := 0
+	for attempt := 0; placed < targetOrders && attempt < maxAttempts; attempt++ {
+		cust := custs[rng.Intn(len(custs))]
+
+		// 1..3 distinct items, qty 1..3 each.
+		nItems := rng.Intn(3) + 1
+		picked := map[uuid.UUID]bool{}
+		var seedItems []seedOrderItem
+		for len(seedItems) < nItems {
+			p := prods[rng.Intn(len(prods))]
+			if picked[p.id] {
+				continue
+			}
+			picked[p.id] = true
+			seedItems = append(seedItems, seedOrderItem{
+				productID: p.id,
+				name:      p.name,
+				price:     p.price,
+				qty:       int32(rng.Intn(3) + 1),
+			})
+		}
+
+		// Pick the nearest branch that has stock for every item.
+		var bestBranch *branchRow
+		bestDist := math.MaxFloat64
+		for i := range branches {
+			b := branches[i]
+			ok, err := branchHasStock(ctx, pool, b.id, seedItems)
+			if err != nil || !ok {
+				continue
+			}
+			d := haversineKmDemo(cust.lat, cust.lng, b.lat, b.lng)
+			if d > 15.0 {
+				continue // out of delivery range
+			}
+			if d < bestDist {
+				bestDist = d
+				bestBranch = &branches[i]
+			}
+		}
+		if bestBranch == nil {
+			continue // retry with a different cart
+		}
+
+		subtotal := decimal.Zero
+		for _, it := range seedItems {
+			subtotal = subtotal.Add(it.price.Mul(decimal.NewFromInt32(it.qty)))
+		}
+		shippingFee := decimal.NewFromInt(int64(tierFeeDemo(bestDist)))
+		total := subtotal.Add(shippingFee)
+
+		// Spread placed_at over the last 30 days for a realistic histogram.
+		placedAt := time.Now().Add(-time.Duration(rng.Int63n(int64(30 * 24 * time.Hour))))
+
+		code, err := genOrderCodeDemo(placedAt)
+		if err != nil {
+			continue
+		}
+
+		if err := insertOrderTx(ctx, pool, code, cust, *bestBranch, seedItems, subtotal, shippingFee, total, bestDist, placedAt); err != nil {
+			// Stock race or unique-code collision — just try again.
+			continue
+		}
+		placed++
+	}
+	logger.Log.Info("seed demo: orders inserted", zap.Int("count", placed), zap.Int("target", targetOrders))
+}
+
+type seedOrderItem struct {
+	productID uuid.UUID
+	name      string
+	price     decimal.Decimal
+	qty       int32
+}
+
+// branchHasStock returns true if every item in the cart is active + in stock
+// at the branch. Non-locking — concurrent seed writers can collide but we
+// retry on the tx-level UPDATE failure, so the worst case is a wasted attempt.
+func branchHasStock(ctx context.Context, pool *pgxpool.Pool, branchID uuid.UUID, items []seedOrderItem) (bool, error) {
+	ids := make([]uuid.UUID, len(items))
+	qtys := make([]int32, len(items))
+	for i, it := range items {
+		ids[i] = it.productID
+		qtys[i] = it.qty
+	}
+	var n int
+	err := pool.QueryRow(ctx, `
+		SELECT COUNT(*) FROM product.branch_products bp
+		JOIN unnest($1::uuid[], $2::int[]) AS r(product_id, qty) ON r.product_id = bp.product_id
+		WHERE bp.branch_id = $3 AND bp.is_active = TRUE AND bp.quantity >= r.qty`,
+		ids, qtys, branchID).Scan(&n)
+	if err != nil {
+		return false, err
+	}
+	return n == len(items), nil
+}
+
+// insertOrderTx runs the decrement+insert sequence inside one tx. Mirrors
+// checkout_service.Confirm. If any row's atomic UPDATE fails (insufficient
+// stock or product gone inactive), the tx rolls back and the caller retries.
+func insertOrderTx(
+	ctx context.Context, pool *pgxpool.Pool,
+	code string, cust struct {
+		id       uuid.UUID
+		address  string
+		lat, lng float64
+		phone    *string
+	},
+	branch struct {
+		id       uuid.UUID
+		lat, lng float64
+	},
+	items []seedOrderItem,
+	subtotal, shippingFee, total decimal.Decimal,
+	distKm float64, placedAt time.Time,
+) error {
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. Atomic decrement per item. If 0 rows affected → race lost.
+	for _, it := range items {
+		tag, err := tx.Exec(ctx, `
+			UPDATE product.branch_products
+			SET quantity = quantity - $3, updated_at = NOW()
+			WHERE branch_id = $1 AND product_id = $2 AND quantity >= $3 AND is_active = TRUE`,
+			branch.id, it.productID, it.qty)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return fmt.Errorf("stock race lost on %s", it.productID)
+		}
+	}
+
+	// 2. Insert order. routing_reason mirrors the live routing policy.
+	routingReason := "nearest_eligible"
+	lat := cust.lat
+	lng := cust.lng
+	var orderID uuid.UUID
+	err = tx.QueryRow(ctx, `
+		INSERT INTO orders.orders
+		   (code, user_id, branch_id, subtotal, discount_total, shipping_fee, total,
+		    shipping_address, shipping_latitude, shipping_longitude,
+		    contact_phone, note, routing_reason, placed_at)
+		VALUES ($1,$2,$3,$4,0,$5,$6,$7,$8,$9,$10,NULL,$11,$12)
+		RETURNING id`,
+		code, cust.id, branch.id, subtotal, shippingFee, total,
+		cust.address, &lat, &lng, cust.phone, routingReason, placedAt,
+	).Scan(&orderID)
+	if err != nil {
+		return err
+	}
+
+	// 3. Insert items with name + price snapshots.
+	for _, it := range items {
+		line := it.price.Mul(decimal.NewFromInt32(it.qty))
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO orders.order_items
+			   (order_id, product_id, name_snap, unit_price_snap, quantity, line_total)
+			VALUES ($1, $2, $3, $4, $5, $6)`,
+			orderID, it.productID, it.name, it.price, it.qty, line,
+		); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+// haversineKmDemo + tierFeeDemo mirror internal/branch/service/routing_service
+// so seeded orders match what live routing would have produced. Duplicating
+// the constants here keeps the seed self-contained — if shipping policy
+// changes in the routing service, update both.
+func haversineKmDemo(lat1, lng1, lat2, lng2 float64) float64 {
+	const r = 6371.0
+	toRad := func(x float64) float64 { return x * math.Pi / 180 }
+	dLat := toRad(lat2 - lat1)
+	dLng := toRad(lng2 - lng1)
+	a := math.Sin(dLat/2)*math.Sin(dLat/2) +
+		math.Cos(toRad(lat1))*math.Cos(toRad(lat2))*math.Sin(dLng/2)*math.Sin(dLng/2)
+	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
+	return r * c
+}
+
+func tierFeeDemo(distanceKm float64) int {
+	switch {
+	case distanceKm <= 3.0:
+		return 15000
+	case distanceKm <= 7.0:
+		return 25000
+	default:
+		return 40000
+	}
+}
+
+const codeAlphabetDemo = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+func genOrderCodeDemo(now time.Time) (string, error) {
+	buf := make([]byte, 6)
+	if _, err := cryptoRand.Read(buf); err != nil {
+		return "", err
+	}
+	suffix := make([]byte, 6)
+	for i, b := range buf {
+		suffix[i] = codeAlphabetDemo[int(b)%len(codeAlphabetDemo)]
+	}
+	return fmt.Sprintf("BKO-%s-%s", now.UTC().Format("20060102"), string(suffix)), nil
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -7,14 +7,15 @@ package ordersdb
 
 import (
 	"context"
+
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 const countOrders = `-- name: CountOrders :one
-
 SELECT COUNT(*) FROM orders.orders
 `
 
-// Phase O1b: codegen smoke test only. Real CRUD queries land in Phase O2.
 func (q *Queries) CountOrders(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countOrders)
 	var count int64
@@ -22,19 +23,59 @@ func (q *Queries) CountOrders(ctx context.Context) (int64, error) {
 	return count, err
 }
 
-const getOrderByCode = `-- name: GetOrderByCode :one
-SELECT id, code, user_id, branch_id, status, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at FROM orders.orders WHERE code = $1 LIMIT 1
+const createOrder = `-- name: CreateOrder :one
+INSERT INTO orders.orders (
+    code, user_id, branch_id,
+    subtotal, discount_total, shipping_fee, total,
+    shipping_address, shipping_latitude, shipping_longitude,
+    contact_phone, note, routing_reason
+) VALUES (
+    $1, $2, $3,
+    $4, $5, $6, $7,
+    $8, $9, $10,
+    $11, $12, $13
+)
+RETURNING id, code, user_id, branch_id, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at
 `
 
-func (q *Queries) GetOrderByCode(ctx context.Context, code string) (OrdersOrder, error) {
-	row := q.db.QueryRow(ctx, getOrderByCode, code)
+type CreateOrderParams struct {
+	Code              string          `json:"code"`
+	UserID            uuid.UUID       `json:"user_id"`
+	BranchID          uuid.UUID       `json:"branch_id"`
+	Subtotal          decimal.Decimal `json:"subtotal"`
+	DiscountTotal     decimal.Decimal `json:"discount_total"`
+	ShippingFee       decimal.Decimal `json:"shipping_fee"`
+	Total             decimal.Decimal `json:"total"`
+	ShippingAddress   string          `json:"shipping_address"`
+	ShippingLatitude  *float64        `json:"shipping_latitude"`
+	ShippingLongitude *float64        `json:"shipping_longitude"`
+	ContactPhone      *string         `json:"contact_phone"`
+	Note              *string         `json:"note"`
+	RoutingReason     *string         `json:"routing_reason"`
+}
+
+func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (OrdersOrder, error) {
+	row := q.db.QueryRow(ctx, createOrder,
+		arg.Code,
+		arg.UserID,
+		arg.BranchID,
+		arg.Subtotal,
+		arg.DiscountTotal,
+		arg.ShippingFee,
+		arg.Total,
+		arg.ShippingAddress,
+		arg.ShippingLatitude,
+		arg.ShippingLongitude,
+		arg.ContactPhone,
+		arg.Note,
+		arg.RoutingReason,
+	)
 	var i OrdersOrder
 	err := row.Scan(
 		&i.ID,
 		&i.Code,
 		&i.UserID,
 		&i.BranchID,
-		&i.Status,
 		&i.Subtotal,
 		&i.DiscountTotal,
 		&i.ShippingFee,
@@ -50,4 +91,136 @@ func (q *Queries) GetOrderByCode(ctx context.Context, code string) (OrdersOrder,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const createOrderItem = `-- name: CreateOrderItem :one
+INSERT INTO orders.order_items (
+    order_id, product_id, name_snap, unit_price_snap, quantity, line_total
+) VALUES (
+    $1, $2, $3, $4, $5, $6
+)
+RETURNING id, order_id, product_id, name_snap, unit_price_snap, quantity, line_total
+`
+
+type CreateOrderItemParams struct {
+	OrderID       uuid.UUID       `json:"order_id"`
+	ProductID     uuid.UUID       `json:"product_id"`
+	NameSnap      string          `json:"name_snap"`
+	UnitPriceSnap decimal.Decimal `json:"unit_price_snap"`
+	Quantity      int32           `json:"quantity"`
+	LineTotal     decimal.Decimal `json:"line_total"`
+}
+
+func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) (OrdersOrderItem, error) {
+	row := q.db.QueryRow(ctx, createOrderItem,
+		arg.OrderID,
+		arg.ProductID,
+		arg.NameSnap,
+		arg.UnitPriceSnap,
+		arg.Quantity,
+		arg.LineTotal,
+	)
+	var i OrdersOrderItem
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.ProductID,
+		&i.NameSnap,
+		&i.UnitPriceSnap,
+		&i.Quantity,
+		&i.LineTotal,
+	)
+	return i, err
+}
+
+const getOrderByCode = `-- name: GetOrderByCode :one
+SELECT id, code, user_id, branch_id, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at FROM orders.orders WHERE code = $1 LIMIT 1
+`
+
+func (q *Queries) GetOrderByCode(ctx context.Context, code string) (OrdersOrder, error) {
+	row := q.db.QueryRow(ctx, getOrderByCode, code)
+	var i OrdersOrder
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.UserID,
+		&i.BranchID,
+		&i.Subtotal,
+		&i.DiscountTotal,
+		&i.ShippingFee,
+		&i.Total,
+		&i.ShippingAddress,
+		&i.ShippingLatitude,
+		&i.ShippingLongitude,
+		&i.ContactPhone,
+		&i.Note,
+		&i.RoutingReason,
+		&i.PlacedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getOrderByID = `-- name: GetOrderByID :one
+SELECT id, code, user_id, branch_id, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at FROM orders.orders WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (OrdersOrder, error) {
+	row := q.db.QueryRow(ctx, getOrderByID, id)
+	var i OrdersOrder
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.UserID,
+		&i.BranchID,
+		&i.Subtotal,
+		&i.DiscountTotal,
+		&i.ShippingFee,
+		&i.Total,
+		&i.ShippingAddress,
+		&i.ShippingLatitude,
+		&i.ShippingLongitude,
+		&i.ContactPhone,
+		&i.Note,
+		&i.RoutingReason,
+		&i.PlacedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listOrderItemsByOrderID = `-- name: ListOrderItemsByOrderID :many
+SELECT id, order_id, product_id, name_snap, unit_price_snap, quantity, line_total FROM orders.order_items
+WHERE order_id = $1
+ORDER BY id
+`
+
+func (q *Queries) ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]OrdersOrderItem, error) {
+	rows, err := q.db.Query(ctx, listOrderItemsByOrderID, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrdersOrderItem{}
+	for rows.Next() {
+		var i OrdersOrderItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.NameSnap,
+			&i.UnitPriceSnap,
+			&i.Quantity,
+			&i.LineTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

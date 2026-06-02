@@ -16,6 +16,7 @@ type envelope struct {
 type apiError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+	Details any    `json:"details,omitempty"`
 }
 
 // ErrorResponse is the error envelope shape returned on all failures.
@@ -24,6 +25,7 @@ type ErrorResponse struct {
 	Error struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
+		Details any    `json:"details,omitempty"`
 	} `json:"error"`
 } // @name ErrorResponse
 
@@ -34,7 +36,11 @@ func Success(c *gin.Context, status int, data any) {
 func Error(c *gin.Context, err error) {
 	if appErr, ok := errors.AsType[*apperrors.AppError](err); ok {
 		c.JSON(appErrToStatus(appErr.Code), envelope{
-			Error: &apiError{Code: string(appErr.Code), Message: appErr.Message},
+			Error: &apiError{
+				Code:    string(appErr.Code),
+				Message: appErr.Message,
+				Details: appErr.Details,
+			},
 		})
 		return
 	}
@@ -51,8 +57,10 @@ func appErrToStatus(code apperrors.Code) int {
 		return http.StatusUnauthorized
 	case apperrors.CodeForbidden:
 		return http.StatusForbidden
-	case apperrors.CodeConflict:
+	case apperrors.CodeConflict, apperrors.CodeStockConflict:
 		return http.StatusConflict
+	case apperrors.CodeGone:
+		return http.StatusGone
 	case apperrors.CodeValidation:
 		return http.StatusUnprocessableEntity
 	default:

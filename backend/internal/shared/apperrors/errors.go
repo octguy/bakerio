@@ -5,18 +5,21 @@ import "fmt"
 type Code string
 
 const (
-	CodeNotFound     Code = "NOT_FOUND"
-	CodeUnauthorized Code = "UNAUTHORIZED"
-	CodeForbidden    Code = "FORBIDDEN"
-	CodeConflict     Code = "CONFLICT" // e.g. email already exists
-	CodeValidation   Code = "VALIDATION"
-	CodeInternal     Code = "INTERNAL"
+	CodeNotFound      Code = "NOT_FOUND"
+	CodeUnauthorized  Code = "UNAUTHORIZED"
+	CodeForbidden     Code = "FORBIDDEN"
+	CodeConflict      Code = "CONFLICT"       // generic 409
+	CodeGone          Code = "GONE"           // 410 — session expired, etc.
+	CodeStockConflict Code = "STOCK_CONFLICT" // 409 with stock-detail payload
+	CodeValidation    Code = "VALIDATION"
+	CodeInternal      Code = "INTERNAL"
 )
 
 type AppError struct {
 	Code    Code
 	Message string
 	Cause   error // original error, not exposed to client
+	Details any   // optional structured payload (rendered as error.details JSON)
 }
 
 func (e *AppError) Error() string {
@@ -51,4 +54,15 @@ func Internal(msg string, cause error) *AppError {
 
 func Validation(msg string) *AppError {
 	return &AppError{Code: CodeValidation, Message: msg}
+}
+
+// Gone returns HTTP 410 — caller's resource (session, token) no longer exists.
+func Gone(msg string) *AppError {
+	return &AppError{Code: CodeGone, Message: msg}
+}
+
+// StockConflict returns HTTP 409 with a structured payload identifying the
+// problem items. details is rendered as `error.details` in the response.
+func StockConflict(msg string, details any) *AppError {
+	return &AppError{Code: CodeStockConflict, Message: msg, Details: details}
 }

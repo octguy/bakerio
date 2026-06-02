@@ -9,7 +9,36 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
+
+const decrementBranchStock = `-- name: DecrementBranchStock :execrows
+UPDATE product.branch_products
+SET quantity   = quantity - $3,
+    updated_at = NOW()
+WHERE branch_id = $1
+  AND product_id = $2
+  AND quantity >= $3
+  AND is_active = TRUE
+`
+
+type DecrementBranchStockParams struct {
+	BranchID  uuid.UUID `json:"branch_id"`
+	ProductID uuid.UUID `json:"product_id"`
+	Quantity  int32     `json:"quantity"`
+}
+
+// Atomic subtract — fires only when current stock is enough AND the row is
+// still active. Returns rows-affected (1 = success, 0 = lost the race or
+// product deactivated). Service uses the count to detect failure and roll
+// back the entire tx.
+func (q *Queries) DecrementBranchStock(ctx context.Context, arg DecrementBranchStockParams) (int64, error) {
+	result, err := q.db.Exec(ctx, decrementBranchStock, arg.BranchID, arg.ProductID, arg.Quantity)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
 
 const fanoutProductToBranches = `-- name: FanoutProductToBranches :exec
 INSERT INTO product.branch_products (product_id, branch_id, created_by, updated_by)
@@ -55,6 +84,43 @@ func (q *Queries) GetBranchProduct(ctx context.Context, arg GetBranchProductPara
 		&i.Quantity,
 	)
 	return i, err
+}
+
+const getProductsByIDs = `-- name: GetProductsByIDs :many
+SELECT id, name, price
+FROM product.products
+WHERE id = ANY($1::uuid[])
+  AND is_active = TRUE
+  AND deleted_at IS NULL
+`
+
+type GetProductsByIDsRow struct {
+	ID    uuid.UUID       `json:"id"`
+	Name  string          `json:"name"`
+	Price decimal.Decimal `json:"price"`
+}
+
+// Pulls live name + price for snapshotting onto the order session at
+// /orders/select-branch. Filters to active + undeleted; client must
+// handle a missing product as "stale catalog, refresh".
+func (q *Queries) GetProductsByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]GetProductsByIDsRow, error) {
+	rows, err := q.db.Query(ctx, getProductsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetProductsByIDsRow{}
+	for rows.Next() {
+		var i GetProductsByIDsRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Price); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listActiveProductsByBranch = `-- name: ListActiveProductsByBranch :many
@@ -127,6 +193,47 @@ func (q *Queries) ListBranchProductsByBranch(ctx context.Context, branchID uuid.
 			&i.UpdatedBy,
 			&i.Quantity,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readBranchStock = `-- name: ReadBranchStock :many
+SELECT product_id, quantity, is_active
+FROM product.branch_products
+WHERE branch_id = $1 AND product_id = ANY($2::uuid[])
+`
+
+type ReadBranchStockParams struct {
+	BranchID uuid.UUID   `json:"branch_id"`
+	Column2  []uuid.UUID `json:"column_2"`
+}
+
+type ReadBranchStockRow struct {
+	ProductID uuid.UUID `json:"product_id"`
+	Quantity  int32     `json:"quantity"`
+	IsActive  bool      `json:"is_active"`
+}
+
+// Non-locking pre-check used by order/confirm to build a rich
+// STOCK_CONFLICT payload (report all problematic items at once instead of
+// one-at-a-time across retries). The atomic UPDATE in DecrementBranchStock
+// is what actually enforces the invariant — this SELECT is informational.
+func (q *Queries) ReadBranchStock(ctx context.Context, arg ReadBranchStockParams) ([]ReadBranchStockRow, error) {
+	rows, err := q.db.Query(ctx, readBranchStock, arg.BranchID, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ReadBranchStockRow{}
+	for rows.Next() {
+		var i ReadBranchStockRow
+		if err := rows.Scan(&i.ProductID, &i.Quantity, &i.IsActive); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

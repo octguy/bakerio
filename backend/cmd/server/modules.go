@@ -73,10 +73,19 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 		Catalog: productMod.ProductService(),
 	})
 
-	// Order module consumes the branch router (cross-schema read of
-	// branches + branch_products). v1 only exposes the preview endpoint;
-	// no schema yet.
-	orderMod := order.New(order.Deps{Router: branchMod.Router()})
+	// Order module consumes the branch router (read-side for routing) +
+	// the product service (Catalog for prices + stock lock/decrement) +
+	// the branch membership service (so order:view:branch callers get
+	// auto-scoped to their own branch on GET /orders).
+	// Confirm flow opens its own tx via the shared TxManager.
+	orderMod := order.New(order.Deps{
+		Pool:       i.pool,
+		TX:         i.tx,
+		Redis:      i.redis,
+		Router:     branchMod.Router(),
+		Catalog:    productMod.ProductService(),
+		Membership: branchMod.MembershipService(),
+	})
 
 	return &modules{
 		auth:    authMod,
