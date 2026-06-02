@@ -14,10 +14,7 @@ const countOrders = `-- name: CountOrders :one
 SELECT COUNT(*) FROM orders.orders
 `
 
-// Phase O1b: codegen smoke test only. Real CRUD queries (CreateOrder,
-// ListOrdersByUser, transitions, etc.) land in Phase O2.
-// Sanity ping for support tooling + a query for sqlc to generate something
-// against orders.orders. Will be replaced or augmented in O2.
+// Phase O1b: codegen smoke test only. Real CRUD queries land in Phase O2.
 func (q *Queries) CountOrders(ctx context.Context) (int64, error) {
 	row := q.db.QueryRow(ctx, countOrders)
 	var count int64
@@ -29,9 +26,6 @@ const getOrderByCode = `-- name: GetOrderByCode :one
 SELECT id, code, user_id, branch_id, status, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at FROM orders.orders WHERE code = $1 LIMIT 1
 `
 
-// Customer-facing lookup by the human-readable order code (format TBD;
-// placeholder placeholder until O2 settles on a generator). Used by
-// support tooling and the customer "track my order" page.
 func (q *Queries) GetOrderByCode(ctx context.Context, code string) (OrdersOrder, error) {
 	row := q.db.QueryRow(ctx, getOrderByCode, code)
 	var i OrdersOrder
