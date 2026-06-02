@@ -1374,6 +1374,69 @@ const docTemplate = `{
                 }
             }
         },
+        "/orders/confirm": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Pops the session (exactly-once: double-tap returns SESSION_EXPIRED), atomically locks + decrements stock, writes the order rows. Stock race loss returns 409 STOCK_CONFLICT — client should re-route via /orders/find-branches.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Place the order from a checkout session",
+                "parameters": [
+                    {
+                        "description": "Session reference",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ConfirmOrderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/OrderResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "session belongs to another user",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "STOCK_CONFLICT",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "410": {
+                        "description": "SESSION_EXPIRED (expired or already used)",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/orders/find-branches": {
             "post": {
                 "security": [
@@ -1408,6 +1471,57 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/FindBranchesResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/orders/select-branch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "After /orders/find-branches returned options, the client passes the chosen branch_id back here. Server re-verifies eligibility, freezes the prices + shipping fee, and stores a Redis session for 10 minutes. Returns session_id to confirm with.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Lock a quote into a 10-minute checkout session",
+                "parameters": [
+                    {
+                        "description": "Selection payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/SelectBranchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/SelectBranchResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "BRANCH_NOT_ELIGIBLE or STOCK_CONFLICT",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     },
                     "422": {
@@ -2841,6 +2955,17 @@ const docTemplate = `{
                 }
             }
         },
+        "ConfirmOrderRequest": {
+            "type": "object",
+            "required": [
+                "session_id"
+            ],
+            "properties": {
+                "session_id": {
+                    "type": "string"
+                }
+            }
+        },
         "CreateAddressRequest": {
             "type": "object",
             "required": [
@@ -3001,6 +3126,7 @@ const docTemplate = `{
                         "code": {
                             "type": "string"
                         },
+                        "details": {},
                         "message": {
                             "type": "string"
                         }
@@ -3128,6 +3254,88 @@ const docTemplate = `{
                 },
                 "requested": {
                     "type": "integer"
+                }
+            }
+        },
+        "OrderItemResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "line_total": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "unit_price": {
+                    "type": "number"
+                }
+            }
+        },
+        "OrderResponse": {
+            "type": "object",
+            "properties": {
+                "branch_id": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "contact_phone": {
+                    "type": "string"
+                },
+                "discount_total": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/OrderItemResponse"
+                    }
+                },
+                "note": {
+                    "type": "string"
+                },
+                "placed_at": {
+                    "type": "string"
+                },
+                "routing_reason": {
+                    "type": "string"
+                },
+                "shipping_address": {
+                    "type": "string"
+                },
+                "shipping_fee": {
+                    "type": "number"
+                },
+                "shipping_latitude": {
+                    "type": "number"
+                },
+                "shipping_longitude": {
+                    "type": "number"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subtotal": {
+                    "type": "number"
+                },
+                "total": {
+                    "type": "number"
+                },
+                "user_id": {
+                    "type": "string"
                 }
             }
         },
@@ -3304,6 +3512,10 @@ const docTemplate = `{
         "SeedDemoSummary": {
             "type": "object",
             "properties": {
+                "addresses": {
+                    "description": "saved customer addresses",
+                    "type": "integer"
+                },
                 "branch_products": {
                     "description": "(product × branch) availability rows",
                     "type": "integer"
@@ -3330,6 +3542,118 @@ const docTemplate = `{
                 },
                 "staff": {
                     "description": "managers + staff combined",
+                    "type": "integer"
+                }
+            }
+        },
+        "SelectBranchItem": {
+            "type": "object",
+            "required": [
+                "product_id",
+                "quantity"
+            ],
+            "properties": {
+                "product_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "maximum": 99,
+                    "minimum": 1
+                }
+            }
+        },
+        "SelectBranchItemQuoted": {
+            "type": "object",
+            "properties": {
+                "line_total": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "unit_price": {
+                    "type": "number"
+                }
+            }
+        },
+        "SelectBranchRequest": {
+            "type": "object",
+            "required": [
+                "branch_id",
+                "items",
+                "shipping_address"
+            ],
+            "properties": {
+                "branch_id": {
+                    "type": "string"
+                },
+                "contact_phone": {
+                    "type": "string",
+                    "maxLength": 20
+                },
+                "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/SelectBranchItem"
+                    }
+                },
+                "note": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "shipping_address": {
+                    "type": "string"
+                },
+                "shipping_latitude": {
+                    "type": "number"
+                },
+                "shipping_longitude": {
+                    "type": "number"
+                }
+            }
+        },
+        "SelectBranchResponse": {
+            "type": "object",
+            "properties": {
+                "branch_id": {
+                    "type": "string"
+                },
+                "branch_name": {
+                    "type": "string"
+                },
+                "distance_km": {
+                    "type": "number"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/SelectBranchItemQuoted"
+                    }
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "shipping_fee": {
+                    "type": "number"
+                },
+                "subtotal": {
+                    "type": "number"
+                },
+                "total": {
+                    "type": "number"
+                },
+                "ttl_seconds": {
                     "type": "integer"
                 }
             }

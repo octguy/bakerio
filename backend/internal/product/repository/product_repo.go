@@ -38,6 +38,14 @@ type ProductRepository interface {
 	SetBranchProductActive(ctx context.Context, productID, branchID uuid.UUID, active bool) (*domain.BranchProduct, error)
 	ListActiveProductsByBranch(ctx context.Context, branchID uuid.UUID) ([]*domain.Product, error)
 
+	// Stock — called by the order module's confirm tx. Caller passes
+	// tx-aware ctx (txmanager threads *pgx.Tx); the queries run on that tx.
+	// ReadBranchStock is a non-locking informational read used to build a
+	// rich STOCK_CONFLICT response; the atomic UPDATE in DecrementBranchStock
+	// is what enforces the actual invariant.
+	ReadBranchStock(ctx context.Context, branchID uuid.UUID, productIDs []uuid.UUID) ([]BranchStockRow, error)
+	DecrementBranchStock(ctx context.Context, branchID, productID uuid.UUID, qty int32) (int64, error)
+
 	// product_images
 	CreateImage(ctx context.Context, productID uuid.UUID, key string, altText *string, sortOrder int32) (*domain.ProductImage, error)
 	ListImages(ctx context.Context, productID uuid.UUID) ([]*domain.ProductImage, error)
@@ -397,4 +405,39 @@ func toBranchProductEntity(b *productdb.ProductBranchProduct) *domain.BranchProd
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
 	}
+}
+
+// BranchStockRow is the result of LockBranchStockForUpdate. Service uses
+// quantity + is_active to decide whether to proceed with the decrement.
+type BranchStockRow struct {
+	ProductID uuid.UUID
+	Quantity  int32
+	IsActive  bool
+}
+
+func (r *productRepo) ReadBranchStock(ctx context.Context, branchID uuid.UUID, productIDs []uuid.UUID) ([]BranchStockRow, error) {
+	rows, err := r.queries(ctx).ReadBranchStock(ctx, productdb.ReadBranchStockParams{
+		BranchID: branchID,
+		Column2:  productIDs,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]BranchStockRow, len(rows))
+	for i, row := range rows {
+		out[i] = BranchStockRow{
+			ProductID: row.ProductID,
+			Quantity:  row.Quantity,
+			IsActive:  row.IsActive,
+		}
+	}
+	return out, nil
+}
+
+func (r *productRepo) DecrementBranchStock(ctx context.Context, branchID, productID uuid.UUID, qty int32) (int64, error) {
+	return r.queries(ctx).DecrementBranchStock(ctx, productdb.DecrementBranchStockParams{
+		BranchID:  branchID,
+		ProductID: productID,
+		Quantity:  qty,
+	})
 }

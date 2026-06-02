@@ -190,6 +190,13 @@ definitions:
     - current_password
     - new_password
     type: object
+  ConfirmOrderRequest:
+    properties:
+      session_id:
+        type: string
+    required:
+    - session_id
+    type: object
   CreateAddressRequest:
     properties:
       address:
@@ -300,6 +307,7 @@ definitions:
         properties:
           code:
             type: string
+          details: {}
           message:
             type: string
         type: object
@@ -385,6 +393,60 @@ definitions:
         type: string
       requested:
         type: integer
+    type: object
+  OrderItemResponse:
+    properties:
+      id:
+        type: string
+      line_total:
+        type: number
+      name:
+        type: string
+      product_id:
+        type: string
+      quantity:
+        type: integer
+      unit_price:
+        type: number
+    type: object
+  OrderResponse:
+    properties:
+      branch_id:
+        type: string
+      code:
+        type: string
+      contact_phone:
+        type: string
+      discount_total:
+        type: number
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/OrderItemResponse'
+        type: array
+      note:
+        type: string
+      placed_at:
+        type: string
+      routing_reason:
+        type: string
+      shipping_address:
+        type: string
+      shipping_fee:
+        type: number
+      shipping_latitude:
+        type: number
+      shipping_longitude:
+        type: number
+      status:
+        type: string
+      subtotal:
+        type: number
+      total:
+        type: number
+      user_id:
+        type: string
     type: object
   PermissionResponse:
     properties:
@@ -502,6 +564,9 @@ definitions:
     type: object
   SeedDemoSummary:
     properties:
+      addresses:
+        description: saved customer addresses
+        type: integer
       branch_products:
         description: (product × branch) availability rows
         type: integer
@@ -522,6 +587,82 @@ definitions:
         type: boolean
       staff:
         description: managers + staff combined
+        type: integer
+    type: object
+  SelectBranchItem:
+    properties:
+      product_id:
+        type: string
+      quantity:
+        maximum: 99
+        minimum: 1
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
+  SelectBranchItemQuoted:
+    properties:
+      line_total:
+        type: number
+      name:
+        type: string
+      product_id:
+        type: string
+      quantity:
+        type: integer
+      unit_price:
+        type: number
+    type: object
+  SelectBranchRequest:
+    properties:
+      branch_id:
+        type: string
+      contact_phone:
+        maxLength: 20
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/SelectBranchItem'
+        minItems: 1
+        type: array
+      note:
+        maxLength: 500
+        type: string
+      shipping_address:
+        type: string
+      shipping_latitude:
+        type: number
+      shipping_longitude:
+        type: number
+    required:
+    - branch_id
+    - items
+    - shipping_address
+    type: object
+  SelectBranchResponse:
+    properties:
+      branch_id:
+        type: string
+      branch_name:
+        type: string
+      distance_km:
+        type: number
+      expires_at:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/SelectBranchItemQuoted'
+        type: array
+      session_id:
+        type: string
+      shipping_fee:
+        type: number
+      subtotal:
+        type: number
+      total:
+        type: number
+      ttl_seconds:
         type: integer
     type: object
   SetAvailabilityRequest:
@@ -1568,6 +1709,48 @@ paths:
       summary: Update a category
       tags:
       - categories
+  /orders/confirm:
+    post:
+      consumes:
+      - application/json
+      description: 'Pops the session (exactly-once: double-tap returns SESSION_EXPIRED),
+        atomically locks + decrements stock, writes the order rows. Stock race loss
+        returns 409 STOCK_CONFLICT — client should re-route via /orders/find-branches.'
+      parameters:
+      - description: Session reference
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ConfirmOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/OrderResponse'
+        "403":
+          description: session belongs to another user
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "409":
+          description: STOCK_CONFLICT
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "410":
+          description: SESSION_EXPIRED (expired or already used)
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Place the order from a checkout session
+      tags:
+      - orders
   /orders/find-branches:
     post:
       consumes:
@@ -1597,6 +1780,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Find branches that can fulfill the cart
+      tags:
+      - orders
+  /orders/select-branch:
+    post:
+      consumes:
+      - application/json
+      description: After /orders/find-branches returned options, the client passes
+        the chosen branch_id back here. Server re-verifies eligibility, freezes the
+        prices + shipping fee, and stores a Redis session for 10 minutes. Returns
+        session_id to confirm with.
+      parameters:
+      - description: Selection payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/SelectBranchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/SelectBranchResponse'
+        "409":
+          description: BRANCH_NOT_ELIGIBLE or STOCK_CONFLICT
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Lock a quote into a 10-minute checkout session
       tags:
       - orders
   /permissions:
