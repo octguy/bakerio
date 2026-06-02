@@ -60,7 +60,8 @@ func (r *routingRepo) EligibleBranches(ctx context.Context, productIDs []uuid.UU
 		SELECT COALESCE(SUM(p.price * r.qty), 0)
 		FROM unnest($1::uuid[], $2::int[]) AS r(product_id, qty)
 		JOIN product.products p ON p.id = r.product_id
-		WHERE p.is_active = TRUE`
+		WHERE p.is_active = TRUE
+		`
 	if err := r.pool.QueryRow(ctx, subtotalSQL, productIDs, quantities).Scan(&subtotal); err != nil {
 		return decimal.Zero, nil, err
 	}

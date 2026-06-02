@@ -31,7 +31,7 @@ func (q *Queries) FanoutProductToBranches(ctx context.Context, arg FanoutProduct
 }
 
 const getBranchProduct = `-- name: GetBranchProduct :one
-SELECT id, product_id, branch_id, is_active, created_at, created_by, updated_at, updated_by FROM product.branch_products
+SELECT id, product_id, branch_id, is_active, created_at, created_by, updated_at, updated_by, quantity FROM product.branch_products
 WHERE product_id = $1 AND branch_id = $2
 `
 
@@ -52,6 +52,7 @@ func (q *Queries) GetBranchProduct(ctx context.Context, arg GetBranchProductPara
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+		&i.Quantity,
 	)
 	return i, err
 }
@@ -101,7 +102,7 @@ func (q *Queries) ListActiveProductsByBranch(ctx context.Context, branchID uuid.
 }
 
 const listBranchProductsByBranch = `-- name: ListBranchProductsByBranch :many
-SELECT id, product_id, branch_id, is_active, created_at, created_by, updated_at, updated_by FROM product.branch_products
+SELECT id, product_id, branch_id, is_active, created_at, created_by, updated_at, updated_by, quantity FROM product.branch_products
 WHERE branch_id = $1
 `
 
@@ -124,6 +125,7 @@ func (q *Queries) ListBranchProductsByBranch(ctx context.Context, branchID uuid.
 			&i.CreatedBy,
 			&i.UpdatedAt,
 			&i.UpdatedBy,
+			&i.Quantity,
 		); err != nil {
 			return nil, err
 		}
@@ -160,7 +162,7 @@ SET is_active  = $3,
     updated_at = NOW(),
     updated_by = $4
 WHERE product_id = $1 AND branch_id = $2
-RETURNING id, product_id, branch_id, is_active, created_at, created_by, updated_at, updated_by
+RETURNING id, product_id, branch_id, is_active, created_at, created_by, updated_at, updated_by, quantity
 `
 
 type SetBranchProductActiveParams struct {
@@ -187,6 +189,7 @@ func (q *Queries) SetBranchProductActive(ctx context.Context, arg SetBranchProdu
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.UpdatedBy,
+		&i.Quantity,
 	)
 	return i, err
 }
