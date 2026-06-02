@@ -36,6 +36,7 @@ func runHTTPServer(cfg *config.Config, i *infra, mods *modules) {
 	dev := newDevHandler(mods, i.pool)
 	adminOnly := authed.Group("", middleware.RequirePermission("*:*:all"))
 	adminOnly.POST("/admin/seed-demo", dev.SeedDemo)
+	adminOnly.POST("/admin/restock", dev.Restock)
 
 	logger.Log.Info("starting http server", zap.String("port", cfg.Server.Port))
 	if err := r.Run(":" + cfg.Server.Port); err != nil {

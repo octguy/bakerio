@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -152,6 +150,26 @@ services:
     networks:
       - bakerio_network
     restart: unless-stopped
+
+  # k6 — load/race tester. Off by default (profile=test). Run with:
+  #   make k6-smoke    (one VU, one iteration through find → select → confirm)
+  #   make k6-load     (sustained ramped load)
+  #   make k6-race     (many concurrent confirms on a pinned-low-stock SKU)
+  # By default it hits the host's app over `host.docker.internal:8080`, which
+  # matches `make run` on the dev machine. Override BAKERIO_BASE_URL in the
+  # Makefile or shell to point at the in-compose `app` service instead.
+  k6:
+    image: grafana/k6:0.49.0
+    profiles: ["test"]
+    environment:
+      BAKERIO_BASE_URL: ${BAKERIO_BASE_URL:-http://host.docker.internal:8080}
+      BAKERIO_PASSWORD: ${BAKERIO_PASSWORD:-123456}
+    volumes:
+      - ${PWD}/../tests/k6:/scripts:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - bakerio_network
 
 volumes:
   postgres_data:

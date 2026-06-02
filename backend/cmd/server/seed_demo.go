@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
+	"sync"
+	"sync/atomic"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/octguy/bakerio/backend/internal/platform/logger"
+	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/authcontext"
 	"github.com/octguy/bakerio/backend/internal/shared/response"
 	"go.uber.org/zap"
@@ -60,6 +65,7 @@ func seedDemoData(ctx context.Context, mods *modules, pool *pgxpool.Pool) SeedDe
 	seedExtraCustomers(ctx, mods)
 	seedBranchStaff(ctx, mods, branchIDs)
 	seedCustomerAddresses(ctx, pool)
+	seedLoadTestCustomers(ctx, mods)
 
 	return readSeedCounts(ctx, pool, false)
 }
@@ -297,13 +303,17 @@ func activateAllBranchProducts(ctx context.Context, pool *pgxpool.Pool, adminID 
 // data exercises the order-routing eligibility rules immediately. Tiers match
 // the price bands in seedProducts: cheap high-volume goods get big stock,
 // expensive cakes/pizzas get small batches and will sell out during testing.
+//
+// Quantities are sized ~10x a typical demo so the catalog can absorb a
+// sustained k6 stress run without selling out mid-test (race.js deliberately
+// pins a single low SKU instead — it does not rely on these defaults).
 func seedBranchProductQuantities(ctx context.Context, pool *pgxpool.Pool) {
 	_, err := pool.Exec(ctx, `
 		UPDATE product.branch_products bp
 		SET quantity = CASE
-		    WHEN p.price < 50000  THEN (floor(random() * 61) + 20)::int  -- 20..80
-		    WHEN p.price < 100000 THEN (floor(random() * 31) + 10)::int  -- 10..40
-		    ELSE                       (floor(random() * 13) + 3)::int   -- 3..15
+		    WHEN p.price < 50000  THEN (floor(random() * 601) + 200)::int  -- 200..800
+		    WHEN p.price < 100000 THEN (floor(random() * 301) + 100)::int  -- 100..400
+		    ELSE                       (floor(random() * 121) + 30)::int   -- 30..150
 		END
 		FROM product.products p
 		WHERE bp.product_id = p.id`)
@@ -351,6 +361,67 @@ func seedExtraCustomers(ctx context.Context, mods *modules) {
 				zap.String("email", r.email), zap.Error(err))
 		}
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Load-test customers — bulk synthetic accounts for k6 stress runs
+// ─────────────────────────────────────────────────────────────────────────────
+
+// loadTestCustomerCount is how many synthetic customers seedLoadTestCustomers
+// creates by default. They use the predictable email pattern
+// loaduser{N}@bakerio.com (password 123456) so the k6 scripts can regenerate
+// the exact same list without querying the DB — see tests/k6/lib/api.js and its
+// K6_CUSTOMERS knob. Override at seed time with SEED_LOAD_CUSTOMERS (0 disables).
+const loadTestCustomerCount = 500
+
+// loadCustomerWorkers bounds how many CreateStaff calls run concurrently.
+// CreateStaff hashes the password with bcrypt (CPU-bound, ~tens of ms each),
+// so a small pool turns a multi-minute sequential seed into a few seconds on a
+// multi-core box without overwhelming the DB pool.
+const loadCustomerWorkers = 8
+
+// seedLoadTestCustomers creates loadTestCustomerCount activated customer
+// accounts in parallel. Like seedExtraCustomers it uses CreateStaff (the
+// "create-an-activated-account" primitive) so no OTP flow is involved. These
+// accounts intentionally get NO saved addresses — the k6 checkout flow passes
+// shipping coordinates in the request body, so addresses are unnecessary and
+// skipping them keeps the seed fast.
+func seedLoadTestCustomers(ctx context.Context, mods *modules) {
+	count := loadTestCustomerCount
+	if v := os.Getenv("SEED_LOAD_CUSTOMERS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			count = n
+		}
+	}
+	if count == 0 {
+		return
+	}
+
+	logger.Log.Info("seed demo: creating load-test customers",
+		zap.Int("count", count), zap.Int("workers", loadCustomerWorkers))
+
+	sem := make(chan struct{}, loadCustomerWorkers)
+	var wg sync.WaitGroup
+	var failed atomic.Int64
+	for i := 1; i <= count; i++ {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(n int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			email := fmt.Sprintf("loaduser%d@bakerio.com", n)
+			name := fmt.Sprintf("Load User %d", n)
+			if _, err := mods.auth.AuthService().CreateStaff(ctx, email, name, "123456", "customer"); err != nil {
+				failed.Add(1)
+				logger.Log.Warn("seed demo: load customer create failed",
+					zap.String("email", email), zap.Error(err))
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	logger.Log.Info("seed demo: load-test customers done",
+		zap.Int("requested", count), zap.Int64("failed", failed.Load()))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -489,6 +560,39 @@ func newDevHandler(mods *modules, pool *pgxpool.Pool) *devHandler {
 func (h *devHandler) SeedDemo(c *gin.Context) {
 	summary := seedDemoData(c.Request.Context(), h.mods, h.pool)
 	response.Success(c, http.StatusOK, summary)
+}
+
+// RestockSummary is the response body for POST /admin/restock.
+type RestockSummary struct {
+	Quantity int   `json:"quantity"` // value every cell was set to
+	Cells    int64 `json:"cells"`    // number of branch_product rows updated
+} // @name RestockSummary
+
+// Restock godoc
+// @Summary      Restock all branch products (admin)
+// @Description  Sets quantity on every product.branch_products row to `qty` (default 100000). Used between k6 load-test rounds so the catalog does not sell out mid-run. Super-admin only.
+// @Tags         dev
+// @Security     BearerAuth
+// @Produce      json
+// @Param        qty  query  int  false  "Quantity to set on every cell (default 100000)"
+// @Success      200  {object}  RestockSummary
+// @Failure      403  {object}  response.ErrorResponse
+// @Router       /admin/restock [post]
+func (h *devHandler) Restock(c *gin.Context) {
+	qty := 100000
+	if v := c.Query("qty"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			qty = n
+		}
+	}
+	tag, err := h.pool.Exec(c.Request.Context(),
+		`UPDATE product.branch_products SET quantity = $1`, qty)
+	if err != nil {
+		logger.Log.Warn("restock failed", zap.Int("qty", qty), zap.Error(err))
+		response.Error(c, apperrors.Internal("restock failed", err))
+		return
+	}
+	response.Success(c, http.StatusOK, RestockSummary{Quantity: qty, Cells: tag.RowsAffected()})
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
