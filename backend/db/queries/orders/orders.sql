@@ -34,12 +34,3 @@ INSERT INTO orders.order_items (
 )
 RETURNING *;
 
--- name: CreateOrderEvent :one
--- from_status is NULL for the initial 'pending' insert; non-null for every
--- subsequent transition. actor_id is NULL when the system drives the change.
-INSERT INTO orders.order_events (
-    order_id, from_status, to_status, actor_id, note
-) VALUES (
-    $1, $2, $3, $4, $5
-)
-RETURNING *;

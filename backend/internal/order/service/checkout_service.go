@@ -340,11 +340,6 @@ func (s *checkoutService) Confirm(ctx context.Context, userID, sessionID uuid.UU
 			items[i] = oi
 		}
 
-		// 3f. Initial audit event (NULL → 'pending'), actor = customer.
-		uid := userID
-		if _, err := s.orders.CreateInitialEvent(ctx, order.ID, &uid); err != nil {
-			return apperrors.Internal("failed to create order event", err)
-		}
 		return nil
 	})
 	if err != nil {
@@ -401,7 +396,6 @@ func buildOrderResponse(o *domain.Order, items []*domain.OrderItem) dto.OrderRes
 		Code:              o.Code,
 		UserID:            o.UserID,
 		BranchID:          o.BranchID,
-		Status:            o.Status,
 		Subtotal:          o.Subtotal,
 		DiscountTotal:     o.DiscountTotal,
 		ShippingFee:       o.ShippingFee,

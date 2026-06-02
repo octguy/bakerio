@@ -14,7 +14,6 @@ type Order struct {
 	Code              string
 	UserID            uuid.UUID
 	BranchID          uuid.UUID
-	Status            string
 	Subtotal          decimal.Decimal
 	DiscountTotal     decimal.Decimal
 	ShippingFee       decimal.Decimal
@@ -40,16 +39,4 @@ type OrderItem struct {
 	UnitPriceSnap decimal.Decimal
 	Quantity      int32
 	LineTotal     decimal.Decimal
-}
-
-// OrderEvent is one status transition. FromStatus is nil for the initial
-// 'pending' row; ActorID is nil when the system drove the change.
-type OrderEvent struct {
-	ID         uuid.UUID
-	OrderID    uuid.UUID
-	FromStatus *string
-	ToStatus   string
-	ActorID    *uuid.UUID
-	Note       *string
-	CreatedAt  time.Time
 }

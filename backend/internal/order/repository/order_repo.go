@@ -2,26 +2,34 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
 
 	ordersdb "github.com/octguy/bakerio/backend/db/sqlc/orders"
+	"github.com/octguy/bakerio/backend/internal/order/dto"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	"github.com/octguy/bakerio/backend/pkg/dbq"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
-// OrderRepository is the write side for orders.{orders, order_items,
-// order_events}. Every create method participates in the caller's tx via
-// pkg/txmanager — confirm wraps the whole flow in WithTx so the order rows,
-// item rows, initial event, and stock decrements either all commit or none.
+// OrderRepository wraps both the static sqlc CRUD and the dynamic list query
+// behind /orders. Creates participate in the caller's tx via pkg/txmanager
+// so the order row + items insert atomically with the stock decrement.
 type OrderRepository interface {
 	CreateOrder(ctx context.Context, p CreateOrderParams) (*domain.Order, error)
 	CreateOrderItem(ctx context.Context, p CreateOrderItemParams) (*domain.OrderItem, error)
-	CreateInitialEvent(ctx context.Context, orderID uuid.UUID, actorID *uuid.UUID) (*domain.OrderEvent, error)
 
 	GetOrderByID(ctx context.Context, id uuid.UUID) (*domain.Order, error)
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domain.OrderItem, error)
+
+	// ListOrders is the dynamic-filter list query for GET /orders. Joins
+	// branch.branches for the summary's branch_name — accepted cross-schema
+	// read exception, same as the user search repo.
+	ListOrders(ctx context.Context, f dto.OrderListFilter, limit, offset int32) ([]dto.OrderSummary, error)
+	CountOrders(ctx context.Context, f dto.OrderListFilter) (int64, error)
 }
 
 type CreateOrderParams struct {
@@ -50,11 +58,12 @@ type CreateOrderItemParams struct {
 }
 
 type orderRepo struct {
-	db *ordersdb.Queries
+	db   *ordersdb.Queries
+	pool *pgxpool.Pool // for the dynamic list query
 }
 
-func NewOrderRepository(db *ordersdb.Queries) OrderRepository {
-	return &orderRepo{db: db}
+func NewOrderRepository(db *ordersdb.Queries, pool *pgxpool.Pool) OrderRepository {
+	return &orderRepo{db: db, pool: pool}
 }
 
 func (r *orderRepo) queries(ctx context.Context) *ordersdb.Queries {
@@ -101,21 +110,6 @@ func (r *orderRepo) CreateOrderItem(ctx context.Context, p CreateOrderItemParams
 	return orderItemRowToEntity(row), nil
 }
 
-func (r *orderRepo) CreateInitialEvent(ctx context.Context, orderID uuid.UUID, actorID *uuid.UUID) (*domain.OrderEvent, error) {
-	// The initial event has from_status=NULL, to_status='pending'.
-	row, err := r.queries(ctx).CreateOrderEvent(ctx, ordersdb.CreateOrderEventParams{
-		OrderID:    orderID,
-		FromStatus: nil,
-		ToStatus:   "pending",
-		ActorID:    actorID,
-		Note:       nil,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return orderEventRowToEntity(row), nil
-}
-
 func (r *orderRepo) GetOrderByID(ctx context.Context, id uuid.UUID) (*domain.Order, error) {
 	row, err := r.queries(ctx).GetOrderByID(ctx, id)
 	if err != nil {
@@ -136,13 +130,88 @@ func (r *orderRepo) ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) (
 	return out, nil
 }
 
+// orderListWhere builds the dynamic WHERE used by both ListOrders and
+// CountOrders so paging is consistent.
+func orderListWhere(f dto.OrderListFilter) *dbq.Where {
+	w := dbq.NewWhere()
+	if f.UserID != nil {
+		n := w.Next()
+		w.AddRaw(fmt.Sprintf("o.user_id = $%d", n), *f.UserID)
+	}
+	if f.BranchID != nil {
+		n := w.Next()
+		w.AddRaw(fmt.Sprintf("o.branch_id = $%d", n), *f.BranchID)
+	}
+	if f.Code != "" {
+		n := w.Next()
+		w.AddRaw(fmt.Sprintf("o.code ILIKE $%d", n), "%"+f.Code+"%")
+	}
+	if f.From != nil {
+		n := w.Next()
+		w.AddRaw(fmt.Sprintf("o.placed_at >= $%d", n), *f.From)
+	}
+	if f.To != nil {
+		n := w.Next()
+		w.AddRaw(fmt.Sprintf("o.placed_at < $%d", n), *f.To)
+	}
+	return w
+}
+
+func (r *orderRepo) ListOrders(ctx context.Context, f dto.OrderListFilter, limit, offset int32) ([]dto.OrderSummary, error) {
+	w := orderListWhere(f)
+	limitN := w.Next()
+	offsetN := limitN + 1
+	args := append(w.Args(), limit, offset)
+
+	sql := `
+		SELECT o.id, o.code, o.user_id, o.branch_id,
+		       COALESCE(b.name, '') AS branch_name,
+		       o.subtotal, o.shipping_fee, o.total,
+		       o.shipping_address, o.placed_at
+		FROM orders.orders o
+		LEFT JOIN branch.branches b ON b.id = o.branch_id` +
+		w.SQL() +
+		fmt.Sprintf(`
+		ORDER BY o.placed_at DESC
+		LIMIT $%d OFFSET $%d`, limitN, offsetN)
+
+	rows, err := r.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]dto.OrderSummary, 0)
+	for rows.Next() {
+		var s dto.OrderSummary
+		if err := rows.Scan(
+			&s.ID, &s.Code, &s.UserID, &s.BranchID, &s.BranchName,
+			&s.Subtotal, &s.ShippingFee, &s.Total,
+			&s.ShippingAddress, &s.PlacedAt,
+		); err != nil {
+			return nil, err
+		}
+		out = append(out, s)
+	}
+	return out, rows.Err()
+}
+
+func (r *orderRepo) CountOrders(ctx context.Context, f dto.OrderListFilter) (int64, error) {
+	w := orderListWhere(f)
+	sql := `SELECT COUNT(*) FROM orders.orders o` + w.SQL()
+	var total int64
+	if err := r.pool.QueryRow(ctx, sql, w.Args()...).Scan(&total); err != nil {
+		return 0, err
+	}
+	return total, nil
+}
+
 func orderRowToEntity(row ordersdb.OrdersOrder) *domain.Order {
 	return &domain.Order{
 		ID:                row.ID,
 		Code:              row.Code,
 		UserID:            row.UserID,
 		BranchID:          row.BranchID,
-		Status:            row.Status,
 		Subtotal:          row.Subtotal,
 		DiscountTotal:     row.DiscountTotal,
 		ShippingFee:       row.ShippingFee,
@@ -168,17 +237,5 @@ func orderItemRowToEntity(row ordersdb.OrdersOrderItem) *domain.OrderItem {
 		UnitPriceSnap: row.UnitPriceSnap,
 		Quantity:      row.Quantity,
 		LineTotal:     row.LineTotal,
-	}
-}
-
-func orderEventRowToEntity(row ordersdb.OrdersOrderEvent) *domain.OrderEvent {
-	return &domain.OrderEvent{
-		ID:         row.ID,
-		OrderID:    row.OrderID,
-		FromStatus: row.FromStatus,
-		ToStatus:   row.ToStatus,
-		ActorID:    row.ActorID,
-		Note:       row.Note,
-		CreatedAt:  row.CreatedAt,
 	}
 }

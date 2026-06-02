@@ -100,7 +100,6 @@ type OrdersOrder struct {
 	Code              string          `json:"code"`
 	UserID            uuid.UUID       `json:"user_id"`
 	BranchID          uuid.UUID       `json:"branch_id"`
-	Status            string          `json:"status"`
 	Subtotal          decimal.Decimal `json:"subtotal"`
 	DiscountTotal     decimal.Decimal `json:"discount_total"`
 	ShippingFee       decimal.Decimal `json:"shipping_fee"`
@@ -114,16 +113,6 @@ type OrdersOrder struct {
 	PlacedAt          time.Time       `json:"placed_at"`
 	CreatedAt         time.Time       `json:"created_at"`
 	UpdatedAt         time.Time       `json:"updated_at"`
-}
-
-type OrdersOrderEvent struct {
-	ID         uuid.UUID  `json:"id"`
-	OrderID    uuid.UUID  `json:"order_id"`
-	FromStatus *string    `json:"from_status"`
-	ToStatus   string     `json:"to_status"`
-	ActorID    *uuid.UUID `json:"actor_id"`
-	Note       *string    `json:"note"`
-	CreatedAt  time.Time  `json:"created_at"`
 }
 
 type OrdersOrderItem struct {

@@ -35,7 +35,7 @@ INSERT INTO orders.orders (
     $8, $9, $10,
     $11, $12, $13
 )
-RETURNING id, code, user_id, branch_id, status, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at
+RETURNING id, code, user_id, branch_id, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at
 `
 
 type CreateOrderParams struct {
@@ -76,7 +76,6 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.Code,
 		&i.UserID,
 		&i.BranchID,
-		&i.Status,
 		&i.Subtotal,
 		&i.DiscountTotal,
 		&i.ShippingFee,
@@ -90,46 +89,6 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 		&i.PlacedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const createOrderEvent = `-- name: CreateOrderEvent :one
-INSERT INTO orders.order_events (
-    order_id, from_status, to_status, actor_id, note
-) VALUES (
-    $1, $2, $3, $4, $5
-)
-RETURNING id, order_id, from_status, to_status, actor_id, note, created_at
-`
-
-type CreateOrderEventParams struct {
-	OrderID    uuid.UUID  `json:"order_id"`
-	FromStatus *string    `json:"from_status"`
-	ToStatus   string     `json:"to_status"`
-	ActorID    *uuid.UUID `json:"actor_id"`
-	Note       *string    `json:"note"`
-}
-
-// from_status is NULL for the initial 'pending' insert; non-null for every
-// subsequent transition. actor_id is NULL when the system drives the change.
-func (q *Queries) CreateOrderEvent(ctx context.Context, arg CreateOrderEventParams) (OrdersOrderEvent, error) {
-	row := q.db.QueryRow(ctx, createOrderEvent,
-		arg.OrderID,
-		arg.FromStatus,
-		arg.ToStatus,
-		arg.ActorID,
-		arg.Note,
-	)
-	var i OrdersOrderEvent
-	err := row.Scan(
-		&i.ID,
-		&i.OrderID,
-		&i.FromStatus,
-		&i.ToStatus,
-		&i.ActorID,
-		&i.Note,
-		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -175,7 +134,7 @@ func (q *Queries) CreateOrderItem(ctx context.Context, arg CreateOrderItemParams
 }
 
 const getOrderByCode = `-- name: GetOrderByCode :one
-SELECT id, code, user_id, branch_id, status, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at FROM orders.orders WHERE code = $1 LIMIT 1
+SELECT id, code, user_id, branch_id, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at FROM orders.orders WHERE code = $1 LIMIT 1
 `
 
 func (q *Queries) GetOrderByCode(ctx context.Context, code string) (OrdersOrder, error) {
@@ -186,7 +145,6 @@ func (q *Queries) GetOrderByCode(ctx context.Context, code string) (OrdersOrder,
 		&i.Code,
 		&i.UserID,
 		&i.BranchID,
-		&i.Status,
 		&i.Subtotal,
 		&i.DiscountTotal,
 		&i.ShippingFee,
@@ -205,7 +163,7 @@ func (q *Queries) GetOrderByCode(ctx context.Context, code string) (OrdersOrder,
 }
 
 const getOrderByID = `-- name: GetOrderByID :one
-SELECT id, code, user_id, branch_id, status, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at FROM orders.orders WHERE id = $1 LIMIT 1
+SELECT id, code, user_id, branch_id, subtotal, discount_total, shipping_fee, total, shipping_address, shipping_latitude, shipping_longitude, contact_phone, note, routing_reason, placed_at, created_at, updated_at FROM orders.orders WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (OrdersOrder, error) {
@@ -216,7 +174,6 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (OrdersOrder, 
 		&i.Code,
 		&i.UserID,
 		&i.BranchID,
-		&i.Status,
 		&i.Subtotal,
 		&i.DiscountTotal,
 		&i.ShippingFee,

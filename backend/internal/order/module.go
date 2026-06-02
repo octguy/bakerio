@@ -19,39 +19,48 @@ import (
 //   - POST /orders/find-branches     (preview, stateless)
 //   - POST /orders/select-branch     (freeze quote into Redis session)
 //   - POST /orders/confirm           (atomic place from session)
+//   - GET  /orders                   (scoped list: own / branch / all)
+//   - GET  /orders/:id               (scoped detail)
 //
 // Schema + repo + checkout flow per documents/business/order-module.md.
 type Module struct {
 	previewSvc  service.PreviewService
 	checkoutSvc service.CheckoutService
+	querySvc    service.QueryService
 	previewH    *handler.PreviewHandler
 	checkoutH   *handler.CheckoutHandler
+	queryH      *handler.QueryHandler
 }
 
 type Deps struct {
-	Pool    *pgxpool.Pool
-	TX      *txmanager.TxManager
-	Redis   *cache.Client
-	Router  branchSvc.BranchRouter
-	Catalog service.Catalog // satisfied by product.ProductService
+	Pool       *pgxpool.Pool
+	TX         *txmanager.TxManager
+	Redis      *cache.Client
+	Router     branchSvc.BranchRouter
+	Catalog    service.Catalog // satisfied by product.ProductService
+	Membership branchSvc.MembershipService
 }
 
 func New(deps Deps) *Module {
 	preview := service.NewPreviewService(deps.Router)
 
-	orderRepo := repository.NewOrderRepository(ordersdb.New(deps.Pool))
+	orderRepo := repository.NewOrderRepository(ordersdb.New(deps.Pool), deps.Pool)
 	sessionStore := service.NewCheckoutSessionStore(deps.Redis)
 	checkout := service.NewCheckoutService(deps.Router, deps.Catalog, sessionStore, orderRepo, deps.TX)
+	query := service.NewQueryService(orderRepo, deps.Membership)
 
 	return &Module{
 		previewSvc:  preview,
 		checkoutSvc: checkout,
+		querySvc:    query,
 		previewH:    handler.NewPreviewHandler(preview),
 		checkoutH:   handler.NewCheckoutHandler(checkout),
+		queryH:      handler.NewQueryHandler(query),
 	}
 }
 
 func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
 	m.previewH.RegisterRoutes(protected)
 	m.checkoutH.RegisterRoutes(protected)
+	m.queryH.RegisterRoutes(protected)
 }

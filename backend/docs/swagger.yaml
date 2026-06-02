@@ -409,6 +409,21 @@ definitions:
       unit_price:
         type: number
     type: object
+  OrderListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/OrderSummary'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
   OrderResponse:
     properties:
       branch_id:
@@ -439,8 +454,29 @@ definitions:
         type: number
       shipping_longitude:
         type: number
-      status:
+      subtotal:
+        type: number
+      total:
+        type: number
+      user_id:
         type: string
+    type: object
+  OrderSummary:
+    properties:
+      branch_id:
+        type: string
+      branch_name:
+        type: string
+      code:
+        type: string
+      id:
+        type: string
+      placed_at:
+        type: string
+      shipping_address:
+        type: string
+      shipping_fee:
+        type: number
       subtotal:
         type: number
       total:
@@ -1709,6 +1745,87 @@ paths:
       summary: Update a category
       tags:
       - categories
+  /orders:
+    get:
+      description: 'Customer → own orders only. branch_manager/branch_staff → orders
+        at their branch. super_admin → all. Filters: code (ILIKE), branch_id, user_id,
+        from / to (ISO8601 datetimes), page, size.'
+      parameters:
+      - description: Partial match on order code
+        in: query
+        name: code
+        type: string
+      - description: Filter by user (admin only — ignored otherwise)
+        in: query
+        name: user_id
+        type: string
+      - description: Filter by branch (admin only — branch staff are forced to own
+          branch)
+        in: query
+        name: branch_id
+        type: string
+      - description: Placed at or after (RFC3339)
+        in: query
+        name: from
+        type: string
+      - description: Placed before (RFC3339, exclusive)
+        in: query
+        name: to
+        type: string
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/OrderListResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List orders (scoped by caller's role)
+      tags:
+      - orders
+  /orders/{id}:
+    get:
+      description: Returns 404 if the order doesn't exist OR the caller isn't allowed
+        to see it (no enumeration).
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/OrderResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get an order by id (scoped by caller's role)
+      tags:
+      - orders
   /orders/confirm:
     post:
       consumes:

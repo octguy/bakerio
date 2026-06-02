@@ -68,14 +68,13 @@ type ConfirmOrderRequest struct {
 	SessionID uuid.UUID `json:"session_id" binding:"required"`
 } // @name ConfirmOrderRequest
 
-// OrderResponse is the success body of confirm. Same shape will be used by
-// GET /orders/:id in the next phase.
+// OrderResponse is the success body of confirm and the detail body of
+// GET /orders/:id. No status — every existing row is a placed order.
 type OrderResponse struct {
 	ID                uuid.UUID           `json:"id"`
 	Code              string              `json:"code"`
 	UserID            uuid.UUID           `json:"user_id"`
 	BranchID          uuid.UUID           `json:"branch_id"`
-	Status            string              `json:"status"`
 	Subtotal          decimal.Decimal     `json:"subtotal"`
 	DiscountTotal     decimal.Decimal     `json:"discount_total"`
 	ShippingFee       decimal.Decimal     `json:"shipping_fee"`
