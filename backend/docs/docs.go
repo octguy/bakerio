@@ -1374,6 +1374,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/orders/find-branches": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Stateless preview: pass items + shipping coordinates, get back the ranked list of branches that have every item in stock, sorted by shipping fee (then by exact distance). When no branch can fulfill the cart, ` + "`" + `options` + "`" + ` is empty and ` + "`" + `missing` + "`" + ` names the offending items.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "orders"
+                ],
+                "summary": "Find branches that can fulfill the cart",
+                "parameters": [
+                    {
+                        "description": "Routing input",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/FindBranchesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/FindBranchesResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/permissions": {
             "get": {
                 "security": [
@@ -2638,6 +2683,38 @@ const docTemplate = `{
                 }
             }
         },
+        "BranchOptionDTO": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "branch_id": {
+                    "type": "string"
+                },
+                "distance_km": {
+                    "type": "number"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "routing_note": {
+                    "type": "string"
+                },
+                "shipping_fee": {
+                    "type": "number"
+                },
+                "total": {
+                    "type": "number"
+                }
+            }
+        },
         "BranchProductResponse": {
             "type": "object",
             "properties": {
@@ -2931,6 +3008,68 @@ const docTemplate = `{
                 }
             }
         },
+        "FindBranchesItem": {
+            "type": "object",
+            "required": [
+                "product_id",
+                "quantity"
+            ],
+            "properties": {
+                "product_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "maximum": 99,
+                    "minimum": 1
+                }
+            }
+        },
+        "FindBranchesRequest": {
+            "type": "object",
+            "required": [
+                "items",
+                "shipping_address"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/FindBranchesItem"
+                    }
+                },
+                "shipping_address": {
+                    "type": "string"
+                },
+                "shipping_latitude": {
+                    "type": "number"
+                },
+                "shipping_longitude": {
+                    "type": "number"
+                }
+            }
+        },
+        "FindBranchesResponse": {
+            "type": "object",
+            "properties": {
+                "missing": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/MissingItemDTO"
+                    }
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/BranchOptionDTO"
+                    }
+                },
+                "subtotal": {
+                    "type": "number"
+                }
+            }
+        },
         "LoginRequest": {
             "type": "object",
             "required": [
@@ -2972,6 +3111,23 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "MissingItemDTO": {
+            "type": "object",
+            "properties": {
+                "max_available": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "requested": {
+                    "type": "integer"
                 }
             }
         },

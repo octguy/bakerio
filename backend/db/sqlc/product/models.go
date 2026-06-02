@@ -95,6 +95,47 @@ type CartCartItem struct {
 	AddedAt       time.Time       `json:"added_at"`
 }
 
+type OrdersOrder struct {
+	ID                uuid.UUID       `json:"id"`
+	Code              string          `json:"code"`
+	UserID            uuid.UUID       `json:"user_id"`
+	BranchID          uuid.UUID       `json:"branch_id"`
+	Status            string          `json:"status"`
+	Subtotal          decimal.Decimal `json:"subtotal"`
+	DiscountTotal     decimal.Decimal `json:"discount_total"`
+	ShippingFee       decimal.Decimal `json:"shipping_fee"`
+	Total             decimal.Decimal `json:"total"`
+	ShippingAddress   string          `json:"shipping_address"`
+	ShippingLatitude  *float64        `json:"shipping_latitude"`
+	ShippingLongitude *float64        `json:"shipping_longitude"`
+	ContactPhone      *string         `json:"contact_phone"`
+	Note              *string         `json:"note"`
+	RoutingReason     *string         `json:"routing_reason"`
+	PlacedAt          time.Time       `json:"placed_at"`
+	CreatedAt         time.Time       `json:"created_at"`
+	UpdatedAt         time.Time       `json:"updated_at"`
+}
+
+type OrdersOrderEvent struct {
+	ID         uuid.UUID  `json:"id"`
+	OrderID    uuid.UUID  `json:"order_id"`
+	FromStatus *string    `json:"from_status"`
+	ToStatus   string     `json:"to_status"`
+	ActorID    *uuid.UUID `json:"actor_id"`
+	Note       *string    `json:"note"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
+type OrdersOrderItem struct {
+	ID            uuid.UUID       `json:"id"`
+	OrderID       uuid.UUID       `json:"order_id"`
+	ProductID     uuid.UUID       `json:"product_id"`
+	NameSnap      string          `json:"name_snap"`
+	UnitPriceSnap decimal.Decimal `json:"unit_price_snap"`
+	Quantity      int32           `json:"quantity"`
+	LineTotal     decimal.Decimal `json:"line_total"`
+}
+
 type ProductBranchProduct struct {
 	ID        uuid.UUID  `json:"id"`
 	ProductID uuid.UUID  `json:"product_id"`
@@ -104,6 +145,7 @@ type ProductBranchProduct struct {
 	CreatedBy *uuid.UUID `json:"created_by"`
 	UpdatedAt time.Time  `json:"updated_at"`
 	UpdatedBy *uuid.UUID `json:"updated_by"`
+	Quantity  int32      `json:"quantity"`
 }
 
 type ProductCategory struct {

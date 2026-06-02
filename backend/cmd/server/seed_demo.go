@@ -56,6 +56,7 @@ func seedDemoData(ctx context.Context, mods *modules, pool *pgxpool.Pool) SeedDe
 	catIDs := seedCategories(ctx, pool, adminID)
 	seedProducts(ctx, pool, adminID, catIDs)
 	activateAllBranchProducts(ctx, pool, adminID)
+	seedBranchProductQuantities(ctx, pool)
 	seedExtraCustomers(ctx, mods)
 	seedBranchStaff(ctx, mods, branchIDs)
 	seedCustomerAddresses(ctx, pool)
@@ -157,97 +158,100 @@ func seedProducts(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, ca
 		name     string
 		price    string
 	}
+	// Prices stored as raw VND (the unit payment gateways expect: MoMo,
+	// VNPay, ZaloPay all want integer amounts). The .00 is cosmetic — the
+	// column is NUMERIC(12,2) but VND has no fractional dong.
 	rows := []p{
 		// Breads (8)
-		{"Breads", "Baguette", "25.00"},
-		{"Breads", "Sourdough Loaf", "45.00"},
-		{"Breads", "Multigrain Loaf", "50.00"},
-		{"Breads", "Brioche", "40.00"},
-		{"Breads", "Focaccia", "55.00"},
-		{"Breads", "Rye Bread", "48.00"},
-		{"Breads", "Ciabatta", "42.00"},
-		{"Breads", "Whole Wheat", "35.00"},
+		{"Breads", "Baguette", "25000"},
+		{"Breads", "Sourdough Loaf", "45000"},
+		{"Breads", "Multigrain Loaf", "50000"},
+		{"Breads", "Brioche", "40000"},
+		{"Breads", "Focaccia", "55000"},
+		{"Breads", "Rye Bread", "48000"},
+		{"Breads", "Ciabatta", "42000"},
+		{"Breads", "Whole Wheat", "35000"},
 		// Cakes (9)
-		{"Cakes", "Tiramisu", "95.00"},
-		{"Cakes", "Chocolate Cake", "120.00"},
-		{"Cakes", "Cheesecake", "110.00"},
-		{"Cakes", "Black Forest", "130.00"},
-		{"Cakes", "Red Velvet", "115.00"},
-		{"Cakes", "Carrot Cake", "90.00"},
-		{"Cakes", "Lemon Drizzle", "85.00"},
-		{"Cakes", "Opera Cake", "140.00"},
-		{"Cakes", "Pound Cake", "75.00"},
+		{"Cakes", "Tiramisu", "95000"},
+		{"Cakes", "Chocolate Cake", "120000"},
+		{"Cakes", "Cheesecake", "110000"},
+		{"Cakes", "Black Forest", "130000"},
+		{"Cakes", "Red Velvet", "115000"},
+		{"Cakes", "Carrot Cake", "90000"},
+		{"Cakes", "Lemon Drizzle", "85000"},
+		{"Cakes", "Opera Cake", "140000"},
+		{"Cakes", "Pound Cake", "75000"},
 		// Pastries (10)
-		{"Pastries", "Croissant", "35.00"},
-		{"Pastries", "Pain au Chocolat", "38.00"},
-		{"Pastries", "Eclair", "35.00"},
-		{"Pastries", "Macaron", "25.00"},
-		{"Pastries", "Mille-feuille", "45.00"},
-		{"Pastries", "Profiterole", "40.00"},
-		{"Pastries", "Danish", "30.00"},
-		{"Pastries", "Apple Turnover", "32.00"},
-		{"Pastries", "Cinnamon Roll", "38.00"},
-		{"Pastries", "Palmier", "22.00"},
+		{"Pastries", "Croissant", "35000"},
+		{"Pastries", "Pain au Chocolat", "38000"},
+		{"Pastries", "Eclair", "35000"},
+		{"Pastries", "Macaron", "25000"},
+		{"Pastries", "Mille-feuille", "45000"},
+		{"Pastries", "Profiterole", "40000"},
+		{"Pastries", "Danish", "30000"},
+		{"Pastries", "Apple Turnover", "32000"},
+		{"Pastries", "Cinnamon Roll", "38000"},
+		{"Pastries", "Palmier", "22000"},
 		// Drinks (9)
-		{"Drinks", "Iced Tea", "25.00"},
-		{"Drinks", "Smoothie", "65.00"},
-		{"Drinks", "Lemonade", "30.00"},
-		{"Drinks", "Orange Juice", "35.00"},
-		{"Drinks", "Apple Juice", "32.00"},
-		{"Drinks", "Iced Lemon Tea", "28.00"},
-		{"Drinks", "Sparkling Water", "20.00"},
-		{"Drinks", "Coconut Water", "30.00"},
-		{"Drinks", "Soda", "22.00"},
+		{"Drinks", "Iced Tea", "25000"},
+		{"Drinks", "Smoothie", "65000"},
+		{"Drinks", "Lemonade", "30000"},
+		{"Drinks", "Orange Juice", "35000"},
+		{"Drinks", "Apple Juice", "32000"},
+		{"Drinks", "Iced Lemon Tea", "28000"},
+		{"Drinks", "Sparkling Water", "20000"},
+		{"Drinks", "Coconut Water", "30000"},
+		{"Drinks", "Soda", "22000"},
 		// Cookies (8)
-		{"Cookies", "Chocolate Chip Cookie", "15.00"},
-		{"Cookies", "Oatmeal Cookie", "12.00"},
-		{"Cookies", "Sugar Cookie", "10.00"},
-		{"Cookies", "Snickerdoodle", "14.00"},
-		{"Cookies", "Shortbread", "18.00"},
-		{"Cookies", "Peanut Butter Cookie", "16.00"},
-		{"Cookies", "Double Chocolate Cookie", "17.00"},
-		{"Cookies", "Macadamia Cookie", "20.00"},
+		{"Cookies", "Chocolate Chip Cookie", "15000"},
+		{"Cookies", "Oatmeal Cookie", "12000"},
+		{"Cookies", "Sugar Cookie", "10000"},
+		{"Cookies", "Snickerdoodle", "14000"},
+		{"Cookies", "Shortbread", "18000"},
+		{"Cookies", "Peanut Butter Cookie", "16000"},
+		{"Cookies", "Double Chocolate Cookie", "17000"},
+		{"Cookies", "Macadamia Cookie", "20000"},
 		// Sandwiches (8)
-		{"Sandwiches", "Ham & Cheese", "65.00"},
-		{"Sandwiches", "Veggie Wrap", "55.00"},
-		{"Sandwiches", "BLT", "70.00"},
-		{"Sandwiches", "Tuna Melt", "75.00"},
-		{"Sandwiches", "Avocado Toast", "60.00"},
-		{"Sandwiches", "Club Sandwich", "85.00"},
-		{"Sandwiches", "Turkey Sub", "80.00"},
-		{"Sandwiches", "Chicken Caesar Wrap", "78.00"},
-		// Coffee (8) — new
-		{"Coffee", "Espresso", "35.00"},
-		{"Coffee", "Americano", "38.00"},
-		{"Coffee", "Latte", "45.00"},
-		{"Coffee", "Cappuccino", "50.00"},
-		{"Coffee", "Mocha", "55.00"},
-		{"Coffee", "Macchiato", "48.00"},
-		{"Coffee", "Flat White", "50.00"},
-		{"Coffee", "Cold Brew", "60.00"},
-		// Hot Drinks (6) — new
-		{"Hot Drinks", "Hot Chocolate", "55.00"},
-		{"Hot Drinks", "Earl Grey Tea", "30.00"},
-		{"Hot Drinks", "Green Tea", "28.00"},
-		{"Hot Drinks", "Chamomile Tea", "32.00"},
-		{"Hot Drinks", "Chai Latte", "55.00"},
-		{"Hot Drinks", "Matcha Latte", "65.00"},
-		// Pizza (7) — new
-		{"Pizza", "Margherita", "150.00"},
-		{"Pizza", "Pepperoni", "170.00"},
-		{"Pizza", "Quattro Formaggi", "180.00"},
-		{"Pizza", "Hawaiian", "160.00"},
-		{"Pizza", "BBQ Chicken", "175.00"},
-		{"Pizza", "Veggie Supreme", "165.00"},
-		{"Pizza", "Meat Lovers", "190.00"},
-		// Donuts (7) — new
-		{"Donuts", "Glazed Donut", "20.00"},
-		{"Donuts", "Chocolate Donut", "22.00"},
-		{"Donuts", "Strawberry Donut", "24.00"},
-		{"Donuts", "Boston Cream", "28.00"},
-		{"Donuts", "Old Fashioned", "20.00"},
-		{"Donuts", "Maple Bar", "25.00"},
-		{"Donuts", "Cruller", "22.00"},
+		{"Sandwiches", "Ham & Cheese", "65000"},
+		{"Sandwiches", "Veggie Wrap", "55000"},
+		{"Sandwiches", "BLT", "70000"},
+		{"Sandwiches", "Tuna Melt", "75000"},
+		{"Sandwiches", "Avocado Toast", "60000"},
+		{"Sandwiches", "Club Sandwich", "85000"},
+		{"Sandwiches", "Turkey Sub", "80000"},
+		{"Sandwiches", "Chicken Caesar Wrap", "78000"},
+		// Coffee (8)
+		{"Coffee", "Espresso", "35000"},
+		{"Coffee", "Americano", "38000"},
+		{"Coffee", "Latte", "45000"},
+		{"Coffee", "Cappuccino", "50000"},
+		{"Coffee", "Mocha", "55000"},
+		{"Coffee", "Macchiato", "48000"},
+		{"Coffee", "Flat White", "50000"},
+		{"Coffee", "Cold Brew", "60000"},
+		// Hot Drinks (6)
+		{"Hot Drinks", "Hot Chocolate", "55000"},
+		{"Hot Drinks", "Earl Grey Tea", "30000"},
+		{"Hot Drinks", "Green Tea", "28000"},
+		{"Hot Drinks", "Chamomile Tea", "32000"},
+		{"Hot Drinks", "Chai Latte", "55000"},
+		{"Hot Drinks", "Matcha Latte", "65000"},
+		// Pizza (7)
+		{"Pizza", "Margherita", "150000"},
+		{"Pizza", "Pepperoni", "170000"},
+		{"Pizza", "Quattro Formaggi", "180000"},
+		{"Pizza", "Hawaiian", "160000"},
+		{"Pizza", "BBQ Chicken", "175000"},
+		{"Pizza", "Veggie Supreme", "165000"},
+		{"Pizza", "Meat Lovers", "190000"},
+		// Donuts (7)
+		{"Donuts", "Glazed Donut", "20000"},
+		{"Donuts", "Chocolate Donut", "22000"},
+		{"Donuts", "Strawberry Donut", "24000"},
+		{"Donuts", "Boston Cream", "28000"},
+		{"Donuts", "Old Fashioned", "20000"},
+		{"Donuts", "Maple Bar", "25000"},
+		{"Donuts", "Cruller", "22000"},
 	}
 	out := make([]uuid.UUID, 0, len(rows))
 	for i, r := range rows {
@@ -286,6 +290,25 @@ func activateAllBranchProducts(ctx context.Context, pool *pgxpool.Pool, adminID 
 	)
 	if err != nil {
 		logger.Log.Warn("seed demo: branch_products activation failed", zap.Error(err))
+	}
+}
+
+// seedBranchProductQuantities randomizes per-(branch, product) stock so dev
+// data exercises the order-routing eligibility rules immediately. Tiers match
+// the price bands in seedProducts: cheap high-volume goods get big stock,
+// expensive cakes/pizzas get small batches and will sell out during testing.
+func seedBranchProductQuantities(ctx context.Context, pool *pgxpool.Pool) {
+	_, err := pool.Exec(ctx, `
+		UPDATE product.branch_products bp
+		SET quantity = CASE
+		    WHEN p.price < 50000  THEN (floor(random() * 61) + 20)::int  -- 20..80
+		    WHEN p.price < 100000 THEN (floor(random() * 31) + 10)::int  -- 10..40
+		    ELSE                       (floor(random() * 13) + 3)::int   -- 3..15
+		END
+		FROM product.products p
+		WHERE bp.product_id = p.id`)
+	if err != nil {
+		logger.Log.Warn("seed demo: quantity randomization failed", zap.Error(err))
 	}
 }
 

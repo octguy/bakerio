@@ -16,6 +16,7 @@ import (
 type Module struct {
 	branchSvc     service.BranchService
 	membershipSvc service.MembershipService
+	router        service.BranchRouter
 	branchH       *handler.BranchHandler
 	membershipH   *handler.MembershipHandler
 }
@@ -34,17 +35,21 @@ func New(deps Deps) *Module {
 	queries := branchdb.New(deps.Pool)
 	branchRepo := repository.NewBranchRepository(deps.Pool)
 	membershipRepo := repository.NewMembershipRepository(queries)
+	routingRepo := repository.NewRoutingRepository(deps.Pool)
 	branchSvc := service.NewBranchService(deps.TX, branchRepo)
 	membershipSvc := service.NewMembershipService(membershipRepo, branchRepo)
+	router := service.NewRoutingService(routingRepo)
 	return &Module{
 		branchSvc:     branchSvc,
 		membershipSvc: membershipSvc,
+		router:        router,
 		branchH:       handler.NewBranchHandler(branchSvc),
 	}
 }
 
 func (m *Module) BranchService() service.BranchService         { return m.branchSvc }
 func (m *Module) MembershipService() service.MembershipService { return m.membershipSvc }
+func (m *Module) Router() service.BranchRouter                 { return m.router }
 
 func (m *Module) Wire(late LateDeps) {
 	// Cross-module fan-out hook (product writes its own tables on branch create).
