@@ -65,6 +65,10 @@ sql:
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
           - column: "orders.order_items.line_total"
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
+          - column: "users.addresses.latitude"
+            go_type: "float64"
+          - column: "users.addresses.longitude"
+            go_type: "float64"
 
   - engine: "postgresql"
     queries: "db/queries/users"

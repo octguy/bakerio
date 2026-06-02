@@ -1,0 +1,1 @@
+ALTER TABLE users.addresses ADD COLUMN label VARCHAR(50) NULL;

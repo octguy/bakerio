@@ -188,12 +188,22 @@ type ProductProductImage struct {
 	UpdatedBy *uuid.UUID `json:"updated_by"`
 }
 
+type UsersAddress struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Address   string    `json:"address"`
+	Latitude  float64   `json:"latitude"`
+	Longitude float64   `json:"longitude"`
+	IsDefault bool      `json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type UsersProfile struct {
 	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`
 	DisplayName string    `json:"display_name"`
 	Phone       *string   `json:"phone"`
-	Address     *string   `json:"address"`
 	AvatarUrl   *string   `json:"avatar_url"`
 	Bio         *string   `json:"bio"`
 	CreatedAt   time.Time `json:"created_at"`
