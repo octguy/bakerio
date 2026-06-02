@@ -49,6 +49,10 @@ sql:
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
           - column: "cart.cart_items.unit_price_snap"
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
+          - column: "users.addresses.latitude"
+            go_type: "float64"
+          - column: "users.addresses.longitude"
+            go_type: "float64"
 
   - engine: "postgresql"
     queries: "db/queries/users"

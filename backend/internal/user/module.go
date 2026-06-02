@@ -18,10 +18,12 @@ import (
 // Wire once auth + branch are available.
 type Module struct {
 	profileSvc service.ProfileService
+	addressSvc service.AddressService
 	searchRepo repository.UserSearchRepository
 	userDir    branchSvc.UserDirectory
 	profileH   *handler.ProfileHandler
 	userH      *handler.UserHandler
+	addressH   *handler.AddressHandler
 }
 
 type Deps struct {
@@ -39,10 +41,15 @@ type LateDeps struct {
 }
 
 func New(deps Deps) *Module {
-	repo := repository.NewProfileRepository(usersdb.New(deps.Pool))
+	q := usersdb.New(deps.Pool)
+	profileRepo := repository.NewProfileRepository(q)
+	addressRepo := repository.NewAddressRepository(q)
+	addressSvc := service.NewAddressService(deps.TX, addressRepo)
 	return &Module{
-		profileSvc: service.NewProfileService(deps.TX, repo),
+		profileSvc: service.NewProfileService(deps.TX, profileRepo),
+		addressSvc: addressSvc,
 		searchRepo: repository.NewUserSearchRepository(deps.Pool),
+		addressH:   handler.NewAddressHandler(addressSvc),
 	}
 }
 
@@ -59,4 +66,5 @@ func (m *Module) Wire(late LateDeps) {
 func (m *Module) RegisterRoutes(public, protected *gin.RouterGroup) {
 	m.profileH.RegisterRoutes(protected)
 	m.userH.RegisterRoutes(protected)
+	m.addressH.RegisterRoutes(protected)
 }

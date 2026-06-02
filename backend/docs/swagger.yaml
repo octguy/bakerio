@@ -12,6 +12,32 @@ definitions:
     - product_id
     - quantity
     type: object
+  AddressListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/AddressResponse'
+        type: array
+    type: object
+  AddressResponse:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      is_default:
+        type: boolean
+      latitude:
+        type: number
+      longitude:
+        type: number
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
   AssignMemberRequest:
     properties:
       user_id:
@@ -142,6 +168,21 @@ definitions:
     required:
     - current_password
     - new_password
+    type: object
+  CreateAddressRequest:
+    properties:
+      address:
+        type: string
+      is_default:
+        type: boolean
+      latitude:
+        type: number
+      longitude:
+        type: number
+    required:
+    - address
+    - latitude
+    - longitude
     type: object
   CreateBranchRequest:
     properties:
@@ -422,6 +463,15 @@ definitions:
     required:
     - password
     type: object
+  UpdateAddressRequest:
+    properties:
+      address:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+    type: object
   UpdateBranchRequest:
     properties:
       address:
@@ -571,6 +621,158 @@ info:
   title: Bakerio API
   version: "1.0"
 paths:
+  /addresses:
+    get:
+      description: Returns all addresses for the authenticated user, default first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AddressListResponse'
+      security:
+      - BearerAuth: []
+      summary: List the caller's saved addresses
+      tags:
+      - addresses
+    post:
+      consumes:
+      - application/json
+      description: Creates an address for the caller. First-ever address auto-promotes
+        to default; otherwise pass is_default=true to promote it (the previous default
+        is demoted in the same tx).
+      parameters:
+      - description: Address payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/CreateAddressRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/AddressResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Save a new address
+      tags:
+      - addresses
+  /addresses/{id}:
+    delete:
+      description: Removes the address from the user's catalog. Past orders are unaffected
+        because they snapshot the address text on the order row.
+      parameters:
+      - description: Address ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a saved address (hard delete)
+      tags:
+      - addresses
+    get:
+      parameters:
+      - description: Address ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AddressResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a saved address
+      tags:
+      - addresses
+    patch:
+      consumes:
+      - application/json
+      description: Partial update for address text and/or lat/long. Use PUT /addresses/{id}/default
+        to change which address is the default.
+      parameters:
+      - description: Address ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Patch payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/UpdateAddressRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AddressResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update an address
+      tags:
+      - addresses
+  /addresses/{id}/default:
+    put:
+      description: Atomically demotes the previous default and promotes this one.
+        Enforced at the DB level via a partial unique index.
+      parameters:
+      - description: Address ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AddressResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mark an address as the default
+      tags:
+      - addresses
   /admin/seed-demo:
     post:
       description: 'Populates branches, categories, products, customers, and staff
