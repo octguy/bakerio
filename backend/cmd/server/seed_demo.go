@@ -23,6 +23,7 @@ type SeedDemoSummary struct {
 	BranchProducts int  `json:"branch_products"` // (product × branch) availability rows
 	Customers      int  `json:"customers"`       // number of customer accounts
 	Staff          int  `json:"staff"`           // managers + staff combined
+	Addresses      int  `json:"addresses"`       // saved customer addresses
 } // @name SeedDemoSummary
 
 // seedDemoData populates a fresh database with realistic sample data for manual
@@ -57,6 +58,7 @@ func seedDemoData(ctx context.Context, mods *modules, pool *pgxpool.Pool) SeedDe
 	activateAllBranchProducts(ctx, pool, adminID)
 	seedExtraCustomers(ctx, mods)
 	seedBranchStaff(ctx, mods, branchIDs)
+	seedCustomerAddresses(ctx, pool)
 
 	return readSeedCounts(ctx, pool, false)
 }
@@ -78,6 +80,7 @@ func readSeedCounts(ctx context.Context, pool *pgxpool.Pool, skipped bool) SeedD
 	// Staff = users with any non-customer/guest role.
 	scan(`SELECT COUNT(DISTINCT ur.user_id) FROM auth.user_roles ur
 	      JOIN auth.roles r ON r.id = ur.role_id WHERE r.name NOT IN ('customer', 'guest')`, &s.Staff)
+	scan("SELECT COUNT(*) FROM users.addresses", &s.Addresses)
 	return s
 }
 
@@ -362,6 +365,80 @@ func createBranchUser(ctx context.Context, mods *modules, branchID uuid.UUID, em
 		logger.Log.Warn("seed demo: staff membership failed",
 			zap.String("email", email), zap.Error(err))
 	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Customer addresses — 2 per customer (1 default + 1 alternate), picked from
+// an HCMC pool. Inserts directly so the partial unique index is hit once per
+// user (no need to call ClearDefault first since there are no rows yet).
+// ─────────────────────────────────────────────────────────────────────────────
+
+func seedCustomerAddresses(ctx context.Context, pool *pgxpool.Pool) {
+	type a struct {
+		text     string
+		lat, lng float64
+	}
+	pool_addr := []a{
+		{"12 Nguyen Hue, Quan 1, HCMC", 10.7747, 106.7025},
+		{"88 Le Thanh Ton, Quan 1, HCMC", 10.7780, 106.7037},
+		{"45 Vo Van Tan, Quan 3, HCMC", 10.7820, 106.6900},
+		{"210 Nam Ky Khoi Nghia, Quan 3, HCMC", 10.7860, 106.6915},
+		{"33 Hoang Dieu, Quan 4, HCMC", 10.7615, 106.7045},
+		{"77 Tran Hung Dao, Quan 5, HCMC", 10.7560, 106.6720},
+		{"5 Nguyen Van Linh, Quan 7, HCMC", 10.7290, 106.7180},
+		{"99 Cong Hoa, Tan Binh, HCMC", 10.8020, 106.6510},
+		{"21 Phan Xich Long, Phu Nhuan, HCMC", 10.7960, 106.6850},
+		{"150 Dien Bien Phu, Binh Thanh, HCMC", 10.8005, 106.7080},
+		{"7 Vo Van Ngan, Thu Duc, HCMC", 10.8490, 106.7705},
+		{"66 Le Van Sy, Phu Nhuan, HCMC", 10.7900, 106.6790},
+	}
+
+	rows, err := pool.Query(ctx, `
+		SELECT u.id
+		FROM auth.users u
+		JOIN auth.user_roles ur ON ur.user_id = u.id
+		JOIN auth.roles r       ON r.id = ur.role_id
+		WHERE r.name = 'customer'
+		ORDER BY u.created_at`)
+	if err != nil {
+		logger.Log.Warn("seed demo: list customers for addresses failed", zap.Error(err))
+		return
+	}
+	defer rows.Close()
+
+	var userIDs []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			continue
+		}
+		userIDs = append(userIDs, id)
+	}
+
+	inserted := 0
+	for i, uid := range userIDs {
+		def := pool_addr[(i*2)%len(pool_addr)]
+		alt := pool_addr[(i*2+1)%len(pool_addr)]
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO users.addresses (user_id, address, latitude, longitude, is_default)
+			 VALUES ($1, $2, $3, $4, TRUE)`,
+			uid, def.text, def.lat, def.lng,
+		); err != nil {
+			logger.Log.Warn("seed demo: address insert (default) failed", zap.String("user", uid.String()), zap.Error(err))
+			continue
+		}
+		inserted++
+		if _, err := pool.Exec(ctx,
+			`INSERT INTO users.addresses (user_id, address, latitude, longitude, is_default)
+			 VALUES ($1, $2, $3, $4, FALSE)`,
+			uid, alt.text, alt.lat, alt.lng,
+		); err != nil {
+			logger.Log.Warn("seed demo: address insert (alt) failed", zap.String("user", uid.String()), zap.Error(err))
+			continue
+		}
+		inserted++
+	}
+	logger.Log.Info("seed demo: addresses inserted", zap.Int("count", inserted), zap.Int("customers", len(userIDs)))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

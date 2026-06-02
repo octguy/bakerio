@@ -1,7 +1,7 @@
 -- name: CreateProfile :one
 INSERT INTO users.profiles (
-    user_id, display_name, phone, address, avatar_url, bio
-) VALUES ($1, $2, $3, $4, $5, $6)
+    user_id, display_name, phone, avatar_url, bio
+) VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetProfileByUserID :one
@@ -12,9 +12,8 @@ UPDATE users.profiles
 SET
     display_name = $1,
     phone        = COALESCE($2, phone),
-    address      = COALESCE($3, address),
-    avatar_url   = COALESCE($4, avatar_url),
-    bio          = COALESCE($5, bio),
+    avatar_url   = COALESCE($3, avatar_url),
+    bio          = COALESCE($4, bio),
     updated_at   = now()
-WHERE user_id = $6
+WHERE user_id = $5
 RETURNING *;
