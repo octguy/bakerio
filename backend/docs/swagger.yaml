@@ -773,6 +773,26 @@ paths:
       summary: Mark an address as the default
       tags:
       - addresses
+  /addresses/default:
+    get:
+      description: Returns the address flagged as default. 404 if the user has none
+        saved.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/AddressResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get the caller's default address
+      tags:
+      - addresses
   /admin/seed-demo:
     post:
       description: 'Populates branches, categories, products, customers, and staff

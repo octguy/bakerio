@@ -106,6 +106,28 @@ func (q *Queries) GetAddressByID(ctx context.Context, arg GetAddressByIDParams) 
 	return i, err
 }
 
+const getDefaultAddress = `-- name: GetDefaultAddress :one
+SELECT id, user_id, address, latitude, longitude, is_default, created_at, updated_at FROM users.addresses
+WHERE user_id = $1 AND is_default = TRUE
+LIMIT 1
+`
+
+func (q *Queries) GetDefaultAddress(ctx context.Context, userID uuid.UUID) (UsersAddress, error) {
+	row := q.db.QueryRow(ctx, getDefaultAddress, userID)
+	var i UsersAddress
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Address,
+		&i.Latitude,
+		&i.Longitude,
+		&i.IsDefault,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listAddressesByUser = `-- name: ListAddressesByUser :many
 SELECT id, user_id, address, latitude, longitude, is_default, created_at, updated_at FROM users.addresses
 WHERE user_id = $1

@@ -25,6 +25,9 @@ func (h *AddressHandler) RegisterRoutes(protected *gin.RouterGroup) {
 	g := protected.Group("/addresses", middleware.RequirePermission("address:manage:own"))
 	g.GET("", h.List)
 	g.POST("", h.Create)
+	// Static "/default" must be registered before "/:id" so it doesn't get
+	// swallowed by the param route.
+	g.GET("/default", h.GetDefault)
 	g.GET("/:id", h.Get)
 	g.PATCH("/:id", h.Update)
 	g.DELETE("/:id", h.Delete)
@@ -50,6 +53,29 @@ func (h *AddressHandler) List(c *gin.Context) {
 		return
 	}
 	res, err := h.svc.List(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, http.StatusOK, res)
+}
+
+// GetDefault godoc
+// @Summary      Get the caller's default address
+// @Description  Returns the address flagged as default. 404 if the user has none saved.
+// @Tags         addresses
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200  {object}  dto.AddressResponse
+// @Failure      404  {object}  response.ErrorResponse
+// @Router       /addresses/default [get]
+func (h *AddressHandler) GetDefault(c *gin.Context) {
+	userID, ok := addressCallerID(c)
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("caller identity missing"))
+		return
+	}
+	res, err := h.svc.GetDefault(c.Request.Context(), userID)
 	if err != nil {
 		response.Error(c, err)
 		return

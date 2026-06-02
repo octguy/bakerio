@@ -14,6 +14,11 @@ SELECT * FROM users.addresses
 WHERE id = $1 AND user_id = $2
 LIMIT 1;
 
+-- name: GetDefaultAddress :one
+SELECT * FROM users.addresses
+WHERE user_id = $1 AND is_default = TRUE
+LIMIT 1;
+
 -- name: UpdateAddress :one
 -- Service loads the current row, merges fields from the PATCH request, then
 -- passes the full new values back here. Keeps lat/long NOT NULL without

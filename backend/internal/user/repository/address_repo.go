@@ -13,6 +13,7 @@ type AddressRepository interface {
 	Create(ctx context.Context, userID uuid.UUID, address string, lat, lng float64, isDefault bool) (*domain.Address, error)
 	List(ctx context.Context, userID uuid.UUID) ([]domain.Address, error)
 	Get(ctx context.Context, userID, id uuid.UUID) (*domain.Address, error)
+	GetDefault(ctx context.Context, userID uuid.UUID) (*domain.Address, error)
 	Update(ctx context.Context, userID, id uuid.UUID, address string, lat, lng float64) (*domain.Address, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) (int64, error)
 	ClearDefault(ctx context.Context, userID uuid.UUID) error
@@ -62,6 +63,14 @@ func (r *addressRepo) List(ctx context.Context, userID uuid.UUID) ([]domain.Addr
 
 func (r *addressRepo) Get(ctx context.Context, userID, id uuid.UUID) (*domain.Address, error) {
 	row, err := r.queries(ctx).GetAddressByID(ctx, usersdb.GetAddressByIDParams{ID: id, UserID: userID})
+	if err != nil {
+		return nil, err
+	}
+	return addressToEntity(row), nil
+}
+
+func (r *addressRepo) GetDefault(ctx context.Context, userID uuid.UUID) (*domain.Address, error) {
+	row, err := r.queries(ctx).GetDefaultAddress(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

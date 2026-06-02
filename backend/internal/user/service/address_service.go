@@ -16,6 +16,7 @@ import (
 type AddressService interface {
 	List(ctx context.Context, userID uuid.UUID) (dto.AddressListResponse, error)
 	Get(ctx context.Context, userID, id uuid.UUID) (dto.AddressResponse, error)
+	GetDefault(ctx context.Context, userID uuid.UUID) (dto.AddressResponse, error)
 	Create(ctx context.Context, userID uuid.UUID, req dto.CreateAddressRequest) (dto.AddressResponse, error)
 	Update(ctx context.Context, userID, id uuid.UUID, req dto.UpdateAddressRequest) (dto.AddressResponse, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
@@ -50,6 +51,17 @@ func (s *addressService) Get(ctx context.Context, userID, id uuid.UUID) (dto.Add
 			return dto.AddressResponse{}, apperrors.NotFound("address not found")
 		}
 		return dto.AddressResponse{}, apperrors.Internal("failed to read address", err)
+	}
+	return addressToResponse(row), nil
+}
+
+func (s *addressService) GetDefault(ctx context.Context, userID uuid.UUID) (dto.AddressResponse, error) {
+	row, err := s.repo.GetDefault(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dto.AddressResponse{}, apperrors.NotFound("no default address set")
+		}
+		return dto.AddressResponse{}, apperrors.Internal("failed to read default address", err)
 	}
 	return addressToResponse(row), nil
 }
