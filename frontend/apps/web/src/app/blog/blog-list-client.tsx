@@ -51,10 +51,6 @@ export function BlogListClient({ posts }: BlogListClientProps) {
     return () => observer.disconnect();
   }, [filteredPosts.length, itemsPerPage]);
   
-  useEffect(() => {
-    setPage(1);
-  }, [searchQuery, activeTab]);
-
   const showFeatured = activeTab === "All" && !searchQuery && visiblePosts.length > 0;
   const featured = showFeatured ? visiblePosts[0] : null;
   const rest = showFeatured ? visiblePosts.slice(1) : visiblePosts;
@@ -83,14 +79,20 @@ export function BlogListClient({ posts }: BlogListClientProps) {
               placeholder="Search stories..."
               aria-label="Search blog"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
               className="w-full border-b border-crust bg-transparent pb-2 font-display text-2xl text-espresso outline-none placeholder:text-crust/50 focus:border-espresso focus:placeholder:text-transparent md:w-[300px]"
             />
             <div className="flex flex-wrap gap-1.5 md:flex-nowrap">
-              {TABS.map((t, i) => (
+              {TABS.map((t) => (
                 <button
                   key={t}
-                  onClick={() => setActiveTab(t)}
+                  onClick={() => {
+                    setActiveTab(t);
+                    setPage(1);
+                  }}
                   className={`rounded-full px-3.5 py-2 font-mono text-[11px] tracking-[0.1em] transition-colors ${
                     activeTab === t
                       ? "bg-espresso font-bold text-white"

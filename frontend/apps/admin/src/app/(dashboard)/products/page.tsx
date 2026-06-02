@@ -131,7 +131,7 @@ export default function ProductsPage() {
         sort_order: product.sort_order ?? 0,
         is_active: isActive,
       }),
-    onSuccess: (_result, { product, isActive }) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
       toast("Product status updated");
     },

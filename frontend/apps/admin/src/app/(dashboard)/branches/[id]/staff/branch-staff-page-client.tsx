@@ -153,12 +153,11 @@ export function BranchStaffPageClient({ branchId }: { branchId: string }) {
     }
   };
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadBranchStaff(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!editing) {
@@ -170,7 +169,6 @@ export function BranchStaffPageClient({ branchId }: { branchId: string }) {
 
     let active = true;
     resetEdit({ display_name: editing.name, phone: "", address: "" });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setResetPassword("");
 
     getUserProfile(editing.userId)

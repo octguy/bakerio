@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, type MouseEvent } from "react";
-import { createPortal } from "react-dom";
 import { Link } from "next-view-transitions";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { useSearchParams } from "next/navigation";
@@ -76,7 +75,6 @@ export function MenuGrid({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showLeftChevron, setShowLeftChevron] = useState(false);
   const [showRightChevron, setShowRightChevron] = useState(false);
-  const [mounted, setMounted] = useState(false);
 
   const checkScroll = () => {
     const el = scrollRef.current;
@@ -265,9 +263,6 @@ export function MenuGrid({
   const placeholderRef = useRef<HTMLDivElement>(null);
   const leftColRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     const searchSlot = searchSlotRef.current;
