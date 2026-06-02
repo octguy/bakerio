@@ -30,6 +30,7 @@ func runHTTPServer(cfg *config.Config, i *infra, mods *modules) {
 	mods.branch.RegisterRoutes(public, authed)
 	mods.product.RegisterRoutes(public, authed)
 	mods.cart.RegisterRoutes(public, authed)
+	mods.order.RegisterRoutes(public, authed)
 
 	// Admin-only dev tooling — super_admin (or any holder of *:*:all) only.
 	dev := newDevHandler(mods, i.pool)

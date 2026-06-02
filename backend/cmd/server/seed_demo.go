@@ -55,6 +55,7 @@ func seedDemoData(ctx context.Context, mods *modules, pool *pgxpool.Pool) SeedDe
 	catIDs := seedCategories(ctx, pool, adminID)
 	seedProducts(ctx, pool, adminID, catIDs)
 	activateAllBranchProducts(ctx, pool, adminID)
+	seedBranchProductQuantities(ctx, pool)
 	seedExtraCustomers(ctx, mods)
 	seedBranchStaff(ctx, mods, branchIDs)
 
@@ -283,6 +284,25 @@ func activateAllBranchProducts(ctx context.Context, pool *pgxpool.Pool, adminID 
 	)
 	if err != nil {
 		logger.Log.Warn("seed demo: branch_products activation failed", zap.Error(err))
+	}
+}
+
+// seedBranchProductQuantities randomizes per-(branch, product) stock so dev
+// data exercises the order-routing eligibility rules immediately. Tiers match
+// the price bands in seedProducts: cheap high-volume goods get big stock,
+// expensive cakes/pizzas get small batches and will sell out during testing.
+func seedBranchProductQuantities(ctx context.Context, pool *pgxpool.Pool) {
+	_, err := pool.Exec(ctx, `
+		UPDATE product.branch_products bp
+		SET quantity = CASE
+		    WHEN p.price < 50  THEN (floor(random() * 61) + 20)::int  -- 20..80
+		    WHEN p.price < 100 THEN (floor(random() * 31) + 10)::int  -- 10..40
+		    ELSE                    (floor(random() * 13) + 3)::int   -- 3..15
+		END
+		FROM product.products p
+		WHERE bp.product_id = p.id`)
+	if err != nil {
+		logger.Log.Warn("seed demo: quantity randomization failed", zap.Error(err))
 	}
 }
 

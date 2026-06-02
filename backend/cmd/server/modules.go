@@ -5,6 +5,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/branch"
 	"github.com/octguy/bakerio/backend/internal/cart"
 	"github.com/octguy/bakerio/backend/internal/notification"
+	"github.com/octguy/bakerio/backend/internal/order"
 	"github.com/octguy/bakerio/backend/internal/platform/email"
 	"github.com/octguy/bakerio/backend/internal/product"
 	"github.com/octguy/bakerio/backend/internal/user"
@@ -19,6 +20,7 @@ type modules struct {
 	branch  *branch.Module
 	product *product.Module
 	cart    *cart.Module
+	order   *order.Module
 	notif   *notification.Module
 }
 
@@ -71,12 +73,18 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 		Catalog: productMod.ProductService(),
 	})
 
+	// Order module consumes the branch router (cross-schema read of
+	// branches + branch_products). v1 only exposes the preview endpoint;
+	// no schema yet.
+	orderMod := order.New(order.Deps{Router: branchMod.Router()})
+
 	return &modules{
 		auth:    authMod,
 		user:    userMod,
 		branch:  branchMod,
 		product: productMod,
 		cart:    cartMod,
+		order:   orderMod,
 		notif:   notifMod,
 	}
 }

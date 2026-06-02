@@ -60,6 +60,27 @@ definitions:
       total_pages:
         type: integer
     type: object
+  BranchOptionDTO:
+    properties:
+      address:
+        type: string
+      branch_id:
+        type: string
+      distance_km:
+        type: number
+      lat:
+        type: number
+      lng:
+        type: number
+      name:
+        type: string
+      routing_note:
+        type: string
+      shipping_fee:
+        type: number
+      total:
+        type: number
+    type: object
   BranchProductResponse:
     properties:
       branch_id:
@@ -242,6 +263,48 @@ definitions:
             type: string
         type: object
     type: object
+  FindBranchesItem:
+    properties:
+      product_id:
+        type: string
+      quantity:
+        maximum: 99
+        minimum: 1
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
+  FindBranchesRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/FindBranchesItem'
+        minItems: 1
+        type: array
+      shipping_address:
+        type: string
+      shipping_latitude:
+        type: number
+      shipping_longitude:
+        type: number
+    required:
+    - items
+    - shipping_address
+    type: object
+  FindBranchesResponse:
+    properties:
+      missing:
+        items:
+          $ref: '#/definitions/MissingItemDTO'
+        type: array
+      options:
+        items:
+          $ref: '#/definitions/BranchOptionDTO'
+        type: array
+      subtotal:
+        type: number
+    type: object
   LoginRequest:
     properties:
       email:
@@ -270,6 +333,17 @@ definitions:
         type: array
       user_id:
         type: string
+    type: object
+  MissingItemDTO:
+    properties:
+      max_available:
+        type: integer
+      name:
+        type: string
+      product_id:
+        type: string
+      requested:
+        type: integer
     type: object
   PermissionResponse:
     properties:
@@ -1276,6 +1350,37 @@ paths:
       summary: Update a category
       tags:
       - categories
+  /orders/find-branches:
+    post:
+      consumes:
+      - application/json
+      description: 'Stateless preview: pass items + shipping coordinates, get back
+        the ranked list of branches that have every item in stock, sorted by shipping
+        fee (then by exact distance). When no branch can fulfill the cart, `options`
+        is empty and `missing` names the offending items.'
+      parameters:
+      - description: Routing input
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/FindBranchesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/FindBranchesResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Find branches that can fulfill the cart
+      tags:
+      - orders
   /permissions:
     get:
       produces:
