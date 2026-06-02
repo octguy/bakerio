@@ -11,7 +11,6 @@ type Profile struct {
 	UserID      uuid.UUID
 	DisplayName string
 	Phone       *string
-	Address     *string
 	AvatarURL   *string
 	Bio         *string
 	CreatedAt   time.Time

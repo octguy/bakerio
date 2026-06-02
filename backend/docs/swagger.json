@@ -2730,9 +2730,6 @@
         "ProfileResponse": {
             "type": "object",
             "properties": {
-                "address": {
-                    "type": "string"
-                },
                 "avatar_url": {
                     "type": "string"
                 },
@@ -2949,9 +2946,6 @@
         "UpdateProfileRequest": {
             "type": "object",
             "properties": {
-                "address": {
-                    "type": "string"
-                },
                 "avatar_url": {
                     "type": "string"
                 },

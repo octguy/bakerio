@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
 )
 
@@ -146,12 +147,24 @@ type ProductProductImage struct {
 	UpdatedBy *uuid.UUID `json:"updated_by"`
 }
 
+type UsersAddress struct {
+	ID        uuid.UUID      `json:"id"`
+	UserID    uuid.UUID      `json:"user_id"`
+	Label     *string        `json:"label"`
+	Address   string         `json:"address"`
+	Latitude  pgtype.Numeric `json:"latitude"`
+	Longitude pgtype.Numeric `json:"longitude"`
+	IsDefault bool           `json:"is_default"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
+	DeletedAt *time.Time     `json:"deleted_at"`
+}
+
 type UsersProfile struct {
 	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`
 	DisplayName string    `json:"display_name"`
 	Phone       *string   `json:"phone"`
-	Address     *string   `json:"address"`
 	AvatarUrl   *string   `json:"avatar_url"`
 	Bio         *string   `json:"bio"`
 	CreatedAt   time.Time `json:"created_at"`

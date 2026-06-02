@@ -2736,9 +2736,6 @@ const docTemplate = `{
         "ProfileResponse": {
             "type": "object",
             "properties": {
-                "address": {
-                    "type": "string"
-                },
                 "avatar_url": {
                     "type": "string"
                 },
@@ -2955,9 +2952,6 @@ const docTemplate = `{
         "UpdateProfileRequest": {
             "type": "object",
             "properties": {
-                "address": {
-                    "type": "string"
-                },
                 "avatar_url": {
                     "type": "string"
                 },

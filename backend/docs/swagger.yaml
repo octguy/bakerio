@@ -329,8 +329,6 @@ definitions:
     type: object
   ProfileResponse:
     properties:
-      address:
-        type: string
       avatar_url:
         type: string
       bio:
@@ -481,8 +479,6 @@ definitions:
     type: object
   UpdateProfileRequest:
     properties:
-      address:
-        type: string
       avatar_url:
         type: string
       bio:

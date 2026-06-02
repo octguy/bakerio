@@ -51,7 +51,7 @@ func (p *profileService) UpdateProfile(ctx context.Context, userID uuid.UUID, re
 		displayName = current.DisplayName
 	}
 
-	prof, err := p.repo.UpdateProfile(ctx, userID, displayName, req.Phone, req.Address, req.AvatarURL, req.Bio)
+	prof, err := p.repo.UpdateProfile(ctx, userID, displayName, req.Phone, req.AvatarURL, req.Bio)
 	if err != nil {
 		return dto.ProfileResponse{}, err
 	}
@@ -64,7 +64,6 @@ func toResponse(prof *domain.Profile) dto.ProfileResponse {
 		UserID:      prof.UserID,
 		DisplayName: prof.DisplayName,
 		Phone:       prof.Phone,
-		Address:     prof.Address,
 		AvatarURL:   prof.AvatarURL,
 		Bio:         prof.Bio,
 	}
