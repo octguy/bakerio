@@ -34,7 +34,7 @@ export interface Branch {
   id: string;
   name: string;
   address: string;
-  opening_hours?: string;
+
   lat?: number;
   lng?: number;
   status: string;
@@ -136,9 +136,16 @@ export interface CreateOrderRequest {
   note?: string;
 }
 
-export interface CartItem {
-  product: Product;
+export interface CartItemResponse {
+  id: string;
+  product_id: string;
   quantity: number;
+}
+
+export interface CartResponse {
+  items: CartItemResponse[];
+  total: number;
+  count: number;
 }
 
 export interface User {
