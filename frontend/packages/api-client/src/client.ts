@@ -18,6 +18,7 @@ import type {
   Profile,
   Product,
   ProductImage,
+  CartResponse,
 } from "./types";
 import {
   listProductImages as mockListProductImages,
@@ -670,6 +671,38 @@ export async function setUserPassword(
   return request<void>(`/users/${userId}/password`, {
     method: "PATCH",
     body: JSON.stringify({ password }),
+  });
+}
+
+// ===== CART (REAL) =====
+
+export async function getCart(): Promise<CartResponse> {
+  return request<CartResponse>("/cart");
+}
+
+export async function addCartItem(productId: string, quantity: number): Promise<CartResponse> {
+  return request<CartResponse>("/cart/items", {
+    method: "POST",
+    body: JSON.stringify({ product_id: productId, quantity }),
+  });
+}
+
+export async function updateCartItem(itemId: string, quantity: number): Promise<CartResponse> {
+  return request<CartResponse>(`/cart/items/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ quantity }),
+  });
+}
+
+export async function removeCartItem(itemId: string): Promise<CartResponse> {
+  return request<CartResponse>(`/cart/items/${itemId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function clearCart(): Promise<void> {
+  return request<void>("/cart", {
+    method: "DELETE",
   });
 }
 

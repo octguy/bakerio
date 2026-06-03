@@ -82,9 +82,9 @@ const mockProductImages: Record<string, ProductImage[]> = {
 };
 
 export const mockBranches: Branch[] = [
-  { id: "br-q1",       name: "Bakerio Quận 1",      address: "65 Lê Lợi, Quận 1",       opening_hours: "07:00-21:00", lat: 10.7738, lng: 106.7030, status: "active", created_at: MOCK_TS },
-  { id: "br-hoankiem", name: "Bakerio Hoàn Kiếm",   address: "12 Hàng Bài, Hoàn Kiếm",  opening_hours: "07:00-12:00", lat: 21.0245, lng: 105.8538, status: "active", created_at: MOCK_TS },
-  { id: "br-phunhuan", name: "Bakerio Phú Nhuận",   address: "100 Phan Xích Long",      opening_hours: "07:00-21:00", lat: 10.8007, lng: 106.6805, status: "active", created_at: MOCK_TS },
+  { id: "br-q1",       name: "Bakerio Quận 1",      address: "65 Lê Lợi, Quận 1", lat: 10.7738, lng: 106.7030, status: "active", created_at: MOCK_TS },
+  { id: "br-hoankiem", name: "Bakerio Hoàn Kiếm",   address: "12 Hàng Bài, Hoàn Kiếm", lat: 21.0245, lng: 105.8538, status: "active", created_at: MOCK_TS },
+  { id: "br-phunhuan", name: "Bakerio Phú Nhuận",   address: "100 Phan Xích Long", lat: 10.8007, lng: 106.6805, status: "active", created_at: MOCK_TS },
 ];
 
 const ORDERS_STORAGE_KEY = "bakerio-mock-orders";

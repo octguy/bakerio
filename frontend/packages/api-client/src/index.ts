@@ -13,7 +13,8 @@ export type {
   OrderFulfillmentMode,
   CreateOrderItemInput,
   CreateOrderRequest,
-  CartItem,
+  CartItemResponse,
+  CartResponse,
   User,
   LoginRequest,
   LoginResponse,
@@ -78,6 +79,13 @@ export {
   updateOrderStatus,
   getOrderStats,
   reorderItems,
+  // Cart (REAL)
+  getCart,
+  addCartItem,
+  updateCartItem,
+  removeCartItem,
+  clearCart,
+
   // Addresses (MOCK — backend has no /addresses handler)
   getAddresses,
   addAddress,
