@@ -48,20 +48,7 @@ function etaLabel(distance: number) {
 }
 
 function isBranchOpen(branch: Branch): boolean {
-  if (!branch.opening_hours) return true;
-  const parts = branch.opening_hours.split("-");
-  if (parts.length !== 2) return true;
-  
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  
-  const [startH, startM] = parts[0].split(":").map(Number);
-  const startMinutes = (startH || 0) * 60 + (startM || 0);
-  
-  const [endH, endM] = parts[1].split(":").map(Number);
-  const endMinutes = (endH || 0) * 60 + (endM || 0);
-  
-  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  return true;
 }
 
 interface Props {
