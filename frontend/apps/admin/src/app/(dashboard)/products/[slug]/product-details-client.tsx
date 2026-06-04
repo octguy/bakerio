@@ -43,8 +43,6 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
   const [categoryId, setCategoryId] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [primaryImageIdOverride, setPrimaryImageIdOverride] = useState<string | null>(null);
-  const [imageOrder, setImageOrder] = useState<string[]>([]);
-  const [draggingImageId, setDraggingImageId] = useState<string | null>(null);
 
   const { data: product, isLoading: loadingProduct } = useQuery({
     queryKey: ["product", productSlug],
@@ -73,14 +71,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
     setIsActive(product.is_active);
   }, [product]);
 
-  const images: ProductImage[] = [...rawImages].sort((a, b) => {
-    const aIndex = imageOrder.indexOf(a.id);
-    const bIndex = imageOrder.indexOf(b.id);
-    if (aIndex === -1 && bIndex === -1) return 0;
-    if (aIndex === -1) return 1;
-    if (bIndex === -1) return -1;
-    return aIndex - bIndex;
-  });
+  const images: ProductImage[] = rawImages;
   const primaryOverrideIsValid =
     primaryImageIdOverride &&
     images.some((image) => image.id === primaryImageIdOverride);
@@ -89,28 +80,6 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
     images.find((image) => image.is_primary)?.id ??
     images[0]?.id ??
     null;
-
-  useEffect(() => {
-    setImageOrder((current) => {
-      const imageIds = rawImages.map((image) => image.id);
-      const kept = current.filter((id) => imageIds.includes(id));
-      const added = imageIds.filter((id) => !kept.includes(id));
-      return [...kept, ...added];
-    });
-  }, [rawImages]);
-
-  const moveImage = (fromId: string, toId: string) => {
-    if (fromId === toId) return;
-    setImageOrder((current) => {
-      const next = current.length ? [...current] : images.map((image) => image.id);
-      const fromIndex = next.indexOf(fromId);
-      const toIndex = next.indexOf(toId);
-      if (fromIndex === -1 || toIndex === -1) return current;
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-  };
 
   const updateMut = useMutation({
     mutationFn: () => {
