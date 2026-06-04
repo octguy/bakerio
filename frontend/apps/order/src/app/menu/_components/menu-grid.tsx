@@ -44,6 +44,19 @@ function getProductCategoryName(product: Product, categories: Category[]) {
   );
 }
 
+function productMatchesCategory(product: Product, category: Category) {
+  const menuProduct = product as MenuProduct;
+  const productCategory = menuProduct.category;
+  const categoryId = getProductCategoryId(product);
+  return (
+    categoryId === category.id ||
+    categoryId === category.slug ||
+    productCategory?.id === category.id ||
+    productCategory?.id === category.slug ||
+    productCategory?.name === category.name
+  );
+}
+
 function getProductPrice(product: Product) {
   const menuProduct = product as MenuProduct;
   return menuProduct.price ?? menuProduct.base_price ?? 0;
@@ -236,7 +249,8 @@ export function MenuGrid({
     })
     .filter((product) => {
       if (activeCategory === "all") return true;
-      return getProductCategoryId(product) === activeCategory;
+      const category = categories.find((cat) => cat.id === activeCategory);
+      return category ? productMatchesCategory(product, category) : false;
     })
     .filter((product) => {
       if (priceFilter === "all") return true;
