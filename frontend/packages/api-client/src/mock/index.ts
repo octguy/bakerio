@@ -65,20 +65,20 @@ export const mockProducts: Product[] = [
 // Standalone product-image store (Product no longer carries images, mirroring
 // the backend where images are a separate /products/:id/images resource).
 const mockProductImages: Record<string, ProductImage[]> = {
-  "p-bmi-1": [{ id: "img-p-bmi-1", product_id: "p-bmi-1", url: IMG.banhmi, sort_order: 0 }],
-  "p-bmi-2": [{ id: "img-p-bmi-2", product_id: "p-bmi-2", url: IMG.banhmi, sort_order: 0 }],
-  "p-bmi-3": [{ id: "img-p-bmi-3", product_id: "p-bmi-3", url: IMG.banhmi, sort_order: 0 }],
-  "p-sdh-1": [{ id: "img-p-sdh-1", product_id: "p-sdh-1", url: IMG.loaves, sort_order: 0 }],
-  "p-sdh-2": [{ id: "img-p-sdh-2", product_id: "p-sdh-2", url: IMG.loaves, sort_order: 0 }],
-  "p-cro-1": [{ id: "img-p-cro-1", product_id: "p-cro-1", url: IMG.flour, sort_order: 0 }],
-  "p-cro-2": [{ id: "img-p-cro-2", product_id: "p-cro-2", url: IMG.pastry, sort_order: 0 }],
-  "p-cro-3": [{ id: "img-p-cro-3", product_id: "p-cro-3", url: IMG.flour, sort_order: 0 }],
-  "p-pas-1": [{ id: "img-p-pas-1", product_id: "p-pas-1", url: IMG.tart, sort_order: 0 }],
-  "p-pas-2": [{ id: "img-p-pas-2", product_id: "p-pas-2", url: IMG.pastry2, sort_order: 0 }],
-  "p-cak-1": [{ id: "img-p-cak-1", product_id: "p-cak-1", url: IMG.cake, sort_order: 0 }],
-  "p-cak-2": [{ id: "img-p-cak-2", product_id: "p-cak-2", url: IMG.cake2, sort_order: 0 }],
-  "p-cof-1": [{ id: "img-p-cof-1", product_id: "p-cof-1", url: IMG.coffee, sort_order: 0 }],
-  "p-cof-2": [{ id: "img-p-cof-2", product_id: "p-cof-2", url: IMG.coffee, sort_order: 0 }],
+  "p-bmi-1": [{ id: "img-p-bmi-1", product_id: "p-bmi-1", url: IMG.banhmi, is_primary: true, sort_order: 0 }],
+  "p-bmi-2": [{ id: "img-p-bmi-2", product_id: "p-bmi-2", url: IMG.banhmi, is_primary: true, sort_order: 0 }],
+  "p-bmi-3": [{ id: "img-p-bmi-3", product_id: "p-bmi-3", url: IMG.banhmi, is_primary: true, sort_order: 0 }],
+  "p-sdh-1": [{ id: "img-p-sdh-1", product_id: "p-sdh-1", url: IMG.loaves, is_primary: true, sort_order: 0 }],
+  "p-sdh-2": [{ id: "img-p-sdh-2", product_id: "p-sdh-2", url: IMG.loaves, is_primary: true, sort_order: 0 }],
+  "p-cro-1": [{ id: "img-p-cro-1", product_id: "p-cro-1", url: IMG.flour, is_primary: true, sort_order: 0 }],
+  "p-cro-2": [{ id: "img-p-cro-2", product_id: "p-cro-2", url: IMG.pastry, is_primary: true, sort_order: 0 }],
+  "p-cro-3": [{ id: "img-p-cro-3", product_id: "p-cro-3", url: IMG.flour, is_primary: true, sort_order: 0 }],
+  "p-pas-1": [{ id: "img-p-pas-1", product_id: "p-pas-1", url: IMG.tart, is_primary: true, sort_order: 0 }],
+  "p-pas-2": [{ id: "img-p-pas-2", product_id: "p-pas-2", url: IMG.pastry2, is_primary: true, sort_order: 0 }],
+  "p-cak-1": [{ id: "img-p-cak-1", product_id: "p-cak-1", url: IMG.cake, is_primary: true, sort_order: 0 }],
+  "p-cak-2": [{ id: "img-p-cak-2", product_id: "p-cak-2", url: IMG.cake2, is_primary: true, sort_order: 0 }],
+  "p-cof-1": [{ id: "img-p-cof-1", product_id: "p-cof-1", url: IMG.coffee, is_primary: true, sort_order: 0 }],
+  "p-cof-2": [{ id: "img-p-cof-2", product_id: "p-cof-2", url: IMG.coffee, is_primary: true, sort_order: 0 }],
 };
 
 export const mockBranches: Branch[] = [
@@ -634,8 +634,7 @@ export async function login(
 
 // Product images live in a standalone store (the backend exposes them as a
 // separate /products/:id/images resource, not a field on Product). Primary
-// image is determined by sort_order (lowest = primary), so there is no
-// is_primary flag.
+// image is explicit; the first uploaded image becomes primary when none exists.
 export async function listProductImages(productId: string): Promise<ProductImage[]> {
   await delay(100);
   const images = mockProductImages[productId];
@@ -645,11 +644,13 @@ export async function listProductImages(productId: string): Promise<ProductImage
 export async function uploadProductImages(productId: string, files: File[]): Promise<ProductImage[]> {
   await delay(300);
   const existingImages = mockProductImages[productId] ?? [];
+  const hasPrimary = existingImages.some((image) => image.is_primary);
 
   const newImages: ProductImage[] = files.map((file, i) => ({
     id: `img-${Date.now()}-${i}`,
     product_id: productId,
     url: URL.createObjectURL(file),
+    is_primary: !hasPrimary && i === 0,
     sort_order: existingImages.length + i,
   }));
 
