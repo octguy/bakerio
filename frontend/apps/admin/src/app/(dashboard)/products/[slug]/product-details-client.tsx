@@ -57,11 +57,12 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
     staleTime: Infinity,
   });
 
-  const { data: rawImages = [], isLoading: loadingImages } = useQuery({
+  const { data: rawImagesData, isLoading: loadingImages } = useQuery({
     queryKey: ["product-images", product?.id],
     queryFn: () => listProductImages(product!.id),
     enabled: !!product?.id,
   });
+  const rawImages = rawImagesData ?? [];
 
   useEffect(() => {
     if (!product) return;
