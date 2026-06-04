@@ -51,7 +51,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: getCategories,
+    queryFn: () => getCategories(),
     staleTime: Infinity,
   });
 

@@ -84,7 +84,7 @@ export default function ProductsPage() {
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
-    queryFn: getCategories,
+    queryFn: () => getCategories(),
     staleTime: Infinity, // Cache categories infinitely
   });
 
