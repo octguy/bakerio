@@ -31,6 +31,7 @@ jobs:
     needs: gate
     if: needs.gate.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Validate required secrets
         env:
@@ -53,6 +54,7 @@ jobs:
     needs: [gate, validate]
     if: needs.gate.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
@@ -140,6 +142,7 @@ jobs:
   verify:
     needs: deploy
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Health check
