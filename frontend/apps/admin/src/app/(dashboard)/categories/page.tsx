@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useFilterStore } from "@/lib/store";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -12,7 +13,7 @@ import {
 import type { Category } from "@repo/api-client";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -150,17 +151,13 @@ export default function CategoriesPage() {
       header: "",
       cell: ({ row }) => (
         <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
+          <Link
+            href={`/categories/${row.original.slug}`}
+            className={buttonVariants({ variant: "ghost", size: "icon" })}
             aria-label={`Edit ${row.original.name}`}
-            onClick={() => {
-              setEditing(row.original);
-              setOpen(true);
-            }}
           >
             <Pencil aria-hidden="true" className="h-4 w-4" />
-          </Button>
+          </Link>
           <Button
             variant="ghost"
             size="icon"
