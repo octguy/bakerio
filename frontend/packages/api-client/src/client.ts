@@ -238,12 +238,16 @@ export const getProducts = cache(async (): Promise<Product[]> => {
 });
 
 export async function getProductsPage(opts?: {
+  q?: string;
   category?: string;
+  active?: boolean;
   page?: number;
   size?: number;
 }): Promise<ProductListResponse> {
   const params = new URLSearchParams();
+  if (opts?.q) params.set("q", opts.q);
   if (opts?.category) params.set("category", opts.category);
+  if (opts?.active != null) params.set("active", String(opts.active));
   if (opts?.page != null) params.set("page", String(opts.page));
   if (opts?.size != null) params.set("size", String(opts.size));
   const query = params.toString();
@@ -264,9 +268,23 @@ export async function getProductsPage(opts?: {
       "[api-client] /products page unavailable — using mock fixtures.",
       err,
     );
-    const items = await mockGetProducts();
+    let items = await mockGetProducts(opts?.category);
+    if (opts?.q) {
+      const q = opts.q.toLowerCase();
+      items = items.filter(
+        (product) =>
+          product.name.toLowerCase().includes(q) ||
+          product.slug.toLowerCase().includes(q),
+      );
+    }
+    if (opts?.active != null) {
+      items = items.filter((product) => product.is_active === opts.active);
+    }
     return {
-      items,
+      items: items.slice(
+        ((opts?.page ?? 1) - 1) * (opts?.size ?? 20),
+        (opts?.page ?? 1) * (opts?.size ?? 20),
+      ),
       total: items.length,
       page: opts?.page ?? 1,
       size: opts?.size ?? 20,

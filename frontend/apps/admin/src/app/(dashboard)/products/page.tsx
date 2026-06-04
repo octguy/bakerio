@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -46,15 +46,29 @@ export default function ProductsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
   const { onlyActive } = useFilterStore();
+  const trimmedSearch = debouncedSearch.trim();
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [search]);
 
   const { data: productsPage, isLoading } = useQuery({
-    queryKey: ["products", { category, page, size: PAGE_SIZE }],
+    queryKey: ["products", { search: trimmedSearch, category, onlyActive, page, size: PAGE_SIZE }],
     queryFn: () =>
       getProductsPage({
+        q: trimmedSearch || undefined,
         category: category || undefined,
+        active: onlyActive ? true : undefined,
         page,
         size: PAGE_SIZE,
       }),
@@ -64,8 +78,9 @@ export default function ProductsPage() {
   const total = productsPage?.total ?? 0;
   const currentPage = productsPage?.page ?? page;
   const currentSize = productsPage?.size ?? PAGE_SIZE;
+  const totalPages = Math.max(1, productsPage?.total_pages ?? Math.ceil(total / currentSize));
   const canGoPrev = currentPage > 1;
-  const canGoNext = currentPage * currentSize < total;
+  const canGoNext = currentPage < totalPages;
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -247,7 +262,18 @@ export default function ProductsPage() {
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-admin-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="w-full sm:max-w-xs">
+        <div className="grid w-full gap-3 sm:max-w-2xl sm:grid-cols-2">
+          <div>
+            <Label htmlFor="product-search">Search</Label>
+            <Input
+              id="product-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search products..."
+              className="mt-1"
+            />
+          </div>
+          <div>
           <Label htmlFor="category-filter">Category</Label>
           <Select
             id="category-filter"
@@ -265,28 +291,65 @@ export default function ProductsPage() {
               </option>
             ))}
           </Select>
+          </div>
         </div>
-        <div className="flex items-center gap-2 self-end">
+        <div className="flex flex-wrap items-center justify-end gap-2 self-end">
           <Button
             type="button"
             variant="outline"
             size="sm"
+            aria-label="First page"
+            onClick={() => setPage(1)}
+            disabled={!canGoPrev || isLoading}
+          >
+            <ChevronsLeft aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Previous page"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={!canGoPrev || isLoading}
           >
-            Prev
+            <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           </Button>
-          <span className="min-w-16 text-center text-sm text-admin-muted">
-            page {currentPage}
-          </span>
+          <div className="flex items-center gap-1 text-sm text-admin-muted">
+            <span>Page</span>
+            <Input
+              aria-label="Jump to product page"
+              type="number"
+              min={1}
+              max={totalPages}
+              value={page}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next)) return;
+                setPage(Math.min(totalPages, Math.max(1, next)));
+              }}
+              className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span>of {totalPages}</span>
+          </div>
           <Button
             type="button"
             variant="outline"
             size="sm"
+            aria-label="Next page"
             onClick={() => setPage((p) => p + 1)}
             disabled={!canGoNext || isLoading}
           >
-            Next
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Last page"
+            onClick={() => setPage(totalPages)}
+            disabled={!canGoNext || isLoading}
+          >
+            <ChevronsRight aria-hidden="true" className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -296,9 +359,8 @@ export default function ProductsPage() {
       ) : (
         <DataTable
           columns={columns}
-          data={onlyActive ? products.filter((p) => p.is_active) : products}
-          searchKey="name"
-          searchPlaceholder="Search products..."
+          data={products}
+          showFooter={false}
         />
       )}
 

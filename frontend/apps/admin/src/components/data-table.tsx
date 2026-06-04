@@ -18,9 +18,10 @@ interface DataTableProps<T> {
   data: T[];
   searchKey?: string;
   searchPlaceholder?: string;
+  showFooter?: boolean;
 }
 
-export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: DataTableProps<T>) {
+export function DataTable<T>({ columns, data, searchKey, searchPlaceholder, showFooter = true }: DataTableProps<T>) {
   "use no memo";
 
   const [globalFilter, setGlobalFilter] = useState("");
@@ -46,13 +47,13 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: Da
           className="max-w-sm"
         />
       )}
-      <div className="rounded-md border border-border overflow-x-auto">
-        <table className="w-full min-w-[600px] text-sm">
+      <div className="overflow-x-auto rounded-md border border-border">
+        <table className="w-full min-w-[600px] table-fixed text-sm">
           <thead className="bg-muted">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
-                  <th key={h.id} className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  <th key={h.id} className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">
                     {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
                   </th>
                 ))}
@@ -64,7 +65,7 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: Da
               table.getRowModel().rows.map((row) => (
                 <tr key={row.id} className="border-t border-border hover:bg-muted/50">
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3">
+                    <td key={cell.id} className="h-14 truncate px-4 align-middle">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
@@ -80,19 +81,21 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder }: Da
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground tabular-nums">
-          {table.getFilteredRowModel().rows.length} row(s)
-        </p>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
-            Previous
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-            Next
-          </Button>
+      {showFooter && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground tabular-nums">
+            {table.getFilteredRowModel().rows.length} row(s)
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+              Next
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
