@@ -34,6 +34,22 @@ function forwardedHeaders(req: NextRequest): Headers {
   return headers;
 }
 
+async function hasInvalidTokenError(res: Response): Promise<boolean> {
+  if (res.status !== 401) return false;
+  try {
+    const json = (await res.clone().json()) as {
+      error?: { code?: string; message?: string };
+    };
+    const message = json.error?.message?.toLowerCase() ?? "";
+    return (
+      json.error?.code === "UNAUTHORIZED" &&
+      (message.includes("invalid token") || message.includes("token has been revoked"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function proxy(req: NextRequest, context: RouteContext) {
   const { path = [] } = await context.params;
   const res = await fetch(targetUrl(req, path), {
@@ -45,6 +61,9 @@ async function proxy(req: NextRequest, context: RouteContext) {
 
   const headers = new Headers(res.headers);
   for (const key of HOP_BY_HOP_HEADERS) headers.delete(key);
+  if (await hasInvalidTokenError(res)) {
+    headers.set("x-admin-auth-invalid", "1");
+  }
   return new NextResponse(res.body, { status: res.status, statusText: res.statusText, headers });
 }
 

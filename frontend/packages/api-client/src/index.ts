@@ -64,8 +64,9 @@ export {
   getBranchMembers,
   assignBranchMember,
   removeBranchMember,
-  // Users (REAL — list is composed from /branch + /branch/:id/members)
+  // Users (REAL)
   createUser,
+  getStaffUsers,
   getUserProfile,
   updateUserProfile,
   getMyProfile,
