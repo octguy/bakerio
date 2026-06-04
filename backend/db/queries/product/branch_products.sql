@@ -17,11 +17,19 @@ ON CONFLICT (product_id, branch_id) DO NOTHING;
 SELECT * FROM product.branch_products
 WHERE product_id = $1 AND branch_id = $2;
 
--- name: SetBranchProductActive :one
+-- name: UpdateBranchProduct :one
+-- Patch availability and/or quantity at a branch. The boolean "set_*" flags
+-- pick whether the corresponding column is overwritten or left as-is, so the
+-- same endpoint covers toggle-only, set-stock-only, or both at once.
 UPDATE product.branch_products
-SET is_active  = $3,
+SET is_active  = CASE WHEN sqlc.arg('set_active')::boolean
+                      THEN sqlc.arg('is_active')::boolean
+                      ELSE is_active END,
+    quantity   = CASE WHEN sqlc.arg('set_quantity')::boolean
+                      THEN sqlc.arg('quantity')::int4
+                      ELSE quantity END,
     updated_at = NOW(),
-    updated_by = $4
+    updated_by = sqlc.arg('updated_by')
 WHERE product_id = $1 AND branch_id = $2
 RETURNING *;
 

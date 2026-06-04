@@ -900,7 +900,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Admin may target any branch; a branch_manager only their own.",
+                "description": "Patch is_active and/or quantity. Omitted fields are unchanged.\nAdmin may target any branch; a branch_manager only their own.",
                 "consumes": [
                     "application/json"
                 ],
@@ -910,7 +910,7 @@
                 "tags": [
                     "product"
                 ],
-                "summary": "Toggle product availability at a branch",
+                "summary": "Update product availability and/or stock at a branch",
                 "parameters": [
                     {
                         "type": "string",
@@ -927,12 +927,12 @@
                         "required": true
                     },
                     {
-                        "description": "Availability",
+                        "description": "Patch",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/SetAvailabilityRequest"
+                            "$ref": "#/definitions/UpdateBranchProductRequest"
                         }
                     }
                 ],
@@ -2955,6 +2955,9 @@
                 },
                 "product_id": {
                     "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
                 }
             }
         },
@@ -3702,6 +3705,10 @@
                     "description": "number of customer accounts",
                     "type": "integer"
                 },
+                "orders": {
+                    "description": "placed orders",
+                    "type": "integer"
+                },
                 "products": {
                     "description": "number of products now in DB",
                     "type": "integer"
@@ -3828,14 +3835,6 @@
                 }
             }
         },
-        "SetAvailabilityRequest": {
-            "type": "object",
-            "properties": {
-                "is_active": {
-                    "type": "boolean"
-                }
-            }
-        },
         "SetPasswordRequest": {
             "type": "object",
             "required": [
@@ -3859,6 +3858,18 @@
                 },
                 "longitude": {
                     "type": "number"
+                }
+            }
+        },
+        "UpdateBranchProductRequest": {
+            "type": "object",
+            "properties": {
+                "is_active": {
+                    "type": "boolean"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },

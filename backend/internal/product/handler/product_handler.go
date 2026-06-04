@@ -45,11 +45,12 @@ func (h *ProductHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
 	g.POST("/:id/images", middleware.RequirePermission("product:manage:all"), h.AddImages)
 	g.DELETE("/:id/images/:imageId", middleware.RequirePermission("product:manage:all"), h.DeleteImage)
 
-	// Per-branch availability toggle. Admin (product:manage:all) any branch;
-	// branch_manager (branch:manage:own) only their own — checked in the handler.
+	// Per-branch availability + quantity update. Admin (product:manage:all) any
+	// branch; branch_manager (branch:manage:own) only their own — checked in
+	// the handler.
 	protected.PUT("/branch/:id/products/:productId",
 		middleware.RequireAnyPermission("product:manage:all", "branch:manage:own"),
-		h.SetAvailability,
+		h.UpdateBranchProduct,
 	)
 }
 
@@ -190,21 +191,22 @@ func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// SetAvailability godoc
-// @Summary      Toggle product availability at a branch
+// UpdateBranchProduct godoc
+// @Summary      Update product availability and/or stock at a branch
+// @Description  Patch is_active and/or quantity. Omitted fields are unchanged.
 // @Description  Admin may target any branch; a branch_manager only their own.
 // @Tags         product
 // @Security     BearerAuth
 // @Accept       json
 // @Produce      json
-// @Param        id         path      string                       true  "Branch ID"
-// @Param        productId  path      string                       true  "Product ID"
-// @Param        request    body      dto.SetAvailabilityRequest   true  "Availability"
+// @Param        id         path      string                          true  "Branch ID"
+// @Param        productId  path      string                          true  "Product ID"
+// @Param        request    body      dto.UpdateBranchProductRequest  true  "Patch"
 // @Success      200        {object}  dto.BranchProductResponse
 // @Failure      403        {object}  response.ErrorResponse
 // @Failure      404        {object}  response.ErrorResponse
 // @Router       /branch/{id}/products/{productId} [put]
-func (h *ProductHandler) SetAvailability(c *gin.Context) {
+func (h *ProductHandler) UpdateBranchProduct(c *gin.Context) {
 	branchID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		response.Error(c, apperrors.Validation("invalid branch id"))
@@ -220,13 +222,13 @@ func (h *ProductHandler) SetAvailability(c *gin.Context) {
 		return
 	}
 
-	var req dto.SetAvailabilityRequest
+	var req dto.UpdateBranchProductRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, apperrors.Validation(err.Error()))
 		return
 	}
 
-	res, err := h.svc.SetBranchAvailability(c.Request.Context(), productID, branchID, req.IsActive)
+	res, err := h.svc.UpdateBranchProduct(c.Request.Context(), productID, branchID, req.IsActive, req.Quantity)
 	if err != nil {
 		response.Error(c, err)
 		return

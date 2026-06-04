@@ -58,12 +58,16 @@ type ProductImageResponse struct {
 	SortOrder int32     `json:"sort_order"`
 } // @name ProductImageResponse
 
-type SetAvailabilityRequest struct {
-	IsActive bool `json:"is_active"`
-} // @name SetAvailabilityRequest
+// UpdateBranchProductRequest patches per-branch availability and/or on-hand
+// stock. At least one field must be provided; omitted fields are unchanged.
+type UpdateBranchProductRequest struct {
+	IsActive *bool  `json:"is_active,omitempty"`
+	Quantity *int32 `json:"quantity,omitempty" binding:"omitempty,min=0"`
+} // @name UpdateBranchProductRequest
 
 type BranchProductResponse struct {
 	ProductID uuid.UUID `json:"product_id"`
 	BranchID  uuid.UUID `json:"branch_id"`
 	IsActive  bool      `json:"is_active"`
+	Quantity  int32     `json:"quantity"`
 } // @name BranchProductResponse

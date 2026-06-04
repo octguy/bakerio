@@ -906,7 +906,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Admin may target any branch; a branch_manager only their own.",
+                "description": "Patch is_active and/or quantity. Omitted fields are unchanged.\nAdmin may target any branch; a branch_manager only their own.",
                 "consumes": [
                     "application/json"
                 ],
@@ -916,7 +916,7 @@ const docTemplate = `{
                 "tags": [
                     "product"
                 ],
-                "summary": "Toggle product availability at a branch",
+                "summary": "Update product availability and/or stock at a branch",
                 "parameters": [
                     {
                         "type": "string",
@@ -933,12 +933,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Availability",
+                        "description": "Patch",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/SetAvailabilityRequest"
+                            "$ref": "#/definitions/UpdateBranchProductRequest"
                         }
                     }
                 ],
@@ -2961,6 +2961,9 @@ const docTemplate = `{
                 },
                 "product_id": {
                     "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
                 }
             }
         },
@@ -3708,6 +3711,10 @@ const docTemplate = `{
                     "description": "number of customer accounts",
                     "type": "integer"
                 },
+                "orders": {
+                    "description": "placed orders",
+                    "type": "integer"
+                },
                 "products": {
                     "description": "number of products now in DB",
                     "type": "integer"
@@ -3834,14 +3841,6 @@ const docTemplate = `{
                 }
             }
         },
-        "SetAvailabilityRequest": {
-            "type": "object",
-            "properties": {
-                "is_active": {
-                    "type": "boolean"
-                }
-            }
-        },
         "SetPasswordRequest": {
             "type": "object",
             "required": [
@@ -3865,6 +3864,18 @@ const docTemplate = `{
                 },
                 "longitude": {
                     "type": "number"
+                }
+            }
+        },
+        "UpdateBranchProductRequest": {
+            "type": "object",
+            "properties": {
+                "is_active": {
+                    "type": "boolean"
+                },
+                "quantity": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },
