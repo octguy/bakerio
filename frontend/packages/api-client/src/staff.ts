@@ -96,8 +96,9 @@ function toStaff(
 
 export async function getStaff(
   role?: StaffRole | string,
+  q?: string,
 ): Promise<StaffMember[]> {
-  const [staff, branches] = await Promise.all([getStaffUsers(), getBranches()]);
+  const [staff, branches] = await Promise.all([getStaffUsers({ q }), getBranches()]);
   const branchNames = new Map(branches.map((b) => [b.id, b.name]));
   const list = staff.map((m) =>
     toStaff(
