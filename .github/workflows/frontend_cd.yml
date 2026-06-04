@@ -137,7 +137,7 @@ jobs:
   deploy-web:
     needs: build-web
     runs-on: ubuntu-latest
-    environment: production-web
+    environment: production
 
     steps:
       - uses: actions/download-artifact@v4
