@@ -439,13 +439,17 @@ export async function deleteProductImage(productId: string, imageId: string): Pr
 
 // ===== CATEGORIES (REAL) =====
 
-export const getCategories = cache(async (): Promise<Category[]> => {
+export const getCategories = cache(async (opts?: { q?: string }): Promise<Category[]> => {
+  const params = new URLSearchParams();
+  if (opts?.q) params.set("q", opts.q);
+  const query = params.toString();
+
   try {
-    const cats = await request<Category[]>("/categories");
+    const cats = await request<Category[]>(`/categories${query ? `?${query}` : ""}`);
     if (!cats || cats.length === 0) {
       if (DISABLE_MOCK_FALLBACK) return cats || [];
       useMockFallback("categories.empty");
-      return mockGetCategories();
+      return filterMockCategories(await mockGetCategories(), opts?.q);
     }
     return cats;
   } catch (err) {
@@ -455,9 +459,19 @@ export const getCategories = cache(async (): Promise<Category[]> => {
       "[api-client] /categories not available — using mock fixtures.",
       err,
     );
-    return mockGetCategories();
+    return filterMockCategories(await mockGetCategories(), opts?.q);
   }
 });
+
+function filterMockCategories(categories: Category[], q?: string): Category[] {
+  if (!q) return categories;
+  const term = q.toLowerCase();
+  return categories.filter(
+    (category) =>
+      category.name.toLowerCase().includes(term) ||
+      category.slug.toLowerCase().includes(term),
+  );
+}
 
 export const getCategory = cache(async (id: string): Promise<Category> => {
   try {

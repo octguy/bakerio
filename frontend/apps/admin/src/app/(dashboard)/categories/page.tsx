@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useFilterStore } from "@/lib/store";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -42,11 +42,20 @@ export default function CategoriesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [deleting, setDeleting] = useState<Category | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const { onlyActive } = useFilterStore();
+  const trimmedSearch = debouncedSearch.trim();
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [search]);
 
   const { data: categories = [], isLoading } = useQuery({
-    queryKey: ["categories"],
-    queryFn: getCategories,
+    queryKey: ["categories", { search: trimmedSearch }],
+    queryFn: () => getCategories({ q: trimmedSearch || undefined }),
   });
 
   const createMut = useMutation({
@@ -221,6 +230,18 @@ export default function CategoriesPage() {
         </Button>
       </div>
 
+      <div className="rounded-xl border border-admin-line bg-white/70 p-3">
+        <div className="w-full sm:max-w-xs">
+          <Label htmlFor="category-search">Search</Label>
+          <Input
+            id="category-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search categories..."
+            className="mt-1"
+          />
+        </div>
+      </div>
 
       {isLoading ? (
         <p>Loading…</p>
@@ -228,8 +249,7 @@ export default function CategoriesPage() {
         <DataTable
           columns={columns}
           data={onlyActive ? categories.filter((c) => c.is_active) : categories}
-          searchKey="name"
-          searchPlaceholder="Search categories..."
+          showFooter={false}
         />
       )}
 
