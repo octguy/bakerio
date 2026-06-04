@@ -67,6 +67,7 @@ export {
   removeBranchMember,
   // Users (REAL)
   createUser,
+  getUsersPage,
   getStaffUsers,
   getUserProfile,
   updateUserProfile,

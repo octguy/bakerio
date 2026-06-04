@@ -8,17 +8,20 @@
 //   const { mockServed } = getApiHealth();
 
 import type {
+  Product,
+  Category,
+  ProductImage,
   Branch,
   BranchProduct,
-  Category,
-  CreateOrderRequest,
-  CreateUserResponse,
-  Order,
-  PaginatedResponse,
   Profile,
-  Product,
-  ProductImage,
+  Order,
   CartResponse,
+  CartItemResponse,
+  CreateUserResponse,
+  LoginResponse,
+  User,
+  PaginatedResponse,
+  CreateOrderRequest,
 } from "./types";
 import {
   listProductImages as mockListProductImages,
@@ -669,12 +672,36 @@ export interface StaffUser {
   branch_id?: string;
 }
 
-interface StaffUsersResponse {
-  items: StaffUser[];
-  total?: number;
+interface UsersResponse {
+  items: User[];
+  total: number;
+  page: number;
+  size: number;
+  total_pages: number;
+}
+
+export async function getUsersPage(opts?: {
+  q?: string;
+  role?: string;
   page?: number;
   size?: number;
-  total_pages?: number;
+}): Promise<UsersResponse> {
+  const params = new URLSearchParams();
+  if (opts?.q) params.set("q", opts.q);
+  if (opts?.role) params.set("role", opts.role);
+  if (opts?.page != null) params.set("page", String(opts.page));
+  if (opts?.size != null) params.set("size", String(opts.size));
+  const res = await request<UsersResponse | null>(`/users?${params.toString()}`);
+  const items = res?.items ?? [];
+  const size = res?.size ?? opts?.size ?? items.length;
+  const total = res?.total ?? items.length;
+  return {
+    items,
+    total,
+    page: res?.page ?? opts?.page ?? 1,
+    size,
+    total_pages: res?.total_pages ?? Math.max(1, Math.ceil(total / Math.max(1, size))),
+  };
 }
 
 export interface StaffUsersPage {
@@ -697,6 +724,14 @@ export async function getBranchMembers(
     `/branch/${branchId}/members`,
   );
   return res?.members ?? [];
+}
+
+interface StaffUsersResponse {
+  items: StaffUser[];
+  total?: number;
+  page?: number;
+  size?: number;
+  total_pages?: number;
 }
 
 export async function getStaffUsersPage(opts?: {

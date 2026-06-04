@@ -33,6 +33,7 @@ export interface StaffMember {
   name: string;
   initial: string;
   role: StaffRole | string;
+  roleId?: string;
   branchId?: string;
   branch: string;
   start: string;
@@ -49,6 +50,17 @@ export interface StaffPage {
   size: number;
   totalPages: number;
 }
+
+export interface StaffRoleOption {
+  value: string;
+  label: string;
+}
+
+const STAFF_ROLE_OPTIONS: StaffRoleOption[] = [
+  { value: "branch_manager", label: "Branch Manager" },
+  { value: "branch_staff", label: "Branch Staff" },
+  { value: "product_manager", label: "Product Manager" },
+];
 
 // Backend role IDs → friendly labels rendered in the staff grid.
 const ROLE_DISPLAY: Record<string, string> = {
@@ -88,6 +100,7 @@ function toStaff(
   member: BranchMember | StaffUser,
   branchName: string,
 ): StaffMember {
+  const roleId = member.roles[0];
   const role = displayRole(member.roles);
   return {
     userId: member.user_id,
@@ -95,6 +108,7 @@ function toStaff(
     name: member.display_name,
     initial: initialOf(member.display_name),
     role,
+    roleId,
     branchId: "branch_id" in member ? member.branch_id : undefined,
     branch: branchName,
     start: "—",
@@ -184,4 +198,8 @@ export async function getStaffCounts(): Promise<{
 }> {
   const staff = await getStaff();
   return getStaffCountsFromList(staff);
+}
+
+export async function getStaffRoleOptions(): Promise<StaffRoleOption[]> {
+  return STAFF_ROLE_OPTIONS;
 }
