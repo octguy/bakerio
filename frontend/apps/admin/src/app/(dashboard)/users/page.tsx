@@ -101,6 +101,17 @@ function roleLabel(role: string): string {
   return role.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function filterStaff(staff: StaffMember[], q: string): StaffMember[] {
+  const term = q.trim().toLowerCase();
+  if (!term) return staff;
+  return staff.filter(
+    (member) =>
+      member.name.toLowerCase().includes(term) ||
+      member.email.toLowerCase().includes(term) ||
+      String(member.role).toLowerCase().includes(term),
+  );
+}
+
 export default function UsersPage() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -108,6 +119,8 @@ export default function UsersPage() {
   const [passwordTarget, setPasswordTarget] = useState<StaffMember | null>(null);
   const [reassigning, setReassigning] = useState<StaffMember | null>(null);
   const [reassignBranchId, setReassignBranchId] = useState("");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleSort, setRoleSort] = useState<"" | "asc" | "desc">("");
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -115,6 +128,7 @@ export default function UsersPage() {
   const [counts, setCounts] = useState<{ total: number; onShift: number }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const trimmedSearch = debouncedSearch.trim();
 
   const isSuperAdmin = profile?.roles?.includes("super_admin") ?? false;
   const isBranchManager = profile?.roles?.includes("branch_manager") ?? false;
@@ -153,7 +167,7 @@ export default function UsersPage() {
     defaultValues: { password: "" },
   });
 
-  const fetchStaffData = async (showLoading = false) => {
+  const fetchStaffData = async (showLoading = false, q = trimmedSearch) => {
     if (showLoading) setLoading(true);
     setError("");
     try {
@@ -164,7 +178,10 @@ export default function UsersPage() {
       const currentIsBranchManager = currentProfile.roles?.includes("branch_manager") ?? false;
 
       if (currentIsSuperAdmin) {
-        const [staffList, branchList] = await Promise.all([getStaff(), getBranches()]);
+        const [staffList, branchList] = await Promise.all([
+          getStaff(undefined, q || undefined),
+          getBranches(),
+        ]);
         setBranches(branchList);
         setStaff(staffList);
         setCounts(getStaffCountsFromList(staffList));
@@ -176,9 +193,10 @@ export default function UsersPage() {
           currentProfile.branch.id,
           currentProfile.branch.name,
         );
+        const filteredStaff = filterStaff(staffList, q);
         setBranches([]);
-        setStaff(staffList);
-        setCounts(getStaffCountsFromList(staffList));
+        setStaff(filteredStaff);
+        setCounts(getStaffCountsFromList(filteredStaff));
         return;
       }
 
@@ -200,6 +218,22 @@ export default function UsersPage() {
     void fetchStaffData(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedSearch(search), 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    if (loading && !profile) return;
+    const timeout = window.setTimeout(() => {
+      void fetchStaffData(false, trimmedSearch);
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trimmedSearch]);
 
   useEffect(() => {
     if (!isBranchScopedRole(selectedRole)) {
@@ -466,7 +500,17 @@ export default function UsersPage() {
         <p>Loading...</p>
       ) : (
         <div className="space-y-3">
-          <div className="flex justify-end">
+          <div className="flex flex-col gap-3 rounded-xl border border-admin-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="w-full sm:max-w-xs">
+              <Label htmlFor="staff-search">Search</Label>
+              <Input
+                id="staff-search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search staff..."
+                className="mt-1"
+              />
+            </div>
             <div className="w-full sm:w-48">
               <Label htmlFor="role-sort" className="sr-only">
                 Sort by role
@@ -487,8 +531,7 @@ export default function UsersPage() {
           <DataTable
             columns={columns}
             data={sortedStaff}
-            searchKey="name"
-            searchPlaceholder="Search staff..."
+            showFooter={false}
           />
         </div>
       )}

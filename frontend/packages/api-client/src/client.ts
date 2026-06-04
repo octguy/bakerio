@@ -664,8 +664,10 @@ export async function getBranchMembers(
   return res?.members ?? [];
 }
 
-export async function getStaffUsers(): Promise<StaffUser[]> {
-  const res = await request<StaffUsersResponse | null>("/staff?size=100");
+export async function getStaffUsers(opts?: { q?: string }): Promise<StaffUser[]> {
+  const params = new URLSearchParams({ size: "100" });
+  if (opts?.q) params.set("q", opts.q);
+  const res = await request<StaffUsersResponse | null>(`/staff?${params.toString()}`);
   return res?.items ?? [];
 }
 
