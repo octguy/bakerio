@@ -16,8 +16,9 @@ import {
   getBranchStaff,
   getStaffPage,
   getStaffCountsFromList,
+  getStaffRoleOptions,
 } from "@repo/api-client/staff";
-import type { StaffMember } from "@repo/api-client/staff";
+import type { StaffMember, StaffRoleOption } from "@repo/api-client/staff";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { useViewportPageSize } from "@/lib/use-viewport-page-size";
@@ -37,16 +38,6 @@ import { ArrowRightLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-const GLOBAL_STAFF_ROLES = [
-  { value: "branch_manager", label: "Branch Manager" },
-  { value: "branch_staff", label: "Branch Staff" },
-  { value: "product_manager", label: "Product Manager" },
-] as const;
-
-const BRANCH_STAFF_ROLES = [
-  { value: "branch_staff", label: "Branch Staff" },
-] as const;
 
 const BRANCH_SCOPED_ROLES = new Set(["branch_manager", "branch_staff"]);
 
@@ -122,11 +113,13 @@ export default function UsersPage() {
   const [reassignBranchId, setReassignBranchId] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [roleSort, setRoleSort] = useState<"" | "asc" | "desc">("");
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [staffRoles, setStaffRoles] = useState<StaffRoleOption[]>([]);
   const [profile, setProfile] = useState<AdminProfile | null>(null);
   const [counts, setCounts] = useState<{ total: number; onShift: number }>();
   const [loading, setLoading] = useState(true);
@@ -137,15 +130,16 @@ export default function UsersPage() {
   const isSuperAdmin = profile?.roles?.includes("super_admin") ?? false;
   const isBranchManager = profile?.roles?.includes("branch_manager") ?? false;
   const canManageStaff = isSuperAdmin || (isBranchManager && !!profile?.branch?.id);
-  const roleOptions = isSuperAdmin ? GLOBAL_STAFF_ROLES : BRANCH_STAFF_ROLES;
+  const roleOptions = isSuperAdmin
+    ? staffRoles
+    : staffRoles.filter((role) => role.value === "branch_staff");
   const canGoPrev = page > 1;
   const canGoNext = page < totalPages;
-  const sortedStaff = [...staff].sort((a, b) => {
-    if (!roleSort) return 0;
-    const result = String(a.role).localeCompare(String(b.role));
-    return roleSort === "asc" ? result : -result;
+  const filteredBySelectStaff = staff.filter((member) => {
+    if (roleFilter !== "all" && member.roleId !== roleFilter) return false;
+    if (branchFilter !== "all" && member.branchId !== branchFilter) return false;
+    return true;
   });
-
   const createForm = useForm<CreateFormData>({
     resolver: zodResolver(createSchema),
     defaultValues: {
@@ -184,7 +178,10 @@ export default function UsersPage() {
       const currentIsBranchManager = currentProfile.roles?.includes("branch_manager") ?? false;
 
       if (currentIsSuperAdmin) {
-        const branchList = branches.length > 0 ? branches : await getBranches();
+        const [branchList, roles] = await Promise.all([
+          branches.length > 0 ? Promise.resolve(branches) : getBranches(),
+          staffRoles.length > 0 ? Promise.resolve(staffRoles) : getStaffRoleOptions(),
+        ]);
         const staffPage = await getStaffPage({
           q: q || undefined,
           page,
@@ -192,6 +189,7 @@ export default function UsersPage() {
           branches: branchList,
         });
         setBranches(branchList);
+        setStaffRoles(roles);
         setStaff(staffPage.items);
         setCounts(getStaffCountsFromList(staffPage.items));
         setTotalPages(Math.max(1, staffPage.totalPages));
@@ -205,7 +203,9 @@ export default function UsersPage() {
         );
         const filteredStaff = filterStaff(staffList, q);
         const branchTotalPages = Math.max(1, Math.ceil(filteredStaff.length / pageSize));
-        setBranches([]);
+        const roles = staffRoles.length > 0 ? staffRoles : await getStaffRoleOptions();
+        setBranches(currentProfile.branch ? [{ id: currentProfile.branch.id, name: currentProfile.branch.name } as Branch] : []);
+        setStaffRoles(roles);
         setStaff(filteredStaff.slice((page - 1) * pageSize, page * pageSize));
         setCounts(getStaffCountsFromList(filteredStaff));
         setTotalPages(branchTotalPages);
@@ -380,6 +380,7 @@ export default function UsersPage() {
           honey: "bg-honey text-espresso",
           rose: "bg-rose text-white",
         };
+
         return (
           <div className="flex items-center gap-3">
             <div
@@ -523,21 +524,33 @@ export default function UsersPage() {
                 className="mt-1"
               />
             </div>
-            <div className="w-full sm:w-48">
-              <Label htmlFor="role-sort" className="sr-only">
-                Sort by role
-              </Label>
-              <Select
-                id="role-sort"
-                value={roleSort}
-                onChange={(event) =>
-                  setRoleSort(event.target.value as "" | "asc" | "desc")
-                }
-              >
-                <option value="">Original order</option>
-                <option value="asc">Role A-Z</option>
-                <option value="desc">Role Z-A</option>
-              </Select>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end sm:justify-start">
+              <div className="w-full sm:w-40">
+                <Label htmlFor="role-filter">Role</Label>
+                <SearchableCombobox
+                  id="role-filter"
+                  value={roleFilter}
+                  onChange={setRoleFilter}
+                  options={roleOptions}
+                  placeholder="All Roles"
+                  searchPlaceholder="Search role..."
+                  emptyMessage="No roles found."
+                  allOption={{ value: "all", label: "All Roles" }}
+                />
+              </div>
+              <div className="w-full sm:w-40">
+                <Label htmlFor="branch-filter">Branch</Label>
+                <SearchableCombobox
+                  id="branch-filter"
+                  value={branchFilter}
+                  onChange={setBranchFilter}
+                  options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
+                  placeholder="All Branches"
+                  searchPlaceholder="Search branch..."
+                  emptyMessage="No branches found."
+                  allOption={{ value: "all", label: "All Branches" }}
+                />
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2 self-end">
               <Button type="button" variant="outline" size="sm" aria-label="First page" onClick={() => setPage(1)} disabled={!canGoPrev || loading}>
@@ -573,7 +586,7 @@ export default function UsersPage() {
           </div>
           <DataTable
             columns={columns}
-            data={sortedStaff}
+            data={filteredBySelectStaff}
             showFooter={false}
           />
         </div>
@@ -821,6 +834,44 @@ interface BranchComboboxProps {
 }
 
 function BranchCombobox({ value, onChange, branches }: BranchComboboxProps) {
+  return (
+    <SearchableCombobox
+      value={value}
+      onChange={onChange}
+      options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
+      placeholder="Select branch..."
+      searchPlaceholder="Search branch..."
+      emptyMessage="No branches found."
+    />
+  );
+}
+
+interface SearchableComboboxOption {
+  value: string;
+  label: string;
+}
+
+interface SearchableComboboxProps {
+  id?: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: SearchableComboboxOption[];
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyMessage: string;
+  allOption?: SearchableComboboxOption;
+}
+
+function SearchableCombobox({
+  id,
+  value,
+  onChange,
+  options,
+  placeholder,
+  searchPlaceholder,
+  emptyMessage,
+  allOption,
+}: SearchableComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -839,15 +890,17 @@ function BranchCombobox({ value, onChange, branches }: BranchComboboxProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const selectedBranch = branches.find((branch) => branch.id === value);
-  const filtered = branches.filter((branch) =>
-    branch.name.toLowerCase().includes(search.toLowerCase()),
+  const choices = allOption ? [allOption, ...options] : options;
+  const selectedOption = choices.find((option) => option.value === value);
+  const filtered = choices.filter((option) =>
+    option.label.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
     <div ref={containerRef} className="relative w-full">
       <Button
         type="button"
+        id={id}
         variant="outline"
         onClick={() => {
           setOpen(!open);
@@ -855,7 +908,7 @@ function BranchCombobox({ value, onChange, branches }: BranchComboboxProps) {
         }}
         className="w-full justify-between border-input bg-background text-left font-normal text-espresso shadow-sm"
       >
-        <span>{selectedBranch ? selectedBranch.name : "Select branch..."}</span>
+        <span className="truncate text-left">{selectedOption ? selectedOption.label : placeholder}</span>
         <span className="text-xs text-admin-muted">▼</span>
       </Button>
 
@@ -863,31 +916,31 @@ function BranchCombobox({ value, onChange, branches }: BranchComboboxProps) {
         <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-admin-line bg-white p-2 shadow-lg">
           <Input
             autoFocus
-            placeholder="Search branch..."
+            placeholder={searchPlaceholder}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="mb-2 h-8 text-sm"
           />
           <div className="space-y-1">
             {filtered.length > 0 ? (
-              filtered.map((branch) => (
+              filtered.map((option) => (
                 <button
-                  key={branch.id}
+                  key={option.value}
                   type="button"
                   onClick={() => {
-                    onChange(branch.id);
+                    onChange(option.value);
                     setOpen(false);
                   }}
                   className={`w-full rounded px-2 py-1.5 text-left text-xs text-espresso hover:bg-vanilla ${
-                    value === branch.id ? "bg-vanilla font-semibold" : ""
+                    value === option.value ? "bg-vanilla font-semibold" : ""
                   }`}
                 >
-                  {branch.name}
+                  {option.label}
                 </button>
               ))
             ) : (
               <p className="py-2 text-center text-xs text-admin-muted">
-                No branches found.
+                {emptyMessage}
               </p>
             )}
           </div>

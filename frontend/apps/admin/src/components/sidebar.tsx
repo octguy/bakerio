@@ -39,6 +39,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/branches", label: "Branches", glyph: "◉" },
       { href: "/users", label: "Staff", glyph: "◐" },
+      { href: "/all-users", label: "All Users", glyph: "◒" },
       { href: "/account", label: "Account", glyph: "◈" },
     ],
   },
@@ -52,7 +53,10 @@ function getAuthorizedGroups(roles: string[]): NavGroup[] {
   return GROUPS.map((g) => ({
     ...g,
     items: g.items.filter((it) => {
-      if (it.href === "/users" || it.href === "/branches") {
+      if (it.href === "/users" || it.href === "/all-users") {
+        return isSuperAdmin;
+      }
+      if (it.href === "/branches") {
         return isSuperAdmin || isBranchManager;
       }
       if (it.href === "/categories") {
