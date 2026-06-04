@@ -6,6 +6,7 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 COPY apps/order/package.json ./apps/order/
 COPY packages/api-client/package.json ./packages/api-client/
+COPY packages/ui/package.json ./packages/ui/
 COPY packages/typescript-config/package.json ./packages/typescript-config/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 RUN npm ci

@@ -58,18 +58,6 @@ describe("ContactPage", () => {
   });
 
   it("shows a configuration error when no contact endpoint is configured", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: () =>
-          Promise.resolve({
-            error: { message: "Contact form is not configured yet. Please email hello@bakerio.vn directly." },
-          }),
-      }),
-    );
-
     render(<ContactPage />);
     fireEvent.change(screen.getByLabelText("Your name"), { target: { value: "John" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "john@example.com" } });
@@ -94,6 +82,7 @@ describe("ContactPage", () => {
   });
 
   it("hides the form after successful submission", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CONTACT_ENDPOINT", "https://forms.example.test/contact");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
 
     render(<ContactPage />);
@@ -107,7 +96,7 @@ describe("ContactPage", () => {
       expect(screen.getByText("Thank you.")).toBeInTheDocument();
     });
     expect(fetch).toHaveBeenCalledWith(
-      "/api/contact",
+      "https://forms.example.test/contact",
       expect.objectContaining({ method: "POST" }),
     );
     expect(screen.getByText(/we'll write back/i)).toBeInTheDocument();

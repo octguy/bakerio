@@ -117,7 +117,9 @@ jobs:
           script: |
             set -e
             cd /home/deploy/bakerio/backend/deployments
-            docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm migrate
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d postgres
+            docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm migrate || \
+              (docker compose -f docker-compose.prod.yml --env-file .env.prod logs postgres --tail 50 && exit 1)
 
   deploy:
     needs: migrate

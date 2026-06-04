@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { z } from "zod";
+import { getContactEndpoint } from "@/lib/public-config";
 
 const contactSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -65,7 +66,12 @@ export default function ContactPage() {
     setSubmitState("pending");
 
     try {
-      const response = await fetch("/api/contact", {
+      const contactEndpoint = getContactEndpoint();
+      if (!contactEndpoint) {
+        throw new Error("Contact form is not configured yet. Please email hello@bakerio.vn directly.");
+      }
+
+      const response = await fetch(contactEndpoint, {
         method: "POST",
         headers: {
           Accept: "application/json",

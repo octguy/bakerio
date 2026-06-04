@@ -100,7 +100,6 @@ services:
       - up
     networks:
       - bakerio_network
-    restart: on-failure
     logging:
       driver: "json-file"
       options:
