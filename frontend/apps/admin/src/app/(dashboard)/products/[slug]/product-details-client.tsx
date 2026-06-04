@@ -23,13 +23,15 @@ import {
   ArrowLeft,
   Image as ImageIcon,
   Loader2,
-  Trash2,
+  Star,
   Upload,
 } from "lucide-react";
 
 interface ProductDetailsPageClientProps {
   productSlug: string;
 }
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClientProps) {
   const qc = useQueryClient();
@@ -40,6 +42,9 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
   const [price, setPrice] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [primaryImageIdOverride, setPrimaryImageIdOverride] = useState<string | null>(null);
+  const [imageOrder, setImageOrder] = useState<string[]>([]);
+  const [draggingImageId, setDraggingImageId] = useState<string | null>(null);
 
   const { data: product, isLoading: loadingProduct } = useQuery({
     queryKey: ["product", productSlug],
@@ -67,12 +72,44 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
     setIsActive(product.is_active);
   }, [product]);
 
-  const images: ProductImage[] = rawImages || [];
-  const primaryImageId = images.reduce<string | null>((primaryId, img) => {
-    if (!primaryId) return img.id;
-    const primary = images.find((candidate) => candidate.id === primaryId);
-    return !primary || img.sort_order < primary.sort_order ? img.id : primaryId;
-  }, null);
+  const images: ProductImage[] = [...rawImages].sort((a, b) => {
+    const aIndex = imageOrder.indexOf(a.id);
+    const bIndex = imageOrder.indexOf(b.id);
+    if (aIndex === -1 && bIndex === -1) return 0;
+    if (aIndex === -1) return 1;
+    if (bIndex === -1) return -1;
+    return aIndex - bIndex;
+  });
+  const primaryOverrideIsValid =
+    primaryImageIdOverride &&
+    images.some((image) => image.id === primaryImageIdOverride);
+  const primaryImageId =
+    (primaryOverrideIsValid ? primaryImageIdOverride : null) ??
+    images.find((image) => image.is_primary)?.id ??
+    images[0]?.id ??
+    null;
+
+  useEffect(() => {
+    setImageOrder((current) => {
+      const imageIds = rawImages.map((image) => image.id);
+      const kept = current.filter((id) => imageIds.includes(id));
+      const added = imageIds.filter((id) => !kept.includes(id));
+      return [...kept, ...added];
+    });
+  }, [rawImages]);
+
+  const moveImage = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setImageOrder((current) => {
+      const next = current.length ? [...current] : images.map((image) => image.id);
+      const fromIndex = next.indexOf(fromId);
+      const toIndex = next.indexOf(toId);
+      if (fromIndex === -1 || toIndex === -1) return current;
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
 
   const updateMut = useMutation({
     mutationFn: () => {
@@ -100,7 +137,10 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
       return uploadProductImages(product.id, files);
     },
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ["product-images", product?.id] });
+      if (product?.id) {
+        qc.invalidateQueries({ queryKey: ["product-images", product.id] });
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
       toast(`Successfully uploaded ${data.length} image(s)`);
     },
     onError: (e: Error) => toast(e.message, "error"),
@@ -119,11 +159,17 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
   });
 
   const handleFiles = (fileList: FileList | null) => {
-    const files = Array.from(fileList ?? []).filter((file) =>
-      file.type.startsWith("image/"),
-    );
+    const files = Array.from(fileList ?? []);
     if (files.length === 0) {
-      toast("Please select image files only", "error");
+      toast("Please select at least one image", "error");
+      return;
+    }
+    if (files.some((file) => !file.type.startsWith("image/"))) {
+      toast("All selected files must be images", "error");
+      return;
+    }
+    if (files.some((file) => file.size > MAX_IMAGE_SIZE)) {
+      toast("Each image must be 5MB or smaller", "error");
       return;
     }
     uploadMut.mutate(files);
@@ -317,7 +363,24 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
                     return (
                       <div
                         key={img.id}
-                        className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted shadow-sm transition-all duration-300 hover:shadow-md"
+                        role={images.length > 1 && !isPrimary ? "button" : undefined}
+                        tabIndex={images.length > 1 && !isPrimary ? 0 : undefined}
+                        aria-label={images.length > 1 && !isPrimary ? "Set as primary image" : undefined}
+                        onClick={() => {
+                          if (images.length <= 1 || isPrimary) return;
+                          setPrimaryImageIdOverride(img.id);
+                          toast("Primary image updated (demo)");
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          if (images.length <= 1 || isPrimary) return;
+                          event.preventDefault();
+                          setPrimaryImageIdOverride(img.id);
+                          toast("Primary image updated (demo)");
+                        }}
+                        className={`group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted shadow-sm transition-all duration-300 hover:shadow-md ${
+                          images.length > 1 && !isPrimary ? "cursor-pointer" : ""
+                        }`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -325,24 +388,50 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
                           alt={img.alt_text || product.name || "Product image"}
                           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
-                        {isPrimary && (
-                          <div className="absolute top-2 left-2 z-10 rounded-full bg-golden px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-white shadow-sm">
-                            Primary
-                          </div>
+                        {images.length > 1 && (
+                          <button
+                            type="button"
+                            disabled={isPrimary}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPrimaryImageIdOverride(img.id);
+                              toast("Primary image updated (demo)");
+                            }}
+                            className={`absolute top-2 left-2 z-10 rounded-full p-1.5 shadow transition-all ${
+                              isPrimary
+                                ? "bg-golden text-white opacity-100"
+                                : "bg-black/30 text-white/75 opacity-0 hover:bg-golden/80 hover:text-white group-hover:opacity-70"
+                            }`}
+                            title={isPrimary ? "Primary image" : "Set as primary"}
+                            aria-label={isPrimary ? "Primary image" : "Set as primary image"}
+                          >
+                            <Star
+                              className={`h-4 w-4 ${isPrimary ? "fill-current" : ""}`}
+                            />
+                          </button>
                         )}
-                        <div className="absolute right-2 bottom-2 z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                        <div className="absolute top-0 right-0 z-20">
                           <button
                             type="button"
                             disabled={deleteMut.isPending}
-                            onClick={() => {
+                            onClick={(event) => {
+                              event.stopPropagation();
                               if (confirm("Are you sure you want to delete this image?")) {
                                 deleteMut.mutate(img.id);
                               }
                             }}
-                            className="rounded-full bg-black/40 p-1.5 text-white shadow transition-all hover:bg-sienna"
+                            className="group/delete relative h-10 w-10 bg-[#ff2d1f] transition-colors hover:bg-[#e1190d]"
+                            style={{ clipPath: "polygon(100% 0, 100% 100%, 0 0)" }}
                             title="Delete image"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <span
+                              aria-hidden="true"
+                              className="absolute top-[11px] right-[5px] h-0.5 w-4 rotate-45 rounded-full bg-white"
+                            />
+                            <span
+                              aria-hidden="true"
+                              className="absolute top-[11px] right-[5px] h-0.5 w-4 -rotate-45 rounded-full bg-white"
+                            />
                           </button>
                         </div>
                       </div>

@@ -384,8 +384,9 @@ export async function listProductImages(productId: string): Promise<ProductImage
 }
 
 export async function uploadProductImages(productId: string, files: File[]): Promise<ProductImage[]> {
+  if (files.length === 0) return [];
   const fd = new FormData();
-  files.forEach((f) => fd.append("files", f));
+  files.forEach((file) => fd.append("files", file, file.name));
   try {
     return await request<ProductImage[]>(`/products/${productId}/images`, {
       method: "POST",
