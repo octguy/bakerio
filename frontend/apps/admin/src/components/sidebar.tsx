@@ -44,12 +44,36 @@ const GROUPS: NavGroup[] = [
   },
 ];
 
+function getAuthorizedGroups(roles: string[]): NavGroup[] {
+  const isSuperAdmin = roles.includes("super_admin");
+  const isBranchManager = roles.includes("branch_manager");
+  const isProductManager = roles.includes("product_manager");
+
+  return GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter((it) => {
+      if (it.href === "/users" || it.href === "/branches") {
+        return isSuperAdmin || isBranchManager;
+      }
+      if (it.href === "/categories") {
+        return isSuperAdmin || isProductManager;
+      }
+      if (it.href === "/products") {
+        return isSuperAdmin || isBranchManager || isProductManager;
+      }
+      return true; // /, /orders, /account
+    }),
+  })).filter((g) => g.items.length > 0);
+}
+
 function SidebarContent() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const roleSubtitle = user?.roles?.length
     ? user.roles.map((role) => role.replace(/_/g, " ")).join(", ")
     : null;
+
+  const authorizedGroups = getAuthorizedGroups(user?.roles ?? []);
 
   return (
     <>
@@ -87,7 +111,7 @@ function SidebarContent() {
       </div>
 
       <nav className="flex-1 overflow-y-auto">
-        {GROUPS.map((g) => (
+        {authorizedGroups.map((g) => (
           <div key={g.head} className="px-3 pb-3.5">
             <div className="px-2 pt-0.5 pb-2 font-mono text-[9.5px] uppercase tracking-[0.22em] text-[var(--admin-muted-dark)]">
               {g.head}
