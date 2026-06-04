@@ -32,7 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { ArrowRightLeft, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowRightLeft, KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -78,8 +78,13 @@ const editSchema = z.object({
   password: z.string().optional(),
 });
 
+const passwordSchema = z.object({
+  password: z.string().min(6, "Min 6 characters"),
+});
+
 type CreateFormData = z.infer<typeof createSchema>;
 type EditFormData = z.infer<typeof editSchema>;
+type PasswordFormData = z.infer<typeof passwordSchema>;
 
 interface BranchBrief {
   id: string;
@@ -100,6 +105,7 @@ export default function UsersPage() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<StaffMember | null>(null);
+  const [passwordTarget, setPasswordTarget] = useState<StaffMember | null>(null);
   const [reassigning, setReassigning] = useState<StaffMember | null>(null);
   const [reassignBranchId, setReassignBranchId] = useState("");
   const [roleSort, setRoleSort] = useState<"" | "asc" | "desc">("");
@@ -140,6 +146,11 @@ export default function UsersPage() {
       address: "",
       password: "",
     },
+  });
+
+  const passwordForm = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { password: "" },
   });
 
   const fetchStaffData = async (showLoading = false) => {
@@ -289,6 +300,19 @@ export default function UsersPage() {
     onError: (e: Error) => toast(e.message, "error"),
   });
 
+  const passwordMut = useMutation({
+    mutationFn: async (data: PasswordFormData) => {
+      if (!passwordTarget) return;
+      await setUserPassword(passwordTarget.userId, data.password.trim());
+    },
+    onSuccess: () => {
+      setPasswordTarget(null);
+      passwordForm.reset();
+      toast("Staff password updated");
+    },
+    onError: (e: Error) => toast(e.message, "error"),
+  });
+
   const columns: ColumnDef<StaffMember, unknown>[] = [
     {
       accessorKey: "name",
@@ -363,6 +387,17 @@ export default function UsersPage() {
             onClick={() => setEditing(row.original)}
           >
             <Pencil aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Set password for ${row.original.name}`}
+            onClick={() => {
+              setPasswordTarget(row.original);
+              passwordForm.reset({ password: "" });
+            }}
+          >
+            <KeyRound aria-hidden="true" className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
@@ -594,6 +629,44 @@ export default function UsersPage() {
               </Button>
               <Button type="submit" disabled={updateMut.isPending}>
                 {updateMut.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!passwordTarget}
+        onOpenChange={(value) => {
+          if (!value) {
+            setPasswordTarget(null);
+            passwordForm.reset();
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Staff Password</DialogTitle>
+            <DialogDescription>
+              Override the current password for {passwordTarget?.name ?? "this staff member"}.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={passwordForm.handleSubmit((data) => passwordMut.mutate(data))} className="mt-4 space-y-4">
+            <div>
+              <Label htmlFor="set-staff-password">New Password</Label>
+              <Input id="set-staff-password" type="password" autoComplete="new-password" {...passwordForm.register("password")} />
+              {passwordForm.formState.errors.password && (
+                <p className="mt-1 text-xs text-destructive">
+                  {passwordForm.formState.errors.password.message}
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setPasswordTarget(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={passwordMut.isPending}>
+                {passwordMut.isPending ? "Updating..." : "Set Password"}
               </Button>
             </div>
           </form>
