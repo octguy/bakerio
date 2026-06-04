@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { ArrowRightLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
@@ -151,6 +150,7 @@ export default function UsersPage() {
     },
   });
   const selectedRole = useWatch({ control: createForm.control, name: "role" });
+  const selectedBranchId = useWatch({ control: createForm.control, name: "branch_id" });
 
   const editForm = useForm<EditFormData>({
     resolver: zodResolver(editSchema),
@@ -309,7 +309,7 @@ export default function UsersPage() {
         full_name: data.full_name,
         password: data.password,
         role: data.role,
-        branch_id: isBranchScopedRole(data.role) ? data.branch_id : undefined,
+        branch_id: isBranchScopedRole(data.role) ? data.branch_id || undefined : undefined,
       }),
     onSuccess: () => {
       setOpen(false);
@@ -513,43 +513,45 @@ export default function UsersPage() {
         <p>Loading...</p>
       ) : (
         <div className="space-y-3">
-          <div className="flex flex-col gap-3 rounded-xl border border-admin-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
-            <div className="w-full sm:max-w-xs">
-              <Label htmlFor="staff-search">Search</Label>
-              <Input
-                id="staff-search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search staff..."
-                className="mt-1"
-              />
-            </div>
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end sm:justify-start">
-              <div className="w-full sm:w-40">
-                <Label htmlFor="role-filter">Role</Label>
-                <SearchableCombobox
-                  id="role-filter"
-                  value={roleFilter}
-                  onChange={setRoleFilter}
-                  options={roleOptions}
-                  placeholder="All Roles"
-                  searchPlaceholder="Search role..."
-                  emptyMessage="No roles found."
-                  allOption={{ value: "all", label: "All Roles" }}
+          <div className="flex flex-col gap-3 rounded-xl border border-admin-line bg-white/70 p-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-start">
+              <div className="w-full sm:max-w-xs">
+                <Label htmlFor="staff-search">Search</Label>
+                <Input
+                  id="staff-search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search staff..."
+                  className="mt-1"
                 />
               </div>
-              <div className="w-full sm:w-40">
-                <Label htmlFor="branch-filter">Branch</Label>
-                <SearchableCombobox
-                  id="branch-filter"
-                  value={branchFilter}
-                  onChange={setBranchFilter}
-                  options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
-                  placeholder="All Branches"
-                  searchPlaceholder="Search branch..."
-                  emptyMessage="No branches found."
-                  allOption={{ value: "all", label: "All Branches" }}
-                />
+              <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end sm:justify-start">
+                <div className="w-full sm:w-40">
+                  <Label htmlFor="role-filter">Role</Label>
+                  <SearchableCombobox
+                    id="role-filter"
+                    value={roleFilter}
+                    onChange={setRoleFilter}
+                    options={roleOptions}
+                    placeholder="All Roles"
+                    searchPlaceholder="Search role..."
+                    emptyMessage="No roles found."
+                    allOption={{ value: "all", label: "All Roles" }}
+                  />
+                </div>
+                <div className="w-full sm:w-40">
+                  <Label htmlFor="branch-filter">Branch</Label>
+                  <SearchableCombobox
+                    id="branch-filter"
+                    value={branchFilter}
+                    onChange={setBranchFilter}
+                    options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
+                    placeholder="All Branches"
+                    searchPlaceholder="Search branch..."
+                    emptyMessage="No branches found."
+                    allOption={{ value: "all", label: "All Branches" }}
+                  />
+                </div>
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2 self-end">
@@ -636,45 +638,46 @@ export default function UsersPage() {
             </div>
             <div>
               <Label htmlFor="staff-role">Role</Label>
-              <Select id="staff-role" {...createForm.register("role")}>
-                <option value="">Select role...</option>
-                {roleOptions.map((role) => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
-                ))}
-              </Select>
+              <SearchableCombobox
+                id="staff-role"
+                value={selectedRole}
+                onChange={(value) => createForm.setValue("role", value, { shouldDirty: true, shouldValidate: true })}
+                options={roleOptions}
+                placeholder="Select role..."
+                searchPlaceholder="Search role..."
+                emptyMessage="No roles found."
+              />
               {createForm.formState.errors.role && (
                 <p className="mt-1 text-xs text-destructive">
                   {createForm.formState.errors.role.message}
                 </p>
               )}
             </div>
-            {isBranchScopedRole(selectedRole) && (
-              <div>
-                <Label htmlFor="staff-branch">Branch</Label>
-                {isSuperAdmin ? (
-                  <Select id="staff-branch" {...createForm.register("branch_id")}>
-                    <option value="">Select branch...</option>
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </Select>
-                ) : (
-                  <>
-                    <Input id="staff-branch" value={profile?.branch?.name ?? ""} readOnly />
-                    <input type="hidden" {...createForm.register("branch_id")} />
-                  </>
-                )}
-                {createForm.formState.errors.branch_id && (
-                  <p className="mt-1 text-xs text-destructive">
-                    {createForm.formState.errors.branch_id.message}
-                  </p>
-                )}
-              </div>
-            )}
+            <div>
+              <Label htmlFor="staff-branch">Branch</Label>
+              {isSuperAdmin ? (
+                <SearchableCombobox
+                  id="staff-branch"
+                  value={selectedBranchId ?? ""}
+                  onChange={(value) => createForm.setValue("branch_id", value, { shouldDirty: true, shouldValidate: true })}
+                  options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
+                  placeholder={isBranchScopedRole(selectedRole) ? "Select branch..." : "Not applicable"}
+                  searchPlaceholder="Search branch..."
+                  emptyMessage="No branches found."
+                  disabled={!isBranchScopedRole(selectedRole)}
+                />
+              ) : (
+                <>
+                  <Input id="staff-branch" value={profile?.branch?.name ?? ""} readOnly />
+                  <input type="hidden" {...createForm.register("branch_id")} />
+                </>
+              )}
+              {createForm.formState.errors.branch_id && (
+                <p className="mt-1 text-xs text-destructive">
+                  {createForm.formState.errors.branch_id.message}
+                </p>
+              )}
+            </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
                 Cancel
@@ -860,6 +863,7 @@ interface SearchableComboboxProps {
   searchPlaceholder: string;
   emptyMessage: string;
   allOption?: SearchableComboboxOption;
+  disabled?: boolean;
 }
 
 function SearchableCombobox({
@@ -871,6 +875,7 @@ function SearchableCombobox({
   searchPlaceholder,
   emptyMessage,
   allOption,
+  disabled = false,
 }: SearchableComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -902,11 +907,13 @@ function SearchableCombobox({
         type="button"
         id={id}
         variant="outline"
+        disabled={disabled}
         onClick={() => {
+          if (disabled) return;
           setOpen(!open);
           setSearch("");
         }}
-        className="w-full justify-between border-input bg-background text-left font-normal text-espresso shadow-sm"
+        className="w-full justify-between border-input bg-background text-left font-normal text-espresso shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
       >
         <span className="truncate text-left">{selectedOption ? selectedOption.label : placeholder}</span>
         <span className="text-xs text-admin-muted">▼</span>
