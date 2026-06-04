@@ -35,7 +35,7 @@ type ProductRepository interface {
 	FanoutToBranches(ctx context.Context, productID uuid.UUID, branchIDs []uuid.UUID) error
 	SeedBranch(ctx context.Context, branchID uuid.UUID) error
 	GetBranchProduct(ctx context.Context, productID, branchID uuid.UUID) (*domain.BranchProduct, error)
-	SetBranchProductActive(ctx context.Context, productID, branchID uuid.UUID, active bool) (*domain.BranchProduct, error)
+	UpdateBranchProduct(ctx context.Context, productID, branchID uuid.UUID, active *bool, quantity *int32) (*domain.BranchProduct, error)
 	ListActiveProductsByBranch(ctx context.Context, branchID uuid.UUID) ([]*domain.Product, error)
 
 	// Stock — called by the order module's confirm tx. Caller passes
@@ -293,14 +293,22 @@ func (r *productRepo) GetBranchProduct(ctx context.Context, productID, branchID 
 	return toBranchProductEntity(&row), nil
 }
 
-func (r *productRepo) SetBranchProductActive(ctx context.Context, productID, branchID uuid.UUID, active bool) (*domain.BranchProduct, error) {
+func (r *productRepo) UpdateBranchProduct(ctx context.Context, productID, branchID uuid.UUID, active *bool, quantity *int32) (*domain.BranchProduct, error) {
 	callerID, _ := authcontext.CallerID(ctx)
-	row, err := r.queries(ctx).SetBranchProductActive(ctx, productdb.SetBranchProductActiveParams{
+	params := productdb.UpdateBranchProductParams{
 		ProductID: productID,
 		BranchID:  branchID,
-		IsActive:  active,
 		UpdatedBy: nullableUUID(callerID),
-	})
+	}
+	if active != nil {
+		params.SetActive = true
+		params.IsActive = *active
+	}
+	if quantity != nil {
+		params.SetQuantity = true
+		params.Quantity = *quantity
+	}
+	row, err := r.queries(ctx).UpdateBranchProduct(ctx, params)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
@@ -402,6 +410,7 @@ func toBranchProductEntity(b *productdb.ProductBranchProduct) *domain.BranchProd
 		ProductID: b.ProductID,
 		BranchID:  b.BranchID,
 		IsActive:  b.IsActive,
+		Quantity:  b.Quantity,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
 	}

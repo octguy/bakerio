@@ -263,27 +263,41 @@ func (q *Queries) SeedBranchProducts(ctx context.Context, arg SeedBranchProducts
 	return err
 }
 
-const setBranchProductActive = `-- name: SetBranchProductActive :one
+const updateBranchProduct = `-- name: UpdateBranchProduct :one
 UPDATE product.branch_products
-SET is_active  = $3,
+SET is_active  = CASE WHEN $3::boolean
+                      THEN $4::boolean
+                      ELSE is_active END,
+    quantity   = CASE WHEN $5::boolean
+                      THEN $6::int4
+                      ELSE quantity END,
     updated_at = NOW(),
-    updated_by = $4
+    updated_by = $7
 WHERE product_id = $1 AND branch_id = $2
 RETURNING id, product_id, branch_id, is_active, created_at, created_by, updated_at, updated_by, quantity
 `
 
-type SetBranchProductActiveParams struct {
-	ProductID uuid.UUID  `json:"product_id"`
-	BranchID  uuid.UUID  `json:"branch_id"`
-	IsActive  bool       `json:"is_active"`
-	UpdatedBy *uuid.UUID `json:"updated_by"`
+type UpdateBranchProductParams struct {
+	ProductID   uuid.UUID  `json:"product_id"`
+	BranchID    uuid.UUID  `json:"branch_id"`
+	SetActive   bool       `json:"set_active"`
+	IsActive    bool       `json:"is_active"`
+	SetQuantity bool       `json:"set_quantity"`
+	Quantity    int32      `json:"quantity"`
+	UpdatedBy   *uuid.UUID `json:"updated_by"`
 }
 
-func (q *Queries) SetBranchProductActive(ctx context.Context, arg SetBranchProductActiveParams) (ProductBranchProduct, error) {
-	row := q.db.QueryRow(ctx, setBranchProductActive,
+// Patch availability and/or quantity at a branch. The boolean "set_*" flags
+// pick whether the corresponding column is overwritten or left as-is, so the
+// same endpoint covers toggle-only, set-stock-only, or both at once.
+func (q *Queries) UpdateBranchProduct(ctx context.Context, arg UpdateBranchProductParams) (ProductBranchProduct, error) {
+	row := q.db.QueryRow(ctx, updateBranchProduct,
 		arg.ProductID,
 		arg.BranchID,
+		arg.SetActive,
 		arg.IsActive,
+		arg.SetQuantity,
+		arg.Quantity,
 		arg.UpdatedBy,
 	)
 	var i ProductBranchProduct

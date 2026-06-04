@@ -115,6 +115,8 @@ definitions:
         type: boolean
       product_id:
         type: string
+      quantity:
+        type: integer
     type: object
   BranchResponse:
     properties:
@@ -615,6 +617,9 @@ definitions:
       customers:
         description: number of customer accounts
         type: integer
+      orders:
+        description: placed orders
+        type: integer
       products:
         description: number of products now in DB
         type: integer
@@ -701,11 +706,6 @@ definitions:
       ttl_seconds:
         type: integer
     type: object
-  SetAvailabilityRequest:
-    properties:
-      is_active:
-        type: boolean
-    type: object
   SetPasswordRequest:
     properties:
       password:
@@ -722,6 +722,14 @@ definitions:
         type: number
       longitude:
         type: number
+    type: object
+  UpdateBranchProductRequest:
+    properties:
+      is_active:
+        type: boolean
+      quantity:
+        minimum: 0
+        type: integer
     type: object
   UpdateBranchRequest:
     properties:
@@ -1450,7 +1458,9 @@ paths:
     put:
       consumes:
       - application/json
-      description: Admin may target any branch; a branch_manager only their own.
+      description: |-
+        Patch is_active and/or quantity. Omitted fields are unchanged.
+        Admin may target any branch; a branch_manager only their own.
       parameters:
       - description: Branch ID
         in: path
@@ -1462,12 +1472,12 @@ paths:
         name: productId
         required: true
         type: string
-      - description: Availability
+      - description: Patch
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/SetAvailabilityRequest'
+          $ref: '#/definitions/UpdateBranchProductRequest'
       produces:
       - application/json
       responses:
@@ -1485,7 +1495,7 @@ paths:
             $ref: '#/definitions/ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Toggle product availability at a branch
+      summary: Update product availability and/or stock at a branch
       tags:
       - product
   /branch/{id}/status:

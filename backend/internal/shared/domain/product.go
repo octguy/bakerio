@@ -41,6 +41,7 @@ type BranchProduct struct {
 	ProductID uuid.UUID
 	BranchID  uuid.UUID
 	IsActive  bool
+	Quantity  int32
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

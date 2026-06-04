@@ -61,8 +61,9 @@ type ProductService interface {
 	// Satisfies branch.ProductSeeder; called by the branch module.
 	SeedBranch(ctx context.Context, branchID uuid.UUID) error
 
-	// SetBranchAvailability toggles a product's per-branch availability.
-	SetBranchAvailability(ctx context.Context, productID, branchID uuid.UUID, active bool) (dto.BranchProductResponse, error)
+	// UpdateBranchProduct patches per-branch availability and/or on-hand
+	// stock. Nil pointers leave the field unchanged.
+	UpdateBranchProduct(ctx context.Context, productID, branchID uuid.UUID, active *bool, quantity *int32) (dto.BranchProductResponse, error)
 
 	// Images
 	AddImages(ctx context.Context, productID uuid.UUID, uploads []ImageUpload) ([]dto.ProductImageResponse, error)
@@ -185,15 +186,18 @@ func (s *productService) SeedBranch(ctx context.Context, branchID uuid.UUID) err
 	return s.repo.SeedBranch(ctx, branchID)
 }
 
-func (s *productService) SetBranchAvailability(ctx context.Context, productID, branchID uuid.UUID, active bool) (dto.BranchProductResponse, error) {
-	bp, err := s.repo.SetBranchProductActive(ctx, productID, branchID, active)
+func (s *productService) UpdateBranchProduct(ctx context.Context, productID, branchID uuid.UUID, active *bool, quantity *int32) (dto.BranchProductResponse, error) {
+	if active == nil && quantity == nil {
+		return dto.BranchProductResponse{}, apperrors.Validation("at least one of is_active or quantity must be provided")
+	}
+	bp, err := s.repo.UpdateBranchProduct(ctx, productID, branchID, active, quantity)
 	if err != nil {
-		return dto.BranchProductResponse{}, apperrors.Internal("failed to set availability", err)
+		return dto.BranchProductResponse{}, apperrors.Internal("failed to update branch product", err)
 	}
 	if bp == nil {
 		return dto.BranchProductResponse{}, apperrors.NotFound("product is not registered at this branch")
 	}
-	return dto.BranchProductResponse{ProductID: bp.ProductID, BranchID: bp.BranchID, IsActive: bp.IsActive}, nil
+	return dto.BranchProductResponse{ProductID: bp.ProductID, BranchID: bp.BranchID, IsActive: bp.IsActive, Quantity: bp.Quantity}, nil
 }
 
 func (s *productService) AddImages(ctx context.Context, productID uuid.UUID, uploads []ImageUpload) ([]dto.ProductImageResponse, error) {
