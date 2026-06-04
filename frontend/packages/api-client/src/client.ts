@@ -553,12 +553,35 @@ export async function deleteCategory(id: string) {
 
 // ===== BRANCHES (REAL) =====
 
+export async function getBranchesPage(opts?: {
+  q?: string;
+  page?: number;
+  size?: number;
+}): Promise<BranchListResponse> {
+  const params = new URLSearchParams();
+  if (opts?.q) params.set("q", opts.q);
+  if (opts?.page != null) params.set("page", String(opts.page));
+  if (opts?.size != null) params.set("size", String(opts.size));
+  const query = params.toString();
+
+  const raw = await request<Branch[] | BranchListResponse | null>(
+    `/branch${query ? `?${query}` : ""}`,
+  );
+  if (Array.isArray(raw)) {
+    return {
+      items: raw,
+      total: raw.length,
+      page: opts?.page ?? 1,
+      size: opts?.size ?? raw.length,
+      total_pages: 1,
+    };
+  }
+  return raw ?? { items: [], total: 0, page: opts?.page ?? 1, size: opts?.size ?? 0, total_pages: 1 };
+}
+
 export const getBranches = cache(async (): Promise<Branch[]> => {
   try {
-    const raw = await request<Branch[] | BranchListResponse | null>(
-      "/branch?size=100",
-    );
-    return unwrapItems(raw);
+    return (await getBranchesPage({ size: 100 })).items;
   } catch (err) {
     if (DISABLE_MOCK_FALLBACK) throw err;
     useMockFallback(
@@ -648,6 +671,18 @@ export interface StaffUser {
 
 interface StaffUsersResponse {
   items: StaffUser[];
+  total?: number;
+  page?: number;
+  size?: number;
+  total_pages?: number;
+}
+
+export interface StaffUsersPage {
+  items: StaffUser[];
+  total: number;
+  page: number;
+  size: number;
+  total_pages: number;
 }
 
 interface BranchMembersResponse {
@@ -664,11 +699,31 @@ export async function getBranchMembers(
   return res?.members ?? [];
 }
 
-export async function getStaffUsers(opts?: { q?: string }): Promise<StaffUser[]> {
-  const params = new URLSearchParams({ size: "100" });
+export async function getStaffUsersPage(opts?: {
+  q?: string;
+  page?: number;
+  size?: number;
+}): Promise<StaffUsersPage> {
+  const params = new URLSearchParams();
   if (opts?.q) params.set("q", opts.q);
+  if (opts?.page != null) params.set("page", String(opts.page));
+  if (opts?.size != null) params.set("size", String(opts.size));
   const res = await request<StaffUsersResponse | null>(`/staff?${params.toString()}`);
-  return res?.items ?? [];
+  const items = res?.items ?? [];
+  const size = res?.size ?? opts?.size ?? items.length;
+  const total = res?.total ?? items.length;
+  return {
+    items,
+    total,
+    page: res?.page ?? opts?.page ?? 1,
+    size,
+    total_pages: res?.total_pages ?? Math.max(1, Math.ceil(total / Math.max(1, size))),
+  };
+}
+
+export async function getStaffUsers(opts?: { q?: string }): Promise<StaffUser[]> {
+  const page = await getStaffUsersPage({ q: opts?.q, size: 100 });
+  return page.items;
 }
 
 export async function assignBranchMember(

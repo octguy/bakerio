@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useFilterStore } from "@/lib/store";
+import { useViewportPageSize } from "@/lib/use-viewport-page-size";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getProductsPage,
@@ -38,8 +39,6 @@ const schema = z.object({
   category_id: z.string().min(1, "Category required"),
 });
 type FormData = z.infer<typeof schema>;
-const PAGE_SIZE = 20;
-
 export default function ProductsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -50,6 +49,7 @@ export default function ProductsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
+  const pageSize = useViewportPageSize();
   const { onlyActive } = useFilterStore();
   const trimmedSearch = debouncedSearch.trim();
 
@@ -63,24 +63,29 @@ export default function ProductsPage() {
   }, [search]);
 
   const { data: productsPage, isLoading } = useQuery({
-    queryKey: ["products", { search: trimmedSearch, category, onlyActive, page, size: PAGE_SIZE }],
+    queryKey: ["products", { search: trimmedSearch, category, onlyActive, page, size: pageSize }],
     queryFn: () =>
       getProductsPage({
         q: trimmedSearch || undefined,
         category: category || undefined,
         active: onlyActive ? true : undefined,
         page,
-        size: PAGE_SIZE,
+        size: pageSize,
       }),
   });
 
   const products = productsPage?.items ?? [];
   const total = productsPage?.total ?? 0;
   const currentPage = productsPage?.page ?? page;
-  const currentSize = productsPage?.size ?? PAGE_SIZE;
+  const currentSize = productsPage?.size ?? pageSize;
   const totalPages = Math.max(1, productsPage?.total_pages ?? Math.ceil(total / currentSize));
   const canGoPrev = currentPage > 1;
   const canGoNext = currentPage < totalPages;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timeout);
+  }, [pageSize]);
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],

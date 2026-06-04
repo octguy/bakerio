@@ -12,9 +12,11 @@ import {
   getBranches,
   getBranchMembers,
   getStaffUsers,
+  getStaffUsersPage,
   type BranchMember,
   type StaffUser,
 } from "./client";
+import type { Branch } from "./types";
 
 export type StaffStatus = "clocked-in" | "on-break" | "late" | "off";
 export type StaffRole =
@@ -38,6 +40,14 @@ export interface StaffMember {
   shift: string;
   /** UI accent — drives avatar colour. */
   accent: "cinnamon" | "golden" | "sage" | "honey" | "rose";
+}
+
+export interface StaffPage {
+  items: StaffMember[];
+  total: number;
+  page: number;
+  size: number;
+  totalPages: number;
 }
 
 // Backend role IDs → friendly labels rendered in the staff grid.
@@ -97,8 +107,12 @@ function toStaff(
 export async function getStaff(
   role?: StaffRole | string,
   q?: string,
+  cachedBranches?: Branch[],
 ): Promise<StaffMember[]> {
-  const [staff, branches] = await Promise.all([getStaffUsers({ q }), getBranches()]);
+  const [staff, branches] = await Promise.all([
+    getStaffUsers({ q }),
+    cachedBranches ? Promise.resolve(cachedBranches) : getBranches(),
+  ]);
   const branchNames = new Map(branches.map((b) => [b.id, b.name]));
   const list = staff.map((m) =>
     toStaff(
@@ -109,6 +123,31 @@ export async function getStaff(
     ),
   );
   return role ? list.filter((s) => s.role === role) : list;
+}
+
+export async function getStaffPage(opts?: {
+  q?: string;
+  page?: number;
+  size?: number;
+  branches?: Branch[];
+}): Promise<StaffPage> {
+  const [staffPage, branches] = await Promise.all([
+    getStaffUsersPage({ q: opts?.q, page: opts?.page, size: opts?.size }),
+    opts?.branches ? Promise.resolve(opts.branches) : getBranches(),
+  ]);
+  const branchNames = new Map(branches.map((b) => [b.id, b.name]));
+  return {
+    items: staffPage.items.map((member) =>
+      toStaff(
+        member,
+        member.branch_id ? (branchNames.get(member.branch_id) ?? "Unassigned") : "Unassigned",
+      ),
+    ),
+    total: staffPage.total,
+    page: staffPage.page,
+    size: staffPage.size,
+    totalPages: staffPage.total_pages,
+  };
 }
 
 export async function getBranchStaff(

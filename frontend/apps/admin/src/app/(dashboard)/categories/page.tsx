@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useFilterStore } from "@/lib/store";
+import { useViewportPageSize } from "@/lib/use-viewport-page-size";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getCategories,
@@ -24,7 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,19 +45,39 @@ export default function CategoriesPage() {
   const [deleting, setDeleting] = useState<Category | null>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
   const { onlyActive } = useFilterStore();
+  const pageSize = useViewportPageSize();
   const trimmedSearch = debouncedSearch.trim();
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedSearch(search), 500);
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
 
     return () => window.clearTimeout(timeout);
   }, [search]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timeout);
+  }, [pageSize]);
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["categories", { search: trimmedSearch }],
     queryFn: () => getCategories({ q: trimmedSearch || undefined }),
   });
+  const filteredCategories = onlyActive
+    ? categories.filter((category) => category.is_active)
+    : categories;
+  const totalPages = Math.max(1, Math.ceil(filteredCategories.length / pageSize));
+  const paginatedCategories = filteredCategories.slice(
+    (page - 1) * pageSize,
+    page * pageSize,
+  );
+  const canGoPrev = page > 1;
+  const canGoNext = page < totalPages;
 
   const createMut = useMutation({
     mutationFn: (d: FormData) =>
@@ -230,7 +251,7 @@ export default function CategoriesPage() {
         </Button>
       </div>
 
-      <div className="rounded-xl border border-admin-line bg-white/70 p-3">
+      <div className="flex flex-col gap-3 rounded-xl border border-admin-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="w-full sm:max-w-xs">
           <Label htmlFor="category-search">Search</Label>
           <Input
@@ -241,6 +262,37 @@ export default function CategoriesPage() {
             className="mt-1"
           />
         </div>
+        <div className="flex flex-wrap items-center justify-end gap-2 self-end">
+          <Button type="button" variant="outline" size="sm" aria-label="First page" onClick={() => setPage(1)} disabled={!canGoPrev || isLoading}>
+            <ChevronsLeft aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <Button type="button" variant="outline" size="sm" aria-label="Previous page" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={!canGoPrev || isLoading}>
+            <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-1 text-sm text-admin-muted">
+            <span>Page</span>
+            <Input
+              aria-label="Jump to category page"
+              type="number"
+              min={1}
+              max={totalPages}
+              value={page}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next)) return;
+                setPage(Math.min(totalPages, Math.max(1, next)));
+              }}
+              className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span>of {totalPages}</span>
+          </div>
+          <Button type="button" variant="outline" size="sm" aria-label="Next page" onClick={() => setPage((p) => p + 1)} disabled={!canGoNext || isLoading}>
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <Button type="button" variant="outline" size="sm" aria-label="Last page" onClick={() => setPage(totalPages)} disabled={!canGoNext || isLoading}>
+            <ChevronsRight aria-hidden="true" className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -248,7 +300,7 @@ export default function CategoriesPage() {
       ) : (
         <DataTable
           columns={columns}
-          data={onlyActive ? categories.filter((c) => c.is_active) : categories}
+          data={paginatedCategories}
           showFooter={false}
         />
       )}
