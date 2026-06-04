@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { formatCurrency } from "@/lib/utils";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -195,22 +195,12 @@ export default function ProductsPage() {
       cell: ({ row }) => (
         <div className="flex gap-1">
           <Link
-            href={`/products/${row.original.id}/images`}
+            href={`/products/${row.original.slug}`}
             className={buttonVariants({ variant: "ghost", size: "icon" })}
-            aria-label={`Manage images for ${row.original.name}`}
+            aria-label={`Edit ${row.original.name}`}
           >
-            <ImageIcon aria-hidden="true" className="h-4 w-4" />
+            <Pencil aria-hidden="true" className="h-4 w-4" />
           </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setEditing(row.original);
-              setOpen(true);
-            }}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
           <Button
             variant="ghost"
             size="icon"
