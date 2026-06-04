@@ -64,6 +64,38 @@ function getApiBase(): string {
 }
 
 let token: string | null = null;
+let authRedirecting = false;
+
+function isInvalidTokenError(status: number, json: unknown, adminAuthInvalid: boolean): boolean {
+  if (!adminAuthInvalid || status !== 401 || !json || typeof json !== "object") return false;
+  const error = (json as { error?: { code?: string; message?: string } }).error;
+  if (error?.code !== "UNAUTHORIZED") return false;
+  const message = error.message?.toLowerCase() ?? "";
+  return message.includes("invalid token") || message.includes("token has been revoked");
+}
+
+async function redirectToLoginAfterInvalidToken(json: unknown, status: number, adminAuthInvalid: boolean) {
+  if (
+    authRedirecting ||
+    typeof window === "undefined" ||
+    !isInvalidTokenError(status, json, adminAuthInvalid)
+  ) {
+    return;
+  }
+
+  authRedirecting = true;
+  token = null;
+  await fetch("/api/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "logout" }),
+  }).catch(() => undefined);
+
+  const next = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const loginUrl = new URL("/login", window.location.origin);
+  loginUrl.searchParams.set("next", next);
+  window.location.assign(loginUrl.toString());
+}
 
 function headers(): HeadersInit {
   const h: HeadersInit = { "Content-Type": "application/json" };
@@ -92,10 +124,17 @@ async function request<T>(path: string, opts?: RequestInit): Promise<T> {
       throw new Error(`HTTP error ${res.status} from ${path}`);
     }
     let errorMsg = text;
+    let parsedError: unknown;
     try {
-      const json = JSON.parse(text);
+      parsedError = JSON.parse(text);
+      const json = parsedError as { error?: { message?: string }; message?: string };
       errorMsg = json.error?.message || json.message || text;
     } catch {}
+    await redirectToLoginAfterInvalidToken(
+      parsedError,
+      res.status,
+      res.headers.get("x-admin-auth-invalid") === "1",
+    );
     throw new Error(errorMsg);
   }
   if (!text) {
@@ -566,6 +605,18 @@ export interface BranchMember {
   roles: string[];
 }
 
+export interface StaffUser {
+  user_id: string;
+  display_name: string;
+  email: string;
+  roles: string[];
+  branch_id?: string;
+}
+
+interface StaffUsersResponse {
+  items: StaffUser[];
+}
+
 interface BranchMembersResponse {
   branch_id: string;
   members: BranchMember[];
@@ -578,6 +629,11 @@ export async function getBranchMembers(
     `/branch/${branchId}/members`,
   );
   return res?.members ?? [];
+}
+
+export async function getStaffUsers(): Promise<StaffUser[]> {
+  const res = await request<StaffUsersResponse | null>("/staff?size=100");
+  return res?.items ?? [];
 }
 
 export async function assignBranchMember(
@@ -738,4 +794,3 @@ export const getAddresses = mockGetAddresses;
 export const addAddress = mockAddAddress;
 export const removeAddress = mockRemoveAddress;
 export const setDefaultAddress = mockSetDefaultAddress;
-

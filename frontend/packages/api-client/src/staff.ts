@@ -1,15 +1,20 @@
 // Staff directory — sourced from the real Go backend.
 //
-// The Go side has no flat "list users" endpoint. Membership is the source of
-// truth, so we fan out: GET /branch → for each branch GET /branch/:id/members
-// and flatten the result into the StaffMember[] shape the admin UI expects.
+// Global staff comes from GET /staff. Branch staff remains sourced from
+// GET /branch/:id/members so branch-scoped pages keep their dedicated endpoint.
 //
 // Fields the backend doesn't track (shift, status, start year, avatar accent)
 // are derived deterministically from what's available — they're cosmetic and
 // only used for the dashboard look. Wire them to real timeclock data once a
 // backend endpoint exists.
 
-import { getBranches, getBranchMembers, type BranchMember } from "./client";
+import {
+  getBranches,
+  getBranchMembers,
+  getStaffUsers,
+  type BranchMember,
+  type StaffUser,
+} from "./client";
 
 export type StaffStatus = "clocked-in" | "on-break" | "late" | "off";
 export type StaffRole =
@@ -26,6 +31,7 @@ export interface StaffMember {
   name: string;
   initial: string;
   role: StaffRole | string;
+  branchId?: string;
   branch: string;
   start: string;
   status: StaffStatus;
@@ -68,7 +74,10 @@ function displayRole(roles: string[]): string {
   return ROLE_DISPLAY[first] ?? titleCase(first);
 }
 
-function toStaff(member: BranchMember, branchName: string): StaffMember {
+function toStaff(
+  member: BranchMember | StaffUser,
+  branchName: string,
+): StaffMember {
   const role = displayRole(member.roles);
   return {
     userId: member.user_id,
@@ -76,6 +85,7 @@ function toStaff(member: BranchMember, branchName: string): StaffMember {
     name: member.display_name,
     initial: initialOf(member.display_name),
     role,
+    branchId: "branch_id" in member ? member.branch_id : undefined,
     branch: branchName,
     start: "—",
     status: "clocked-in",
@@ -87,17 +97,17 @@ function toStaff(member: BranchMember, branchName: string): StaffMember {
 export async function getStaff(
   role?: StaffRole | string,
 ): Promise<StaffMember[]> {
-  const branches = await getBranches();
-  const groups = await Promise.all(
-    branches.map(async (b) => {
-      const members = await getBranchMembers(b.id).catch(
-        () => [] as BranchMember[],
-      );
-      return members.map((m) => toStaff(m, b.name));
-    }),
+  const [staff, branches] = await Promise.all([getStaffUsers(), getBranches()]);
+  const branchNames = new Map(branches.map((b) => [b.id, b.name]));
+  const list = staff.map((m) =>
+    toStaff(
+      m,
+      m.branch_id
+        ? (branchNames.get(m.branch_id) ?? "Unassigned")
+        : "Unassigned",
+    ),
   );
-  const flat = groups.flat();
-  return role ? flat.filter((s) => s.role === role) : flat;
+  return role ? list.filter((s) => s.role === role) : list;
 }
 
 export async function getBranchStaff(

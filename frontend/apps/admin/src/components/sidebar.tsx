@@ -47,7 +47,6 @@ const GROUPS: NavGroup[] = [
 function SidebarContent() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const isSuperAdmin = user?.roles?.includes("super_admin") ?? false;
   const roleSubtitle = user?.roles?.length
     ? user.roles.map((role) => role.replace(/_/g, " ")).join(", ")
     : null;
@@ -94,8 +93,6 @@ function SidebarContent() {
               {g.head}
             </div>
             {g.items.map((it) => {
-              if (isSuperAdmin && it.href === "/users") return null;
-
               const active =
                 it.href === "/"
                   ? pathname === "/"
