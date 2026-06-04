@@ -14,12 +14,13 @@ import {
 import type { Branch } from "@repo/api-client";
 import {
   getBranchStaff,
-  getStaff,
+  getStaffPage,
   getStaffCountsFromList,
 } from "@repo/api-client/staff";
 import type { StaffMember } from "@repo/api-client/staff";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
+import { useViewportPageSize } from "@/lib/use-viewport-page-size";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,7 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
-import { ArrowRightLeft, KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowRightLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -121,6 +122,8 @@ export default function UsersPage() {
   const [reassignBranchId, setReassignBranchId] = useState("");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [roleSort, setRoleSort] = useState<"" | "asc" | "desc">("");
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -128,12 +131,15 @@ export default function UsersPage() {
   const [counts, setCounts] = useState<{ total: number; onShift: number }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const pageSize = useViewportPageSize();
   const trimmedSearch = debouncedSearch.trim();
 
   const isSuperAdmin = profile?.roles?.includes("super_admin") ?? false;
   const isBranchManager = profile?.roles?.includes("branch_manager") ?? false;
   const canManageStaff = isSuperAdmin || (isBranchManager && !!profile?.branch?.id);
   const roleOptions = isSuperAdmin ? GLOBAL_STAFF_ROLES : BRANCH_STAFF_ROLES;
+  const canGoPrev = page > 1;
+  const canGoNext = page < totalPages;
   const sortedStaff = [...staff].sort((a, b) => {
     if (!roleSort) return 0;
     const result = String(a.role).localeCompare(String(b.role));
@@ -178,13 +184,17 @@ export default function UsersPage() {
       const currentIsBranchManager = currentProfile.roles?.includes("branch_manager") ?? false;
 
       if (currentIsSuperAdmin) {
-        const [staffList, branchList] = await Promise.all([
-          getStaff(undefined, q || undefined),
-          getBranches(),
-        ]);
+        const branchList = branches.length > 0 ? branches : await getBranches();
+        const staffPage = await getStaffPage({
+          q: q || undefined,
+          page,
+          size: pageSize,
+          branches: branchList,
+        });
         setBranches(branchList);
-        setStaff(staffList);
-        setCounts(getStaffCountsFromList(staffList));
+        setStaff(staffPage.items);
+        setCounts(getStaffCountsFromList(staffPage.items));
+        setTotalPages(Math.max(1, staffPage.totalPages));
         return;
       }
 
@@ -194,15 +204,18 @@ export default function UsersPage() {
           currentProfile.branch.name,
         );
         const filteredStaff = filterStaff(staffList, q);
+        const branchTotalPages = Math.max(1, Math.ceil(filteredStaff.length / pageSize));
         setBranches([]);
-        setStaff(filteredStaff);
+        setStaff(filteredStaff.slice((page - 1) * pageSize, page * pageSize));
         setCounts(getStaffCountsFromList(filteredStaff));
+        setTotalPages(branchTotalPages);
         return;
       }
 
       setBranches([]);
       setStaff([]);
       setCounts({ total: 0, onShift: 0 });
+      setTotalPages(1);
     } catch (err) {
       setError("Could not load staff data. Retry when the API is reachable.");
       if (process.env.NODE_ENV !== "production") {
@@ -220,10 +233,18 @@ export default function UsersPage() {
   }, []);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setDebouncedSearch(search), 500);
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
 
     return () => window.clearTimeout(timeout);
   }, [search]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timeout);
+  }, [pageSize]);
 
   useEffect(() => {
     if (loading && !profile) return;
@@ -233,7 +254,7 @@ export default function UsersPage() {
 
     return () => window.clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trimmedSearch]);
+  }, [trimmedSearch, page, pageSize]);
 
   useEffect(() => {
     if (!isBranchScopedRole(selectedRole)) {
@@ -388,15 +409,6 @@ export default function UsersPage() {
       header: "Branch",
     },
     {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <span className="rounded-full bg-sage/15 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.06em] text-sage">
-          {row.original.status.replace(/-/g, " ")}
-        </span>
-      ),
-    },
-    {
       id: "actions",
       header: "",
       cell: ({ row }) => (
@@ -526,6 +538,37 @@ export default function UsersPage() {
                 <option value="asc">Role A-Z</option>
                 <option value="desc">Role Z-A</option>
               </Select>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2 self-end">
+              <Button type="button" variant="outline" size="sm" aria-label="First page" onClick={() => setPage(1)} disabled={!canGoPrev || loading}>
+                <ChevronsLeft aria-hidden="true" className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="outline" size="sm" aria-label="Previous page" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={!canGoPrev || loading}>
+                <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-1 text-sm text-admin-muted">
+                <span>Page</span>
+                <Input
+                  aria-label="Jump to staff page"
+                  type="number"
+                  min={1}
+                  max={totalPages}
+                  value={page}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    if (!Number.isFinite(next)) return;
+                    setPage(Math.min(totalPages, Math.max(1, next)));
+                  }}
+                  className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+                <span>of {totalPages}</span>
+              </div>
+              <Button type="button" variant="outline" size="sm" aria-label="Next page" onClick={() => setPage((p) => p + 1)} disabled={!canGoNext || loading}>
+                <ChevronRight aria-hidden="true" className="h-4 w-4" />
+              </Button>
+              <Button type="button" variant="outline" size="sm" aria-label="Last page" onClick={() => setPage(totalPages)} disabled={!canGoNext || loading}>
+                <ChevronsRight aria-hidden="true" className="h-4 w-4" />
+              </Button>
             </div>
           </div>
           <DataTable

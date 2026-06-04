@@ -54,6 +54,7 @@ export {
   deleteCategory,
   // Branches (REAL)
   getBranches,
+  getBranchesPage,
   getBranch,
   createBranch,
   updateBranch,

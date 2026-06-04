@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFilterStore } from "@/lib/store";
+import { useViewportPageSize } from "@/lib/use-viewport-page-size";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  getBranches,
+  getBranchesPage,
   createBranch,
   updateBranch,
   updateBranchStatus,
@@ -20,6 +21,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 import {
   Plus,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Pencil,
   Trash2,
   ToggleLeft,
@@ -52,12 +57,43 @@ export default function BranchesPage() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Branch | null>(null);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
   const { onlyActive } = useFilterStore();
+  const pageSize = useViewportPageSize();
+  const trimmedSearch = debouncedSearch.trim();
 
-  const { data: branches = [], isLoading } = useQuery({
-    queryKey: ["branches"],
-    queryFn: getBranches,
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setPage(1), 0);
+    return () => window.clearTimeout(timeout);
+  }, [pageSize]);
+
+  const { data: branchesPage, isLoading } = useQuery({
+    queryKey: ["branches", { search: trimmedSearch, page, size: pageSize }],
+    queryFn: () =>
+      getBranchesPage({
+        q: trimmedSearch || undefined,
+        page,
+        size: pageSize,
+      }),
   });
+  const branches = branchesPage?.items ?? [];
+  const filteredBranches = onlyActive
+    ? branches.filter((branch) => branch.status === "active")
+    : branches;
+  const totalPages = Math.max(1, branchesPage?.total_pages ?? 1);
+  const canGoPrev = page > 1;
+  const canGoNext = page < totalPages;
 
   const createMut = useMutation({
     mutationFn: (d: FormData) =>
@@ -239,14 +275,57 @@ export default function BranchesPage() {
         </Button>
       </div>
 
+      <div className="flex flex-col gap-3 rounded-xl border border-admin-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="w-full sm:max-w-xs">
+          <Label htmlFor="branch-search">Search</Label>
+          <Input
+            id="branch-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search branches..."
+            className="mt-1"
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2 self-end">
+          <Button type="button" variant="outline" size="sm" aria-label="First page" onClick={() => setPage(1)} disabled={!canGoPrev || isLoading}>
+            <ChevronsLeft aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <Button type="button" variant="outline" size="sm" aria-label="Previous page" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={!canGoPrev || isLoading}>
+            <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-1 text-sm text-admin-muted">
+            <span>Page</span>
+            <Input
+              aria-label="Jump to branch page"
+              type="number"
+              min={1}
+              max={totalPages}
+              value={page}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next)) return;
+                setPage(Math.min(totalPages, Math.max(1, next)));
+              }}
+              className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            />
+            <span>of {totalPages}</span>
+          </div>
+          <Button type="button" variant="outline" size="sm" aria-label="Next page" onClick={() => setPage((p) => p + 1)} disabled={!canGoNext || isLoading}>
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </Button>
+          <Button type="button" variant="outline" size="sm" aria-label="Last page" onClick={() => setPage(totalPages)} disabled={!canGoNext || isLoading}>
+            <ChevronsRight aria-hidden="true" className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
       {isLoading ? (
         <p>Loading...</p>
       ) : (
         <DataTable
           columns={columns}
-          data={onlyActive ? branches.filter((b) => b.status === "active") : branches}
-          searchKey="name"
-          searchPlaceholder="Search branches..."
+          data={filteredBranches}
+          showFooter={false}
         />
       )}
 
