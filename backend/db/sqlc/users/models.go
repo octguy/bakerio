@@ -188,6 +188,13 @@ type UsersAddress struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type UsersMembership struct {
+	UserID     uuid.UUID       `json:"user_id"`
+	Tier       string          `json:"tier"`
+	TotalSpent decimal.Decimal `json:"total_spent"`
+	UpdatedAt  time.Time       `json:"updated_at"`
+}
+
 type UsersProfile struct {
 	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`
@@ -197,4 +204,28 @@ type UsersProfile struct {
 	Bio         *string   `json:"bio"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type VoucherRedemption struct {
+	ID             uuid.UUID       `json:"id"`
+	VoucherID      uuid.UUID       `json:"voucher_id"`
+	UserID         uuid.UUID       `json:"user_id"`
+	OrderID        uuid.UUID       `json:"order_id"`
+	DiscountAmount decimal.Decimal `json:"discount_amount"`
+	RedeemedAt     time.Time       `json:"redeemed_at"`
+}
+
+type VoucherVoucher struct {
+	ID              uuid.UUID        `json:"id"`
+	Code            string           `json:"code"`
+	DiscountPercent int16            `json:"discount_percent"`
+	MaxDiscount     *decimal.Decimal `json:"max_discount"`
+	MinSubtotal     *decimal.Decimal `json:"min_subtotal"`
+	ValidFrom       time.Time        `json:"valid_from"`
+	ValidTo         time.Time        `json:"valid_to"`
+	IsActive        bool             `json:"is_active"`
+	CreatedAt       time.Time        `json:"created_at"`
+	CreatedBy       *uuid.UUID       `json:"created_by"`
+	UpdatedAt       time.Time        `json:"updated_at"`
+	UpdatedBy       *uuid.UUID       `json:"updated_by"`
 }

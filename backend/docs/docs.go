@@ -312,6 +312,181 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/vouchers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vouchers"
+                ],
+                "summary": "List vouchers",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Filter: true → active only, false → inactive only, omit → all",
+                        "name": "active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20)",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/VoucherListResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vouchers"
+                ],
+                "summary": "Create a voucher",
+                "parameters": [
+                    {
+                        "description": "Voucher payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateVoucherRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/VoucherResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/vouchers/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vouchers"
+                ],
+                "summary": "Get a voucher",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Voucher ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/VoucherResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Toggle is_active, edit window or discount. Omitted fields unchanged.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vouchers"
+                ],
+                "summary": "Patch a voucher",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Voucher ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/UpdateVoucherRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/VoucherResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticates a user and returns a JWT access token",
@@ -1427,6 +1602,37 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/CategoryResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/membership": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns ` + "`" + `{tier, total_spent, next_tier_threshold}` + "`" + `. A user\nwho has never confirmed an order is returned as synthetic\nBRONZE/0 — no DB row is written for a read.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "membership"
+                ],
+                "summary": "Get caller's membership tier + cumulative spend",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MembershipResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
@@ -2842,6 +3048,45 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/vouchers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns active vouchers within their validity window that the\nauthenticated user has not yet redeemed. Order: nearest expiry first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vouchers"
+                ],
+                "summary": "List vouchers the caller can currently apply",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20)",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/PublicVoucherListResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -3351,6 +3596,41 @@ const docTemplate = `{
                 }
             }
         },
+        "CreateVoucherRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "discount_percent",
+                "valid_from",
+                "valid_to"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "discount_percent": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1
+                },
+                "is_active": {
+                    "description": "default true if omitted",
+                    "type": "boolean"
+                },
+                "max_discount": {
+                    "type": "number"
+                },
+                "min_subtotal": {
+                    "type": "number"
+                },
+                "valid_from": {
+                    "type": "string"
+                },
+                "valid_to": {
+                    "type": "string"
+                }
+            }
+        },
         "ErrorResponse": {
             "type": "object",
             "properties": {
@@ -3471,6 +3751,20 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "MembershipResponse": {
+            "type": "object",
+            "properties": {
+                "next_tier_threshold": {
+                    "type": "number"
+                },
+                "tier": {
+                    "type": "string"
+                },
+                "total_spent": {
+                    "type": "number"
                 }
             }
         },
@@ -3747,6 +4041,52 @@ const docTemplate = `{
                 }
             }
         },
+        "PublicVoucher": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "discount_percent": {
+                    "type": "integer"
+                },
+                "max_discount": {
+                    "type": "number"
+                },
+                "min_subtotal": {
+                    "type": "number"
+                },
+                "valid_from": {
+                    "type": "string"
+                },
+                "valid_to": {
+                    "type": "string"
+                }
+            }
+        },
+        "PublicVoucherListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PublicVoucher"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
         "RegisterRequest": {
             "type": "object",
             "required": [
@@ -3836,6 +4176,10 @@ const docTemplate = `{
                 "staff": {
                     "description": "managers + staff combined",
                     "type": "integer"
+                },
+                "vouchers": {
+                    "description": "seeded voucher codes",
+                    "type": "integer"
                 }
             }
         },
@@ -3910,6 +4254,10 @@ const docTemplate = `{
                 },
                 "shipping_longitude": {
                     "type": "number"
+                },
+                "voucher_code": {
+                    "type": "string",
+                    "maxLength": 40
                 }
             }
         },
@@ -3921,6 +4269,9 @@ const docTemplate = `{
                 },
                 "branch_name": {
                     "type": "string"
+                },
+                "discount_amount": {
+                    "type": "number"
                 },
                 "distance_km": {
                     "type": "number"
@@ -3948,6 +4299,9 @@ const docTemplate = `{
                 },
                 "ttl_seconds": {
                     "type": "integer"
+                },
+                "voucher_code": {
+                    "type": "string"
                 }
             }
         },
@@ -4129,6 +4483,31 @@ const docTemplate = `{
                 }
             }
         },
+        "UpdateVoucherRequest": {
+            "type": "object",
+            "properties": {
+                "discount_percent": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "max_discount": {
+                    "type": "number"
+                },
+                "min_subtotal": {
+                    "type": "number"
+                },
+                "valid_from": {
+                    "type": "string"
+                },
+                "valid_to": {
+                    "type": "string"
+                }
+            }
+        },
         "UserListResponse": {
             "type": "object",
             "properties": {
@@ -4198,6 +4577,64 @@ const docTemplate = `{
                 },
                 "verified": {
                     "type": "boolean"
+                }
+            }
+        },
+        "VoucherListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/VoucherResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "VoucherResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "discount_percent": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "max_discount": {
+                    "type": "number"
+                },
+                "min_subtotal": {
+                    "type": "number"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "valid_from": {
+                    "type": "string"
+                },
+                "valid_to": {
+                    "type": "string"
                 }
             }
         }

@@ -5,14 +5,15 @@ import "fmt"
 type Code string
 
 const (
-	CodeNotFound      Code = "NOT_FOUND"
-	CodeUnauthorized  Code = "UNAUTHORIZED"
-	CodeForbidden     Code = "FORBIDDEN"
-	CodeConflict      Code = "CONFLICT"       // generic 409
-	CodeGone          Code = "GONE"           // 410 — session expired, etc.
-	CodeStockConflict Code = "STOCK_CONFLICT" // 409 with stock-detail payload
-	CodeValidation    Code = "VALIDATION"
-	CodeInternal      Code = "INTERNAL"
+	CodeNotFound           Code = "NOT_FOUND"
+	CodeUnauthorized       Code = "UNAUTHORIZED"
+	CodeForbidden          Code = "FORBIDDEN"
+	CodeConflict           Code = "CONFLICT"             // generic 409
+	CodeGone               Code = "GONE"                 // 410 — session expired, etc.
+	CodeStockConflict      Code = "STOCK_CONFLICT"       // 409 with stock-detail payload
+	CodeVoucherAlreadyUsed Code = "VOUCHER_ALREADY_USED" // 409 — user already redeemed this voucher
+	CodeValidation         Code = "VALIDATION"
+	CodeInternal           Code = "INTERNAL"
 )
 
 type AppError struct {
@@ -65,4 +66,11 @@ func Gone(msg string) *AppError {
 // problem items. details is rendered as `error.details` in the response.
 func StockConflict(msg string, details any) *AppError {
 	return &AppError{Code: CodeStockConflict, Message: msg, Details: details}
+}
+
+// VoucherAlreadyUsed returns HTTP 409 when the same user attempts to redeem
+// the same voucher a second time. Caught at /orders/confirm via the
+// UNIQUE (voucher_id, user_id) constraint on voucher.redemptions.
+func VoucherAlreadyUsed(msg string) *AppError {
+	return &AppError{Code: CodeVoucherAlreadyUsed, Message: msg}
 }

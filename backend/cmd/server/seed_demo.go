@@ -30,6 +30,8 @@ type SeedDemoSummary struct {
 	Staff          int  `json:"staff"`           // managers + staff combined
 	Addresses      int  `json:"addresses"`       // saved customer addresses
 	Orders         int  `json:"orders"`          // placed orders
+	Vouchers       int  `json:"vouchers"`        // seeded voucher codes
+	Memberships    int  `json:"memberships"`     // membership rows derived from seeded orders
 } // @name SeedDemoSummary
 
 // seedDemoData populates a fresh database with realistic sample data for manual
@@ -67,6 +69,10 @@ func seedDemoData(ctx context.Context, mods *modules, pool *pgxpool.Pool) SeedDe
 	seedBranchStaff(ctx, mods, branchIDs)
 	seedCustomerAddresses(ctx, pool)
 	seedDemoOrders(ctx, pool)
+	seedVouchers(ctx, pool, adminID)
+	// Membership reconciliation runs LAST so it picks up every order that
+	// the seed produced. Must come after seedDemoOrders.
+	seedMembershipsFromOrders(ctx, pool)
 
 	return readSeedCounts(ctx, pool, false)
 }
@@ -90,6 +96,8 @@ func readSeedCounts(ctx context.Context, pool *pgxpool.Pool, skipped bool) SeedD
 	      JOIN auth.roles r ON r.id = ur.role_id WHERE r.name NOT IN ('customer', 'guest')`, &s.Staff)
 	scan("SELECT COUNT(*) FROM users.addresses", &s.Addresses)
 	scan("SELECT COUNT(*) FROM orders.orders", &s.Orders)
+	scan("SELECT COUNT(*) FROM voucher.vouchers", &s.Vouchers)
+	scan("SELECT COUNT(*) FROM users.memberships", &s.Memberships)
 	return s
 }
 
@@ -630,6 +638,124 @@ func seedDemoOrders(ctx context.Context, pool *pgxpool.Pool) {
 		placed++
 	}
 	logger.Log.Info("seed demo: orders inserted", zap.Int("count", placed), zap.Int("target", targetOrders))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vouchers — 15 codes mixing every shape the validate flow needs:
+//   • 5 plain percent codes (no cap, no min)
+//   • 4 percent codes with max_discount cap
+//   • 3 percent codes with min_subtotal floor
+//   • 2 expired windows (already past)
+//   • 1 inactive (is_active = false)
+//
+// Idempotent via ON CONFLICT (code) DO NOTHING so a re-run is a no-op.
+// Money values are raw VND (NUMERIC(12,2)).
+// ─────────────────────────────────────────────────────────────────────────────
+
+func seedVouchers(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID) {
+	now := time.Now()
+	farFuture := now.AddDate(1, 0, 0)
+	wayPast := now.AddDate(0, -6, 0)
+	stillPast := now.AddDate(0, -1, 0)
+
+	type v struct {
+		code        string
+		percent     int16
+		maxDiscount *string // raw VND, nil = no cap
+		minSubtotal *string // raw VND, nil = no minimum
+		validFrom   time.Time
+		validTo     time.Time
+		isActive    bool
+	}
+	s := func(s string) *string { return &s }
+
+	rows := []v{
+		// Plain percent (no caps) — the common case.
+		{"WELCOME10", 10, nil, nil, now.AddDate(0, -1, 0), farFuture, true},
+		{"BAKER15", 15, nil, nil, now.AddDate(0, -1, 0), farFuture, true},
+		{"SWEET20", 20, nil, nil, now.AddDate(0, -1, 0), farFuture, true},
+		{"NEWBIE5", 5, nil, nil, now.AddDate(0, -1, 0), farFuture, true},
+		{"LOYAL25", 25, nil, nil, now.AddDate(0, -1, 0), farFuture, true},
+		// Capped — high percent + low ceiling proves the cap math at confirm.
+		{"CAP15K", 15, s("15000"), nil, now.AddDate(0, -1, 0), farFuture, true},
+		{"CAP30K", 30, s("30000"), nil, now.AddDate(0, -1, 0), farFuture, true},
+		{"CAP50K", 50, s("50000"), nil, now.AddDate(0, -1, 0), farFuture, true},
+		{"BIGCAP", 40, s("100000"), nil, now.AddDate(0, -1, 0), farFuture, true},
+		// Min-subtotal — exercises the VOUCHER_MIN_SUBTOTAL gate.
+		{"SPEND50K", 10, nil, s("50000"), now.AddDate(0, -1, 0), farFuture, true},
+		{"SPEND100K", 15, nil, s("100000"), now.AddDate(0, -1, 0), farFuture, true},
+		{"SPEND200K", 20, s("60000"), s("200000"), now.AddDate(0, -1, 0), farFuture, true},
+		// Negative paths — expired window + explicit inactive.
+		{"EXPIRED10", 10, nil, nil, wayPast, stillPast, true},
+		{"PAST20", 20, nil, nil, wayPast, stillPast, true},
+		{"INACTIVE10", 10, nil, nil, now.AddDate(0, -1, 0), farFuture, false},
+	}
+
+	const stmt = `
+INSERT INTO voucher.vouchers
+    (code, discount_percent, max_discount, min_subtotal,
+     valid_from, valid_to, is_active, created_by, updated_by)
+VALUES ($1, $2, $3::numeric, $4::numeric, $5, $6, $7, $8, $8)
+ON CONFLICT (code) DO NOTHING`
+
+	var created int
+	for _, r := range rows {
+		ct, err := pool.Exec(ctx, stmt,
+			r.code, r.percent, r.maxDiscount, r.minSubtotal,
+			r.validFrom, r.validTo, r.isActive, adminID,
+		)
+		if err != nil {
+			logger.Log.Warn("seed demo: voucher insert failed",
+				zap.String("code", r.code), zap.Error(err))
+			continue
+		}
+		if ct.RowsAffected() > 0 {
+			created++
+		}
+	}
+	logger.Log.Info("seed demo: vouchers inserted",
+		zap.Int("created", created), zap.Int("attempted", len(rows)))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Memberships — derived from the orders we just seeded.
+//
+// seedDemoOrders writes orders directly via insertOrderTx (no service layer),
+// so it bypasses membership.ApplyOrderSpend. Without this step, a customer
+// with N seeded orders would still read as BRONZE/0 from /membership — a
+// stale-looking demo. We fix that with one SQL: GROUP BY user_id from the
+// orders table and derive both total_spent and tier in the same statement.
+//
+// Tier thresholds are duplicated from internal/membership/service (BRONZE
+// <1M, SILVER <5M, GOLD >=5M); if they ever change there, change them here
+// too. Keeping them in SQL avoids N round trips through the service.
+// ─────────────────────────────────────────────────────────────────────────────
+
+func seedMembershipsFromOrders(ctx context.Context, pool *pgxpool.Pool) {
+	const stmt = `
+INSERT INTO users.memberships (user_id, total_spent, tier, updated_at)
+SELECT o.user_id,
+       SUM(o.total),
+       CASE
+         WHEN SUM(o.total) >= 5000000 THEN 'GOLD'
+         WHEN SUM(o.total) >= 1000000 THEN 'SILVER'
+         ELSE 'BRONZE'
+       END,
+       NOW()
+FROM orders.orders o
+GROUP BY o.user_id
+ON CONFLICT (user_id) DO UPDATE
+SET total_spent = EXCLUDED.total_spent,
+    tier        = EXCLUDED.tier,
+    updated_at  = NOW()
+`
+	ct, err := pool.Exec(ctx, stmt)
+	if err != nil {
+		logger.Log.Warn("seed demo: membership reconciliation failed", zap.Error(err))
+		return
+	}
+	logger.Log.Info("seed demo: memberships reconciled from orders",
+		zap.Int64("rows", ct.RowsAffected()))
 }
 
 type seedOrderItem struct {

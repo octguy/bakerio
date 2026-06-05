@@ -57,7 +57,7 @@ func appErrToStatus(code apperrors.Code) int {
 		return http.StatusUnauthorized
 	case apperrors.CodeForbidden:
 		return http.StatusForbidden
-	case apperrors.CodeConflict, apperrors.CodeStockConflict:
+	case apperrors.CodeConflict, apperrors.CodeStockConflict, apperrors.CodeVoucherAlreadyUsed:
 		return http.StatusConflict
 	case apperrors.CodeGone:
 		return http.StatusGone
