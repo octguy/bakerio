@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
 )
 
@@ -287,20 +286,20 @@ RETURNING id, code, discount_percent, max_discount, min_subtotal, valid_from, va
 `
 
 type UpdateVoucherParams struct {
-	ID              uuid.UUID      `json:"id"`
-	SetPercent      bool           `json:"set_percent"`
-	DiscountPercent int16          `json:"discount_percent"`
-	SetMaxDiscount  bool           `json:"set_max_discount"`
-	MaxDiscount     pgtype.Numeric `json:"max_discount"`
-	SetMinSubtotal  bool           `json:"set_min_subtotal"`
-	MinSubtotal     pgtype.Numeric `json:"min_subtotal"`
-	SetValidFrom    bool           `json:"set_valid_from"`
-	ValidFrom       time.Time      `json:"valid_from"`
-	SetValidTo      bool           `json:"set_valid_to"`
-	ValidTo         time.Time      `json:"valid_to"`
-	SetIsActive     bool           `json:"set_is_active"`
-	IsActive        bool           `json:"is_active"`
-	UpdatedBy       *uuid.UUID     `json:"updated_by"`
+	ID              uuid.UUID        `json:"id"`
+	SetPercent      bool             `json:"set_percent"`
+	DiscountPercent int16            `json:"discount_percent"`
+	SetMaxDiscount  bool             `json:"set_max_discount"`
+	MaxDiscount     *decimal.Decimal `json:"max_discount"`
+	SetMinSubtotal  bool             `json:"set_min_subtotal"`
+	MinSubtotal     *decimal.Decimal `json:"min_subtotal"`
+	SetValidFrom    bool             `json:"set_valid_from"`
+	ValidFrom       time.Time        `json:"valid_from"`
+	SetValidTo      bool             `json:"set_valid_to"`
+	ValidTo         time.Time        `json:"valid_to"`
+	SetIsActive     bool             `json:"set_is_active"`
+	IsActive        bool             `json:"is_active"`
+	UpdatedBy       *uuid.UUID       `json:"updated_by"`
 }
 
 // Patch fields on a voucher. The boolean "set_*" flags pick whether the
