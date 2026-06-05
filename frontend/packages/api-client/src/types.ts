@@ -148,6 +148,66 @@ export interface CreateOrderRequest {
   note?: string;
 }
 
+export interface OrderBranchOption {
+  branch_id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  distance_km?: number;
+  shipping_fee: number | string;
+  total: number | string;
+  routing_note: string;
+}
+
+export interface OrderMissingItem {
+  product_id: string;
+  name: string;
+  requested: number;
+  max_available: number;
+}
+
+export interface FindOrderBranchesRequest {
+  shipping_address: string;
+  shipping_latitude?: number;
+  shipping_longitude?: number;
+  items: CreateOrderItemInput[];
+}
+
+export interface FindOrderBranchesResponse {
+  subtotal: number | string;
+  options: OrderBranchOption[];
+  missing: OrderMissingItem[];
+}
+
+export interface SelectOrderBranchRequest extends FindOrderBranchesRequest {
+  branch_id: string;
+  contact_phone?: string;
+  note?: string;
+  voucher_code?: string;
+}
+
+export interface SelectOrderBranchResponse {
+  session_id: string;
+  branch_id: string;
+  branch_name: string;
+  subtotal: number | string;
+  shipping_fee: number | string;
+  discount_amount: number | string;
+  total: number | string;
+  voucher_code?: string;
+  distance_km?: number;
+  items: Array<{
+    product_id: string;
+    name: string;
+    unit_price: number | string;
+    quantity: number;
+    line_total: number | string;
+  }>;
+  expires_at: string;
+  ttl_seconds: number;
+}
+
 export interface CartItemResponse {
   id: string;
   product_id: string;

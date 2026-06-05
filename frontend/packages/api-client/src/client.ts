@@ -1,6 +1,5 @@
 // Real API client for the Go backend. Auth, users, profiles, products,
-// categories, branches, and branch membership use real /api/v1 endpoints.
-// Orders still fall back to mock because the backend has no orders module.
+// categories, branches, orders, and branch membership use real /api/v1 endpoints.
 // Mock-served endpoints are tracked so apps can surface a visible marker.
 //
 // To consume the marker from app code:
@@ -23,6 +22,12 @@ import type {
   User,
   PaginatedResponse,
   CreateOrderRequest,
+  GetOrdersOptions,
+  FindOrderBranchesRequest,
+  FindOrderBranchesResponse,
+  PaginatedOrders,
+  SelectOrderBranchRequest,
+  SelectOrderBranchResponse,
 } from "./types";
 import {
   listProductImages as mockListProductImages,
@@ -930,25 +935,168 @@ export async function clearCart(): Promise<void> {
   });
 }
 
-// ===== ORDERS (MOCK — backend not implemented) =====
+// ===== ORDERS (REAL) =====
 
-import {
-  createOrder as mockCreateOrder,
-  getOrders as mockGetOrders,
-  getOrder as mockGetOrder,
-  updateOrderStatus as mockUpdateOrderStatus,
-  getOrderStats as mockGetOrderStats,
-  reorderItems as mockReorderItems,
-} from "./mock";
+type BackendOrderItem = {
+  id: string;
+  product_id: string;
+  name: string;
+  unit_price: number | string;
+  quantity: number;
+  line_total: number | string;
+};
+
+type BackendOrder = {
+  id: string;
+  code?: string;
+  user_id?: string;
+  branch_id: string;
+  branch_name?: string;
+  subtotal?: number | string;
+  discount_total?: number | string;
+  shipping_fee?: number | string;
+  total: number | string;
+  shipping_address?: string;
+  contact_phone?: string;
+  note?: string;
+  routing_reason?: string;
+  placed_at: string;
+  items?: BackendOrderItem[];
+};
+
+function money(value: number | string | undefined): number {
+  if (value == null) return 0;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function toOrder(data: BackendOrder): Order {
+  const subtotal = money(data.subtotal);
+  const deliveryFee = money(data.shipping_fee);
+  const discount = money(data.discount_total);
+  const total = money(data.total);
+  const items = (data.items ?? []).map((item) => ({
+    id: item.id,
+    product_id: item.product_id,
+    product_name: item.name,
+    quantity: item.quantity,
+    unit_price: money(item.unit_price),
+    total_price: money(item.line_total),
+  }));
+
+  return {
+    id: data.id,
+    branch_id: data.branch_id,
+    status: "CONFIRMED",
+    items,
+    subtotal_amount: subtotal,
+    total_amount: total,
+    fulfillment_mode: data.shipping_address ? "DELIVERY" : "PICKUP",
+    delivery_address: data.shipping_address,
+    delivery_fee_amount: deliveryFee,
+    loyalty_discount_amount: discount,
+    note: data.note,
+    created_at: data.placed_at,
+    updated_at: data.placed_at,
+  };
+}
+
+export async function findOrderBranches(
+  data: FindOrderBranchesRequest,
+): Promise<FindOrderBranchesResponse> {
+  return request<FindOrderBranchesResponse>("/orders/find-branches", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function selectOrderBranch(
+  data: SelectOrderBranchRequest,
+): Promise<SelectOrderBranchResponse> {
+  return request<SelectOrderBranchResponse>("/orders/select-branch", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function confirmOrder(sessionId: string): Promise<Order> {
+  const order = await request<BackendOrder>("/orders/confirm", {
+    method: "POST",
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+  return toOrder(order);
+}
 
 export async function createOrder(data: CreateOrderRequest): Promise<Order> {
-  return mockCreateOrder(data);
+  const branch = await selectOrderBranch({
+    branch_id: data.branch_id,
+    shipping_address: data.delivery_address || "Pickup",
+    note: data.note,
+    items: data.items,
+  });
+  const order = await confirmOrder(branch.session_id);
+  return {
+    ...order,
+    fulfillment_mode: data.fulfillment_mode,
+    payment_method: data.payment_method,
+    requested_time: data.requested_time,
+    delivery_address: data.delivery_address,
+    delivery_fee_amount: data.delivery_fee_amount,
+    loyalty_discount_amount: data.loyalty_discount_amount,
+    crumbs_redeemed: data.crumbs_redeemed,
+    subtotal_amount: data.subtotal_amount,
+    total_amount: data.total_amount,
+    note: data.note,
+  };
 }
-export const getOrders = mockGetOrders;
-export const getOrder = mockGetOrder;
-export const updateOrderStatus = mockUpdateOrderStatus;
-export const getOrderStats = mockGetOrderStats;
-export const reorderItems = mockReorderItems;
+
+export async function getOrders(opts?: GetOrdersOptions): Promise<PaginatedOrders> {
+  const params = new URLSearchParams();
+  if (opts?.page) params.set("page", String(opts.page));
+  if (opts?.size) params.set("size", String(opts.size));
+  if (opts?.search) params.set("code", opts.search);
+  const qs = params.toString();
+  const res = await request<PaginatedResponse<BackendOrder>>(`/orders${qs ? `?${qs}` : ""}`);
+  let items = res.items.map(toOrder);
+  if (opts?.status) {
+    const statuses = opts.status.split(",");
+    items = items.filter((order) => statuses.includes(order.status));
+  }
+  return { items, total: res.total, page: res.page, size: res.size, pages: res.total_pages };
+}
+
+export async function getOrder(id: string): Promise<Order | null> {
+  try {
+    return toOrder(await request<BackendOrder>(`/orders/${id}`));
+  } catch (err) {
+    if (err instanceof Error && err.message.toLowerCase().includes("not found")) return null;
+    throw err;
+  }
+}
+
+export async function updateOrderStatus(): Promise<Order | null> {
+  throw new Error("Backend order status update endpoint is not implemented");
+}
+
+export async function getOrderStats(): Promise<{
+  lifetime: number;
+  inProgress: number;
+  delivered: number;
+  cancelled: number;
+}> {
+  const res = await getOrders({ page: 1, size: 100 });
+  return {
+    lifetime: res.total,
+    inProgress: res.items.filter((o) => ["PENDING_PAYMENT", "PAID", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status)).length,
+    delivered: res.items.filter((o) => ["DELIVERED", "COMPLETED"].includes(o.status)).length,
+    cancelled: res.items.filter((o) => o.status === "CANCELLED").length,
+  };
+}
+
+export async function reorderItems(orderId: string): Promise<Array<{ product_id: string; quantity: number }>> {
+  const order = await getOrder(orderId);
+  return order?.items.map((item) => ({ product_id: item.product_id, quantity: item.quantity })) ?? [];
+}
 
 // ===== CUSTOMER ADDRESSES (MOCK — backend not implemented) =====
 import {
