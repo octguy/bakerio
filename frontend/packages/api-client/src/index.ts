@@ -28,6 +28,7 @@ export type {
   ApiResponse,
   PaginatedResponse,
   BranchProductDetailListResponse,
+  StatisticsOverview,
   GetOrdersOptions,
   PaginatedOrders,
   SavedAddress,
@@ -102,6 +103,9 @@ export {
   updateCartItem,
   removeCartItem,
   clearCart,
+
+  // Statistics (REAL)
+  getStatisticsOverview,
 
   // Addresses (MOCK — backend has no /addresses handler)
   getAddresses,

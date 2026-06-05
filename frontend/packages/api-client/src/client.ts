@@ -28,6 +28,7 @@ import type {
   PaginatedOrders,
   SelectOrderBranchRequest,
   SelectOrderBranchResponse,
+  StatisticsOverview,
 } from "./types";
 import {
   listProductImages as mockListProductImages,
@@ -1110,3 +1111,9 @@ export const getAddresses = mockGetAddresses;
 export const addAddress = mockAddAddress;
 export const removeAddress = mockRemoveAddress;
 export const setDefaultAddress = mockSetDefaultAddress;
+
+// ===== STATISTICS (REAL) =====
+
+export async function getStatisticsOverview(): Promise<StatisticsOverview> {
+  return request<StatisticsOverview>("/statistics/overview");
+}
