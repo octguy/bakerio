@@ -3,6 +3,7 @@
 import { useCartStore } from "@/store/cart";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
+import { CartSync } from "@/components/CartSync";
 import SidebarCart from "@/app/menu/_components/sidebar-cart";
 import { ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -19,6 +20,7 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col lg:pl-56">
+      <CartSync />
       {/* Top Header for Mobile and Tablet */}
       <div className="lg:hidden">
         <Header />

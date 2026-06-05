@@ -10,6 +10,7 @@ import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
 import { getAddresses } from "@repo/api-client";
 import type { SavedAddress } from "@repo/api-client";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { useAuth } from "@/lib/auth";
 import { useCartStore } from "@/store/cart";
 import { useOrderDetailsStore } from "@/store/orderDetails";
 import { formatVND } from "@/lib/format";
@@ -45,6 +46,7 @@ export default function CheckoutPage() {
 
 function CheckoutPageInner() {
   const router = useRouter();
+  const { user } = useAuth();
   const [hydrated, setHydrated] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setHydrated(true), []);
@@ -53,6 +55,9 @@ function CheckoutPageInner() {
   const branchId = useCartStore((s) => s.branchId);
   const subtotal = useCartStore((s) => s.subtotal());
   const clearCart = useCartStore((s) => s.clearCart);
+  const syncing = useCartStore((s) => s.syncing);
+  const backendReady = useCartStore((s) => s.backendReady);
+  const cartError = useCartStore((s) => s.cartError);
 
   const [mode, setMode] = useState<"Pickup" | "Delivery">("Pickup");
   const [selectedTime, setSelectedTime] = useState(0);
@@ -69,8 +74,10 @@ function CheckoutPageInner() {
   const [fallbackAddress, setFallbackAddress] = useState("");
 
   useEffect(() => {
-    if (items.length === 0 && !ordered) router.replace("/menu");
-  }, [items, ordered, router]);
+    const hydrating = Boolean(user) && syncing;
+    const awaitingFirstLoad = Boolean(user) && !backendReady && !cartError;
+    if (items.length === 0 && !ordered && !(hydrating || awaitingFirstLoad)) router.replace("/menu");
+  }, [items, ordered, router, syncing, backendReady, cartError, user]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -248,6 +255,16 @@ function CheckoutPageInner() {
       </div>
 
       <div className="lg:col-span-7 flex flex-col gap-3">
+        {/* Cart sync error */}
+        {cartError && (
+          <div
+            role="alert"
+            className="rounded-md border border-sienna/30 bg-sienna/10 px-3 py-2 font-mono text-[11px] text-sienna"
+          >
+            Cart sync issue: {cartError}
+          </div>
+        )}
+
         {/* Mode toggle */}
         <div className="flex rounded-full bg-butter p-1">
           {(["Pickup", "Delivery"] as const).map((tab) => (
