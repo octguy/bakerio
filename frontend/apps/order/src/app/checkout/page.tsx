@@ -15,6 +15,8 @@ import { getLoyalty, maxRedeemableFor, redeemCrumbs } from "@repo/api-client/moc
 import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
 import { getAddresses } from "@repo/api-client";
 import type { SavedAddress } from "@repo/api-client";
+import { getAvailableCoupons } from "@/lib/vouchers";
+import type { Coupon } from "@/types";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/auth";
 import { useCartStore } from "@/store/cart";
@@ -79,6 +81,11 @@ function CheckoutPageInner() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [fallbackAddress, setFallbackAddress] = useState("");
 
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
+  const [voucherInput, setVoucherInput] = useState("");
+  const [appliedVoucher, setAppliedVoucher] = useState<Coupon | null>(null);
+  const [voucherError, setVoucherError] = useState("");
+
   useEffect(() => {
     const hydrating = Boolean(user) && syncing;
     const awaitingFirstLoad = Boolean(user) && !backendReady && !cartError;
@@ -102,6 +109,14 @@ function CheckoutPageInner() {
           setSelectedAddressId(addrs[0].id);
         } else {
           setSelectedAddressId("custom");
+        }
+
+        try {
+          setAvailableCoupons(await getAvailableCoupons());
+        } catch (err) {
+          if (process.env.NODE_ENV !== "production") {
+            console.error("Failed to load vouchers:", err);
+          }
         }
       } catch (err) {
         if (process.env.NODE_ENV !== "production") {
@@ -162,13 +177,36 @@ function CheckoutPageInner() {
   const crumbsDiscount = useCrumbs ? maxDiscount : 0;
   const potentialCrumbsNeeded = useCrumbs ? Math.ceil(maxDiscount / 50) : 0;
   const deliveryFee = mode === "Delivery" ? 30000 : 0;
-  const total = Math.max(0, subtotal + deliveryFee - crumbsDiscount);
+  const voucherDiscount = (() => {
+    if (!appliedVoucher) return 0;
+    if (appliedVoucher.minOrder && subtotal < appliedVoucher.minOrder) return 0;
+    const raw = (subtotal * appliedVoucher.discountValue) / 100;
+    return appliedVoucher.maxDiscount ? Math.min(raw, appliedVoucher.maxDiscount) : raw;
+  })();
+  const total = Math.max(0, subtotal + deliveryFee - crumbsDiscount - voucherDiscount);
   const selectedRequestedTime = TIMES[selectedTime] ?? TIMES[0];
   const selectedPaymentMethod = PAY_METHODS[payMethod] ?? PAY_METHODS[3];
   const deliveryAddress =
     mode === "Pickup"
       ? "42 Lê Lợi, Bến Nghé, Quận 1, HCMC (Pickup)"
       : (selectedAddressId === "custom" ? fallbackAddress : addresses.find((a) => a.id === selectedAddressId)?.address || "");
+
+  const applyVoucher = () => {
+    const code = voucherInput.trim().toUpperCase();
+    setVoucherError("");
+    if (!code) return;
+    const match = availableCoupons.find((c) => c.code.toUpperCase() === code);
+    if (!match) {
+      setVoucherError("Mã giảm giá không hợp lệ hoặc đã hết hạn.");
+      return;
+    }
+    if (match.minOrder && subtotal < match.minOrder) {
+      setVoucherError(`Đơn tối thiểu ${formatVND(match.minOrder)} để dùng mã này.`);
+      return;
+    }
+    setAppliedVoucher(match);
+    setVoucherInput("");
+  };
 
   const handlePlaceOrder = async () => {
     const validation = checkoutSchema.safeParse({ items, branchId });
@@ -223,6 +261,7 @@ function CheckoutPageInner() {
         shipping_address: shippingAddress,
         note: confirmedOrder.note,
         items: backendItems,
+        voucher_code: appliedVoucher?.code,
       });
       const order = await confirmOrder(quote.session_id);
       
@@ -493,6 +532,72 @@ function CheckoutPageInner() {
           </div>
         </button>
 
+        {/* Voucher */}
+        <div className="rounded-2xl border border-crust bg-white p-4">
+          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">
+            Voucher code
+          </div>
+          {appliedVoucher ? (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-sage/40 bg-sage/10 px-3 py-2.5">
+              <div>
+                <div className="font-mono text-[13px] font-semibold text-espresso">
+                  {appliedVoucher.code}
+                </div>
+                <div className="font-editorial text-[11.5px] italic text-caramel">
+                  {appliedVoucher.description} · −{formatVND(voucherDiscount)}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAppliedVoucher(null);
+                  setVoucherError("");
+                }}
+                className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-cinnamon"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                value={voucherInput}
+                onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
+                placeholder="Enter code"
+                aria-label="Voucher code"
+                className="flex-1 rounded-xl border border-crust bg-white px-3.5 py-2.5 font-mono text-[13px] uppercase tracking-wide text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
+              />
+              <button
+                type="button"
+                onClick={applyVoucher}
+                className="rounded-xl bg-espresso px-4 py-2.5 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream transition-colors hover:bg-espresso/90"
+              >
+                Apply
+              </button>
+            </div>
+          )}
+          {voucherError && (
+            <p className="mt-2 font-mono text-[11px] text-sienna">{voucherError}</p>
+          )}
+          {!appliedVoucher && availableCoupons.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {availableCoupons.slice(0, 4).map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => {
+                    setVoucherInput(c.code);
+                    setVoucherError("");
+                  }}
+                  className="rounded-full border border-crust bg-butter px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.08em] text-cocoa transition-colors hover:border-cinnamon"
+                >
+                  {c.code}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {error && (
           <p className="mt-2 rounded-md border border-sienna/30 bg-sienna/10 px-3 py-2 text-center font-mono text-[11px] text-sienna">
             {error}
@@ -519,6 +624,12 @@ function CheckoutPageInner() {
               <div className="flex justify-between py-1 text-[13px] font-semibold text-sage">
                 <span>Crumbs · {potentialCrumbsNeeded}</span>
                 <span className="font-mono">−{formatVND(crumbsDiscount)}</span>
+              </div>
+            )}
+            {voucherDiscount > 0 && appliedVoucher && (
+              <div className="flex justify-between py-1 text-[13px] font-semibold text-cinnamon">
+                <span>Voucher · {appliedVoucher.code}</span>
+                <span className="font-mono">−{formatVND(voucherDiscount)}</span>
               </div>
             )}
             {deliveryFee > 0 && (

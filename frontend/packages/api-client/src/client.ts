@@ -114,7 +114,7 @@ function headers(): HeadersInit {
   return h;
 }
 
-async function request<T>(path: string, opts?: RequestInit): Promise<T> {
+export async function request<T>(path: string, opts?: RequestInit): Promise<T> {
   const customHeaders = headers();
   if (opts?.body instanceof FormData) {
     delete (customHeaders as any)["Content-Type"];
