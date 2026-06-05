@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { getOrders, updateOrderStatus } from "@repo/api-client";
+import { getOrders } from "@repo/api-client";
 import type { Order } from "@repo/api-client";
 import { formatCurrency } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
 
 const CHANNEL: Record<string, { l: string; bg: string; c: string }> = {
   app: { l: "APP", bg: "rgba(212,148,58,0.16)", c: "var(--cinnamon)" },
@@ -46,6 +47,11 @@ const getTag = (id: string) => {
 
 type OrdersView = "list" | "board" | "map" | "timeline";
 type OrderColumnKey = "queued" | "baking" | "delivery" | "done";
+
+type FilterOption = {
+  value: string;
+  label: string;
+};
 
 type OrderFilters = {
   branch: string;
@@ -143,32 +149,6 @@ export default function OrdersPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleAction = async (
-    orderId: string,
-    colKey: string,
-    mode: "pickup" | "delivery",
-  ) => {
-    let nextStatus: Order["status"];
-    if (colKey === "queued") {
-      nextStatus = "PREPARING";
-    } else if (colKey === "baking") {
-      nextStatus = mode === "delivery" ? "OUT_FOR_DELIVERY" : "READY";
-    } else if (colKey === "delivery") {
-      nextStatus = "COMPLETED";
-    } else {
-      return;
-    }
-    try {
-      await updateOrderStatus(orderId, nextStatus);
-      await fetchOrders();
-    } catch (err) {
-      setError("Could not update order status. Please retry.");
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Failed to update status:", err);
-      }
-    }
-  };
-
   // Grouping logic based on columns
   // Queued: PENDING_PAYMENT, PAID, CONFIRMED, DRAFT
   // Baking: PREPARING
@@ -179,26 +159,23 @@ export default function OrdersPage() {
       orders.map((order) => [order.branch_id, getBranchCode(order.branch_id)]),
     ),
   );
-  const branchValues = [
-    "all",
-    ...branchOptions.map(([id]) => id),
-  ] as OrderFilters["branch"][];
-  const channelValues = [
-    "all",
-    ...Object.keys(CHANNEL),
-  ] as OrderFilters["channel"][];
-  const modeValues: OrderFilters["mode"][] = ["all", "delivery", "pickup"];
-  const slaValues: OrderFilters["sla"][] = ["all", "late"];
-
-  const cycleFilter = <K extends keyof OrderFilters>(
-    key: K,
-    values: OrderFilters[K][],
-  ) => {
-    setFilters((current) => {
-      const idx = values.indexOf(current[key]);
-      return { ...current, [key]: values[(idx + 1) % values.length] };
-    });
-  };
+  const branchFilterOptions = [
+    { value: "all", label: "All branches" },
+    ...branchOptions.map(([id, label]) => ({ value: id, label })),
+  ];
+  const channelFilterOptions = [
+    { value: "all", label: "All channels" },
+    ...Object.entries(CHANNEL).map(([value, channel]) => ({ value, label: channel.l })),
+  ];
+  const modeFilterOptions = [
+    { value: "all", label: "Any mode" },
+    { value: "delivery", label: "Delivery" },
+    { value: "pickup", label: "Pickup" },
+  ];
+  const slaFilterOptions = [
+    { value: "all", label: "SLA all" },
+    { value: "late", label: "SLA late" },
+  ];
 
   const filteredOrders = orders.filter((order) => {
     const mode = getOrderMode(order);
@@ -267,38 +244,6 @@ export default function OrdersPage() {
     },
   ];
 
-  const filterButtons = [
-    {
-      key: "branch" as const,
-      label:
-        filters.branch === "all"
-          ? "All branches"
-          : getBranchCode(filters.branch),
-      values: branchValues,
-    },
-    {
-      key: "channel" as const,
-      label:
-        filters.channel === "all" ? "All channels" : CHANNEL[filters.channel].l,
-      values: channelValues,
-    },
-    {
-      key: "mode" as const,
-      label:
-        filters.mode === "all"
-          ? "Mode any"
-          : filters.mode === "delivery"
-            ? "Mode delivery"
-            : "Mode pickup",
-      values: modeValues,
-    },
-    {
-      key: "sla" as const,
-      label: filters.sla === "all" ? "SLA all" : "SLA late",
-      values: slaValues,
-    },
-  ];
-
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -357,25 +302,49 @@ export default function OrdersPage() {
       </div>
 
       {/* Filter */}
-      <div className="mb-4 flex items-center gap-2 border-b border-[var(--admin-line)] pb-3">
+      <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-[var(--admin-line)] pb-3">
         <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">
           Filter
         </span>
-        {filterButtons.map((filter) => (
-          <button
-            type="button"
-            key={filter.key}
-            onClick={() => cycleFilter(filter.key, filter.values)}
-            aria-label={`Cycle ${filter.key} filter. Current: ${filter.label}`}
-            className={`rounded-full border border-[var(--admin-line)] px-3 py-1.5 font-mono text-[11px] text-espresso ${
-              filters[filter.key] !== "all"
-                ? "bg-[var(--admin-panel)] font-bold"
-                : "bg-white"
-            }`}
-          >
-            {filter.label} ⌄
-          </button>
-        ))}
+        <OrderFilterCombobox
+          label="Branch"
+          value={filters.branch}
+          options={branchFilterOptions}
+          onChange={(branch) => setFilters((current) => ({ ...current, branch }))}
+        />
+        <OrderFilterCombobox
+          label="Channel"
+          value={filters.channel}
+          options={channelFilterOptions}
+          onChange={(channel) =>
+            setFilters((current) => ({
+              ...current,
+              channel: channel as OrderFilters["channel"],
+            }))
+          }
+        />
+        <OrderFilterCombobox
+          label="Mode"
+          value={filters.mode}
+          options={modeFilterOptions}
+          onChange={(mode) =>
+            setFilters((current) => ({
+              ...current,
+              mode: mode as OrderFilters["mode"],
+            }))
+          }
+        />
+        <OrderFilterCombobox
+          label="SLA"
+          value={filters.sla}
+          options={slaFilterOptions}
+          onChange={(sla) =>
+            setFilters((current) => ({
+              ...current,
+              sla: sla as OrderFilters["sla"],
+            }))
+          }
+        />
         <div className="flex-1" />
         <span className="font-mono text-[11px] tracking-[0.08em] text-[var(--admin-muted)]">
           SLA · <span className="font-bold text-sage">98.5%</span>
@@ -483,19 +452,9 @@ export default function OrdersPage() {
                     {o.status}
                   </span>
                   <span className="text-right">
-                    {col.key === "done" ? (
-                      <span className="rounded-full bg-[var(--admin-panel)] px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-[var(--admin-muted)]">
-                        {col.cta}
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleAction(o.id, col.key, mode)}
-                        className="rounded-full bg-espresso px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-white transition-colors hover:bg-cinnamon"
-                      >
-                        {col.cta}
-                      </button>
-                    )}
+                    <span className="rounded-full bg-[var(--admin-panel)] px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-[var(--admin-muted)]">
+                      Read only
+                    </span>
                   </span>
                 </div>
               );
@@ -631,18 +590,9 @@ export default function OrdersPage() {
                               {tag}
                             </span>
                           )}
-                          {col.key === "done" ? (
-                            <span className="rounded-full bg-[var(--admin-panel)] px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-[var(--admin-muted)]">
-                              {col.cta}
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleAction(o.id, col.key, mode)}
-                              className="rounded-full bg-espresso px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-white hover:bg-cinnamon transition-colors"
-                            >
-                              {col.cta}
-                            </button>
-                          )}
+                          <span className="rounded-full bg-[var(--admin-panel)] px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-[var(--admin-muted)]">
+                            Read only
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -678,6 +628,95 @@ export default function OrdersPage() {
             Next
           </button>
         </nav>
+      )}
+    </div>
+  );
+}
+
+function OrderFilterCombobox({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: FilterOption[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selected = options.find((option) => option.value === value) ?? options[0];
+  const filtered = options.filter((option) =>
+    option.label.toLowerCase().includes(search.toLowerCase()),
+  );
+  const active = value !== "all";
+
+  return (
+    <div ref={containerRef} className="relative min-w-[150px]">
+      <button
+        type="button"
+        onClick={() => {
+          setOpen(!open);
+          setSearch("");
+        }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`${label} filter. Current: ${selected?.label ?? value}`}
+        className={`flex w-full items-center justify-between rounded-full border border-[var(--admin-line)] px-3 py-1.5 text-left font-mono text-[11px] text-espresso ${
+          active ? "bg-[var(--admin-panel)] font-bold" : "bg-white"
+        }`}
+      >
+        <span className="truncate">{selected?.label ?? value}</span>
+        <ChevronDown aria-hidden="true" className="ml-2 h-3.5 w-3.5 shrink-0 text-[var(--admin-muted)]" />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-56 rounded-lg border border-[var(--admin-line)] bg-white p-2 shadow-lg">
+          <input
+            autoFocus
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={`Search ${label.toLowerCase()}...`}
+            className="mb-2 h-8 w-full rounded-md border border-[var(--admin-line)] px-2 font-mono text-[11px] text-espresso outline-none focus:border-cinnamon"
+          />
+          <div className="max-h-56 space-y-1 overflow-y-auto" role="listbox">
+            {filtered.length > 0 ? (
+              filtered.map((option) => (
+                <button
+                  type="button"
+                  key={option.value}
+                  role="option"
+                  aria-selected={value === option.value}
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  className={`w-full rounded-md px-2 py-1.5 text-left font-mono text-[11px] text-espresso hover:bg-[var(--admin-panel)] ${
+                    value === option.value ? "bg-[var(--admin-panel)] font-bold" : ""
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))
+            ) : (
+              <p className="px-2 py-2 text-center font-mono text-[11px] text-[var(--admin-muted)]">
+                No matches.
+              </p>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

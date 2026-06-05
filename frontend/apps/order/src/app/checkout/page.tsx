@@ -4,7 +4,13 @@ import { useEffect, useState } from "react";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { Link } from "next-view-transitions";
 import { z } from "zod";
-import { createOrder, type CreateOrderRequest, getMockOrderSessionUser } from "@repo/api-client";
+import {
+  confirmOrder,
+  findOrderBranches,
+  getMockOrderSessionUser,
+  selectOrderBranch,
+  type CreateOrderRequest,
+} from "@repo/api-client";
 import { getLoyalty, maxRedeemableFor, redeemCrumbs } from "@repo/api-client/mock/loyalty";
 import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
 import { getAddresses } from "@repo/api-client";
@@ -193,10 +199,32 @@ function CheckoutPageInner() {
         total_amount: total,
       };
 
+      const backendItems = confirmedOrder.items;
+      const shippingAddress = confirmedOrder.delivery_address || "Pickup";
+      const preview = await findOrderBranches({
+        shipping_address: shippingAddress,
+        items: backendItems,
+      });
+      if (preview.missing.length > 0) {
+        const missing = preview.missing.map((item) => item.name).join(", ");
+        setError(`Some items are unavailable: ${missing}`);
+        return;
+      }
+      if (!preview.options.some((option) => option.branch_id === confirmedOrder.branch_id)) {
+        setError("Selected branch can no longer fulfill this cart. Please pick another branch.");
+        return;
+      }
+
       // Place the order first. If this fails, the customer keeps their crumbs.
       // Redeeming before the order creates a money-out-no-goods race when the
       // backend call fails.
-      const order = await createOrder(confirmedOrder);
+      const quote = await selectOrderBranch({
+        branch_id: confirmedOrder.branch_id,
+        shipping_address: shippingAddress,
+        note: confirmedOrder.note,
+        items: backendItems,
+      });
+      const order = await confirmOrder(quote.session_id);
       
       // Save rich details locally keyed by order id and scoped by session user
       const sessionUser = getMockOrderSessionUser();
