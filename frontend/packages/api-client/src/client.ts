@@ -13,6 +13,7 @@ import type {
   ProductImage,
   Branch,
   BranchProduct,
+  BranchProductDetail,
   Profile,
   Order,
   CartResponse,
@@ -646,6 +647,48 @@ export async function setBranchProductAvailability(
     method: "PUT",
     body: JSON.stringify({ is_active: isActive }),
   });
+}
+
+export async function setBranchProductStock(
+  branchId: string,
+  productId: string,
+  quantity: number,
+): Promise<BranchProduct> {
+  return request<BranchProduct>(`/branch/${branchId}/products/${productId}`, {
+    method: "PUT",
+    body: JSON.stringify({ quantity }),
+  });
+}
+
+export async function getBranchProducts(
+  branchId: string,
+  opts?: { active?: boolean; page?: number; size?: number },
+): Promise<PaginatedResponse<BranchProductDetail>> {
+  const params = new URLSearchParams();
+  if (opts?.active != null) params.set("active", String(opts.active));
+  if (opts?.page != null) params.set("page", String(opts.page));
+  if (opts?.size != null) params.set("size", String(opts.size));
+  const query = params.toString();
+  const raw = await request<PaginatedResponse<BranchProductDetail> | null>(
+    `/branch/${branchId}/products${query ? `?${query}` : ""}`,
+  );
+  return raw ?? { items: [], total: 0, page: opts?.page ?? 1, size: opts?.size ?? 0, total_pages: 1 };
+}
+
+export async function getBranchProductMap(
+  branchId: string,
+): Promise<Record<string, BranchProductDetail>> {
+  const map: Record<string, BranchProductDetail> = {};
+  let page = 1;
+  const size = 100;
+  while (true) {
+    const res = await getBranchProducts(branchId, { page, size });
+    for (const item of res.items) map[item.product_id] = item;
+    const totalPages = res.total_pages || 1;
+    if (page >= totalPages || res.items.length === 0) break;
+    page += 1;
+  }
+  return map;
 }
 
 // Honest-demo: admin delete button is disabled because backend has no branch delete route.

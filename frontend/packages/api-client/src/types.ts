@@ -54,6 +54,17 @@ export interface BranchProduct {
   is_active: boolean;
 }
 
+export interface BranchProductDetail {
+  product_id: string;
+  branch_id: string;
+  name: string;
+  slug: string;
+  price: number | string;
+  is_active: boolean;
+  quantity: number;
+  product_active: boolean;
+}
+
 export interface Profile {
   id: string;
   user_id: string;
@@ -183,6 +194,8 @@ export interface PaginatedResponse<T> {
   size: number;
   total_pages: number;
 }
+
+export type BranchProductDetailListResponse = PaginatedResponse<BranchProductDetail>;
 
 export interface GetOrdersOptions {
   page?: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -35,6 +35,16 @@ export function DataTable<T>({ columns, data, searchKey, searchPlaceholder, show
     state: { globalFilter },
     onGlobalFilterChange: setGlobalFilter,
   });
+
+  // When the footer (built-in Prev/Next controls) is hidden, consumers handle
+  // pagination server-side. Disable client pagination so all provided rows
+  // render instead of being truncated to TanStack's default page size of 10.
+  useEffect(() => {
+    if (!showFooter) {
+      table.setPageSize(data.length || 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.length, showFooter]);
 
   return (
     <div className="space-y-4">
