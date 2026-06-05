@@ -141,12 +141,14 @@ export async function getStaff(
 
 export async function getStaffPage(opts?: {
   q?: string;
+  role?: string;
+  branch_id?: string;
   page?: number;
   size?: number;
   branches?: Branch[];
 }): Promise<StaffPage> {
   const [staffPage, branches] = await Promise.all([
-    getStaffUsersPage({ q: opts?.q, page: opts?.page, size: opts?.size }),
+    getStaffUsersPage({ q: opts?.q, role: opts?.role, branch_id: opts?.branch_id, page: opts?.page, size: opts?.size }),
     opts?.branches ? Promise.resolve(opts.branches) : getBranches(),
   ]);
   const branchNames = new Map(branches.map((b) => [b.id, b.name]));

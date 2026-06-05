@@ -786,11 +786,15 @@ interface StaffUsersResponse {
 
 export async function getStaffUsersPage(opts?: {
   q?: string;
+  role?: string;
+  branch_id?: string;
   page?: number;
   size?: number;
 }): Promise<StaffUsersPage> {
   const params = new URLSearchParams();
   if (opts?.q) params.set("q", opts.q);
+  if (opts?.role) params.set("role", opts.role);
+  if (opts?.branch_id) params.set("branch_id", opts.branch_id);
   if (opts?.page != null) params.set("page", String(opts.page));
   if (opts?.size != null) params.set("size", String(opts.size));
   const res = await request<StaffUsersResponse | null>(`/staff?${params.toString()}`);
