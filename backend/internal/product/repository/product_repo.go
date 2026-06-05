@@ -36,6 +36,8 @@ type ProductRepository interface {
 	SeedBranch(ctx context.Context, branchID uuid.UUID) error
 	GetBranchProduct(ctx context.Context, productID, branchID uuid.UUID) (*domain.BranchProduct, error)
 	UpdateBranchProduct(ctx context.Context, productID, branchID uuid.UUID, active *bool, quantity *int32) (*domain.BranchProduct, error)
+	ListBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool, limit, offset int32) ([]BranchProductManageRow, error)
+	CountBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool) (int64, error)
 	ListActiveProductsByBranch(ctx context.Context, branchID uuid.UUID) ([]*domain.Product, error)
 
 	// Stock — called by the order module's confirm tx. Caller passes
@@ -414,6 +416,58 @@ func toBranchProductEntity(b *productdb.ProductBranchProduct) *domain.BranchProd
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
 	}
+}
+
+// BranchProductManageRow is the enriched matrix view used by the
+// admin/manager "list branch products" endpoint.
+type BranchProductManageRow struct {
+	ProductID     uuid.UUID
+	BranchID      uuid.UUID
+	IsActive      bool
+	Quantity      int32
+	Name          string
+	Slug          string
+	Price         decimal.Decimal
+	ProductActive bool
+}
+
+func (r *productRepo) ListBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool, limit, offset int32) ([]BranchProductManageRow, error) {
+	params := productdb.ListBranchProductsForManageParams{
+		BranchID: branchID,
+		Lim:      limit,
+		Off:      offset,
+	}
+	if activeFilter != nil {
+		params.FilterActive = true
+		params.IsActive = *activeFilter
+	}
+	rows, err := r.queries(ctx).ListBranchProductsForManage(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]BranchProductManageRow, len(rows))
+	for i, row := range rows {
+		out[i] = BranchProductManageRow{
+			ProductID:     row.ProductID,
+			BranchID:      row.BranchID,
+			IsActive:      row.IsActive,
+			Quantity:      row.Quantity,
+			Name:          row.Name,
+			Slug:          row.Slug,
+			Price:         row.Price,
+			ProductActive: row.ProductActive,
+		}
+	}
+	return out, nil
+}
+
+func (r *productRepo) CountBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool) (int64, error) {
+	params := productdb.CountBranchProductsForManageParams{BranchID: branchID}
+	if activeFilter != nil {
+		params.FilterActive = true
+		params.IsActive = *activeFilter
+	}
+	return r.queries(ctx).CountBranchProductsForManage(ctx, params)
 }
 
 // BranchStockRow is the result of LockBranchStockForUpdate. Service uses

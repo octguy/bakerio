@@ -64,6 +64,10 @@ type ProductService interface {
 	// UpdateBranchProduct patches per-branch availability and/or on-hand
 	// stock. Nil pointers leave the field unchanged.
 	UpdateBranchProduct(ctx context.Context, productID, branchID uuid.UUID, active *bool, quantity *int32) (dto.BranchProductResponse, error)
+	// ListBranchProductsForManage returns the enriched matrix view for a
+	// branch. activeFilter == nil → all rows; == &true → active only;
+	// == &false → inactive only.
+	ListBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool, p pagination.Params) (dto.BranchProductDetailListResponse, error)
 
 	// Images
 	AddImages(ctx context.Context, productID uuid.UUID, uploads []ImageUpload) ([]dto.ProductImageResponse, error)
@@ -184,6 +188,31 @@ func (s *productService) DecrementBranchStock(ctx context.Context, branchID, pro
 
 func (s *productService) SeedBranch(ctx context.Context, branchID uuid.UUID) error {
 	return s.repo.SeedBranch(ctx, branchID)
+}
+
+func (s *productService) ListBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool, p pagination.Params) (dto.BranchProductDetailListResponse, error) {
+	rows, err := s.repo.ListBranchProductsForManage(ctx, branchID, activeFilter, int32(p.Size), int32(p.Offset()))
+	if err != nil {
+		return dto.BranchProductDetailListResponse{}, apperrors.Internal("failed to list branch products", err)
+	}
+	total, err := s.repo.CountBranchProductsForManage(ctx, branchID, activeFilter)
+	if err != nil {
+		return dto.BranchProductDetailListResponse{}, apperrors.Internal("failed to count branch products", err)
+	}
+	items := make([]dto.BranchProductDetail, len(rows))
+	for i, row := range rows {
+		items[i] = dto.BranchProductDetail{
+			ProductID:     row.ProductID,
+			BranchID:      row.BranchID,
+			Name:          row.Name,
+			Slug:          row.Slug,
+			Price:         row.Price,
+			IsActive:      row.IsActive,
+			Quantity:      row.Quantity,
+			ProductActive: row.ProductActive,
+		}
+	}
+	return dto.BranchProductDetailListResponse{Items: items, Meta: pagination.NewMeta(p, total)}, nil
 }
 
 func (s *productService) UpdateBranchProduct(ctx context.Context, productID, branchID uuid.UUID, active *bool, quantity *int32) (dto.BranchProductResponse, error) {

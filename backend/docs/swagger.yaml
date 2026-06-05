@@ -107,6 +107,40 @@ definitions:
       total:
         type: number
     type: object
+  BranchProductDetail:
+    properties:
+      branch_id:
+        type: string
+      is_active:
+        type: boolean
+      name:
+        type: string
+      price:
+        type: number
+      product_active:
+        type: boolean
+      product_id:
+        type: string
+      quantity:
+        type: integer
+      slug:
+        type: string
+    type: object
+  BranchProductDetailListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/BranchProductDetail'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
   BranchProductResponse:
     properties:
       branch_id:
@@ -1454,6 +1488,46 @@ paths:
       summary: Remove a member from a branch
       tags:
       - branch
+  /branch/{id}/products:
+    get:
+      description: |-
+        Returns the enriched matrix view (name, slug, price, is_active, quantity).
+        Optional ?active=true|false filters by per-branch availability.
+        Admin may target any branch; a branch_manager only their own.
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Filter: true → active only, false → inactive only, omit → all'
+        in: query
+        name: active
+        type: boolean
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20)
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/BranchProductDetailListResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List products of a specific branch (admin/manager)
+      tags:
+      - product
   /branch/{id}/products/{productId}:
     put:
       consumes:

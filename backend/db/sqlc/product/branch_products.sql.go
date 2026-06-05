@@ -12,6 +12,28 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const countBranchProductsForManage = `-- name: CountBranchProductsForManage :one
+SELECT COUNT(*)
+FROM product.branch_products bp
+JOIN product.products p ON p.id = bp.product_id
+WHERE bp.branch_id = $1
+  AND p.deleted_at IS NULL
+  AND (NOT $2::boolean OR bp.is_active = $3::boolean)
+`
+
+type CountBranchProductsForManageParams struct {
+	BranchID     uuid.UUID `json:"branch_id"`
+	FilterActive bool      `json:"filter_active"`
+	IsActive     bool      `json:"is_active"`
+}
+
+func (q *Queries) CountBranchProductsForManage(ctx context.Context, arg CountBranchProductsForManageParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countBranchProductsForManage, arg.BranchID, arg.FilterActive, arg.IsActive)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const decrementBranchStock = `-- name: DecrementBranchStock :execrows
 UPDATE product.branch_products
 SET quantity   = quantity - $3,
@@ -192,6 +214,81 @@ func (q *Queries) ListBranchProductsByBranch(ctx context.Context, branchID uuid.
 			&i.UpdatedAt,
 			&i.UpdatedBy,
 			&i.Quantity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBranchProductsForManage = `-- name: ListBranchProductsForManage :many
+SELECT bp.product_id,
+       bp.branch_id,
+       bp.is_active,
+       bp.quantity,
+       p.name,
+       p.slug,
+       p.price,
+       p.is_active AS product_active
+FROM product.branch_products bp
+JOIN product.products p ON p.id = bp.product_id
+WHERE bp.branch_id = $1
+  AND p.deleted_at IS NULL
+  AND (NOT $2::boolean OR bp.is_active = $3::boolean)
+ORDER BY p.sort_order ASC, p.name ASC
+LIMIT $5 OFFSET $4
+`
+
+type ListBranchProductsForManageParams struct {
+	BranchID     uuid.UUID `json:"branch_id"`
+	FilterActive bool      `json:"filter_active"`
+	IsActive     bool      `json:"is_active"`
+	Off          int32     `json:"off"`
+	Lim          int32     `json:"lim"`
+}
+
+type ListBranchProductsForManageRow struct {
+	ProductID     uuid.UUID       `json:"product_id"`
+	BranchID      uuid.UUID       `json:"branch_id"`
+	IsActive      bool            `json:"is_active"`
+	Quantity      int32           `json:"quantity"`
+	Name          string          `json:"name"`
+	Slug          string          `json:"slug"`
+	Price         decimal.Decimal `json:"price"`
+	ProductActive bool            `json:"product_active"`
+}
+
+// Admin/manager matrix view enriched with product details. The boolean
+// "filter_active" flag picks whether to filter by is_active; when false,
+// all rows are returned regardless of the "is_active" argument.
+func (q *Queries) ListBranchProductsForManage(ctx context.Context, arg ListBranchProductsForManageParams) ([]ListBranchProductsForManageRow, error) {
+	rows, err := q.db.Query(ctx, listBranchProductsForManage,
+		arg.BranchID,
+		arg.FilterActive,
+		arg.IsActive,
+		arg.Off,
+		arg.Lim,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBranchProductsForManageRow{}
+	for rows.Next() {
+		var i ListBranchProductsForManageRow
+		if err := rows.Scan(
+			&i.ProductID,
+			&i.BranchID,
+			&i.IsActive,
+			&i.Quantity,
+			&i.Name,
+			&i.Slug,
+			&i.Price,
+			&i.ProductActive,
 		); err != nil {
 			return nil, err
 		}

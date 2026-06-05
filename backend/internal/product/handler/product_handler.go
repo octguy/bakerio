@@ -52,6 +52,10 @@ func (h *ProductHandler) RegisterRoutes(public, protected *gin.RouterGroup) {
 		middleware.RequireAnyPermission("product:manage:all", "branch:manage:own"),
 		h.UpdateBranchProduct,
 	)
+	protected.GET("/branch/:id/products",
+		middleware.RequireAnyPermission("product:manage:all", "branch:manage:own"),
+		h.ListBranchProducts,
+	)
 }
 
 // CreateProduct godoc
@@ -229,6 +233,55 @@ func (h *ProductHandler) UpdateBranchProduct(c *gin.Context) {
 	}
 
 	res, err := h.svc.UpdateBranchProduct(c.Request.Context(), productID, branchID, req.IsActive, req.Quantity)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, http.StatusOK, res)
+}
+
+// ListBranchProducts godoc
+// @Summary      List products of a specific branch (admin/manager)
+// @Description  Returns the enriched matrix view (name, slug, price, is_active, quantity).
+// @Description  Optional ?active=true|false filters by per-branch availability.
+// @Description  Admin may target any branch; a branch_manager only their own.
+// @Tags         product
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id      path      string  true   "Branch ID"
+// @Param        active  query     boolean false  "Filter: true → active only, false → inactive only, omit → all"
+// @Param        page    query     int     false  "Page (default 1)"
+// @Param        size    query     int     false  "Page size (default 20)"
+// @Success      200  {object}  dto.BranchProductDetailListResponse
+// @Failure      403  {object}  response.ErrorResponse
+// @Router       /branch/{id}/products [get]
+func (h *ProductHandler) ListBranchProducts(c *gin.Context) {
+	branchID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		response.Error(c, apperrors.Validation("invalid branch id"))
+		return
+	}
+	if err := h.ensureBranchScope(c, branchID); err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	var activeFilter *bool
+	if v := c.Query("active"); v != "" {
+		switch strings.ToLower(v) {
+		case "true", "1":
+			t := true
+			activeFilter = &t
+		case "false", "0":
+			f := false
+			activeFilter = &f
+		default:
+			response.Error(c, apperrors.Validation("active must be true or false"))
+			return
+		}
+	}
+
+	res, err := h.svc.ListBranchProductsForManage(c.Request.Context(), branchID, activeFilter, pagination.FromQuery(c))
 	if err != nil {
 		response.Error(c, err)
 		return
