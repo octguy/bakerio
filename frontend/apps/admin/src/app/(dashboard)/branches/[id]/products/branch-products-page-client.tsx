@@ -3,11 +3,28 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getBranchProducts, setBranchProductAvailability } from "@repo/api-client";
-import type { BranchProductDetail } from "@repo/api-client";
+import {
+  getProductsPage,
+  getCategories,
+  getBranchProductMap,
+  setBranchProductAvailability,
+  setBranchProductStock,
+} from "@repo/api-client";
+import type { Product, Category, BranchProductDetail } from "@repo/api-client";
 import { useViewportPageSize } from "@/lib/use-viewport-page-size";
+import { DataTable } from "@/components/data-table";
+import { type ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import {
   ArrowLeft,
@@ -15,6 +32,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Pencil,
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
@@ -30,20 +48,42 @@ export function BranchProductsPageClient({
 }: BranchProductsPageClientProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = useViewportPageSize();
   const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const [stockOverrides, setStockOverrides] = useState<Record<string, number>>({});
+  const [stockTarget, setStockTarget] = useState<Product | null>(null);
+  const [stockValue, setStockValue] = useState<string>("");
+  const trimmedSearch = debouncedSearch.trim();
 
-  const { data: branchProductsPage, isLoading } = useQuery({
-    queryKey: ["branch-products", branchId, { page, size: pageSize }],
-    queryFn: () => getBranchProducts(branchId, { page, size: pageSize }),
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 500);
+
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  const { data: productsPage, isLoading } = useQuery({
+    queryKey: ["branch-catalog", branchId, { search: trimmedSearch, category, page, size: pageSize }],
+    queryFn: () =>
+      getProductsPage({
+        q: trimmedSearch || undefined,
+        category: category || undefined,
+        page,
+        size: pageSize,
+      }),
   });
 
-  const branchProducts = branchProductsPage?.items ?? [];
-  const total = branchProductsPage?.total ?? 0;
-  const currentPage = branchProductsPage?.page ?? page;
-  const currentSize = branchProductsPage?.size ?? pageSize;
-  const totalPages = Math.max(1, branchProductsPage?.total_pages ?? Math.ceil(total / currentSize));
+  const products: Product[] = productsPage?.items ?? [];
+  const total = productsPage?.total ?? 0;
+  const currentPage = productsPage?.page ?? page;
+  const currentSize = productsPage?.size ?? pageSize;
+  const totalPages = Math.max(1, productsPage?.total_pages ?? Math.ceil(total / currentSize));
   const canGoPrev = currentPage > 1;
   const canGoNext = currentPage < totalPages;
 
@@ -51,6 +91,19 @@ export function BranchProductsPageClient({
     const timeout = window.setTimeout(() => setPage(1), 0);
     return () => window.clearTimeout(timeout);
   }, [pageSize]);
+
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["categories"],
+    queryFn: () => getCategories(),
+    staleTime: Infinity,
+  });
+
+  const branchMapQuery = useQuery({
+    queryKey: ["branch-product-map", branchId],
+    queryFn: () => getBranchProductMap(branchId),
+  });
+
+  const branchMap: Record<string, BranchProductDetail> = branchMapQuery.data ?? {};
 
   const availabilityMut = useMutation({
     mutationFn: ({
@@ -61,7 +114,7 @@ export function BranchProductsPageClient({
       isActive: boolean;
     }) => setBranchProductAvailability(branchId, productId, isActive),
     onSuccess: async (_data, variables) => {
-      await queryClient.invalidateQueries({ queryKey: ["branch-products", branchId] });
+      await queryClient.invalidateQueries({ queryKey: ["branch-product-map", branchId] });
       setOverrides((current) => {
         const next = { ...current };
         delete next[variables.productId];
@@ -79,6 +132,132 @@ export function BranchProductsPageClient({
     },
   });
 
+  const stockMut = useMutation({
+    mutationFn: ({
+      productId,
+      quantity,
+    }: {
+      productId: string;
+      quantity: number;
+    }) => setBranchProductStock(branchId, productId, quantity),
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({ queryKey: ["branch-product-map", branchId] });
+      setStockOverrides((current) => {
+        const next = { ...current };
+        delete next[variables.productId];
+        return next;
+      });
+      setStockTarget(null);
+      toast("Stock updated");
+    },
+    onError: (e: Error, variables) => {
+      setStockOverrides((current) => {
+        const next = { ...current };
+        delete next[variables.productId];
+        return next;
+      });
+      toast(e.message, "error");
+    },
+  });
+
+  const columns: ColumnDef<Product, unknown>[] = [
+    {
+      accessorKey: "name",
+      header: "Product",
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <span className="text-[14px] font-semibold text-espresso">
+            {row.original.name}
+          </span>
+          {!row.original.is_active && (
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-sienna">
+              Globally off
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "category_id",
+      header: "Category",
+      cell: ({ row }) => {
+        const cat = categories.find((c) => c.id === row.original.category_id);
+        return cat?.name || "—";
+      },
+    },
+    {
+      id: "stock",
+      header: "Stock",
+      cell: ({ row }) => {
+        const product = row.original;
+        const branchDetail = branchMap[product.id];
+        const effectiveQuantity =
+          stockOverrides[product.id] ?? (branchDetail?.quantity ?? 0);
+        return (
+          <div className="inline-flex items-center gap-2 font-mono text-[13px] text-espresso">
+            <span>{effectiveQuantity}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Edit stock for ${product.name}`}
+              onClick={() => {
+                setStockTarget(product);
+                setStockValue(String(effectiveQuantity));
+              }}
+              className="h-auto w-auto border-0 bg-transparent p-0 shadow-none hover:bg-transparent"
+            >
+              <Pencil aria-hidden="true" className="h-4 w-4 text-cinnamon" />
+            </Button>
+          </div>
+        );
+      },
+    },
+    {
+      id: "available",
+      header: "Available",
+      cell: ({ row }) => {
+        const product = row.original;
+        const branchDetail = branchMap[product.id];
+        const isActive = overrides[product.id] ?? (branchDetail?.is_active ?? false);
+        const isPending =
+          availabilityMut.isPending &&
+          availabilityMut.variables?.productId === product.id;
+        return (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`${isActive ? "Disable" : "Enable"} ${product.name} at ${branchName}`}
+            onClick={() => {
+              const nextValue = !isActive;
+              setOverrides((current) => ({
+                ...current,
+                [product.id]: nextValue,
+              }));
+              availabilityMut.mutate({
+                productId: product.id,
+                isActive: nextValue,
+              });
+            }}
+            disabled={isPending}
+            className="h-auto w-auto border-0 bg-transparent p-0 shadow-none hover:bg-transparent"
+          >
+            {isActive ? (
+              <ToggleRight
+                aria-hidden="true"
+                className="h-7 w-7 fill-sage/20 text-sage"
+              />
+            ) : (
+              <ToggleLeft
+                aria-hidden="true"
+                className="h-7 w-7 fill-sienna/20 text-sienna"
+              />
+            )}
+          </Button>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex items-end justify-between">
@@ -93,7 +272,7 @@ export function BranchProductsPageClient({
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              {total} branch products
+              {total} catalog products
             </span>
           </div>
           <h1
@@ -110,8 +289,39 @@ export function BranchProductsPageClient({
         </div>
       </div>
 
-      <div className="flex justify-end rounded-xl border border-admin-line bg-white/70 p-3">
-        <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-col gap-3 rounded-xl border border-admin-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="grid w-full gap-3 sm:max-w-2xl sm:grid-cols-2">
+          <div>
+            <Label htmlFor="branch-product-search">Search</Label>
+            <Input
+              id="branch-product-search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search products..."
+              className="mt-1"
+            />
+          </div>
+          <div>
+            <Label htmlFor="branch-category-filter">Category</Label>
+            <Select
+              id="branch-category-filter"
+              value={category}
+              onChange={(event) => {
+                setCategory(event.target.value);
+                setPage(1);
+              }}
+              className="mt-1"
+            >
+              <option value="">All categories</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.slug}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2 self-end">
           <Button
             type="button"
             variant="outline"
@@ -175,98 +385,75 @@ export function BranchProductsPageClient({
       {isLoading ? (
         <p>Loading...</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[var(--admin-line)] bg-white">
-          <table className="min-w-full border-collapse">
-            <thead>
-              <tr className="border-b border-[var(--admin-line)] font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">
-                <th scope="col" className="px-4 py-3 text-left font-inherit">
-                  Product
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-inherit">
-                  Stock
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-inherit">
-                  Available
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {branchProducts.map((p: BranchProductDetail, index: number) => {
-                const isActive = overrides[p.product_id] ?? p.is_active;
-                const isPending =
-                  availabilityMut.isPending &&
-                  availabilityMut.variables?.productId === p.product_id;
-
-                return (
-                  <tr
-                    key={p.product_id}
-                    className={
-                      index === branchProducts.length - 1
-                        ? undefined
-                        : "border-b border-[var(--admin-line)]"
-                    }
-                  >
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[14px] font-semibold text-espresso">
-                          {p.name}
-                        </span>
-                        {p.product_active === false && (
-                          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-sienna">
-                            Globally off
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-right font-mono text-[13px] text-espresso">
-                      {p.quantity}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`${isActive ? "Disable" : "Enable"} ${p.name} at ${branchName}`}
-                          onClick={() => {
-                            const nextValue = !isActive;
-                            setOverrides((current) => ({
-                              ...current,
-                              [p.product_id]: nextValue,
-                            }));
-                            availabilityMut.mutate({
-                              productId: p.product_id,
-                              isActive: nextValue,
-                            });
-                          }}
-                          disabled={isPending}
-                          className="h-auto w-auto border-0 bg-transparent p-0 shadow-none hover:bg-transparent"
-                        >
-                          {isActive ? (
-                            <ToggleRight
-                              aria-hidden="true"
-                              className="h-8 w-8 fill-sage/20 text-sage"
-                            />
-                          ) : (
-                            <ToggleLeft
-                              aria-hidden="true"
-                              className="h-6 w-6 fill-sienna/20 text-sienna"
-                            />
-                          )}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {!isLoading && branchProducts.length === 0 && (
-            <div className="px-4 py-6 text-center font-editorial text-[14px] italic text-caramel">
-              No branch products.
-            </div>
-          )}
-        </div>
+        <DataTable columns={columns} data={products} showFooter={false} />
       )}
+
+      <Dialog
+        open={!!stockTarget}
+        onOpenChange={(o) => {
+          if (!o) setStockTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Update stock</DialogTitle>
+            <DialogDescription>
+              {stockTarget
+                ? `Set the stock quantity for ${stockTarget.name} at ${branchName}.`
+                : "Set the stock quantity for this product."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <div>
+              <Label htmlFor="stock-quantity">Stock quantity</Label>
+              <Input
+                id="stock-quantity"
+                type="number"
+                min={0}
+                step={1}
+                value={stockValue}
+                onChange={(event) => setStockValue(event.target.value)}
+                className="appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStockTarget(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={
+                  stockMut.isPending ||
+                  !Number.isInteger(Number(stockValue)) ||
+                  Number(stockValue) < 0
+                }
+                onClick={() => {
+                  if (!stockTarget) return;
+                  const parsed = Number(stockValue);
+                  if (!Number.isInteger(parsed) || parsed < 0) {
+                    toast("Enter a whole number of 0 or more", "error");
+                    return;
+                  }
+                  setStockOverrides((current) => ({
+                    ...current,
+                    [stockTarget.id]: parsed,
+                  }));
+                  stockMut.mutate({
+                    productId: stockTarget.id,
+                    quantity: parsed,
+                  });
+                }}
+              >
+                {stockMut.isPending ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

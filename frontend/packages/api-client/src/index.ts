@@ -62,7 +62,9 @@ export {
   updateBranch,
   updateBranchStatus,
   setBranchProductAvailability,
+  setBranchProductStock,
   getBranchProducts,
+  getBranchProductMap,
   deleteBranch,
   // Branch membership (REAL)
   getBranchMembers,

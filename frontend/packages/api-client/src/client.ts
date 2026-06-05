@@ -649,6 +649,17 @@ export async function setBranchProductAvailability(
   });
 }
 
+export async function setBranchProductStock(
+  branchId: string,
+  productId: string,
+  quantity: number,
+): Promise<BranchProduct> {
+  return request<BranchProduct>(`/branch/${branchId}/products/${productId}`, {
+    method: "PUT",
+    body: JSON.stringify({ quantity }),
+  });
+}
+
 export async function getBranchProducts(
   branchId: string,
   opts?: { active?: boolean; page?: number; size?: number },
@@ -662,6 +673,22 @@ export async function getBranchProducts(
     `/branch/${branchId}/products${query ? `?${query}` : ""}`,
   );
   return raw ?? { items: [], total: 0, page: opts?.page ?? 1, size: opts?.size ?? 0, total_pages: 1 };
+}
+
+export async function getBranchProductMap(
+  branchId: string,
+): Promise<Record<string, BranchProductDetail>> {
+  const map: Record<string, BranchProductDetail> = {};
+  let page = 1;
+  const size = 100;
+  while (true) {
+    const res = await getBranchProducts(branchId, { page, size });
+    for (const item of res.items) map[item.product_id] = item;
+    const totalPages = res.total_pages || 1;
+    if (page >= totalPages || res.items.length === 0) break;
+    page += 1;
+  }
+  return map;
 }
 
 // Honest-demo: admin delete button is disabled because backend has no branch delete route.
