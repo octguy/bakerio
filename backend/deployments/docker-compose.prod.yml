@@ -205,10 +205,32 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
     depends_on:
       - app
       - order
       - admin
+    # Reload every 6h so renewed certs are picked up without downtime.
+    command: >-
+      sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: bakerio-certbot
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Attempt renewal every 12h; certbot only renews when within 30 days of expiry.
+    entrypoint: >-
+      sh -c "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"
     networks:
       - bakerio_network
     restart: unless-stopped
@@ -223,6 +245,7 @@ volumes:
   redis_data:
   rabbitmq_data:
   minio_data:
+  certbot_www:
 
 networks:
   bakerio_network:

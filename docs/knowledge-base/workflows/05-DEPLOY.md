@@ -24,6 +24,33 @@ Before setting up deployment:
 4. **SSH key** stored as GitHub secret
 5. **Environment variables** stored as GitHub secrets
 
+## One-Time TLS Bootstrap (REQUIRED before first deploy)
+
+nginx terminates HTTPS for `api.`, `order.`, and `admin.bakerio.thinhuit.id.vn`
+using Let's Encrypt certs at `/etc/letsencrypt/live/bakerio.thinhuit.id.vn/`.
+On a fresh VPS those certs do not exist (you only created DNS A records), so
+nginx refuses to start and the public HTTPS health checks in `frontend_cd.yml`
+fail. Run the bootstrap once to obtain the certificate:
+
+```bash
+# On the VPS, after DNS A records resolve to this host:
+cd /home/deploy/bakerio/backend/deployments
+
+# Optional: test against staging first to avoid rate limits
+# STAGING=1 EMAIL=you@example.com ./init-letsencrypt.sh
+
+EMAIL=you@example.com ./init-letsencrypt.sh
+```
+
+The script plants a temporary self-signed cert so nginx can boot, serves the
+ACME HTTP-01 challenge over port 80, fetches the real certificate, then reloads
+nginx. After this, the `certbot` service auto-renews and nginx reloads every 6h
+to pick up renewals. You only run this script again if you add domains
+(`./init-letsencrypt.sh --force`).
+
+**Prerequisite:** ports 80 and 443 must be open on the VPS firewall, and all
+four hostnames (apex + 3 subdomains) must resolve to the VPS before running.
+
 ## Setting Up Deployment
 
 ### Step 1: Create SSH Key

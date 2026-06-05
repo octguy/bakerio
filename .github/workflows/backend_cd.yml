@@ -92,6 +92,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
+            git config --global --add safe.directory /home/deploy/bakerio
             cd /home/deploy/bakerio
             git fetch origin main
             git reset --hard origin/main
