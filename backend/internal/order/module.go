@@ -9,6 +9,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/order/repository"
 	"github.com/octguy/bakerio/backend/internal/order/service"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
+	voucherSvc "github.com/octguy/bakerio/backend/internal/voucher/service"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -39,6 +40,7 @@ type Deps struct {
 	Router     branchSvc.BranchRouter
 	Catalog    service.Catalog // satisfied by product.ProductService
 	Membership branchSvc.MembershipService
+	Voucher    voucherSvc.Service // optional — nil disables voucher integration
 }
 
 func New(deps Deps) *Module {
@@ -46,7 +48,7 @@ func New(deps Deps) *Module {
 
 	orderRepo := repository.NewOrderRepository(ordersdb.New(deps.Pool), deps.Pool)
 	sessionStore := service.NewCheckoutSessionStore(deps.Redis)
-	checkout := service.NewCheckoutService(deps.Router, deps.Catalog, sessionStore, orderRepo, deps.TX)
+	checkout := service.NewCheckoutService(deps.Router, deps.Catalog, sessionStore, orderRepo, deps.TX, deps.Voucher)
 	query := service.NewQueryService(orderRepo, deps.Membership)
 
 	return &Module{

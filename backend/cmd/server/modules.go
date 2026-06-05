@@ -9,6 +9,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/platform/email"
 	"github.com/octguy/bakerio/backend/internal/product"
 	"github.com/octguy/bakerio/backend/internal/user"
+	"github.com/octguy/bakerio/backend/internal/voucher"
 	"github.com/octguy/bakerio/backend/pkg/config"
 )
 
@@ -21,6 +22,7 @@ type modules struct {
 	product *product.Module
 	cart    *cart.Module
 	order   *order.Module
+	voucher *voucher.Module
 	notif   *notification.Module
 }
 
@@ -73,10 +75,13 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 		Catalog: productMod.ProductService(),
 	})
 
+	voucherMod := voucher.New(voucher.Deps{Pool: i.pool})
+
 	// Order module consumes the branch router (read-side for routing) +
 	// the product service (Catalog for prices + stock lock/decrement) +
 	// the branch membership service (so order:view:branch callers get
-	// auto-scoped to their own branch on GET /orders).
+	// auto-scoped to their own branch on GET /orders) +
+	// the voucher service (Validate at select-branch, Redeem at confirm).
 	// Confirm flow opens its own tx via the shared TxManager.
 	orderMod := order.New(order.Deps{
 		Pool:       i.pool,
@@ -85,6 +90,7 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 		Router:     branchMod.Router(),
 		Catalog:    productMod.ProductService(),
 		Membership: branchMod.MembershipService(),
+		Voucher:    voucherMod.Service(),
 	})
 
 	return &modules{
@@ -94,6 +100,7 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 		product: productMod,
 		cart:    cartMod,
 		order:   orderMod,
+		voucher: voucherMod,
 		notif:   notifMod,
 	}
 }

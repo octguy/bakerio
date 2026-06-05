@@ -25,7 +25,10 @@ type CheckoutSession struct {
 	Items             []CheckoutSessionItem `json:"items"`
 	Subtotal          decimal.Decimal       `json:"subtotal"`
 	ShippingFee       decimal.Decimal       `json:"shipping_fee"`
+	DiscountAmount    decimal.Decimal       `json:"discount_amount"`
 	Total             decimal.Decimal       `json:"total"`
+	VoucherID         *uuid.UUID            `json:"voucher_id,omitempty"`
+	VoucherCode       *string               `json:"voucher_code,omitempty"`
 	ShippingAddress   string                `json:"shipping_address"`
 	ShippingLatitude  *float64              `json:"shipping_latitude,omitempty"`
 	ShippingLongitude *float64              `json:"shipping_longitude,omitempty"`

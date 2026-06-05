@@ -16,6 +16,7 @@ import (
 	productrepo "github.com/octguy/bakerio/backend/internal/product/repository"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	voucherSvc "github.com/octguy/bakerio/backend/internal/voucher/service"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
 
@@ -52,6 +53,7 @@ type checkoutService struct {
 	store   CheckoutSessionStore
 	orders  repository.OrderRepository
 	tx      *txmanager.TxManager
+	voucher voucherSvc.Service // optional — nil disables voucher integration
 }
 
 func NewCheckoutService(
@@ -60,6 +62,7 @@ func NewCheckoutService(
 	store CheckoutSessionStore,
 	orders repository.OrderRepository,
 	tx *txmanager.TxManager,
+	voucher voucherSvc.Service,
 ) CheckoutService {
 	return &checkoutService{
 		router:  router,
@@ -67,6 +70,7 @@ func NewCheckoutService(
 		store:   store,
 		orders:  orders,
 		tx:      tx,
+		voucher: voucher,
 	}
 }
 
@@ -154,7 +158,35 @@ func (s *checkoutService) SelectBranch(ctx context.Context, userID uuid.UUID, re
 		}
 	}
 
-	// 5. Build + save session.
+	// 5. If a voucher code was supplied, validate against the (already-priced)
+	//    subtotal. The voucher service returns the snapshotted Voucher plus
+	//    the computed discount in raw VND. The unique constraint in
+	//    voucher.redemptions enforces single-use under concurrency at confirm.
+	discount := decimal.Zero
+	var voucherID *uuid.UUID
+	var voucherCode *string
+	if req.VoucherCode != nil && *req.VoucherCode != "" {
+		if s.voucher == nil {
+			return dto.SelectBranchResponse{}, apperrors.Validation("vouchers are not enabled")
+		}
+		vr, err := s.voucher.Validate(ctx, *req.VoucherCode, userID, out.Subtotal)
+		if err != nil {
+			return dto.SelectBranchResponse{}, err
+		}
+		discount = vr.Discount
+		vid := vr.Voucher.ID
+		voucherID = &vid
+		code := vr.Voucher.Code
+		voucherCode = &code
+	}
+
+	// 6. Build + save session. Total recomputed locally so it reflects the
+	//    discount; the router-supplied picked.Total is subtotal+shipping only.
+	total := out.Subtotal.Add(picked.ShippingFee).Sub(discount)
+	if total.LessThan(decimal.Zero) {
+		total = decimal.Zero
+	}
+
 	now := time.Now()
 	expires := now.Add(SessionTTL)
 	session := CheckoutSession{
@@ -165,7 +197,10 @@ func (s *checkoutService) SelectBranch(ctx context.Context, userID uuid.UUID, re
 		Items:             sessionItems,
 		Subtotal:          out.Subtotal,
 		ShippingFee:       picked.ShippingFee,
-		Total:             picked.Total,
+		DiscountAmount:    discount,
+		Total:             total,
+		VoucherID:         voucherID,
+		VoucherCode:       voucherCode,
 		ShippingAddress:   req.ShippingAddress,
 		ShippingLatitude:  req.ShippingLatitude,
 		ShippingLongitude: req.ShippingLongitude,
@@ -181,16 +216,18 @@ func (s *checkoutService) SelectBranch(ctx context.Context, userID uuid.UUID, re
 	}
 
 	return dto.SelectBranchResponse{
-		SessionID:   session.SessionID,
-		BranchID:    session.BranchID,
-		BranchName:  session.BranchName,
-		Subtotal:    session.Subtotal,
-		ShippingFee: session.ShippingFee,
-		Total:       session.Total,
-		DistanceKm:  session.DistanceKm,
-		Items:       quotedItems,
-		ExpiresAt:   expires,
-		TTLSeconds:  int(SessionTTL.Seconds()),
+		SessionID:      session.SessionID,
+		BranchID:       session.BranchID,
+		BranchName:     session.BranchName,
+		Subtotal:       session.Subtotal,
+		ShippingFee:    session.ShippingFee,
+		DiscountAmount: session.DiscountAmount,
+		Total:          session.Total,
+		VoucherCode:    session.VoucherCode,
+		DistanceKm:     session.DistanceKm,
+		Items:          quotedItems,
+		ExpiresAt:      expires,
+		TTLSeconds:     int(SessionTTL.Seconds()),
 	}, nil
 }
 
@@ -299,7 +336,7 @@ func (s *checkoutService) Confirm(ctx context.Context, userID, sessionID uuid.UU
 				UserID:            userID,
 				BranchID:          session.BranchID,
 				Subtotal:          session.Subtotal,
-				DiscountTotal:     decimal.Zero,
+				DiscountTotal:     session.DiscountAmount,
 				ShippingFee:       session.ShippingFee,
 				Total:             session.Total,
 				ShippingAddress:   session.ShippingAddress,
@@ -338,6 +375,16 @@ func (s *checkoutService) Confirm(ctx context.Context, userID, sessionID uuid.UU
 				return apperrors.Internal("failed to create order item", err)
 			}
 			items[i] = oi
+		}
+
+		// 3f. Redeem the voucher (if any) inside the same tx. Unique-violation
+		//     on (voucher_id, user_id) → VoucherAlreadyUsed → tx rolls back,
+		//     the whole confirm returns 409 and stock is unspent. Race-safe
+		//     even if the same session_id was somehow confirmed twice.
+		if session.VoucherID != nil && s.voucher != nil {
+			if err := s.voucher.Redeem(ctx, *session.VoucherID, userID, order.ID, session.DiscountAmount); err != nil {
+				return err
+			}
 		}
 
 		return nil

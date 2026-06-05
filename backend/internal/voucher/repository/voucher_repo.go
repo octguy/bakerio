@@ -25,6 +25,10 @@ import (
 // out of the tx so the order/confirm caller can roll back.
 var ErrAlreadyRedeemed = errors.New("voucher already redeemed by this user")
 
+// ErrCodeTaken is returned by Create when the voucher code already exists
+// (unique violation on voucher.vouchers.code). Service maps to 409.
+var ErrCodeTaken = errors.New("voucher code already exists")
+
 type VoucherRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Voucher, error)
 	GetByCode(ctx context.Context, code string) (*domain.Voucher, error)
@@ -141,6 +145,10 @@ func (r *voucherRepo) Create(ctx context.Context, p CreateVoucherParams) (*domai
 		CreatedBy:       p.CreatedBy,
 	})
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			return nil, ErrCodeTaken
+		}
 		return nil, err
 	}
 	v := toVoucher(row)
