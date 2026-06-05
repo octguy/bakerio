@@ -29,6 +29,8 @@ export type {
   PaginatedResponse,
   BranchProductDetailListResponse,
   StatisticsOverview,
+  ProductStat,
+  BranchStat,
   GetOrdersOptions,
   PaginatedOrders,
   SavedAddress,
@@ -106,6 +108,8 @@ export {
 
   // Statistics (REAL)
   getStatisticsOverview,
+  getStatisticsProducts,
+  getStatisticsBranches,
 
   // Addresses (REAL)
   getAddresses,

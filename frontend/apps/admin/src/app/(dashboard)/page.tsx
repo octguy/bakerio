@@ -1,157 +1,86 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { getProducts, getStatisticsOverview } from "@repo/api-client";
 import {
-  getMockDailyRevenue,
-  getMockRecentOrders,
-  getMockHeatmap,
-  getMockAlerts,
-  getMockTopSellers,
-} from "@repo/api-client/mock/analytics";
+  getProducts,
+  getStatisticsOverview,
+  getStatisticsProducts,
+  getStatisticsBranches,
+  getOrders,
+} from "@repo/api-client";
 import { formatCurrency } from "@/lib/utils";
 
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const heatColor = (v: number) => {
-  const stops = [
-    "#F5EBD9",
-    "#F1DDB6",
-    "#EBC892",
-    "#E5B26B",
-    "#D4943A",
-    "#B5722A",
-    "#8A4D14",
-  ];
-  return stops[Math.min(stops.length - 1, Math.floor(v * stops.length))];
-};
-
-const SEV: Record<string, string> = {
-  red: "var(--sienna)",
-  amber: "var(--golden)",
-  green: "var(--sage)",
-};
-
 function formatCompactVnd(amount: number) {
-  if (amount >= 1_000_000) {
-    return `${(amount / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 1 })}M₫`;
-  }
-  if (amount >= 1_000) {
-    return `${Math.round(amount / 1_000)}K₫`;
-  }
+  if (amount >= 1_000_000) return `${(amount / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 1 })}M₫`;
+  if (amount >= 1_000) return `${Math.round(amount / 1_000)}K₫`;
   return `${amount.toLocaleString("vi-VN")}₫`;
 }
 
-function Spark({ data, color }: { data: number[]; color: string }) {
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const w = 88;
-  const h = 28;
-  const pts = data
-    .map((v, i) => {
-      const x = (i / (data.length - 1)) * w;
-      const y = h - ((v - min) / (max - min || 1)) * (h - 4) - 2;
-      return `${x},${y}`;
-    })
-    .join(" ");
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
-      <polyline
-        points={`0,${h} ${pts} ${w},${h}`}
-        fill={color}
-        opacity="0.16"
-      />
-      <polyline
-        className="bkr-draw"
-        points={pts}
-        fill="none"
-        stroke={color}
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        style={{ animationDelay: "300ms" }}
-      />
-    </svg>
-  );
-}
-
 export default function DashboardPage() {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [listSize, setListSize] = useState(5);
+
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const calc = () => {
+      const panelHeaderH = 52;
+      const panelPadding = 32;
+      const rowH = 48;
+      const available = el.clientHeight - panelHeaderH - panelPadding;
+      setListSize(Math.max(3, Math.floor(available / rowH)));
+    };
+    calc();
+    const ro = new ResizeObserver(calc);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const now = new Date();
   const weekday = now.toLocaleDateString("en-GB", { weekday: "long" });
-  const today = now.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-  });
+  const today = now.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 
   const { data: stats } = useQuery({
     queryKey: ["statistics-overview"],
     queryFn: getStatisticsOverview,
     initialData: {
-      total_customers: 0,
-      total_branches: 0,
-      total_products: 0,
-      total_orders: 0,
-      total_revenue: 0,
-      total_discount: 0,
-      vouchers_redeemed: 0,
-      tier_bronze: 0,
-      tier_silver: 0,
-      tier_gold: 0
-    }
+      total_customers: 0, total_branches: 0, total_products: 0,
+      total_orders: 0, total_revenue: 0, total_discount: 0,
+      vouchers_redeemed: 0, tier_bronze: 0, tier_silver: 0, tier_gold: 0,
+    },
   });
 
-  const dailyRev = getMockDailyRevenue();
-  const recent = getMockRecentOrders();
-  const heatmapData = getMockHeatmap();
-  const alertsData = getMockAlerts();
-  const topSellersData = getMockTopSellers();
+  const { data: products } = useQuery({ queryKey: ["products"], queryFn: getProducts });
+  const activeCount = products?.filter((p) => p.is_active).length ?? stats.total_products;
 
-  const { data: products } = useQuery({
-    queryKey: ["products"],
-    queryFn: getProducts,
+  const { data: topProducts } = useQuery({
+    queryKey: ["statistics-products", listSize],
+    queryFn: () => getStatisticsProducts(listSize),
   });
-  const activeCount =
-    products?.filter((p) => p.is_active).length ?? stats.total_products;
+
+  const { data: branchStats } = useQuery({
+    queryKey: ["statistics-branches"],
+    queryFn: getStatisticsBranches,
+  });
+
+  const { data: recentOrders } = useQuery({
+    queryKey: ["orders-recent", listSize],
+    queryFn: () => getOrders({ page: 1, size: listSize }),
+  });
 
   const KPIS = [
-    {
-      label: "Tổng doanh thu",
-      value: formatCompactVnd(Number(stats.total_revenue)),
-      delta: "",
-      sub: "All time",
-      spark: [12, 14, 11, 13, 16, 14, 15, 17, 14, 15],
-      color: "var(--cinnamon)",
-    },
-    {
-      label: "Tổng đơn hàng",
-      value: stats.total_orders.toString(),
-      delta: "",
-      sub: "All time",
-      spark: [22, 28, 24, 30, 35, 32, 38, 40, 36, 42],
-      color: "var(--sage)",
-    },
-    {
-      label: "Tổng khách hàng",
-      value: stats.total_customers.toString(),
-      delta: "",
-      sub: "All time",
-      spark: [120, 125, 118, 130, 124, 128, 132, 126, 128, 128],
-      color: "var(--golden)",
-    },
-    {
-      label: "Chiết khấu đã cấp",
-      value: formatCompactVnd(Number(stats.total_discount)),
-      delta: "",
-      sub: "All time",
-      spark: [3, 3, 4, 4, 5, 5, 5, 6, 7, 7],
-      color: "var(--sienna)",
-      warn: true,
-    },
+    { label: "Tổng doanh thu", value: formatCompactVnd(Number(stats.total_revenue)), sub: "All time" },
+    { label: "Tổng đơn hàng", value: stats.total_orders.toString(), sub: "All time" },
+    { label: "Tổng khách hàng", value: stats.total_customers.toString(), sub: "All time" },
+    { label: "Chiết khấu đã cấp", value: formatCompactVnd(Number(stats.total_discount)), sub: "All time" },
   ];
 
+  const maxBranchRev = branchStats?.items?.[0]?.revenue ?? 1;
+
   return (
-    <div>
+    <div className="flex h-full flex-col">
       {/* Title */}
       <div className="mb-5 flex items-end justify-between">
         <div>
@@ -160,32 +89,14 @@ export default function DashboardPage() {
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
               {weekday} · {today} · ICT
             </span>
-            <span className="rounded-full bg-sienna/10 px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-sienna">
-              Demo analytics · mock data
-            </span>
           </div>
-          <h1
-            className="font-display tracking-tight"
-            style={{
-              fontSize: "clamp(28px,4vw,38px)",
-              lineHeight: 1,
-              letterSpacing: "-0.02em",
-            }}
-          >
+          <h1 className="font-display tracking-tight" style={{ fontSize: "clamp(28px,4vw,38px)", lineHeight: 1, letterSpacing: "-0.02em" }}>
             Good morning, baker.{" "}
-            <span className="font-editorial text-cinnamon">
-              {activeCount} loaves so far.
-            </span>
+            <span className="font-editorial text-cinnamon">{activeCount} loaves so far.</span>
           </h1>
         </div>
         <div className="flex gap-2">
-          <button className="rounded-full border border-[var(--admin-line)] bg-white px-4 py-2 text-[12px] font-semibold tracking-wide">
-            ↧ Export CSV
-          </button>
-          <Link
-            href="/products"
-            className="rounded-full bg-espresso px-4 py-2 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream"
-          >
+          <Link href="/products" className="rounded-full bg-espresso px-4 py-2 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream">
             + Quick post
           </Link>
         </div>
@@ -194,310 +105,86 @@ export default function DashboardPage() {
       {/* KPI strip */}
       <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {KPIS.map((k) => (
-          <div
-            key={k.label}
-            className="relative overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white p-4"
-          >
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">
-              {k.label}
-            </div>
+          <div key={k.label} className="rounded-lg border border-[var(--admin-line)] bg-white p-4">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">{k.label}</div>
             <div className="mt-1 flex items-baseline gap-2.5">
-              <span
-                className="font-display tabular-nums tracking-tight text-espresso"
-                style={{
-                  fontSize: "30px",
-                  lineHeight: 1,
-                  letterSpacing: "-0.02em",
-                }}
-              >
+              <span className="font-display tabular-nums tracking-tight text-espresso" style={{ fontSize: "30px", lineHeight: 1, letterSpacing: "-0.02em" }}>
                 {k.value}
               </span>
-              <span
-                className="font-mono text-[10.5px] font-bold tracking-[0.04em]"
-                style={{ color: k.warn ? "var(--sienna)" : "var(--sage)" }}
-              >
-                {k.delta}
-              </span>
             </div>
-            <div className="mt-1 font-editorial text-[12px] italic text-[var(--admin-muted)]">
-              {k.sub}
-            </div>
-            <div className="absolute right-3.5 top-4">
-              <Spark data={k.spark} color={k.color} />
-            </div>
+            <div className="mt-1 font-editorial text-[12px] italic text-[var(--admin-muted)]">{k.sub}</div>
           </div>
         ))}
       </div>
 
-      {/* Mid row */}
-      <div className="mb-3.5 grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
-        {/* Heatmap */}
-        <div className="rounded-lg border border-[var(--admin-line)] bg-white p-5">
-          <div className="mb-3 flex items-baseline justify-between">
-            <div>
-              <div className="font-display text-[18px] tracking-tight">
-                Order density · by hour
-              </div>
-              <div className="font-editorial text-[12px] italic text-[var(--admin-muted)]">
-                last 7 days · 07:00 → 21:00
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 font-mono text-[9.5px] tracking-[0.14em] text-[var(--admin-muted)]">
-              LOW
-              {[0.1, 0.3, 0.5, 0.7, 0.9].map((v) => (
-                <span
-                  key={v}
-                  className="block h-3.5 w-3.5 rounded-sm"
-                  style={{ background: heatColor(v) }}
-                />
-              ))}
-              HIGH
-            </div>
-          </div>
-          <div className="mb-1 flex gap-1 pl-[36px]">
-            {Array.from({ length: 14 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex-1 text-center font-mono text-[9px] tracking-[0.06em] text-[var(--admin-muted)]"
-              >
-                {String(i + 7).padStart(2, "0")}
-              </div>
-            ))}
-          </div>
-          {heatmapData.grid.map((row, di) => (
-            <div key={di} className="mb-1 flex items-center gap-1">
-              <div
-                className={`w-[34px] pr-1.5 text-right font-mono text-[10.5px] tracking-[0.08em] ${
-                  di === 5
-                    ? "font-bold text-cinnamon"
-                    : "text-[var(--admin-muted)]"
-                }`}
-              >
-                {DAYS[di]}
-              </div>
-              {row.map((v, hi) => (
-                <div
-                  key={hi}
-                  className="aspect-square max-h-[22px] flex-1 rounded-sm"
-                  style={{ background: heatColor(v) }}
-                />
-              ))}
-            </div>
-          ))}
-          <div className="mt-2.5 pl-[36px] font-mono text-[10px] tracking-[0.1em] text-[var(--admin-muted)]">
-            Peak:{" "}
-            <span className="font-bold text-cinnamon">
-              {heatmapData.peak.day}{" "}
-              {String(heatmapData.peak.hour).padStart(2, "0")}:00
-            </span>{" "}
-            · {heatmapData.peak.ordersPerHour} orders / hour
-          </div>
-        </div>
-
-        {/* Daily revenue bars */}
-        <div className="rounded-lg border border-[var(--admin-line)] bg-white p-5">
-          <div className="mb-3 flex items-baseline justify-between">
-            <div>
-              <div className="font-display text-[18px] tracking-tight">
-                Daily revenue
-              </div>
-              <div className="font-editorial text-[12px] italic text-[var(--admin-muted)]">
-                week · million ₫
-              </div>
-            </div>
-            <div className="flex gap-1">
-              {["1W", "2W", "1M", "YTD"].map((tab, i) => (
-                <span
-                  key={tab}
-                  className={`rounded px-2 py-1 font-mono text-[10.5px] tracking-[0.1em] ${
-                    i === 0
-                      ? "bg-espresso font-bold text-white"
-                      : "text-[var(--admin-muted)]"
-                  }`}
-                >
-                  {tab}
-                </span>
-              ))}
-            </div>
-          </div>
-          <svg viewBox="0 0 460 200" className="h-[200px] w-full">
-            {[0, 1, 2, 3, 4].map((g) => (
-              <line
-                key={g}
-                x1="30"
-                x2="450"
-                y1={20 + g * 36}
-                y2={20 + g * 36}
-                stroke="var(--admin-line)"
-                strokeDasharray="2 4"
-              />
-            ))}
-            {[30, 22.5, 15, 7.5, 0].map((y, i) => (
-              <text
-                key={i}
-                x="22"
-                y={24 + i * 36}
-                className="font-mono"
-                fontSize="9"
-                fill="var(--admin-muted)"
-                textAnchor="end"
-              >
-                {y}M
-              </text>
-            ))}
-            {dailyRev.map((d, i) => {
-              const m = d.revenue / 1_000_000;
-              const x = 50 + i * 55;
-              const h = (m / 30) * 144;
-              const top = 164 - h;
-              const today = i === dailyRev.length - 1;
-              return (
-                <g
-                  key={i}
-                  className="bkr-grow-up"
-                  style={{
-                    animationDelay: `${i * 80}ms`,
-                    transformBox: "fill-box",
-                    transformOrigin: "50% 100%",
-                  }}
-                >
-                  <rect
-                    x={x}
-                    y={top}
-                    width="36"
-                    height={h}
-                    rx="2"
-                    fill={today ? "var(--cinnamon)" : "var(--golden)"}
-                    opacity={today ? 1 : 0.65}
-                  />
-                  <text
-                    x={x + 18}
-                    y={182}
-                    className="font-mono"
-                    fontSize="9"
-                    fill="var(--admin-muted)"
-                    textAnchor="middle"
-                  >
-                    {d.date}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-      </div>
-
-      {/* Bottom row */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+      {/* Bottom row — fills remaining height, panels clip content */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-3">
         {/* Top sellers */}
-        <div className="rounded-lg border border-[var(--admin-line)] bg-white p-4">
+        <div ref={panelRef} className="overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white p-4">
           <div className="mb-3 flex items-baseline justify-between">
-            <div className="font-display text-[17px] tracking-tight">
-              Top sellers · today
-            </div>
-            <span className="font-mono text-[10px] font-bold tracking-[0.16em] text-cinnamon">
-              VIEW ALL ↗
-            </span>
+            <div className="font-display text-[17px] tracking-tight">Top sellers</div>
+            <Link href="/products" className="font-mono text-[10px] font-bold tracking-[0.16em] text-cinnamon">VIEW ALL ↗</Link>
           </div>
-          {topSellersData.map((s, i) => (
-            <div
-              key={s.name}
-              className={`flex items-center gap-2.5 py-2 ${i === 0 ? "" : "border-t border-[var(--admin-line)]"}`}
-            >
-              <span
-                className="w-[22px] font-mono text-[11px] font-bold"
-                style={{
-                  color: i < 3 ? "var(--cinnamon)" : "var(--admin-muted)",
-                }}
-              >
-                {s.rank}
+          {topProducts?.items?.length === 0 && (
+            <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--admin-muted)]">No sales data yet.</p>
+          )}
+          {topProducts?.items?.slice(0, listSize).map((s, i) => (
+            <div key={s.id} className={`flex h-12 items-center gap-2.5 ${i === 0 ? "" : "border-t border-[var(--admin-line)]"}`}>
+              <span className="w-[22px] font-mono text-[11px] font-bold" style={{ color: i < 3 ? "var(--cinnamon)" : "var(--admin-muted)" }}>
+                {String(i + 1).padStart(2, "0")}
               </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[12.5px] font-semibold leading-tight text-espresso">
-                  {s.name}
-                </div>
-                <div className="mt-0.5 flex gap-2 font-mono text-[9.5px] tracking-[0.06em] text-[var(--admin-muted)]">
-                  <span>{s.sold} sold</span>·
-                  <span>{formatCurrency(s.rev)}</span>
-                </div>
-              </div>
-              <div className="w-[60px]">
-                <div className="h-1 rounded-sm bg-[var(--admin-panel)]">
-                  <div
-                    className="h-full rounded-sm bg-cinnamon"
-                    style={{ width: `${s.share}%` }}
-                  />
-                </div>
+              <div className="min-w-0 flex-1 text-[12.5px] font-semibold leading-tight text-espresso truncate">{s.name}</div>
+              <div className="flex-shrink-0 text-right font-mono text-[9.5px] tracking-[0.06em] text-[var(--admin-muted)]">
+                <div>{s.qty_sold} sold</div>
+                <div>{formatCurrency(s.revenue)}</div>
               </div>
             </div>
           ))}
         </div>
 
         {/* Recent orders */}
-        <div className="rounded-lg border border-[var(--admin-line)] bg-white p-4 lg:col-span-1">
+        <div className="overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white p-4">
           <div className="mb-3 flex items-baseline justify-between">
-            <div className="font-display text-[17px] tracking-tight">
-              Demo recent orders
-            </div>
-            <span className="font-mono text-[10px] font-bold tracking-[0.16em] text-cinnamon">
-              ALL →
-            </span>
+            <div className="font-display text-[17px] tracking-tight">Recent orders</div>
+            <Link href="/orders" className="font-mono text-[10px] font-bold tracking-[0.16em] text-cinnamon">ALL →</Link>
           </div>
-          {recent.map((o, i) => (
-            <div
-              key={o.id}
-              className={`flex items-center gap-2.5 py-2 text-[12px] ${i === 0 ? "" : "border-t border-[var(--admin-line)]"}`}
-            >
-              <span className="font-mono font-semibold text-espresso">
-                {o.id}
-              </span>
-              <span className="flex-1 font-editorial italic text-[var(--admin-muted)]">
-                {o.customer}
-              </span>
-              <span className="font-mono text-espresso">
-                {formatCurrency(o.total).replace("₫", "")}₫
-              </span>
+          {recentOrders?.items?.length === 0 && (
+            <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--admin-muted)]">No orders yet.</p>
+          )}
+          {recentOrders?.items?.slice(0, listSize).map((o, i) => (
+            <div key={o.id} className={`flex h-12 items-center gap-2.5 text-[12px] ${i === 0 ? "" : "border-t border-[var(--admin-line)]"}`}>
+              <span className="font-mono font-semibold text-espresso">{o.id.slice(0, 8)}</span>
+              <span className="flex-1 truncate font-editorial italic text-[var(--admin-muted)]">{o.status}</span>
+              <span className="font-mono text-espresso">{formatCurrency(o.total_amount)}</span>
             </div>
           ))}
         </div>
 
-        {/* Alerts */}
-        <div className="rounded-lg border border-[var(--admin-line)] bg-white p-4">
+        {/* Branch leaderboard */}
+        <div className="overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white p-4">
           <div className="mb-3 flex items-baseline justify-between">
-            <div className="font-display text-[17px] tracking-tight">
-              Demo alerts
-            </div>
-            <span className="rounded bg-sienna/10 px-2 py-0.5 font-mono text-[10px] font-bold tracking-[0.16em] text-sienna">
-              {alertsData.filter((a) => a.sev === "red").length} RED
-            </span>
+            <div className="font-display text-[17px] tracking-tight">Branches · revenue</div>
+            <Link href="/branches" className="font-mono text-[10px] font-bold tracking-[0.16em] text-cinnamon">ALL →</Link>
           </div>
-          {alertsData.map((a, i) => (
-            <div
-              key={i}
-              className={`flex gap-2.5 py-2 ${i === 0 ? "" : "border-t border-[var(--admin-line)]"}`}
-            >
-              <div
-                className={`w-1 flex-shrink-0 rounded-sm ${a.sev === "red" ? "bkr-pulse" : ""}`}
-                style={{ background: SEV[a.sev] }}
-              />
+          {branchStats?.items?.length === 0 && (
+            <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--admin-muted)]">No branch data yet.</p>
+          )}
+          {branchStats?.items?.slice(0, listSize).map((b, i) => (
+            <div key={b.branch_id} className={`flex h-12 items-center gap-2.5 ${i === 0 ? "" : "border-t border-[var(--admin-line)]"}`}>
+              <span className="w-[22px] font-mono text-[11px] font-bold" style={{ color: i < 3 ? "var(--cinnamon)" : "var(--admin-muted)" }}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
               <div className="min-w-0 flex-1">
-                <div className="mb-0.5 flex items-center gap-2">
-                  <span
-                    className="font-mono text-[9px] font-bold tracking-[0.2em]"
-                    style={{ color: SEV[a.sev] }}
-                  >
-                    {a.tag}
-                  </span>
-                  <span className="font-mono text-[9.5px] tracking-[0.08em] text-[var(--admin-muted)]">
-                    · {a.branch}
-                  </span>
-                  <span className="ml-auto font-mono text-[9.5px] text-[var(--admin-muted)]">
-                    {a.time} ago
-                  </span>
+                <div className="text-[12.5px] font-semibold leading-tight text-espresso">{b.branch_name}</div>
+                <div className="mt-0.5 flex gap-2 font-mono text-[9.5px] tracking-[0.06em] text-[var(--admin-muted)]">
+                  <span>{b.order_count} orders</span>·<span>{b.staff_count} staff</span>
                 </div>
-                <div className="text-[12.5px] leading-tight text-espresso">
-                  {a.text}
+              </div>
+              <div className="w-[60px]">
+                <div className="h-1 rounded-sm bg-[var(--admin-panel)]">
+                  <div className="h-full rounded-sm bg-cinnamon" style={{ width: `${(b.revenue / maxBranchRev) * 100}%` }} />
                 </div>
+                <div className="mt-0.5 text-right font-mono text-[9px] text-[var(--admin-muted)]">{formatCompactVnd(b.revenue)}</div>
               </div>
             </div>
           ))}

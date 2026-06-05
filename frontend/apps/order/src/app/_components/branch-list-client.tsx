@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { flushSync } from "react-dom";
-import { useRouter } from "next/navigation";
 import { Branch } from "@repo/api-client";
 import { BranchCard } from "./branch-card";
 import { Link } from "next-view-transitions";
@@ -61,7 +60,6 @@ interface Props {
 }
 
 export function BranchListClient({ initialBranches, error, initialTransitionBranchId = null }: Props) {
-  const router = useRouter();
   const [search, setSearch] = useState("");
   const [openNow, setOpenNow] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>("Pick Up");

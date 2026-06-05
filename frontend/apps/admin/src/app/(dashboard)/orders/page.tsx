@@ -406,8 +406,6 @@ export default function OrdersPage() {
             {filteredOrders.map((o, i) => {
               const mode = getOrderMode(o);
               const channel = getOrderChannel(o);
-              const colKey = getOrderColumnKey(o.status);
-              const col = COLS.find((c) => c.key === colKey)!;
               const mins = getOrderAgeMinutes(o);
               const late = mins > 20 && !isTerminalOrder(o.status);
               const cust = getCustomerName(o.id);
