@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { getProducts } from "@repo/api-client";
+import { getProducts, getStatisticsOverview } from "@repo/api-client";
 import {
-  getMockDashboardStats,
   getMockDailyRevenue,
   getMockRecentOrders,
   getMockHeatmap,
@@ -84,7 +83,24 @@ export default function DashboardPage() {
     day: "2-digit",
     month: "short",
   });
-  const stats = getMockDashboardStats();
+
+  const { data: stats } = useQuery({
+    queryKey: ["statistics-overview"],
+    queryFn: getStatisticsOverview,
+    initialData: {
+      total_customers: 0,
+      total_branches: 0,
+      total_products: 0,
+      total_orders: 0,
+      total_revenue: 0,
+      total_discount: 0,
+      vouchers_redeemed: 0,
+      tier_bronze: 0,
+      tier_silver: 0,
+      tier_gold: 0
+    }
+  });
+
   const dailyRev = getMockDailyRevenue();
   const recent = getMockRecentOrders();
   const heatmapData = getMockHeatmap();
@@ -96,39 +112,38 @@ export default function DashboardPage() {
     queryFn: getProducts,
   });
   const activeCount =
-    products?.filter((p) => p.is_active).length ?? stats.activeProducts;
-  const averageBasket = stats.totalOrders > 0 ? stats.revenue / stats.totalOrders : 0;
+    products?.filter((p) => p.is_active).length ?? stats.total_products;
 
   const KPIS = [
     {
-      label: "Doanh thu · today",
-      value: formatCompactVnd(stats.revenue),
-      delta: "+12.4%",
-      sub: "vs 7d avg",
+      label: "Tổng doanh thu",
+      value: formatCompactVnd(Number(stats.total_revenue)),
+      delta: "",
+      sub: "All time",
       spark: [12, 14, 11, 13, 16, 14, 15, 17, 14, 15],
       color: "var(--cinnamon)",
     },
     {
-      label: "Đơn hàng · today",
-      value: stats.totalOrders.toString(),
-      delta: "+8.1%",
-      sub: "418 forecast",
+      label: "Tổng đơn hàng",
+      value: stats.total_orders.toString(),
+      delta: "",
+      sub: "All time",
       spark: [22, 28, 24, 30, 35, 32, 38, 40, 36, 42],
       color: "var(--sage)",
     },
     {
-      label: "Trung bình giỏ",
-      value: formatCompactVnd(averageBasket),
-      delta: "+3.6%",
-      sub: "WoW",
+      label: "Tổng khách hàng",
+      value: stats.total_customers.toString(),
+      delta: "",
+      sub: "All time",
       spark: [120, 125, 118, 130, 124, 128, 132, 126, 128, 128],
       color: "var(--golden)",
     },
     {
-      label: "Cảnh báo kho",
-      value: stats.lowStockItems.toString(),
-      delta: "+2",
-      sub: "since 06:00",
+      label: "Chiết khấu đã cấp",
+      value: formatCompactVnd(Number(stats.total_discount)),
+      delta: "",
+      sub: "All time",
       spark: [3, 3, 4, 4, 5, 5, 5, 6, 7, 7],
       color: "var(--sienna)",
       warn: true,

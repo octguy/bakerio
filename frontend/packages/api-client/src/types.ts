@@ -257,6 +257,19 @@ export interface PaginatedResponse<T> {
 
 export type BranchProductDetailListResponse = PaginatedResponse<BranchProductDetail>;
 
+export interface StatisticsOverview {
+  total_customers: number;
+  total_branches: number;
+  total_products: number;
+  total_orders: number;
+  total_revenue: number;
+  total_discount: number;
+  vouchers_redeemed: number;
+  tier_bronze: number;
+  tier_silver: number;
+  tier_gold: number;
+}
+
 export interface GetOrdersOptions {
   page?: number;
   size?: number;
