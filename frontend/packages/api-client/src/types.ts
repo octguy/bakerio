@@ -140,13 +140,18 @@ export interface CreateOrderRequest {
 export interface CartItemResponse {
   id: string;
   product_id: string;
+  name: string;
+  price: number | string;
   quantity: number;
+  line_total: number | string;
+  available: boolean;
+  slug?: string;
 }
 
 export interface CartResponse {
   items: CartItemResponse[];
-  total: number;
-  count: number;
+  total: number | string;
+  count: number | string;
 }
 
 export interface User {

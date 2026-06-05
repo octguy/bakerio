@@ -15,6 +15,8 @@ export default function SidebarCart() {
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const subtotal = useCartStore((s) => s.subtotal());
   const setCartOpen = useCartStore((s) => s.setCartOpen);
+  const syncing = useCartStore((s) => s.syncing);
+  const cartError = useCartStore((s) => s.cartError);
 
   const [loyalty, setLoyalty] = useState(0);
 
@@ -100,6 +102,24 @@ export default function SidebarCart() {
           </button>
         </div>
       </div>
+
+      {/* Sync status */}
+      {cartError ? (
+        <div
+          role="alert"
+          className="mb-3 rounded-xl border border-sienna/30 bg-sienna/10 px-3 py-2 font-mono text-[11px] leading-snug text-sienna"
+        >
+          {cartError}
+        </div>
+      ) : syncing ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-caramel"
+        >
+          Syncing…
+        </div>
+      ) : null}
 
       {/* Line items */}
       <div className="flex-1 overflow-y-auto pr-1">
