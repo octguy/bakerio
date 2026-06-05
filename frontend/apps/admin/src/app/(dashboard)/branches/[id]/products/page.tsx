@@ -1,5 +1,5 @@
 import { getBranch } from "@repo/api-client";
-import { BranchProductsPageClient } from "./branch-products-page-client";
+import { BranchProductsPageClient } from "@/components/branch-products-page-client";
 
 interface PageProps {
   params: Promise<{ id: string }>;

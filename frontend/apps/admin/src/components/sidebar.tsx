@@ -31,6 +31,7 @@ const GROUPS: NavGroup[] = [
     head: "Bánh · Catalog",
     items: [
       { href: "/products", label: "Products", glyph: "⬡" },
+      { href: "/branch-products", label: "My Branch Stock", glyph: "▦" },
       { href: "/categories", label: "Categories", glyph: "⬢" },
       { href: "/vouchers", label: "Vouchers", glyph: "⬔" },
     ],
@@ -39,7 +40,7 @@ const GROUPS: NavGroup[] = [
     head: "Vận hành · Operations",
     items: [
       { href: "/branches", label: "Branches", glyph: "◉" },
-      { href: "/users", label: "Staff", glyph: "◐" },
+      { href: "/staff", label: "Staff", glyph: "◐" },
       { href: "/all-users", label: "All Users", glyph: "◒" },
       { href: "/account", label: "Account", glyph: "◈" },
     ],
@@ -54,11 +55,17 @@ function getAuthorizedGroups(roles: string[]): NavGroup[] {
   return GROUPS.map((g) => ({
     ...g,
     items: g.items.filter((it) => {
-      if (it.href === "/users" || it.href === "/all-users") {
+      if (it.href === "/all-users") {
         return isSuperAdmin;
       }
-      if (it.href === "/branches") {
+      if (it.href === "/staff") {
         return isSuperAdmin || isBranchManager;
+      }
+      if (it.href === "/branches") {
+        return isSuperAdmin;
+      }
+      if (it.href === "/branch-products") {
+        return isBranchManager;
       }
       if (it.href === "/categories") {
         return isSuperAdmin || isProductManager;

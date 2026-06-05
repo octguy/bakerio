@@ -9,6 +9,7 @@ import {
   getStatisticsProducts,
   getStatisticsBranches,
   getOrders,
+  getStatisticsBranch,
 } from "@repo/api-client";
 import type { ProductStat } from "@repo/api-client";
 import { formatCurrency } from "@/lib/utils";
@@ -25,15 +26,22 @@ export default function DashboardPage() {
   const roles = user?.roles ?? [];
   const isSuperAdmin = roles.includes("super_admin");
   const isProductManager = roles.includes("product_manager");
+  const isBranchManager = roles.includes("branch_manager");
 
-  if (!isSuperAdmin && isProductManager) {
+  if (isSuperAdmin) {
+    return <SuperAdminDashboard />;
+  } else if (isBranchManager) {
+    return <BranchManagerDashboard />;
+  } else if (isProductManager) {
     return <ProductManagerDashboard />;
   }
 
+  // fallback
   return <SuperAdminDashboard />;
 }
 
 function ProductManagerDashboard() {
+  // existing content unchanged
   const panelRef = useRef<HTMLDivElement>(null);
   const [listSize, setListSize] = useState(5);
 
@@ -127,6 +135,105 @@ function ProductManagerDashboard() {
                 <td className="text-right font-mono font-semibold text-espresso">{formatCurrency(s.revenue)}</td>
                 <td className="text-right font-mono text-[var(--admin-muted)]">{s.branches_active}</td>
                 <td className="text-right font-mono text-[var(--admin-muted)]">{s.total_stock}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function BranchManagerDashboard() {
+  const { user } = useAuth();
+  const branchId = user?.branch?.id;
+  const { data } = useQuery({
+    queryKey: ["statistics-branch", branchId],
+    queryFn: () => getStatisticsBranch(branchId as string),
+    enabled: Boolean(branchId),
+  });
+
+  if (!branchId) {
+    return (
+      <div className="flex h-full flex-col">
+        <p className="font-editorial italic text-[var(--admin-muted)]">No branch assigned to your account.</p>
+      </div>
+    );
+  }
+
+  const today = data?.today ?? { orders: 0, revenue: 0 };
+  const thisMonth = data?.this_month ?? { orders: 0, revenue: 0 };
+  const allTime = data?.all_time ?? { orders: 0, revenue: 0 };
+
+  const KPIS = [
+    { label: "Doanh thu hôm nay", value: formatCompactVnd(today.revenue), sub: "Today" },
+    { label: "Đơn hôm nay", value: String(today.orders), sub: "Today" },
+    { label: "Doanh thu tháng", value: formatCompactVnd(thisMonth.revenue), sub: "This month" },
+    { label: "Doanh thu all-time", value: formatCompactVnd(allTime.revenue), sub: "All time" },
+  ];
+
+  const extraKPIS = [
+    { label: "Staff", value: String(data?.staff_count ?? 0) },
+    { label: "Active products", value: String(data?.active_products ?? 0) },
+    { label: "Customers", value: String(data?.unique_customers ?? 0) },
+  ];
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-5">
+        <div className="mb-1.5 flex items-center gap-3">
+          <span className="block h-px w-6 bg-golden" />
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">Branch Manager</span>
+        </div>
+        <h1 className="font-display tracking-tight" style={{ fontSize: "clamp(28px,4vw,38px)", lineHeight: 1, letterSpacing: "-0.02em" }}>
+          {data?.branch_name ?? "Branch"} <span className="font-editorial text-cinnamon">· {today.orders} orders today</span>
+        </h1>
+      </div>
+
+      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {KPIS.map((k) => (
+          <div key={k.label} className="rounded-lg border border-[var(--admin-line)] bg-white p-4">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">{k.label}</div>
+            <div className="mt-1 flex items-baseline gap-2.5">
+              <span className="font-display tabular-nums tracking-tight text-espresso" style={{ fontSize: "30px", lineHeight: 1, letterSpacing: "-0.02em" }}>{k.value}</span>
+            </div>
+            <div className="mt-1 font-editorial text-[12px] italic text-[var(--admin-muted)]">{k.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {extraKPIS.map((k) => (
+          <div key={k.label} className="rounded-lg border border-[var(--admin-line)] bg-white p-4">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">{k.label}</div>
+            <div className="mt-1">
+              <span className="font-display tabular-nums tracking-tight text-espresso" style={{ fontSize: "30px", lineHeight: 1, letterSpacing: "-0.02em" }}>{k.value}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white p-4">
+        <div className="mb-3 font-display text-[17px] tracking-tight">Top sellers · this branch</div>
+        {data?.top_products?.length === 0 && (
+          <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--admin-muted)]">No sales data yet.</p>
+        )}
+        <table className="w-full text-left text-[12px]">
+          <thead>
+            <tr className="border-b border-[var(--admin-line)] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--admin-muted)]">
+              <th className="pb-2 font-medium">#</th>
+              <th className="pb-2 font-medium">Product</th>
+              <th className="pb-2 text-right font-medium">Sold</th>
+              <th className="pb-2 text-right font-medium">Revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data?.top_products?.slice(0, 5).map((p, i) => (
+              <tr key={p.product_id} className="h-12 border-b border-[var(--admin-line)] last:border-0 hover:bg-[var(--admin-panel)] transition-colors">
+                <td className="font-mono text-[11px] font-bold" style={{ color: i < 3 ? "var(--cinnamon)" : "var(--admin-muted)" }}>{String(i + 1).padStart(2, "0")}</td>
+                <td className="font-semibold text-espresso">{p.name}</td>
+                <td className="text-right font-mono">{p.qty_sold}</td>
+                <td className="text-right font-mono font-semibold text-espresso">{formatCurrency(p.revenue)}</td>
               </tr>
             ))}
           </tbody>

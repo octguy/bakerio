@@ -30,7 +30,7 @@ export type {
   BranchProductDetailListResponse,
   StatisticsOverview,
   ProductStat,
-  BranchStat,
+  BranchStat, BranchDetailStats,
   GetOrdersOptions,
   PaginatedOrders,
   SavedAddress,
@@ -110,6 +110,7 @@ export {
   getStatisticsOverview,
   getStatisticsProducts,
   getStatisticsBranches,
+  getStatisticsBranch,
 
   // Addresses (REAL)
   getAddresses,

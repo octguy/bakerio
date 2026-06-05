@@ -13,7 +13,7 @@ import {
   getCategories,
   getStatisticsProducts,
 } from "@repo/api-client";
-import type { Product, ProductStat } from "@repo/api-client";
+import type { Product } from "@repo/api-client";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { Button, buttonVariants } from "@/components/ui/button";

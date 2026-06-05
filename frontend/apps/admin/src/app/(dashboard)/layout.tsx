@@ -35,10 +35,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   let hasAccess = true;
 
-  if (pathname.startsWith("/users") || pathname.startsWith("/all-users")) {
+  if (pathname.startsWith("/all-users")) {
     hasAccess = isSuperAdmin;
-  } else if (pathname.startsWith("/branches")) {
+  } else if (pathname.startsWith("/staff")) {
     hasAccess = isSuperAdmin || isBranchManager;
+  } else if (pathname.startsWith("/branch-products")) {
+    hasAccess = isSuperAdmin || isBranchManager;
+  } else if (pathname.startsWith("/branches")) {
+    hasAccess = isSuperAdmin;
+  } else if (pathname.startsWith("/vouchers")) {
+    hasAccess = isSuperAdmin || isProductManager;
   } else if (pathname.startsWith("/categories")) {
     hasAccess = isSuperAdmin || isProductManager;
   } else if (pathname.startsWith("/products")) {

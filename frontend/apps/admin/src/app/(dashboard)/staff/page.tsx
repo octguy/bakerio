@@ -103,7 +103,7 @@ function filterStaff(staff: StaffMember[], q: string): StaffMember[] {
   );
 }
 
-export default function UsersPage() {
+export default function StaffPage() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<StaffMember | null>(null);
