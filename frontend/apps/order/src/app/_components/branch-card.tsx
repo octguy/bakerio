@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { flushSync } from "react-dom";
-import { useTransitionRouter } from "next-view-transitions";
+import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cart";
 import type { Branch } from "@repo/api-client";
 
@@ -13,16 +13,18 @@ interface Props {
   heroImage: string;
   distanceLabel: string;
   etaLabel: string;
+  isTransitionSource: boolean;
+  onTransitionSource: (branchId: string | null) => void;
+  onTransitionStart: () => void;
 }
 
 const regionTags: Record<string, string> = {
   south: "Coffee bar",
 };
 
-export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLabel }: Props) {
-  const router = useTransitionRouter();
+export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLabel, isTransitionSource, onTransitionSource, onTransitionStart }: Props) {
+  const router = useRouter();
   const selectBranch = useCartStore((s) => s.selectBranch);
-  const [isTransitionSource, setIsTransitionSource] = useState(false);
   // Only the tapped card carries the shared morph name during navigation,
   // guaranteeing the view-transition-name stays unique across the page.
 
@@ -36,13 +38,30 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
   }, [router]);
 
   const handleSelect = () => {
-    // flushSync so this card carries `selected-branch` in the DOM *before* the
-    // view-transition snapshot is taken; then navigate (the menu header shares
-    // the same name, so the snapshot morphs card -> header).
     flushSync(() => {
-      setIsTransitionSource(true);
+      onTransitionSource(branch.id);
       selectBranch({ id: branch.id, name: branch.name, address: branch.address, dist: distanceLabel, eta: etaLabel });
     });
+
+    // Mark this navigation so the menu's back button can safely pop history
+    // instead of pushing a new entry (which polluted the URL with
+    // ?transitionBranch= and forced users to press back twice).
+    try {
+      window.sessionStorage.setItem("bkr:cameFromBranchList", "1");
+    } catch {}
+
+    const showMenuShell = () => flushSync(() => {
+      onTransitionSource(null);
+      onTransitionStart();
+    });
+
+    if ("startViewTransition" in document) {
+      const transition = document.startViewTransition(showMenuShell);
+      transition.ready.finally(() => router.push("/menu"));
+      return;
+    }
+
+    showMenuShell();
     router.prefetch("/menu");
     router.push("/menu");
   };

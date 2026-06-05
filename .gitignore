@@ -15,6 +15,7 @@
 **/documents
 **/code-reviews
 **/test
+**/.turbo/
 
 **/CLAUDE.md
 secrets-template.txt

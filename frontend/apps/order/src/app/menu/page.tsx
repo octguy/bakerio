@@ -85,7 +85,7 @@ export default async function MenuPage() {
 
       <MenuLayoutClient
         catalogSection={
-          <Suspense fallback={<div className="py-12 text-center font-editorial text-[14.5px] italic text-caramel">Opening today&apos;s batch…</div>}>
+          <Suspense fallback={<div className="py-12 text-center font-editorial text-[14.5px] italic text-caramel">Opening today&apos;s batch...</div>}>
             <MenuCatalog />
           </Suspense>
         }
