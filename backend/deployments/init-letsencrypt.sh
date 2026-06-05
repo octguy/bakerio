@@ -22,10 +22,15 @@ cd "$(dirname "$0")"
 
 COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
 
-# Cert covers the apex + the three subdomains used in nginx.conf.
+# --cert-name is only the directory label under /etc/letsencrypt/live; it does
+# NOT need to be a resolvable domain. nginx.conf points at this path.
 CERT_NAME="bakerio.thinhuit.id.vn"
+
+# SANs actually placed in the cert. Every domain here is validated via HTTP-01,
+# so each MUST resolve to this VPS and be served on :80 by nginx. The apex
+# bakerio.thinhuit.id.vn has no A record and nginx does not serve it, so it is
+# intentionally excluded.
 DOMAINS=(
-  "bakerio.thinhuit.id.vn"
   "api.bakerio.thinhuit.id.vn"
   "order.bakerio.thinhuit.id.vn"
   "admin.bakerio.thinhuit.id.vn"
@@ -40,26 +45,43 @@ FORCE="${1:-}"
 
 LE_PATH="/etc/letsencrypt"
 LIVE_PATH="${LE_PATH}/live/${CERT_NAME}"
+LIVE_CERT="${LIVE_PATH}/fullchain.pem"
 
-if [ -d "${LIVE_PATH}" ] && [ "${FORCE}" != "--force" ]; then
-  echo "Existing certificate found at ${LIVE_PATH}."
+# A real cert is issued by Let's Encrypt (prod or staging). A self-signed dummy
+# planted by this script has issuer CN=${CERT_NAME}, so it must NOT count as done.
+cert_is_real() {
+  sudo openssl x509 -in "${LIVE_CERT}" -noout -issuer 2>/dev/null \
+    | grep -qiE "let's encrypt|fake le|staging"
+}
+
+if [ -f "${LIVE_CERT}" ] && cert_is_real && [ "${FORCE}" != "--force" ]; then
+  echo "Real certificate already present at ${LIVE_PATH}."
   echo "Nothing to do. Re-run with --force to recreate."
   exit 0
 fi
 
-echo "### 1/4  Planting temporary self-signed cert so nginx can boot ..."
-sudo mkdir -p "${LIVE_PATH}"
-sudo openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-  -keyout "${LIVE_PATH}/privkey.pem" \
-  -out "${LIVE_PATH}/fullchain.pem" \
-  -subj "/CN=${CERT_NAME}"
+# Plant a 1-day self-signed cert ONLY when nginx has nothing to load. If a dummy
+# from a previous failed run is already here, leave it; nginx can boot on it.
+if [ ! -f "${LIVE_CERT}" ]; then
+  echo "### 1/4  Planting temporary self-signed cert so nginx can boot ..."
+  sudo mkdir -p "${LIVE_PATH}"
+  sudo openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+    -keyout "${LIVE_PATH}/privkey.pem" \
+    -out "${LIVE_CERT}" \
+    -subj "/CN=${CERT_NAME}"
+else
+  echo "### 1/4  Cert file already present; skipping dummy generation."
+fi
 
 echo "### 2/4  Starting nginx (serves ACME webroot on :80) ..."
-${COMPOSE} up -d nginx
+# --no-deps: do NOT (re)create app/order/admin. Their images may be missing or
+# mid-deploy; nginx only needs to serve the ACME webroot here. An already-running
+# nginx is reloaded in step 4 regardless.
+${COMPOSE} up -d --no-deps nginx
 sleep 3
 
 echo "### 3/4  Requesting real certificate from Let's Encrypt ..."
-# Remove the dummy so certbot writes a clean lineage.
+# Remove the dummy/old lineage so certbot writes a clean one.
 sudo rm -rf "${LIVE_PATH}" \
   "${LE_PATH}/archive/${CERT_NAME}" \
   "${LE_PATH}/renewal/${CERT_NAME}.conf"
@@ -75,7 +97,7 @@ if [ "${STAGING}" != "0" ]; then
   staging_arg=("--staging")
 fi
 
-${COMPOSE} run --rm --entrypoint certbot certbot \
+${COMPOSE} run --rm --no-deps --entrypoint certbot certbot \
   certonly --webroot -w /var/www/certbot \
   --cert-name "${CERT_NAME}" \
   "${domain_args[@]}" \

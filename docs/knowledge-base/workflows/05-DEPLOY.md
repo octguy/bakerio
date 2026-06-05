@@ -48,8 +48,10 @@ nginx. After this, the `certbot` service auto-renews and nginx reloads every 6h
 to pick up renewals. You only run this script again if you add domains
 (`./init-letsencrypt.sh --force`).
 
-**Prerequisite:** ports 80 and 443 must be open on the VPS firewall, and all
-four hostnames (apex + 3 subdomains) must resolve to the VPS before running.
+**Prerequisite:** ports 80 and 443 must be open on the VPS firewall, and the
+three subdomains (`api.`, `order.`, `admin.bakerio.thinhuit.id.vn`) must resolve
+to the VPS before running. The cert directory is named `bakerio.thinhuit.id.vn`
+but the apex itself is not a cert SAN and does not need a DNS record.
 
 ## Setting Up Deployment
 
