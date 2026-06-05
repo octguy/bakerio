@@ -160,6 +160,7 @@ services:
     image: ${DOCKER_USERNAME}/bakerio-order:${IMAGE_TAG:-latest}
     container_name: bakerio-order
     environment:
+      API_URL: ${API_URL}
       NEXT_PUBLIC_API_URL: ${API_URL}
       NEXT_PUBLIC_BRANDING_URL: ${BRANDING_URL:-}
       NEXT_PUBLIC_ORDER_URL: ${ORDER_URL:-}
@@ -180,6 +181,7 @@ services:
     image: ${DOCKER_USERNAME}/bakerio-admin:${IMAGE_TAG:-latest}
     container_name: bakerio-admin
     environment:
+      API_URL: ${API_URL}
       NEXT_PUBLIC_API_URL: ${API_URL}
       NEXT_PUBLIC_BRANDING_URL: ${BRANDING_URL:-}
       NEXT_PUBLIC_ORDER_URL: ${ORDER_URL:-}

@@ -9,6 +9,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/order"
 	"github.com/octguy/bakerio/backend/internal/platform/email"
 	"github.com/octguy/bakerio/backend/internal/product"
+	"github.com/octguy/bakerio/backend/internal/statistics"
 	"github.com/octguy/bakerio/backend/internal/user"
 	"github.com/octguy/bakerio/backend/internal/voucher"
 	"github.com/octguy/bakerio/backend/pkg/config"
@@ -25,6 +26,7 @@ type modules struct {
 	order      *order.Module
 	voucher    *voucher.Module
 	membership *membership.Module
+	statistics *statistics.Module
 	notif      *notification.Module
 }
 
@@ -79,6 +81,10 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 
 	voucherMod := voucher.New(voucher.Deps{Pool: i.pool})
 	membershipMod := membership.New(membership.Deps{Pool: i.pool})
+	statisticsMod := statistics.New(statistics.Deps{
+		Pool:       i.pool,
+		Membership: branchMod.MembershipService(),
+	})
 
 	// Order module consumes the branch router (read-side for routing) +
 	// the product service (Catalog for prices + stock lock/decrement) +
@@ -106,6 +112,7 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 		order:      orderMod,
 		voucher:    voucherMod,
 		membership: membershipMod,
+		statistics: statisticsMod,
 		notif:      notifMod,
 	}
 }

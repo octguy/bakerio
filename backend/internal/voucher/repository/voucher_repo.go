@@ -3,14 +3,12 @@ package repository
 import (
 	"context"
 	"errors"
-	"math/big"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
 
@@ -166,11 +164,11 @@ func (r *voucherRepo) Update(ctx context.Context, id uuid.UUID, p UpdateVoucherP
 	}
 	if p.MaxDiscount != nil {
 		params.SetMaxDiscount = true
-		params.MaxDiscount = decimalPtrToNumeric(*p.MaxDiscount)
+		params.MaxDiscount = *p.MaxDiscount
 	}
 	if p.MinSubtotal != nil {
 		params.SetMinSubtotal = true
-		params.MinSubtotal = decimalPtrToNumeric(*p.MinSubtotal)
+		params.MinSubtotal = *p.MinSubtotal
 	}
 	if p.ValidFrom != nil {
 		params.SetValidFrom = true
@@ -289,21 +287,5 @@ func toRedemptionPtr(r voucherdb.VoucherRedemption) *domain.VoucherRedemption {
 		OrderID:        r.OrderID,
 		DiscountAmount: r.DiscountAmount,
 		RedeemedAt:     r.RedeemedAt,
-	}
-}
-
-// decimalPtrToNumeric maps a *decimal.Decimal to pgtype.Numeric for the
-// nullable narg parameters in UpdateVoucher. nil → NULL; non-nil → set.
-// Implemented inline because no other module needs this yet.
-func decimalPtrToNumeric(d *decimal.Decimal) pgtype.Numeric {
-	if d == nil {
-		return pgtype.Numeric{Valid: false}
-	}
-	coef := new(big.Int)
-	coef.SetString(d.Coefficient().String(), 10)
-	return pgtype.Numeric{
-		Int:   coef,
-		Exp:   d.Exponent(),
-		Valid: true,
 	}
 }
