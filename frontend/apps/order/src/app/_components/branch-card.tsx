@@ -23,9 +23,8 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
   const router = useTransitionRouter();
   const selectBranch = useCartStore((s) => s.selectBranch);
   const [isTransitionSource, setIsTransitionSource] = useState(false);
-  // Exactly one card matches the store, so only the tapped card claims the
-  // shared morph name — no duplicate view-transition-name across the page.
-  const isMorphing = useCartStore((s) => s.selectedBranch?.id === branch.id);
+  // Only the tapped card carries the shared morph name during navigation,
+  // guaranteeing the view-transition-name stays unique across the page.
 
   const tag = regionTags.south;
 
@@ -54,7 +53,7 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
       onPointerEnter={() => router.prefetch("/menu")}
       onFocus={() => router.prefetch("/menu")}
       aria-label={isSelected ? `${branch.name}, recommended` : branch.name}
-      style={{ minHeight: 100, viewTransitionName: isMorphing || isTransitionSource ? "selected-branch" : undefined }}
+      style={{ minHeight: 100, viewTransitionName: isTransitionSource ? "selected-branch" : undefined }}
 className={`relative flex w-full items-stretch rounded-2xl border-2 bg-white text-left transition-colors transition-transform hover:-translate-y-0.5 active:scale-[0.98] ${
             isSelected ? "border-espresso" : "border-crust"
           }`}
