@@ -43,9 +43,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     hasAccess = isSuperAdmin || isProductManager;
   } else if (pathname.startsWith("/products")) {
     hasAccess = isSuperAdmin || isBranchManager || isProductManager;
-  } else if (pathname === "/" || pathname.startsWith("/orders") || pathname.startsWith("/account")) {
-    // Everyone (including base staff) can access these.
-    hasAccess = true;
+  } else if (pathname.startsWith("/orders")) {
+    hasAccess = isSuperAdmin || isBranchManager || roles.includes("branch_staff");
+  } else if (pathname === "/" || pathname.startsWith("/account")) {
   }
 
   if (!hasAccess) {
