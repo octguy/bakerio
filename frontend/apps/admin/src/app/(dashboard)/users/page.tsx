@@ -134,11 +134,7 @@ export default function UsersPage() {
     : staffRoles.filter((role) => role.value === "branch_staff");
   const canGoPrev = page > 1;
   const canGoNext = page < totalPages;
-  const filteredBySelectStaff = staff.filter((member) => {
-    if (roleFilter !== "all" && member.roleId !== roleFilter) return false;
-    if (branchFilter !== "all" && member.branchId !== branchFilter) return false;
-    return true;
-  });
+  const filteredBySelectStaff = staff;
   const createForm = useForm<CreateFormData>({
     resolver: zodResolver(createSchema),
     defaultValues: {
@@ -184,6 +180,8 @@ export default function UsersPage() {
         ]);
         const staffPage = await getStaffPage({
           q: q || undefined,
+          role: roleFilter !== "all" ? roleFilter : undefined,
+          branch_id: branchFilter !== "all" ? branchFilter : undefined,
           page,
           size: pageSize,
           branches: branchList,
@@ -191,7 +189,7 @@ export default function UsersPage() {
         setBranches(branchList);
         setStaffRoles(roles);
         setStaff(staffPage.items);
-        setCounts(getStaffCountsFromList(staffPage.items));
+        setCounts({ total: staffPage.total, onShift: staffPage.total });
         setTotalPages(Math.max(1, staffPage.totalPages));
         return;
       }
@@ -200,6 +198,7 @@ export default function UsersPage() {
         const staffList = await getBranchStaff(
           currentProfile.branch.id,
           currentProfile.branch.name,
+          roleFilter !== "all" ? roleFilter : undefined
         );
         const filteredStaff = filterStaff(staffList, q);
         const branchTotalPages = Math.max(1, Math.ceil(filteredStaff.length / pageSize));
@@ -244,7 +243,7 @@ export default function UsersPage() {
   useEffect(() => {
     const timeout = window.setTimeout(() => setPage(1), 0);
     return () => window.clearTimeout(timeout);
-  }, [pageSize]);
+  }, [pageSize, roleFilter, branchFilter]);
 
   useEffect(() => {
     if (loading && !profile) return;
@@ -254,7 +253,7 @@ export default function UsersPage() {
 
     return () => window.clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trimmedSearch, page, pageSize]);
+  }, [trimmedSearch, roleFilter, branchFilter, page, pageSize]);
 
   useEffect(() => {
     if (!isBranchScopedRole(selectedRole)) {
