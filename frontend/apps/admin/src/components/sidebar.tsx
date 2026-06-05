@@ -69,7 +69,10 @@ function getAuthorizedGroups(roles: string[]): NavGroup[] {
       if (it.href === "/products") {
         return isSuperAdmin || isBranchManager || isProductManager;
       }
-      return true; // /, /orders, /account
+      if (it.href === "/orders") {
+        return isSuperAdmin || isBranchManager || roles.includes("branch_staff");
+      }
+      return true; // /, /account
     }),
   })).filter((g) => g.items.length > 0);
 }

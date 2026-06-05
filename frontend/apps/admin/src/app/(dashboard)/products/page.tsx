@@ -11,8 +11,9 @@ import {
   updateProduct,
   deleteProduct,
   getCategories,
+  getStatisticsProducts,
 } from "@repo/api-client";
-import type { Product } from "@repo/api-client";
+import type { Product, ProductStat } from "@repo/api-client";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Pencil, T
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "@/lib/auth";
 
 const schema = z.object({
   name: z.string().min(1, "Name required"),
@@ -42,6 +44,9 @@ type FormData = z.infer<typeof schema>;
 export default function ProductsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const roles = user?.roles ?? [];
+  const showStats = roles.includes("product_manager") && !roles.includes("super_admin");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [deleting, setDeleting] = useState<Product | null>(null);
@@ -92,6 +97,13 @@ export default function ProductsPage() {
     queryFn: () => getCategories(),
     staleTime: Infinity, // Cache categories infinitely
   });
+
+  const { data: productStats } = useQuery({
+    queryKey: ["statistics-products-all"],
+    queryFn: () => getStatisticsProducts(100),
+    enabled: showStats,
+  });
+  const statsMap = new Map((productStats?.items ?? []).map((s) => [s.id, s]));
 
   const createMut = useMutation({
     mutationFn: (d: FormData) =>
@@ -209,6 +221,32 @@ export default function ProductsPage() {
       header: "Price",
       cell: ({ row }) => formatCurrency(row.original.price),
     },
+    ...(showStats ? [
+      {
+        id: "qty_sold",
+        header: "Sold",
+        cell: ({ row }: { row: { original: Product } }) => {
+          const s = statsMap.get(row.original.id);
+          return s ? s.qty_sold : "—";
+        },
+      },
+      {
+        id: "revenue",
+        header: "Revenue",
+        cell: ({ row }: { row: { original: Product } }) => {
+          const s = statsMap.get(row.original.id);
+          return s ? formatCurrency(s.revenue) : "—";
+        },
+      },
+      {
+        id: "stock",
+        header: "Stock",
+        cell: ({ row }: { row: { original: Product } }) => {
+          const s = statsMap.get(row.original.id);
+          return s ? s.total_stock : "—";
+        },
+      },
+    ] as ColumnDef<Product, unknown>[] : []),
     {
       id: "actions",
       header: "",

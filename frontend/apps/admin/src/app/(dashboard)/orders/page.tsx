@@ -134,7 +134,12 @@ export default function OrdersPage() {
         setTotalOrders(data.total);
         setTotalPages(data.pages || Math.ceil(data.total / data.size) || 1);
       } catch (err) {
-      setError("Could not load live orders. Retry when the API is reachable.");
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("permission") || msg.includes("forbidden")) {
+        setError("You don't have permission to view orders.");
+      } else {
+        setError("Could not load live orders. Retry when the API is reachable.");
+      }
       if (process.env.NODE_ENV !== "production") {
         console.error("Failed to fetch orders:", err);
       }

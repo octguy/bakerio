@@ -10,7 +10,9 @@ import {
   getStatisticsBranches,
   getOrders,
 } from "@repo/api-client";
+import type { ProductStat } from "@repo/api-client";
 import { formatCurrency } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
 
 function formatCompactVnd(amount: number) {
   if (amount >= 1_000_000) return `${(amount / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 1 })}M₫`;
@@ -19,6 +21,122 @@ function formatCompactVnd(amount: number) {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const roles = user?.roles ?? [];
+  const isSuperAdmin = roles.includes("super_admin");
+  const isProductManager = roles.includes("product_manager");
+
+  if (!isSuperAdmin && isProductManager) {
+    return <ProductManagerDashboard />;
+  }
+
+  return <SuperAdminDashboard />;
+}
+
+function ProductManagerDashboard() {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [listSize, setListSize] = useState(5);
+
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    const calc = () => {
+      const rowH = 48;
+      const reserved = 52 + 32;
+      const available = el.clientHeight - reserved;
+      setListSize(Math.max(3, Math.floor(available / rowH)));
+    };
+    calc();
+    const ro = new ResizeObserver(calc);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const { data: products } = useQuery({ queryKey: ["products"], queryFn: getProducts });
+  const { data: topProducts } = useQuery({
+    queryKey: ["statistics-products", listSize],
+    queryFn: () => getStatisticsProducts(listSize),
+  });
+
+  const activeCount = products?.filter((p) => p.is_active).length ?? 0;
+  const inactiveCount = (products?.length ?? 0) - activeCount;
+
+  const KPIS = [
+    { label: "Active products", value: String(activeCount) },
+    { label: "Inactive", value: String(inactiveCount) },
+    { label: "Total catalog", value: String(products?.length ?? 0) },
+  ];
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-5">
+        <div className="mb-1.5 flex items-center gap-3">
+          <span className="block h-px w-6 bg-golden" />
+          <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">Product Manager</span>
+        </div>
+        <h1 className="font-display tracking-tight" style={{ fontSize: "clamp(28px,4vw,38px)", lineHeight: 1, letterSpacing: "-0.02em" }}>
+          Your catalog{" "}
+          <span className="font-editorial text-cinnamon">· {activeCount} active</span>
+        </h1>
+      </div>
+
+      <div className="mb-3.5 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {KPIS.map((k) => (
+          <div key={k.label} className="rounded-lg border border-[var(--admin-line)] bg-white p-4">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--admin-muted)]">{k.label}</div>
+            <div className="mt-1">
+              <span className="font-display tabular-nums tracking-tight text-espresso" style={{ fontSize: "30px", lineHeight: 1, letterSpacing: "-0.02em" }}>
+                {k.value}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div ref={panelRef} className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white p-4">
+        <div className="mb-3 flex items-baseline justify-between">
+          <div className="font-display text-[17px] tracking-tight">Top sellers · by revenue</div>
+          <Link href="/products" className="font-mono text-[10px] font-bold tracking-[0.16em] text-cinnamon">ALL PRODUCTS ↗</Link>
+        </div>
+        {topProducts?.items?.length === 0 && (
+          <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--admin-muted)]">No sales data yet.</p>
+        )}
+        <table className="w-full text-left text-[12px]">
+          <thead>
+            <tr className="border-b border-[var(--admin-line)] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--admin-muted)]">
+              <th className="pb-2 font-medium">#</th>
+              <th className="pb-2 font-medium">Product</th>
+              <th className="pb-2 text-right font-medium">Price</th>
+              <th className="pb-2 text-right font-medium">Sold</th>
+              <th className="pb-2 text-right font-medium">Revenue</th>
+              <th className="pb-2 text-right font-medium">Branches</th>
+              <th className="pb-2 text-right font-medium">Stock</th>
+            </tr>
+          </thead>
+          <tbody>
+            {topProducts?.items?.slice(0, listSize).map((s: ProductStat, i: number) => (
+              <tr key={s.id} className="h-12 border-b border-[var(--admin-line)] last:border-0 hover:bg-[var(--admin-panel)] transition-colors">
+                <td className="font-mono text-[11px] font-bold" style={{ color: i < 3 ? "var(--cinnamon)" : "var(--admin-muted)" }}>
+                  {String(i + 1).padStart(2, "0")}
+                </td>
+                <td>
+                  <Link href={`/products/${s.slug}`} className="font-semibold text-espresso hover:underline">{s.name}</Link>
+                </td>
+                <td className="text-right font-mono text-[var(--admin-muted)]">{formatCompactVnd(s.price)}</td>
+                <td className="text-right font-mono">{s.qty_sold}</td>
+                <td className="text-right font-mono font-semibold text-espresso">{formatCurrency(s.revenue)}</td>
+                <td className="text-right font-mono text-[var(--admin-muted)]">{s.branches_active}</td>
+                <td className="text-right font-mono text-[var(--admin-muted)]">{s.total_stock}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SuperAdminDashboard() {
   const panelRef = useRef<HTMLDivElement>(null);
   const [listSize, setListSize] = useState(5);
 
