@@ -55,7 +55,16 @@ JOIN product.products p ON p.id = bp.product_id
 WHERE bp.branch_id = $1
   AND p.deleted_at IS NULL
   AND (NOT sqlc.arg('filter_active')::boolean OR bp.is_active = sqlc.arg('is_active')::boolean)
-ORDER BY p.sort_order ASC, p.name ASC;
+ORDER BY p.sort_order ASC, p.name ASC
+LIMIT sqlc.arg('lim') OFFSET sqlc.arg('off');
+
+-- name: CountBranchProductsForManage :one
+SELECT COUNT(*)
+FROM product.branch_products bp
+JOIN product.products p ON p.id = bp.product_id
+WHERE bp.branch_id = $1
+  AND p.deleted_at IS NULL
+  AND (NOT sqlc.arg('filter_active')::boolean OR bp.is_active = sqlc.arg('is_active')::boolean);
 
 -- name: ListActiveProductsByBranch :many
 -- Customer-facing: products sellable at a branch (both flags true).

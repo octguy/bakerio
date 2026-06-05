@@ -36,7 +36,8 @@ type ProductRepository interface {
 	SeedBranch(ctx context.Context, branchID uuid.UUID) error
 	GetBranchProduct(ctx context.Context, productID, branchID uuid.UUID) (*domain.BranchProduct, error)
 	UpdateBranchProduct(ctx context.Context, productID, branchID uuid.UUID, active *bool, quantity *int32) (*domain.BranchProduct, error)
-	ListBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool) ([]BranchProductManageRow, error)
+	ListBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool, limit, offset int32) ([]BranchProductManageRow, error)
+	CountBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool) (int64, error)
 	ListActiveProductsByBranch(ctx context.Context, branchID uuid.UUID) ([]*domain.Product, error)
 
 	// Stock — called by the order module's confirm tx. Caller passes
@@ -430,8 +431,12 @@ type BranchProductManageRow struct {
 	ProductActive bool
 }
 
-func (r *productRepo) ListBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool) ([]BranchProductManageRow, error) {
-	params := productdb.ListBranchProductsForManageParams{BranchID: branchID}
+func (r *productRepo) ListBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool, limit, offset int32) ([]BranchProductManageRow, error) {
+	params := productdb.ListBranchProductsForManageParams{
+		BranchID: branchID,
+		Lim:      limit,
+		Off:      offset,
+	}
 	if activeFilter != nil {
 		params.FilterActive = true
 		params.IsActive = *activeFilter
@@ -454,6 +459,15 @@ func (r *productRepo) ListBranchProductsForManage(ctx context.Context, branchID 
 		}
 	}
 	return out, nil
+}
+
+func (r *productRepo) CountBranchProductsForManage(ctx context.Context, branchID uuid.UUID, activeFilter *bool) (int64, error) {
+	params := productdb.CountBranchProductsForManageParams{BranchID: branchID}
+	if activeFilter != nil {
+		params.FilterActive = true
+		params.IsActive = *activeFilter
+	}
+	return r.queries(ctx).CountBranchProductsForManage(ctx, params)
 }
 
 // BranchStockRow is the result of LockBranchStockForUpdate. Service uses

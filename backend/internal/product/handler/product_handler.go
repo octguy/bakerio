@@ -250,7 +250,9 @@ func (h *ProductHandler) UpdateBranchProduct(c *gin.Context) {
 // @Produce      json
 // @Param        id      path      string  true   "Branch ID"
 // @Param        active  query     boolean false  "Filter: true → active only, false → inactive only, omit → all"
-// @Success      200  {array}   dto.BranchProductDetail
+// @Param        page    query     int     false  "Page (default 1)"
+// @Param        size    query     int     false  "Page size (default 20)"
+// @Success      200  {object}  dto.BranchProductDetailListResponse
 // @Failure      403  {object}  response.ErrorResponse
 // @Router       /branch/{id}/products [get]
 func (h *ProductHandler) ListBranchProducts(c *gin.Context) {
@@ -279,7 +281,7 @@ func (h *ProductHandler) ListBranchProducts(c *gin.Context) {
 		}
 	}
 
-	res, err := h.svc.ListBranchProductsForManage(c.Request.Context(), branchID, activeFilter)
+	res, err := h.svc.ListBranchProductsForManage(c.Request.Context(), branchID, activeFilter, pagination.FromQuery(c))
 	if err != nil {
 		response.Error(c, err)
 		return

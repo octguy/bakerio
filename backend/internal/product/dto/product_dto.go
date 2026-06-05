@@ -72,6 +72,11 @@ type BranchProductResponse struct {
 	Quantity  int32     `json:"quantity"`
 } // @name BranchProductResponse
 
+type BranchProductDetailListResponse struct {
+	Items []BranchProductDetail `json:"items"`
+	pagination.Meta
+} // @name BranchProductDetailListResponse
+
 // BranchProductDetail is the enriched per-branch product row returned by the
 // admin/manager list endpoint (joins live product name/slug/price).
 type BranchProductDetail struct {

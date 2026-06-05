@@ -126,6 +126,21 @@ definitions:
       slug:
         type: string
     type: object
+  BranchProductDetailListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/BranchProductDetail'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
   BranchProductResponse:
     properties:
       branch_id:
@@ -1489,15 +1504,21 @@ paths:
         in: query
         name: active
         type: boolean
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20)
+        in: query
+        name: size
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/BranchProductDetail'
-            type: array
+            $ref: '#/definitions/BranchProductDetailListResponse'
         "403":
           description: Forbidden
           schema:
