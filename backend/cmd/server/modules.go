@@ -4,6 +4,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/auth"
 	"github.com/octguy/bakerio/backend/internal/branch"
 	"github.com/octguy/bakerio/backend/internal/cart"
+	"github.com/octguy/bakerio/backend/internal/membership"
 	"github.com/octguy/bakerio/backend/internal/notification"
 	"github.com/octguy/bakerio/backend/internal/order"
 	"github.com/octguy/bakerio/backend/internal/platform/email"
@@ -16,14 +17,15 @@ import (
 // modules bundles every business module so the rest of main can pass a single
 // value around instead of a long argument list.
 type modules struct {
-	auth    *auth.Module
-	user    *user.Module
-	branch  *branch.Module
-	product *product.Module
-	cart    *cart.Module
-	order   *order.Module
-	voucher *voucher.Module
-	notif   *notification.Module
+	auth       *auth.Module
+	user       *user.Module
+	branch     *branch.Module
+	product    *product.Module
+	cart       *cart.Module
+	order      *order.Module
+	voucher    *voucher.Module
+	membership *membership.Module
+	notif      *notification.Module
 }
 
 // buildModules constructs every module and resolves all cross-module wiring.
@@ -76,6 +78,7 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 	})
 
 	voucherMod := voucher.New(voucher.Deps{Pool: i.pool})
+	membershipMod := membership.New(membership.Deps{Pool: i.pool})
 
 	// Order module consumes the branch router (read-side for routing) +
 	// the product service (Catalog for prices + stock lock/decrement) +
@@ -84,23 +87,25 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 	// the voucher service (Validate at select-branch, Redeem at confirm).
 	// Confirm flow opens its own tx via the shared TxManager.
 	orderMod := order.New(order.Deps{
-		Pool:       i.pool,
-		TX:         i.tx,
-		Redis:      i.redis,
-		Router:     branchMod.Router(),
-		Catalog:    productMod.ProductService(),
-		Membership: branchMod.MembershipService(),
-		Voucher:    voucherMod.Service(),
+		Pool:           i.pool,
+		TX:             i.tx,
+		Redis:          i.redis,
+		Router:         branchMod.Router(),
+		Catalog:        productMod.ProductService(),
+		Membership:     branchMod.MembershipService(),
+		Voucher:        voucherMod.Service(),
+		UserMembership: membershipMod.Service(),
 	})
 
 	return &modules{
-		auth:    authMod,
-		user:    userMod,
-		branch:  branchMod,
-		product: productMod,
-		cart:    cartMod,
-		order:   orderMod,
-		voucher: voucherMod,
-		notif:   notifMod,
+		auth:       authMod,
+		user:       userMod,
+		branch:     branchMod,
+		product:    productMod,
+		cart:       cartMod,
+		order:      orderMod,
+		voucher:    voucherMod,
+		membership: membershipMod,
+		notif:      notifMod,
 	}
 }

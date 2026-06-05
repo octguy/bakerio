@@ -188,6 +188,13 @@ type UsersAddress struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type UsersMembership struct {
+	UserID     uuid.UUID       `json:"user_id"`
+	Tier       string          `json:"tier"`
+	TotalSpent decimal.Decimal `json:"total_spent"`
+	UpdatedAt  time.Time       `json:"updated_at"`
+}
+
 type UsersProfile struct {
 	ID          uuid.UUID `json:"id"`
 	UserID      uuid.UUID `json:"user_id"`

@@ -75,6 +75,8 @@ sql:
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal", pointer: true }
           - column: "voucher.redemptions.discount_amount"
             go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
+          - column: "users.memberships.total_spent"
+            go_type: { import: "github.com/shopspring/decimal", type: "Decimal" }
 
   - engine: "postgresql"
     queries: "db/queries/users"
@@ -143,6 +145,18 @@ sql:
       go:
         package: "voucherdb"
         out: "db/sqlc/voucher"
+        emit_json_tags: true
+        emit_empty_slices: true
+        sql_package: "pgx/v5"
+        overrides: *overrides
+
+  - engine: "postgresql"
+    queries: "db/queries/membership"
+    schema: "db/migrations"
+    gen:
+      go:
+        package: "membershipdb"
+        out: "db/sqlc/membership"
         emit_json_tags: true
         emit_empty_slices: true
         sql_package: "pgx/v5"

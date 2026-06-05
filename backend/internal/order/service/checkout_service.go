@@ -10,6 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	branchSvc "github.com/octguy/bakerio/backend/internal/branch/service"
+	membershipSvc "github.com/octguy/bakerio/backend/internal/membership/service"
 	"github.com/octguy/bakerio/backend/internal/order/dto"
 	"github.com/octguy/bakerio/backend/internal/order/repository"
 	productdto "github.com/octguy/bakerio/backend/internal/product/dto"
@@ -48,12 +49,13 @@ type Catalog interface {
 }
 
 type checkoutService struct {
-	router  branchSvc.BranchRouter
-	catalog Catalog
-	store   CheckoutSessionStore
-	orders  repository.OrderRepository
-	tx      *txmanager.TxManager
-	voucher voucherSvc.Service // optional — nil disables voucher integration
+	router     branchSvc.BranchRouter
+	catalog    Catalog
+	store      CheckoutSessionStore
+	orders     repository.OrderRepository
+	tx         *txmanager.TxManager
+	voucher    voucherSvc.Service    // optional — nil disables voucher integration
+	membership membershipSvc.Service // optional — nil disables membership tracking
 }
 
 func NewCheckoutService(
@@ -63,14 +65,16 @@ func NewCheckoutService(
 	orders repository.OrderRepository,
 	tx *txmanager.TxManager,
 	voucher voucherSvc.Service,
+	membership membershipSvc.Service,
 ) CheckoutService {
 	return &checkoutService{
-		router:  router,
-		catalog: catalog,
-		store:   store,
-		orders:  orders,
-		tx:      tx,
-		voucher: voucher,
+		router:     router,
+		catalog:    catalog,
+		store:      store,
+		orders:     orders,
+		tx:         tx,
+		voucher:    voucher,
+		membership: membership,
 	}
 }
 
@@ -383,6 +387,17 @@ func (s *checkoutService) Confirm(ctx context.Context, userID, sessionID uuid.UU
 		//     even if the same session_id was somehow confirmed twice.
 		if session.VoucherID != nil && s.voucher != nil {
 			if err := s.voucher.Redeem(ctx, *session.VoucherID, userID, order.ID, session.DiscountAmount); err != nil {
+				return err
+			}
+		}
+
+		// 3g. Bump lifetime spend + recompute tier inside the same tx.
+		//     Failure here rolls back the order — we don't want a placed
+		//     order without a membership update, since /membership reads
+		//     would be wrong forever. The increment uses order.Total (post-
+		//     discount), matching what the user actually paid.
+		if s.membership != nil && order.Total.GreaterThan(decimal.Zero) {
+			if err := s.membership.ApplyOrderSpend(ctx, userID, order.Total); err != nil {
 				return err
 			}
 		}

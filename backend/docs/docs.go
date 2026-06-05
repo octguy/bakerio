@@ -1607,6 +1607,37 @@ const docTemplate = `{
                 }
             }
         },
+        "/membership": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns ` + "`" + `{tier, total_spent, next_tier_threshold}` + "`" + `. A user\nwho has never confirmed an order is returned as synthetic\nBRONZE/0 — no DB row is written for a read.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "membership"
+                ],
+                "summary": "Get caller's membership tier + cumulative spend",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/MembershipResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/orders": {
             "get": {
                 "security": [
@@ -3723,6 +3754,20 @@ const docTemplate = `{
                 }
             }
         },
+        "MembershipResponse": {
+            "type": "object",
+            "properties": {
+                "next_tier_threshold": {
+                    "type": "number"
+                },
+                "tier": {
+                    "type": "string"
+                },
+                "total_spent": {
+                    "type": "number"
+                }
+            }
+        },
         "MissingItemDTO": {
             "type": "object",
             "properties": {
@@ -4130,6 +4175,10 @@ const docTemplate = `{
                 },
                 "staff": {
                     "description": "managers + staff combined",
+                    "type": "integer"
+                },
+                "vouchers": {
+                    "description": "seeded voucher codes",
                     "type": "integer"
                 }
             }

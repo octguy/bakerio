@@ -31,6 +31,7 @@ type SeedDemoSummary struct {
 	Addresses      int  `json:"addresses"`       // saved customer addresses
 	Orders         int  `json:"orders"`          // placed orders
 	Vouchers       int  `json:"vouchers"`        // seeded voucher codes
+	Memberships    int  `json:"memberships"`     // membership rows derived from seeded orders
 } // @name SeedDemoSummary
 
 // seedDemoData populates a fresh database with realistic sample data for manual
@@ -69,6 +70,9 @@ func seedDemoData(ctx context.Context, mods *modules, pool *pgxpool.Pool) SeedDe
 	seedCustomerAddresses(ctx, pool)
 	seedDemoOrders(ctx, pool)
 	seedVouchers(ctx, pool, adminID)
+	// Membership reconciliation runs LAST so it picks up every order that
+	// the seed produced. Must come after seedDemoOrders.
+	seedMembershipsFromOrders(ctx, pool)
 
 	return readSeedCounts(ctx, pool, false)
 }
@@ -93,6 +97,7 @@ func readSeedCounts(ctx context.Context, pool *pgxpool.Pool, skipped bool) SeedD
 	scan("SELECT COUNT(*) FROM users.addresses", &s.Addresses)
 	scan("SELECT COUNT(*) FROM orders.orders", &s.Orders)
 	scan("SELECT COUNT(*) FROM voucher.vouchers", &s.Vouchers)
+	scan("SELECT COUNT(*) FROM users.memberships", &s.Memberships)
 	return s
 }
 
@@ -710,6 +715,47 @@ ON CONFLICT (code) DO NOTHING`
 	}
 	logger.Log.Info("seed demo: vouchers inserted",
 		zap.Int("created", created), zap.Int("attempted", len(rows)))
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Memberships — derived from the orders we just seeded.
+//
+// seedDemoOrders writes orders directly via insertOrderTx (no service layer),
+// so it bypasses membership.ApplyOrderSpend. Without this step, a customer
+// with N seeded orders would still read as BRONZE/0 from /membership — a
+// stale-looking demo. We fix that with one SQL: GROUP BY user_id from the
+// orders table and derive both total_spent and tier in the same statement.
+//
+// Tier thresholds are duplicated from internal/membership/service (BRONZE
+// <1M, SILVER <5M, GOLD >=5M); if they ever change there, change them here
+// too. Keeping them in SQL avoids N round trips through the service.
+// ─────────────────────────────────────────────────────────────────────────────
+
+func seedMembershipsFromOrders(ctx context.Context, pool *pgxpool.Pool) {
+	const stmt = `
+INSERT INTO users.memberships (user_id, total_spent, tier, updated_at)
+SELECT o.user_id,
+       SUM(o.total),
+       CASE
+         WHEN SUM(o.total) >= 5000000 THEN 'GOLD'
+         WHEN SUM(o.total) >= 1000000 THEN 'SILVER'
+         ELSE 'BRONZE'
+       END,
+       NOW()
+FROM orders.orders o
+GROUP BY o.user_id
+ON CONFLICT (user_id) DO UPDATE
+SET total_spent = EXCLUDED.total_spent,
+    tier        = EXCLUDED.tier,
+    updated_at  = NOW()
+`
+	ct, err := pool.Exec(ctx, stmt)
+	if err != nil {
+		logger.Log.Warn("seed demo: membership reconciliation failed", zap.Error(err))
+		return
+	}
+	logger.Log.Info("seed demo: memberships reconciled from orders",
+		zap.Int64("rows", ct.RowsAffected()))
 }
 
 type seedOrderItem struct {

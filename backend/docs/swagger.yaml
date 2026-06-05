@@ -444,6 +444,15 @@ definitions:
       user_id:
         type: string
     type: object
+  MembershipResponse:
+    properties:
+      next_tier_threshold:
+        type: number
+      tier:
+        type: string
+      total_spent:
+        type: number
+    type: object
   MissingItemDTO:
     properties:
       max_available:
@@ -717,6 +726,9 @@ definitions:
         type: boolean
       staff:
         description: managers + staff combined
+        type: integer
+      vouchers:
+        description: seeded voucher codes
         type: integer
     type: object
   SelectBranchItem:
@@ -2055,6 +2067,28 @@ paths:
       summary: Update a category
       tags:
       - categories
+  /membership:
+    get:
+      description: |-
+        Returns `{tier, total_spent, next_tier_threshold}`. A user
+        who has never confirmed an order is returned as synthetic
+        BRONZE/0 — no DB row is written for a read.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MembershipResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get caller's membership tier + cumulative spend
+      tags:
+      - membership
   /orders:
     get:
       description: 'Customer → own orders only. branch_manager/branch_staff → orders
