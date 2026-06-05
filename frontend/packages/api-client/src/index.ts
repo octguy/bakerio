@@ -107,9 +107,10 @@ export {
   // Statistics (REAL)
   getStatisticsOverview,
 
-  // Addresses (MOCK — backend has no /addresses handler)
+  // Addresses (REAL)
   getAddresses,
   addAddress,
+  updateAddress,
   removeAddress,
   setDefaultAddress,
 } from "./client";

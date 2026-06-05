@@ -1,13 +1,22 @@
 "use client";
 
 import { useState, useEffect, useId, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getLoyalty } from "@repo/api-client/mock/loyalty";
 import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
-import { getMyProfile, getOrderStats, updateMyProfile, changePassword, getAddresses, addAddress, removeAddress, setDefaultAddress } from "@repo/api-client";
+import { getMyProfile, getOrderStats, updateMyProfile, changePassword, getAddresses, addAddress, updateAddress, removeAddress, setDefaultAddress } from "@repo/api-client";
 import type { Profile, SavedAddress } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
+
+const AddressMapPicker = dynamic(
+  () => import("@/components/AddressMapPicker").then((mod) => mod.AddressMapPicker),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 rounded-2xl border border-crust bg-butter" />,
+  },
+);
 
 export default function ProfilePage() {
   return (
@@ -36,7 +45,10 @@ function ProfileContent() {
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [newAddress, setNewAddress] = useState("");
-  const [newAddressLabel, setNewAddressLabel] = useState("");
+  const [newAddressLat, setNewAddressLat] = useState("");
+  const [newAddressLng, setNewAddressLng] = useState("");
+  const [newAddressDefault, setNewAddressDefault] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [profileError, setProfileError] = useState("");
   const memberSince = formatMemberSince(profileUser?.created_at);
@@ -131,16 +143,30 @@ function ProfileContent() {
   };
 
   const saveAddress = async () => {
-    const trimmedLabel = newAddressLabel.trim() || "New Address";
     const trimmed = newAddress.trim();
-    if (!trimmed) return;
+    const lat = Number(newAddressLat);
+    const lng = Number(newAddressLng);
+    if (!trimmed || !newAddressLat || !newAddressLng || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
     
     setIsSavingAddress(true);
     try {
-      const next = await addAddress(trimmedLabel, trimmed);
-      setAddresses((current) => [...current, next]);
+      const shouldSetDefault = newAddressDefault || (!editingAddressId && addresses.length === 0);
+      if (editingAddressId) {
+        const updated = await updateAddress(editingAddressId, { address: trimmed, lat, lng });
+        if (shouldSetDefault) {
+          setAddresses(await setDefaultAddress(updated.id));
+        } else {
+          setAddresses((current) => current.map((addr) => (addr.id === updated.id ? updated : addr)));
+        }
+      } else {
+        const next = await addAddress("Address", trimmed, { lat, lng, isDefault: shouldSetDefault });
+        setAddresses((current) => [...current, next]);
+      }
       setNewAddress("");
-      setNewAddressLabel("");
+      setNewAddressLat("");
+      setNewAddressLng("");
+      setNewAddressDefault(false);
+      setEditingAddressId(null);
       setAddressOpen(false);
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
@@ -149,6 +175,23 @@ function ProfileContent() {
     } finally {
       setIsSavingAddress(false);
     }
+  };
+
+  const openAddressEditor = (address?: SavedAddress) => {
+    if (address) {
+      setEditingAddressId(address.id);
+      setNewAddress(address.address);
+      setNewAddressLat(address.lat != null ? String(address.lat) : "");
+      setNewAddressLng(address.lng != null ? String(address.lng) : "");
+      setNewAddressDefault(Boolean(address.is_default));
+    } else {
+      setEditingAddressId(null);
+      setNewAddress("");
+      setNewAddressLat("");
+      setNewAddressLng("");
+      setNewAddressDefault(addresses.length === 0);
+    }
+    setAddressOpen(true);
   };
 
   const handleRemoveAddress = async (id: string) => {
@@ -307,7 +350,7 @@ function ProfileContent() {
           </Section>
 
           {/* Addresses */}
-          <Section title="Addresses" cta="+ Add" onCta={() => setAddressOpen(true)}>
+          <Section title="Addresses" cta="＋ Add address" onCta={() => openAddressEditor()}>
             {addresses.map((r, idx, all) => (
               <div key={r.id} className={`flex w-full items-center gap-3 px-4 py-3.5 text-left ${idx === all.length - 1 ? "" : "border-b border-crust"}`}>
                 <div className="flex h-8 w-8 items-center justify-center rounded-md bg-butter text-[14px] text-cinnamon shrink-0" aria-hidden="true">
@@ -315,7 +358,7 @@ function ProfileContent() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-[13.5px] font-semibold text-espresso flex items-center gap-2">
-                    <span>{r.label}</span>
+                    <span>{r.is_default ? "Default address" : "Saved address"}</span>
                     {r.is_default && (
                       <span className="rounded bg-golden px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-white">Default</span>
                     )}
@@ -332,6 +375,13 @@ function ProfileContent() {
                       Set Default
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => openAddressEditor(r)}
+                    className="font-mono text-[9px] uppercase tracking-[0.1em] text-sage hover:text-espresso"
+                  >
+                    Edit
+                  </button>
                   <button 
                     type="button" 
                     onClick={() => handleRemoveAddress(r.id)} 
@@ -449,20 +499,15 @@ function ProfileContent() {
       )}
 
       {addressOpen && (
-        <Modal title="Add address" onClose={() => setAddressOpen(false)}>
+        <Modal
+          title={editingAddressId ? "Edit address" : "Add address"}
+          onClose={() => {
+            setAddressOpen(false);
+            setEditingAddressId(null);
+          }}
+          large
+        >
           <div className="space-y-4">
-            <div>
-              <label htmlFor="profile-address-label" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                Label (e.g. Home, Office)
-              </label>
-              <input
-                id="profile-address-label"
-                value={newAddressLabel}
-                onChange={(e) => setNewAddressLabel(e.target.value)}
-                placeholder="Home"
-                className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
-              />
-            </div>
             <div>
               <label htmlFor="profile-address" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
                 Delivery address
@@ -475,13 +520,51 @@ function ProfileContent() {
                 className="mt-1 w-full resize-none rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
               />
             </div>
+            <div className="space-y-2">
+              <div className="font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
+                Pin location
+              </div>
+              <AddressMapPicker
+                lat={newAddressLat ? Number(newAddressLat) : undefined}
+                lng={newAddressLng ? Number(newAddressLng) : undefined}
+                onChange={(lat, lng) => {
+                  setNewAddressLat(lat.toFixed(6));
+                  setNewAddressLng(lng.toFixed(6));
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setNewAddressDefault((value) => !value)}
+              disabled={!editingAddressId && addresses.length === 0}
+              className="flex w-full items-center justify-between rounded-2xl border border-crust bg-white px-4 py-3 text-left disabled:opacity-70"
+            >
+              <span>
+                <span className="block text-[13.5px] font-semibold text-espresso">Use as default address</span>
+                <span className="block font-editorial text-[11.5px] italic text-caramel">
+                  {(!editingAddressId && addresses.length === 0)
+                    ? "Your first address is automatically default."
+                    : "Checkout will preselect this address."}
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                className="relative h-[24px] w-[42px] rounded-full transition-colors"
+                style={{ background: newAddressDefault || (!editingAddressId && addresses.length === 0) ? "var(--sage)" : "var(--crust-deep)" }}
+              >
+                <span
+                  className="absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white shadow transition-all"
+                  style={{ left: newAddressDefault || (!editingAddressId && addresses.length === 0) ? "21px" : "3px" }}
+                />
+              </span>
+            </button>
             <button
               type="button"
               onClick={saveAddress}
-              disabled={!newAddress.trim() || isSavingAddress}
+              disabled={!newAddress.trim() || !newAddressLat || !newAddressLng || !Number.isFinite(Number(newAddressLat)) || !Number.isFinite(Number(newAddressLng)) || isSavingAddress}
               className="bkr-press mt-4 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
             >
-              {isSavingAddress ? "Saving..." : "Save address"}
+              {isSavingAddress ? "Saving..." : editingAddressId ? "Update address" : "Save address"}
             </button>
           </div>
         </Modal>
@@ -580,7 +663,11 @@ function Section({ title, cta, onCta, children }: { title: string; cta?: string;
       <div className="mb-2 flex items-center justify-between font-mono text-[9.5px] uppercase tracking-[0.22em] text-caramel">
         <span>{title}</span>
         {cta && (
-          <button type="button" onClick={onCta} className="font-bold text-cinnamon opacity-80">
+          <button
+            type="button"
+            onClick={onCta}
+            className="rounded-full bg-cinnamon px-3 py-1.5 font-bold text-cream shadow-sm transition-colors hover:bg-espresso focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cinnamon"
+          >
             {cta}
           </button>
         )}
@@ -656,10 +743,25 @@ function Row({
   );
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({
+  title,
+  onClose,
+  children,
+  large = false,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  large?: boolean;
+}) {
   const titleId = useId();
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<Element | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   // Focus management: move focus into modal on mount, restore on unmount
   useEffect(() => {
@@ -669,7 +771,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
     };
     document.addEventListener("keydown", handleKey);
@@ -680,7 +782,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
         previouslyFocused.current.focus();
       }
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div
@@ -691,7 +793,11 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       ref={modalRef}
       tabIndex={-1}
     >
-      <div className="flex h-[50vh] min-h-[min(24rem,calc(100vh-2rem))] w-[min(92vw,50rem)] flex-col rounded-[1.75rem] border border-crust bg-cream p-5 shadow-[0_22px_80px_rgba(44,24,16,0.24)] md:w-[50vw] md:min-w-[32rem]">
+      <div
+        className={`flex min-h-[min(24rem,calc(100vh-2rem))] w-[min(92vw,50rem)] flex-col rounded-[1.75rem] border border-crust bg-cream p-5 shadow-[0_22px_80px_rgba(44,24,16,0.24)] md:min-w-[32rem] ${
+          large ? "h-[82vh] md:w-[min(72vw,56rem)]" : "h-[50vh] md:w-[50vw]"
+        }`}
+      >
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 id={titleId} className="font-display text-[24px] leading-none tracking-tight text-espresso">{title}</h2>
           <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-caramel" aria-label="Close">
