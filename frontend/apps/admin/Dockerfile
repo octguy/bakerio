@@ -29,7 +29,7 @@ ENV NEXT_PUBLIC_CONTACT_ENDPOINT=$CONTACT_ENDPOINT
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npx turbo run build --filter=admin
+RUN npm ci && npx turbo run build --filter=admin
 
 FROM base AS runner
 ENV NODE_ENV=production
