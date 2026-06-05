@@ -290,6 +290,31 @@ export interface BranchStat {
   active_products: number;
 }
 
+export interface PeriodTotals {
+  orders: number;
+  revenue: number;
+}
+
+export interface BranchTopProduct {
+  product_id: string;
+  name: string;
+  qty_sold: number;
+  revenue: number;
+}
+
+export interface BranchDetailStats {
+  branch_id: string;
+  branch_name: string;
+  active_products: number;
+  staff_count: number;
+  unique_customers: number;
+  today: PeriodTotals;
+  this_week: PeriodTotals;
+  this_month: PeriodTotals;
+  all_time: PeriodTotals;
+  top_products: BranchTopProduct[];
+}
+
 export interface GetOrdersOptions {
   page?: number;
   size?: number;

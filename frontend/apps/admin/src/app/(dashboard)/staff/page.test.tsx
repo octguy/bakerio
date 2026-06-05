@@ -116,7 +116,7 @@ async function openCreateDialog() {
   fireEvent.click(addButton);
 }
 
-describe("UsersPage CRUD flow", () => {
+describe("StaffPage CRUD flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getMyProfile).mockResolvedValue({

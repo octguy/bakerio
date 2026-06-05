@@ -30,7 +30,7 @@ import type {
   SelectOrderBranchResponse,
   StatisticsOverview,
   ProductStat,
-  BranchStat,
+  BranchStat, BranchDetailStats,
   SavedAddress,
 } from "./types";
 import {
@@ -1189,4 +1189,8 @@ export async function getStatisticsProducts(size = 6): Promise<{ items: ProductS
 
 export async function getStatisticsBranches(): Promise<{ items: BranchStat[] }> {
   return request<{ items: BranchStat[] }>("/statistics/branches");
+}
+
+export async function getStatisticsBranch(id: string): Promise<BranchDetailStats> {
+  return request<BranchDetailStats>(`/statistics/branches/${id}`);
 }

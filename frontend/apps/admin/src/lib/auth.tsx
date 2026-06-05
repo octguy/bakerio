@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { setToken } from "@repo/api-client";
 
 interface User {
+  branch?: { id: string; name: string; address?: string; };
   id: string;
   email: string;
   full_name?: string;

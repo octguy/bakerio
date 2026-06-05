@@ -33,7 +33,7 @@ describe("admin proxy", () => {
   });
 
   it("allows dashboard requests with a valid staff token", () => {
-    const res = proxy(request("/users", token({ roles: ["branch_manager"], exp: 4_102_444_800 })));
+    const res = proxy(request("/staff", token({ roles: ["branch_manager"], exp: 4_102_444_800 })));
     expect(res.status).toBe(200);
   });
 

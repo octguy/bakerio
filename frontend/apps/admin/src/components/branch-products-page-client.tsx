@@ -40,11 +40,15 @@ import {
 interface BranchProductsPageClientProps {
   branchId: string;
   branchName: string;
+  backHref?: string;
+  backLabel?: string;
 }
 
 export function BranchProductsPageClient({
   branchId,
   branchName,
+  backHref = "/branches",
+  backLabel = "Branches",
 }: BranchProductsPageClientProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -263,11 +267,11 @@ export function BranchProductsPageClient({
       <div className="flex items-end justify-between">
         <div>
           <Link
-            href="/branches"
+            href={backHref}
             className="mb-3 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-cinnamon"
           >
             <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-            Branches
+            {backLabel}
           </Link>
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
