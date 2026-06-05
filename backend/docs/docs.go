@@ -899,6 +899,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/branch/{id}/products": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the enriched matrix view (name, slug, price, is_active, quantity).\nOptional ?active=true|false filters by per-branch availability.\nAdmin may target any branch; a branch_manager only their own.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "product"
+                ],
+                "summary": "List products of a specific branch (admin/manager)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Branch ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter: true → active only, false → inactive only, omit → all",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/BranchProductDetail"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/branch/{id}/products/{productId}": {
             "put": {
                 "security": [
@@ -2947,6 +2996,35 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "number"
+                }
+            }
+        },
+        "BranchProductDetail": {
+            "type": "object",
+            "properties": {
+                "branch_id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "product_active": {
+                    "type": "boolean"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "slug": {
+                    "type": "string"
                 }
             }
         },

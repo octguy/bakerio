@@ -71,3 +71,16 @@ type BranchProductResponse struct {
 	IsActive  bool      `json:"is_active"`
 	Quantity  int32     `json:"quantity"`
 } // @name BranchProductResponse
+
+// BranchProductDetail is the enriched per-branch product row returned by the
+// admin/manager list endpoint (joins live product name/slug/price).
+type BranchProductDetail struct {
+	ProductID     uuid.UUID       `json:"product_id"`
+	BranchID      uuid.UUID       `json:"branch_id"`
+	Name          string          `json:"name"`
+	Slug          string          `json:"slug"`
+	Price         decimal.Decimal `json:"price"`
+	IsActive      bool            `json:"is_active"`
+	Quantity      int32           `json:"quantity"`
+	ProductActive bool            `json:"product_active"`
+} // @name BranchProductDetail
