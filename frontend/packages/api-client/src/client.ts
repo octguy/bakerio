@@ -29,6 +29,7 @@ import type {
   SelectOrderBranchRequest,
   SelectOrderBranchResponse,
   StatisticsOverview,
+  SavedAddress,
 } from "./types";
 import {
   listProductImages as mockListProductImages,
@@ -1099,18 +1100,76 @@ export async function reorderItems(orderId: string): Promise<Array<{ product_id:
   return order?.items.map((item) => ({ product_id: item.product_id, quantity: item.quantity })) ?? [];
 }
 
-// ===== CUSTOMER ADDRESSES (MOCK — backend not implemented) =====
-import {
-  getAddresses as mockGetAddresses,
-  addAddress as mockAddAddress,
-  removeAddress as mockRemoveAddress,
-  setDefaultAddress as mockSetDefaultAddress,
-} from "./mock";
+// ===== CUSTOMER ADDRESSES (REAL) =====
 
-export const getAddresses = mockGetAddresses;
-export const addAddress = mockAddAddress;
-export const removeAddress = mockRemoveAddress;
-export const setDefaultAddress = mockSetDefaultAddress;
+type BackendAddress = {
+  id: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  is_default: boolean;
+};
+
+type BackendAddressList = {
+  items: BackendAddress[];
+};
+
+function toSavedAddress(address: BackendAddress): SavedAddress {
+  return {
+    id: address.id,
+    label: address.is_default ? "Default" : "Address",
+    address: address.address,
+    is_default: address.is_default,
+    lat: address.latitude,
+    lng: address.longitude,
+  };
+}
+
+export async function getAddresses(): Promise<SavedAddress[]> {
+  const res = await request<BackendAddressList>("/addresses");
+  return res.items.map(toSavedAddress);
+}
+
+export async function addAddress(
+  _label: string,
+  address: string,
+  coords: { lat: number; lng: number; isDefault?: boolean },
+): Promise<SavedAddress> {
+  const res = await request<BackendAddress>("/addresses", {
+    method: "POST",
+    body: JSON.stringify({
+      address,
+      latitude: coords.lat,
+      longitude: coords.lng,
+      is_default: coords.isDefault ?? false,
+    }),
+  });
+  return toSavedAddress(res);
+}
+
+export async function removeAddress(id: string): Promise<void> {
+  return request<void>(`/addresses/${id}`, { method: "DELETE" });
+}
+
+export async function updateAddress(
+  id: string,
+  data: { address: string; lat: number; lng: number },
+): Promise<SavedAddress> {
+  const res = await request<BackendAddress>(`/addresses/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      address: data.address,
+      latitude: data.lat,
+      longitude: data.lng,
+    }),
+  });
+  return toSavedAddress(res);
+}
+
+export async function setDefaultAddress(id: string): Promise<SavedAddress[]> {
+  await request<BackendAddress>(`/addresses/${id}/default`, { method: "PUT" });
+  return getAddresses();
+}
 
 // ===== STATISTICS (REAL) =====
 
