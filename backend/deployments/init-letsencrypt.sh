@@ -22,10 +22,15 @@ cd "$(dirname "$0")"
 
 COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
 
-# Cert covers the apex + the three subdomains used in nginx.conf.
+# --cert-name is only the directory label under /etc/letsencrypt/live; it does
+# NOT need to be a resolvable domain. nginx.conf points at this path.
 CERT_NAME="bakerio.thinhuit.id.vn"
+
+# SANs actually placed in the cert. Every domain here is validated via HTTP-01,
+# so each MUST resolve to this VPS and be served on :80 by nginx. The apex
+# bakerio.thinhuit.id.vn has no A record and nginx does not serve it, so it is
+# intentionally excluded.
 DOMAINS=(
-  "bakerio.thinhuit.id.vn"
   "api.bakerio.thinhuit.id.vn"
   "order.bakerio.thinhuit.id.vn"
   "admin.bakerio.thinhuit.id.vn"
