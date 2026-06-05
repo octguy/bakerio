@@ -29,6 +29,8 @@ import type {
   SelectOrderBranchRequest,
   SelectOrderBranchResponse,
   StatisticsOverview,
+  ProductStat,
+  BranchStat,
   SavedAddress,
 } from "./types";
 import {
@@ -1179,4 +1181,12 @@ export async function setDefaultAddress(id: string): Promise<SavedAddress[]> {
 
 export async function getStatisticsOverview(): Promise<StatisticsOverview> {
   return request<StatisticsOverview>("/statistics/overview");
+}
+
+export async function getStatisticsProducts(size = 6): Promise<{ items: ProductStat[] }> {
+  return request<{ items: ProductStat[] }>(`/statistics/products?size=${size}`);
+}
+
+export async function getStatisticsBranches(): Promise<{ items: BranchStat[] }> {
+  return request<{ items: BranchStat[] }>("/statistics/branches");
 }

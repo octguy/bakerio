@@ -270,6 +270,26 @@ export interface StatisticsOverview {
   tier_gold: number;
 }
 
+export interface ProductStat {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  qty_sold: number;
+  revenue: number;
+  branches_active: number;
+  total_stock: number;
+}
+
+export interface BranchStat {
+  branch_id: string;
+  branch_name: string;
+  order_count: number;
+  revenue: number;
+  staff_count: number;
+  active_products: number;
+}
+
 export interface GetOrdersOptions {
   page?: number;
   size?: number;
