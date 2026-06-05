@@ -4,6 +4,7 @@ export type {
   ProductImage,
   BranchBrief,
   BranchProduct,
+  BranchProductDetail,
   Branch,
   Profile,
   CreateUserResponse,
@@ -20,6 +21,7 @@ export type {
   LoginResponse,
   ApiResponse,
   PaginatedResponse,
+  BranchProductDetailListResponse,
   GetOrdersOptions,
   PaginatedOrders,
   SavedAddress,
@@ -60,6 +62,7 @@ export {
   updateBranch,
   updateBranchStatus,
   setBranchProductAvailability,
+  getBranchProducts,
   deleteBranch,
   // Branch membership (REAL)
   getBranchMembers,
