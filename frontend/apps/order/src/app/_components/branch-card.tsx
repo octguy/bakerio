@@ -14,7 +14,6 @@ interface Props {
   distanceLabel: string;
   etaLabel: string;
   isTransitionSource: boolean;
-  onTransitionSource: (branchId: string | null) => void;
   onTransitionStart: () => void;
 }
 
@@ -22,7 +21,7 @@ const regionTags: Record<string, string> = {
   south: "Coffee bar",
 };
 
-export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLabel, isTransitionSource, onTransitionSource, onTransitionStart }: Props) {
+export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLabel, isTransitionSource, onTransitionStart }: Props) {
   const router = useRouter();
   const selectBranch = useCartStore((s) => s.selectBranch);
   // Only the tapped card carries the shared morph name during navigation,
@@ -39,7 +38,6 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
 
   const handleSelect = () => {
     flushSync(() => {
-      onTransitionSource(branch.id);
       selectBranch({ id: branch.id, name: branch.name, address: branch.address, dist: distanceLabel, eta: etaLabel });
     });
 
@@ -51,7 +49,6 @@ export function BranchCard({ branch, isSelected, heroImage, distanceLabel, etaLa
     } catch {}
 
     const showMenuShell = () => flushSync(() => {
-      onTransitionSource(null);
       onTransitionStart();
     });
 

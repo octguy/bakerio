@@ -115,9 +115,6 @@ export function BranchListClient({ initialBranches, error, initialTransitionBran
   }, []);
 
   const handleReturnToBranches = useCallback(() => {
-    // Called from the in-page menu shell overlay (isOpeningMenu state). We're
-    // still on `/`, so just hide the overlay — no navigation needed and no
-    // dirty URL pushed.
     const showBranchList = () => flushSync(() => setIsOpeningMenu(false));
 
     if ("startViewTransition" in document) {
@@ -288,7 +285,6 @@ className={`relative min-w-0 cursor-pointer rounded-xl px-2 py-2.5 text-center f
               distanceLabel={distanceLabel(distance)}
               etaLabel={etaLabel(distance)}
               isTransitionSource={branch.id === transitionSourceBranchId}
-              onTransitionSource={() => {}}
               onTransitionStart={() => setIsOpeningMenu(true)}
             />
           ))
