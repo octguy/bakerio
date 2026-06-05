@@ -1,10 +1,13 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { flushSync } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Branch } from "@repo/api-client";
 import { BranchCard } from "./branch-card";
 import { Link } from "next-view-transitions";
-// import { useCartStore } from "@/store/cart"; // no longer needed for recommendation logic
+import { MenuLocationHeader } from "../menu/_components/menu-location-header";
+import { useCartStore } from "@/store/cart";
 
 const HERO_IMAGES: Record<string, string> = {
   north: "https://images.unsplash.com/photo-1517686469429-8bdb88b9f907?w=1400&q=85&auto=format",
@@ -47,21 +50,48 @@ function etaLabel(distance: number) {
   return "45–60 min";
 }
 
-function isBranchOpen(branch: Branch): boolean {
+function isBranchOpen(): boolean {
   return true;
 }
 
 interface Props {
   initialBranches: Branch[];
   error?: string;
+  initialTransitionBranchId?: string | null;
 }
 
-export function BranchListClient({ initialBranches, error }: Props) {
+export function BranchListClient({ initialBranches, error, initialTransitionBranchId = null }: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [openNow, setOpenNow] = useState(false);
   const [orderType, setOrderType] = useState<OrderType>("Pick Up");
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const persistedSelectedBranchId = useCartStore((s) => s.selectedBranch?.id ?? null);
+  // Always keep viewTransitionName on the selected branch card so the View
+  // Transitions API can find its morph target on both forward and backward
+  // navigations without needing a re-render first.
+  const transitionSourceBranchId = initialTransitionBranchId ?? persistedSelectedBranchId;
+  const [isOpeningMenu, setIsOpeningMenu] = useState(false);
+
+  // Reset the overlay when this component unmounts (i.e., /menu has loaded
+  // and Next.js removes the home page from the viewport). This ensures
+  // the cached state has isOpeningMenu=false for back-navigation.
+  useEffect(() => {
+    if (!isOpeningMenu) return;
+    return () => setIsOpeningMenu(false);
+  }, [isOpeningMenu]);
+
+  // Strip the legacy ?transitionBranch= param from the URL once we've used it
+  // for the reverse morph. We use history.replaceState (not router.replace) so
+  // we don't re-render the route or add a history entry — the param is purely
+  // a render-time hint to BranchListClient, never meant to persist in the URL.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.search.includes("transitionBranch")) {
+      window.history.replaceState(window.history.state, "", window.location.pathname);
+    }
+  }, []);
   // const selectedBranchId = useCartStore((s) => s.selectedBranch?.id ?? s.branchId); // retained for potential future use
 
   // Next.js hydration safety - recalculate open status on client
@@ -82,6 +112,19 @@ export function BranchListClient({ initialBranches, error }: Props) {
       },
       { timeout: 5000, enableHighAccuracy: true }
     );
+  }, []);
+
+  const handleReturnToBranches = useCallback(() => {
+    // Called from the in-page menu shell overlay (isOpeningMenu state). We're
+    // still on `/`, so just hide the overlay — no navigation needed and no
+    // dirty URL pushed.
+    const showBranchList = () => flushSync(() => setIsOpeningMenu(false));
+
+    if ("startViewTransition" in document) {
+      document.startViewTransition(showBranchList);
+      return;
+    }
+    showBranchList();
   }, []);
 
   const rankedBranches = useMemo(() => {
@@ -120,6 +163,20 @@ const recommendedBranchId = useMemo(() => {
 
     return rankedBranches.find(({ branch }) => branch.id === recommendedBranchId)?.branch ?? null;
   }, [rankedBranches, recommendedBranchId]);
+
+  if (isOpeningMenu) {
+    return (
+      <div className="absolute inset-0 z-50 isolate min-h-screen overflow-x-clip bg-vanilla px-4 pt-3 pb-28 sm:px-6 md:px-8 md:pt-8 md:pb-16 xl:px-10">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(135deg,var(--cream)_0%,var(--vanilla)_58%,#f4dfbd_100%)]" />
+        <div className="mx-auto flex w-full max-w-[1520px] flex-col lg:items-start">
+          <section className="min-w-0 w-full lg:pt-2">
+            <MenuLocationHeader onChangeBranch={handleReturnToBranches} />
+            <div className="py-12 text-center font-editorial text-[14.5px] italic text-caramel">Opening today&apos;s batch...</div>
+          </section>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -230,6 +287,9 @@ className={`relative min-w-0 cursor-pointer rounded-xl px-2 py-2.5 text-center f
               heroImage={HERO_IMAGES.south}
               distanceLabel={distanceLabel(distance)}
               etaLabel={etaLabel(distance)}
+              isTransitionSource={branch.id === transitionSourceBranchId}
+              onTransitionSource={() => {}}
+              onTransitionStart={() => setIsOpeningMenu(true)}
             />
           ))
         )}
