@@ -54,6 +54,31 @@ definitions:
       name:
         type: string
     type: object
+  BranchDetailStats:
+    properties:
+      active_products:
+        type: integer
+      all_time:
+        $ref: '#/definitions/PeriodTotals'
+      branch_id:
+        type: string
+      branch_name:
+        type: string
+      staff_count:
+        type: integer
+      this_month:
+        $ref: '#/definitions/PeriodTotals'
+      this_week:
+        $ref: '#/definitions/PeriodTotals'
+      today:
+        $ref: '#/definitions/PeriodTotals'
+      top_products:
+        items:
+          $ref: '#/definitions/BranchTopProduct'
+        type: array
+      unique_customers:
+        type: integer
+    type: object
   BranchListResponse:
     properties:
       items:
@@ -168,6 +193,39 @@ definitions:
         type: string
       status:
         type: string
+    type: object
+  BranchStat:
+    properties:
+      active_products:
+        type: integer
+      branch_id:
+        type: string
+      branch_name:
+        type: string
+      order_count:
+        type: integer
+      revenue:
+        type: number
+      staff_count:
+        type: integer
+    type: object
+  BranchStatsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/BranchStat'
+        type: array
+    type: object
+  BranchTopProduct:
+    properties:
+      name:
+        type: string
+      product_id:
+        type: string
+      qty_sold:
+        type: integer
+      revenue:
+        type: number
     type: object
   CartItemResponse:
     properties:
@@ -554,6 +612,36 @@ definitions:
       user_id:
         type: string
     type: object
+  OverviewStats:
+    properties:
+      tier_bronze:
+        type: integer
+      tier_gold:
+        type: integer
+      tier_silver:
+        type: integer
+      total_branches:
+        type: integer
+      total_customers:
+        type: integer
+      total_discount:
+        type: number
+      total_orders:
+        type: integer
+      total_products:
+        type: integer
+      total_revenue:
+        type: number
+      vouchers_redeemed:
+        type: integer
+    type: object
+  PeriodTotals:
+    properties:
+      orders:
+        type: integer
+      revenue:
+        type: number
+    type: object
   PermissionResponse:
     properties:
       id:
@@ -609,6 +697,40 @@ definitions:
         type: integer
       updated_at:
         type: string
+    type: object
+  ProductStat:
+    properties:
+      branches_active:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        type: number
+      qty_sold:
+        type: integer
+      revenue:
+        type: number
+      slug:
+        type: string
+      total_stock:
+        type: integer
+    type: object
+  ProductStatsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/ProductStat'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
     type: object
   ProfileResponse:
     properties:
@@ -714,6 +836,9 @@ definitions:
         type: integer
       customers:
         description: number of customer accounts
+        type: integer
+      memberships:
+        description: membership rows derived from seeded orders
         type: integer
       orders:
         description: placed orders
@@ -2818,6 +2943,96 @@ paths:
       summary: Search staff (admin or branch manager)
       tags:
       - users
+  /statistics/branches:
+    get:
+      description: |-
+        super_admin only. One row per branch with order_count,
+        revenue, staff_count, active_products. Sorted by revenue desc.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/BranchStatsResponse'
+      security:
+      - BearerAuth: []
+      summary: List per-branch KPIs
+      tags:
+      - statistics
+  /statistics/branches/{id}:
+    get:
+      description: |-
+        Periods are today / this_week / this_month / all_time in
+        Asia/Ho_Chi_Minh. super_admin can target any branch; a
+        branch_manager only their own.
+      parameters:
+      - description: Branch ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/BranchDetailStats'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get one branch's dashboard (calendar-aligned periods)
+      tags:
+      - statistics
+  /statistics/overview:
+    get:
+      description: |-
+        super_admin only (via the *:*:all wildcard). Returns totals
+        for orders/revenue/customers/etc + tier distribution.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/OverviewStats'
+      security:
+      - BearerAuth: []
+      summary: Get organization-wide KPI bundle
+      tags:
+      - statistics
+  /statistics/products:
+    get:
+      description: super_admin + product_manager. Sorted by revenue desc.
+      parameters:
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20)
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ProductStatsResponse'
+      security:
+      - BearerAuth: []
+      summary: Paginated per-product breakdown
+      tags:
+      - statistics
   /users:
     get:
       description: Search across every user (customers + staff). Admin only.
