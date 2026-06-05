@@ -1,41 +1,56 @@
 "use client";
 
-import { useState } from "react";
-import { useTransitionRouter } from "next-view-transitions";
+import { useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cart";
 
-export function MenuLocationHeader() {
-  const router = useTransitionRouter();
+const FROM_BRANCH_LIST_FLAG = "bkr:cameFromBranchList";
+
+export function MenuLocationHeader({ onChangeBranch }: { onChangeBranch?: (href: string) => void }) {
+  const router = useRouter();
   const branch = useCartStore((s) => s.selectedBranch);
-  const [isReturning, setIsReturning] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    router.prefetch("/");
+  }, [router]);
 
   const handleChangeBranch = () => {
-    setIsReturning(true);
-    requestAnimationFrame(() => router.push("/"));
+    if (onChangeBranch) {
+      onChangeBranch("/");
+      return;
+    }
+
+    const cameFromBranchList =
+      typeof window !== "undefined" &&
+      window.sessionStorage.getItem(FROM_BRANCH_LIST_FLAG) === "1";
+
+    if (cameFromBranchList) {
+      window.sessionStorage.removeItem(FROM_BRANCH_LIST_FLAG);
+      // Remove the viewTransitionName before back-nav so the auto popstate
+      // transition from next-view-transitions does a simple cross-fade
+      // instead of trying to morph (which breaks on repeated navigations).
+      if (buttonRef.current) {
+        buttonRef.current.style.viewTransitionName = "none";
+      }
+      router.back();
+      return;
+    }
+
+    if ("startViewTransition" in document) {
+      document.startViewTransition(() => router.push("/"));
+      return;
+    }
+    router.push("/");
   };
 
   return (
-    <>
-      {isReturning && (
-        <div className="fixed inset-0 z-[2147483646] flex items-center justify-center bg-cream/95 backdrop-blur-sm">
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 animate-pulse rounded-full bg-cinnamon/20" />
-            <div className="mt-4 font-mono text-[11px] font-bold uppercase tracking-[0.24em] text-cinnamon">
-              Opening branches
-            </div>
-            <div className="mt-2 font-editorial text-[14px] italic text-caramel">
-              Clearing the counter...
-            </div>
-          </div>
-        </div>
-      )}
       <button
+        ref={buttonRef}
         type="button"
         onClick={handleChangeBranch}
         aria-label={branch ? `Change branch — currently ${branch.name}` : "Choose a branch"}
         className="bkr-press mb-4 flex min-h-14 w-full items-center gap-3 rounded-[1.35rem] border border-crust-deep bg-white/92 px-3.5 py-3 text-left shadow-[0_18px_45px_-35px_rgba(44,24,16,0.75)] sm:px-4 lg:rounded-[1.75rem] lg:px-5 lg:py-4"
-        // Always keep the destination morph target mounted, including loading and
-        // pre-persist hydration frames where branch details may not be available.
         style={{ viewTransitionName: "selected-branch" }}
       >
         <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-espresso text-[18px] text-cream shadow-sm lg:h-10 lg:w-10">
@@ -54,6 +69,5 @@ export function MenuLocationHeader() {
           </div>
         )}
       </button>
-    </>
   );
 }
