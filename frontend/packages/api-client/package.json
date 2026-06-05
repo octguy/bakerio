@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./staff": "./src/staff.ts",
+    "./voucher": "./src/voucher.ts",
     "./mock": "./src/mock/index.ts",
     "./mock/analytics": "./src/mock/analytics.ts",
     "./mock/inventory": "./src/mock/inventory.ts",

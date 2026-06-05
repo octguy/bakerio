@@ -6,7 +6,7 @@ import { useCartStore } from "@/store/cart";
 
 const FROM_BRANCH_LIST_FLAG = "bkr:cameFromBranchList";
 
-export function MenuLocationHeader({ onChangeBranch }: { onChangeBranch?: (href: string) => void }) {
+export function MenuLocationHeader({ onChangeBranch }: { onChangeBranch?: () => void }) {
   const router = useRouter();
   const branch = useCartStore((s) => s.selectedBranch);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -17,7 +17,7 @@ export function MenuLocationHeader({ onChangeBranch }: { onChangeBranch?: (href:
 
   const handleChangeBranch = () => {
     if (onChangeBranch) {
-      onChangeBranch("/");
+      onChangeBranch();
       return;
     }
 

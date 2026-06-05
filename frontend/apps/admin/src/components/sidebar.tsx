@@ -32,6 +32,7 @@ const GROUPS: NavGroup[] = [
     items: [
       { href: "/products", label: "Products", glyph: "⬡" },
       { href: "/categories", label: "Categories", glyph: "⬢" },
+      { href: "/vouchers", label: "Vouchers", glyph: "⬔" },
     ],
   },
   {
@@ -60,6 +61,9 @@ function getAuthorizedGroups(roles: string[]): NavGroup[] {
         return isSuperAdmin || isBranchManager;
       }
       if (it.href === "/categories") {
+        return isSuperAdmin || isProductManager;
+      }
+      if (it.href === "/vouchers") {
         return isSuperAdmin || isProductManager;
       }
       if (it.href === "/products") {
