@@ -3017,6 +3017,45 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/vouchers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns active vouchers within their validity window that the\nauthenticated user has not yet redeemed. Order: nearest expiry first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "vouchers"
+                ],
+                "summary": "List vouchers the caller can currently apply",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page (default 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20)",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/PublicVoucherListResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -3954,6 +3993,52 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "PublicVoucher": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "discount_percent": {
+                    "type": "integer"
+                },
+                "max_discount": {
+                    "type": "number"
+                },
+                "min_subtotal": {
+                    "type": "number"
+                },
+                "valid_from": {
+                    "type": "string"
+                },
+                "valid_to": {
+                    "type": "string"
+                }
+            }
+        },
+        "PublicVoucherListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/PublicVoucher"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_pages": {
+                    "type": "integer"
                 }
             }
         },

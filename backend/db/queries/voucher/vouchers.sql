@@ -16,6 +16,30 @@ LIMIT sqlc.arg('lim') OFFSET sqlc.arg('off');
 SELECT COUNT(*) FROM voucher.vouchers
 WHERE (NOT sqlc.arg('filter_active')::boolean OR is_active = sqlc.arg('is_active')::boolean);
 
+-- name: ListAvailableForUser :many
+-- Customer-facing: currently-valid vouchers the caller has not redeemed yet.
+-- Anti-join is the natural fit — the redemptions row exists iff this user
+-- already spent it. Ordering: nearest expiry first, so urgency wins.
+SELECT v.id, v.code, v.discount_percent, v.max_discount, v.min_subtotal,
+       v.valid_from, v.valid_to
+FROM voucher.vouchers v
+LEFT JOIN voucher.redemptions r
+  ON r.voucher_id = v.id AND r.user_id = sqlc.arg('user_id')
+WHERE v.is_active = TRUE
+  AND NOW() BETWEEN v.valid_from AND v.valid_to
+  AND r.id IS NULL
+ORDER BY v.valid_to ASC
+LIMIT sqlc.arg('lim') OFFSET sqlc.arg('off');
+
+-- name: CountAvailableForUser :one
+SELECT COUNT(*)
+FROM voucher.vouchers v
+LEFT JOIN voucher.redemptions r
+  ON r.voucher_id = v.id AND r.user_id = sqlc.arg('user_id')
+WHERE v.is_active = TRUE
+  AND NOW() BETWEEN v.valid_from AND v.valid_to
+  AND r.id IS NULL;
+
 -- name: CreateVoucher :one
 INSERT INTO voucher.vouchers (
     code, discount_percent, max_discount, min_subtotal,

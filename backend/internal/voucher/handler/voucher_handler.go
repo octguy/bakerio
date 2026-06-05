@@ -26,11 +26,15 @@ func NewHandler(svc service.Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(protected *gin.RouterGroup) {
-	g := protected.Group("/admin/vouchers", middleware.RequirePermission("product:manage:all"))
+	g := protected.Group("/admin/vouchers", middleware.RequirePermission("voucher:manage:all"))
 	g.POST("", h.Create)
 	g.GET("", h.List)
 	g.GET("/:id", h.GetByID)
 	g.PATCH("/:id", h.Update)
+
+	// Customer-facing — gated by voucher:apply:own (held by the customer role,
+	// granted to super_admin via the wildcard).
+	protected.GET("/vouchers", middleware.RequirePermission("voucher:apply:own"), h.ListAvailable)
 }
 
 // Create godoc
@@ -190,6 +194,35 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, dto.ToResponse(*v))
+}
+
+// ListAvailable godoc
+// @Summary      List vouchers the caller can currently apply
+// @Description  Returns active vouchers within their validity window that the
+// @Description  authenticated user has not yet redeemed. Order: nearest expiry first.
+// @Tags         vouchers
+// @Security     BearerAuth
+// @Produce      json
+// @Param        page  query     int  false  "Page (default 1)"
+// @Param        size  query     int  false  "Page size (default 20)"
+// @Success      200   {object}  dto.PublicVoucherListResponse
+// @Router       /vouchers [get]
+func (h *Handler) ListAvailable(c *gin.Context) {
+	userID, ok := authcontext.CallerID(c.Request.Context())
+	if !ok {
+		response.Error(c, apperrors.Unauthorized("caller identity missing"))
+		return
+	}
+	p := pagination.FromQuery(c)
+	items, total, err := h.svc.ListAvailableForUser(c.Request.Context(), userID, int32(p.Size), int32(p.Offset()))
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+	response.Success(c, http.StatusOK, dto.PublicVoucherListResponse{
+		Items: items,
+		Meta:  pagination.NewMeta(p, total),
+	})
 }
 
 func optionalCallerID(id uuid.UUID) *uuid.UUID {

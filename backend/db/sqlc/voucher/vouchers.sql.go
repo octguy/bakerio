@@ -14,6 +14,23 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const countAvailableForUser = `-- name: CountAvailableForUser :one
+SELECT COUNT(*)
+FROM voucher.vouchers v
+LEFT JOIN voucher.redemptions r
+  ON r.voucher_id = v.id AND r.user_id = $1
+WHERE v.is_active = TRUE
+  AND NOW() BETWEEN v.valid_from AND v.valid_to
+  AND r.id IS NULL
+`
+
+func (q *Queries) CountAvailableForUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countAvailableForUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countVouchers = `-- name: CountVouchers :one
 SELECT COUNT(*) FROM voucher.vouchers
 WHERE (NOT $1::boolean OR is_active = $2::boolean)
@@ -127,6 +144,66 @@ func (q *Queries) GetVoucherByID(ctx context.Context, id uuid.UUID) (VoucherVouc
 		&i.UpdatedBy,
 	)
 	return i, err
+}
+
+const listAvailableForUser = `-- name: ListAvailableForUser :many
+SELECT v.id, v.code, v.discount_percent, v.max_discount, v.min_subtotal,
+       v.valid_from, v.valid_to
+FROM voucher.vouchers v
+LEFT JOIN voucher.redemptions r
+  ON r.voucher_id = v.id AND r.user_id = $1
+WHERE v.is_active = TRUE
+  AND NOW() BETWEEN v.valid_from AND v.valid_to
+  AND r.id IS NULL
+ORDER BY v.valid_to ASC
+LIMIT $3 OFFSET $2
+`
+
+type ListAvailableForUserParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	Off    int32     `json:"off"`
+	Lim    int32     `json:"lim"`
+}
+
+type ListAvailableForUserRow struct {
+	ID              uuid.UUID        `json:"id"`
+	Code            string           `json:"code"`
+	DiscountPercent int16            `json:"discount_percent"`
+	MaxDiscount     *decimal.Decimal `json:"max_discount"`
+	MinSubtotal     *decimal.Decimal `json:"min_subtotal"`
+	ValidFrom       time.Time        `json:"valid_from"`
+	ValidTo         time.Time        `json:"valid_to"`
+}
+
+// Customer-facing: currently-valid vouchers the caller has not redeemed yet.
+// Anti-join is the natural fit — the redemptions row exists iff this user
+// already spent it. Ordering: nearest expiry first, so urgency wins.
+func (q *Queries) ListAvailableForUser(ctx context.Context, arg ListAvailableForUserParams) ([]ListAvailableForUserRow, error) {
+	rows, err := q.db.Query(ctx, listAvailableForUser, arg.UserID, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAvailableForUserRow{}
+	for rows.Next() {
+		var i ListAvailableForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.DiscountPercent,
+			&i.MaxDiscount,
+			&i.MinSubtotal,
+			&i.ValidFrom,
+			&i.ValidTo,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listVouchers = `-- name: ListVouchers :many

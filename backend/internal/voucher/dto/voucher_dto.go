@@ -66,6 +66,27 @@ type VoucherListResponse struct {
 	pagination.Meta
 } // @name VoucherListResponse
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HTTP shapes — customer surface (V6)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// PublicVoucher is the cut-down voucher row shown to customers: enough to
+// understand the offer, no audit fields, no id (the code is what the user
+// types at checkout).
+type PublicVoucher struct {
+	Code            string           `json:"code"`
+	DiscountPercent int16            `json:"discount_percent"`
+	MaxDiscount     *decimal.Decimal `json:"max_discount,omitempty"`
+	MinSubtotal     *decimal.Decimal `json:"min_subtotal,omitempty"`
+	ValidFrom       time.Time        `json:"valid_from"`
+	ValidTo         time.Time        `json:"valid_to"`
+} // @name PublicVoucher
+
+type PublicVoucherListResponse struct {
+	Items []PublicVoucher `json:"items"`
+	pagination.Meta
+} // @name PublicVoucherListResponse
+
 // ToResponse is the canonical domain → DTO mapper.
 func ToResponse(v domain.Voucher) VoucherResponse {
 	return VoucherResponse{

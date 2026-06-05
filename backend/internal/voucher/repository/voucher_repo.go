@@ -36,6 +36,9 @@ type VoucherRepository interface {
 	ListVouchers(ctx context.Context, activeFilter *bool, limit, offset int32) ([]domain.Voucher, error)
 	CountVouchers(ctx context.Context, activeFilter *bool) (int64, error)
 
+	ListAvailableForUser(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]AvailableVoucherRow, error)
+	CountAvailableForUser(ctx context.Context, userID uuid.UUID) (int64, error)
+
 	Create(ctx context.Context, p CreateVoucherParams) (*domain.Voucher, error)
 	Update(ctx context.Context, id uuid.UUID, p UpdateVoucherPatch) (*domain.Voucher, error)
 
@@ -221,6 +224,44 @@ func (r *voucherRepo) GetRedemptionByUserVoucher(ctx context.Context, voucherID,
 		return nil, err
 	}
 	return toRedemptionPtr(row), nil
+}
+
+// AvailableVoucherRow is the slim shape returned by the customer-facing list.
+// Carries the same fields PublicVoucher exposes — no id, no audit.
+type AvailableVoucherRow struct {
+	Code            string
+	DiscountPercent int16
+	MaxDiscount     *decimal.Decimal
+	MinSubtotal     *decimal.Decimal
+	ValidFrom       time.Time
+	ValidTo         time.Time
+}
+
+func (r *voucherRepo) ListAvailableForUser(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]AvailableVoucherRow, error) {
+	rows, err := r.queries(ctx).ListAvailableForUser(ctx, voucherdb.ListAvailableForUserParams{
+		UserID: userID,
+		Lim:    limit,
+		Off:    offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]AvailableVoucherRow, len(rows))
+	for i, row := range rows {
+		out[i] = AvailableVoucherRow{
+			Code:            row.Code,
+			DiscountPercent: row.DiscountPercent,
+			MaxDiscount:     row.MaxDiscount,
+			MinSubtotal:     row.MinSubtotal,
+			ValidFrom:       row.ValidFrom,
+			ValidTo:         row.ValidTo,
+		}
+	}
+	return out, nil
+}
+
+func (r *voucherRepo) CountAvailableForUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	return r.queries(ctx).CountAvailableForUser(ctx, userID)
 }
 
 // ── mappers ─────────────────────────────────────────────────────────────────

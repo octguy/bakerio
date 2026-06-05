@@ -625,6 +625,36 @@ definitions:
       user_id:
         type: string
     type: object
+  PublicVoucher:
+    properties:
+      code:
+        type: string
+      discount_percent:
+        type: integer
+      max_discount:
+        type: number
+      min_subtotal:
+        type: number
+      valid_from:
+        type: string
+      valid_to:
+        type: string
+    type: object
+  PublicVoucherListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/PublicVoucher'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
   RegisterRequest:
     properties:
       email:
@@ -2940,6 +2970,32 @@ paths:
       summary: Update staff profile
       tags:
       - users
+  /vouchers:
+    get:
+      description: |-
+        Returns active vouchers within their validity window that the
+        authenticated user has not yet redeemed. Order: nearest expiry first.
+      parameters:
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20)
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/PublicVoucherListResponse'
+      security:
+      - BearerAuth: []
+      summary: List vouchers the caller can currently apply
+      tags:
+      - vouchers
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and the access token.

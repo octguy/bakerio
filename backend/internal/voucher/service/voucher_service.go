@@ -26,6 +26,10 @@ type Service interface {
 	List(ctx context.Context, activeFilter *bool, limit, offset int32) (items []domain.Voucher, total int64, err error)
 	Create(ctx context.Context, p repository.CreateVoucherParams) (*domain.Voucher, error)
 	Update(ctx context.Context, id uuid.UUID, patch repository.UpdateVoucherPatch) (*domain.Voucher, error)
+
+	// Customer surface. Lists vouchers the caller is currently eligible to
+	// type at /orders/select-branch.
+	ListAvailableForUser(ctx context.Context, userID uuid.UUID, limit, offset int32) (items []dto.PublicVoucher, total int64, err error)
 }
 
 type service struct {
@@ -152,6 +156,29 @@ func (s *service) Update(ctx context.Context, id uuid.UUID, patch repository.Upd
 		return nil, apperrors.NotFound("voucher not found")
 	}
 	return v, nil
+}
+
+func (s *service) ListAvailableForUser(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]dto.PublicVoucher, int64, error) {
+	rows, err := s.repo.ListAvailableForUser(ctx, userID, limit, offset)
+	if err != nil {
+		return nil, 0, apperrors.Internal("failed to list available vouchers", err)
+	}
+	total, err := s.repo.CountAvailableForUser(ctx, userID)
+	if err != nil {
+		return nil, 0, apperrors.Internal("failed to count available vouchers", err)
+	}
+	out := make([]dto.PublicVoucher, len(rows))
+	for i, row := range rows {
+		out[i] = dto.PublicVoucher{
+			Code:            row.Code,
+			DiscountPercent: row.DiscountPercent,
+			MaxDiscount:     row.MaxDiscount,
+			MinSubtotal:     row.MinSubtotal,
+			ValidFrom:       row.ValidFrom,
+			ValidTo:         row.ValidTo,
+		}
+	}
+	return out, total, nil
 }
 
 // computeDiscount is the math from documents/business/voucher-membership.md
