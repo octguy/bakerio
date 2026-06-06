@@ -73,10 +73,14 @@ function getApiBase(): string {
   if (typeof window !== "undefined") {
     return API_PROXY_PATH;
   }
-  const proxyUrl = process.env.NEXT_PUBLIC_API_PROXY_URL?.trim();
-  return proxyUrl
-    ? trimTrailingSlash(proxyUrl)
-    : trimTrailingSlash(BACKEND_API_BASE);
+  // Server-side (build-time prerender + SSR) talks to the backend directly.
+  // Routing through the app's own public proxy URL (NEXT_PUBLIC_API_PROXY_URL)
+  // creates a chicken-and-egg dependency: during `docker build` the app's public
+  // URL isn't deployed yet, so the fetch fails and the api-client silently falls
+  // back to mock fixtures — which then get baked into the static HTML. All
+  // authenticated calls are client-side (they need the httpOnly token via the
+  // proxy), so server-side has no reason to use the proxy.
+  return trimTrailingSlash(BACKEND_API_BASE);
 }
 
 let token: string | null = null;
