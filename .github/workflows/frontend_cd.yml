@@ -256,8 +256,10 @@ jobs:
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull order console
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps order console
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps nginx
+            docker exec bakerio-nginx nginx -t
+            docker exec bakerio-nginx nginx -s reload
             sleep 3
-            docker compose -f docker-compose.prod.yml --env-file .env.prod logs order console --tail 20
+            docker compose -f docker-compose.prod.yml --env-file .env.prod logs order console nginx --tail 20
 
   verify-apps:
     needs: deploy-apps
