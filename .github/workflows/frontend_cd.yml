@@ -147,18 +147,25 @@ jobs:
           name: web-out
           path: dist
 
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          local-dir: ./dist/
-          server-dir: ${{ secrets.FTP_REMOTE_DIR }}
-          dangerous-clean-slate: false
-          state-name: .ftp-deploy-sync-state.json
+      - name: Deploy to cPanel via SFTP
+        env:
+          CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          CPANEL_SSH_PASSPHRASE: ${{ secrets.CPANEL_SSH_PASSPHRASE }}
+          CPANEL_HOST: ${{ secrets.FTP_HOST }}
+          CPANEL_USER: ${{ secrets.CPANEL_USER }}
+          CPANEL_REMOTE_DIR: ${{ secrets.CPANEL_REMOTE_DIR }}
+        run: |
+          sudo apt-get install -yqq lftp sshpass >/dev/null 2>&1
+          mkdir -p ~/.ssh
+          echo "$CPANEL_SSH_KEY" > ~/.ssh/cpanel_key
+          chmod 600 ~/.ssh/cpanel_key
+          lftp -c "
+            set sftp:connect-program 'sshpass -P passphrase -p \"${CPANEL_SSH_PASSPHRASE}\" ssh -i ~/.ssh/cpanel_key -o StrictHostKeyChecking=no -l ${CPANEL_USER}';
+            open sftp://${CPANEL_HOST};
+            mirror --reverse --delete --parallel=10 --verbose ./dist/ ${CPANEL_REMOTE_DIR};
+            quit
+          "
+          rm -f ~/.ssh/cpanel_key
 
   # ─── Order + Console → Docker → VPS ───
   docker-order:
