@@ -1,28 +1,9 @@
-# Local full-stack for testing all apps together.
-# Usage: docker compose -f docker-compose.local.yml up --build
-#
-# App URLs once running:
-#   web (branding)  http://localhost:3001
-#   order           http://localhost:3002
-#   console         http://localhost:3003
-#   backend API     http://localhost:8080
-#   MailHog UI      http://localhost:8025
-#   MinIO console   http://localhost:9001  (minioadmin / minioadmin)
-#   RabbitMQ UI     http://localhost:15672 (guest / guest)
-
 x-frontend-build-args: &frontend-build-args
-  # Server-side prerender + runtime SSR talk to the backend by its compose
-  # service name. This value is baked into the image (NEXT_PUBLIC_API_URL) and
-  # must be reachable both during the build (frontends are built on the
-  # bakerio_local network) and at runtime. The browser never uses this — it
-  # goes through each app's /api/backend proxy.
   API_URL: http://app:8080/api/v1
-  # Public cross-link URLs are browser-facing, so they stay on localhost.
   BRANDING_URL: http://localhost:3001
   ORDER_URL: http://localhost:3002
   CONSOLE_URL: http://localhost:3003
   CONTACT_ENDPOINT: ""
-  # Mocks fully disabled — prerender hits the live API, matching production.
   NEXT_PUBLIC_DISABLE_MOCK_FALLBACK: "true"
 
 services:
