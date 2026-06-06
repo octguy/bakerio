@@ -14,6 +14,7 @@ import type {
   BranchProduct,
   BranchProductDetail,
   Profile,
+  Membership,
   Order,
   CartResponse,
   CartItemResponse,
@@ -875,6 +876,10 @@ export async function getMyProfile(): Promise<Profile> {
   return request<Profile>("/profile");
 }
 
+export async function getMembership(): Promise<Membership> {
+  return request<Membership>("/membership");
+}
+
 export async function updateMyProfile(data: {
   display_name?: string;
   phone?: string;
@@ -994,6 +999,7 @@ function toOrder(data: BackendOrder): Order {
 
   return {
     id: data.id,
+    code: data.code,
     branch_id: data.branch_id,
     status: "CONFIRMED",
     items,

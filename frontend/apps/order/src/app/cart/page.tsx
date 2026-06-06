@@ -8,7 +8,6 @@ import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
-import { maxRedeemableFor } from "@repo/api-client/mock/loyalty";
 import { CrossSells } from "@/components/cross-sells";
 import Loading from "./loading";
 
@@ -26,15 +25,12 @@ function CartPageInner() {
   useEffect(() => setHydrated(true), []);
 
   const items = useCartStore((s) => s.items);
-  const branchId = useCartStore((s) => s.branchId);
-  
+
   const clearCart = useCartStore((s) => s.clearCart);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const subtotal = useCartStore((s) => s.subtotal());
   const setCartOpen = useCartStore((s) => s.setCartOpen);
   const router = useRouter();
-
-  const [loyalty, setLoyalty] = useState(0);
 
   useEffect(() => {
     // If desktop (md: width >= 768px), redirect to /menu and slide open sidebar cart
@@ -44,27 +40,8 @@ function CartPageInner() {
     }
   }, [router, setCartOpen]);
 
-  useEffect(() => {
-    let active = true;
-    const loadLoyalty = async () => {
-      try {
-        const disc = await maxRedeemableFor(subtotal);
-        if (active) {
-          setLoyalty(disc);
-        }
-      } catch {
-        if (active) {
-          setLoyalty(0);
-        }
-      }
-    };
-    loadLoyalty();
-    return () => {
-      active = false;
-    };
-  }, [subtotal]);
+  const total = subtotal;
 
-  const total = Math.max(0, subtotal - loyalty);
 
 
   if (!hydrated) return <Loading />;
@@ -180,14 +157,13 @@ function CartPageInner() {
         {[
           { l: "Subtotal", v: formatVND(subtotal) },
           { l: "Pickup", v: "Free" },
-          { l: "Loyalty", v: `−${formatVND(loyalty)}`, accent: true },
         ].map((r) => (
           <div
             key={r.l}
             className="flex justify-between py-1.5 text-[13px] font-medium"
             style={{
-              color: r.accent ? "var(--sage)" : "var(--cocoa)",
-              fontWeight: r.accent ? 600 : 500,
+              color: "var(--cocoa)",
+              fontWeight: 500,
             }}
           >
             <span>{r.l}</span>
@@ -210,7 +186,7 @@ function CartPageInner() {
         }}
       >
         <Link
-          href={branchId ? "/checkout" : "/"}
+          href="/checkout"
           className="bkr-press flex items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream"
         >
           <span className="tabular-nums">Pay {formatVND(total)}</span>
@@ -220,7 +196,7 @@ function CartPageInner() {
           </span>
         </Link>
         <div className="mt-2 text-center font-editorial text-[12.5px] italic text-caramel">
-          {branchId ? "Final pickup total is confirmed at checkout." : "Choose a branch before checkout."}
+          Delivery branch and final total are confirmed at checkout.
         </div>
       </div>
     </main>

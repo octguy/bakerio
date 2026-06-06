@@ -113,26 +113,10 @@ h1, h2, h3 {
 .bkr-press:hover  { filter: brightness(1.05); }
 .bkr-press:active { transform: scale(0.97); }
 
-/* Cross-route morph for the branch card -> menu header (next-view-transitions).
-   The tapped card ascends into the compact header while the branch list
-   cross-fades to the destination route. */
-
-/* Keep the morphing location card above the page cross-fade for the whole run. */
-::view-transition-group(selected-branch) {
-  z-index: 2147483647;
-  animation-duration: 760ms;
-  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
+/* Default cross-route cross-fade timing (next-view-transitions). */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 520ms;
-  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-::view-transition-old(selected-branch),
-::view-transition-new(selected-branch) {
-  animation-duration: 760ms;
   animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
