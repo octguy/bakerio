@@ -42,20 +42,22 @@ jobs:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_PORT: ${{ secrets.VPS_PORT }}
           FTP_HOST: ${{ secrets.FTP_HOST }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_REMOTE_DIR: ${{ secrets.FTP_REMOTE_DIR }}
+          CPANEL_SSH_KEY: ${{ secrets.CPANEL_SSH_KEY }}
+          CPANEL_SSH_PASSPHRASE: ${{ secrets.CPANEL_SSH_PASSPHRASE }}
+          CPANEL_USER: ${{ secrets.CPANEL_USER }}
+          CPANEL_REMOTE_DIR: ${{ secrets.CPANEL_REMOTE_DIR }}
           API_URL: ${{ secrets.API_URL }}
           BRANDING_URL: ${{ secrets.BRANDING_URL }}
           ORDER_URL: ${{ secrets.ORDER_URL }}
           CONSOLE_URL: ${{ secrets.CONSOLE_URL }}
+          CONTACT_ENDPOINT: ${{ secrets.CONTACT_ENDPOINT }}
         run: |
           set -euo pipefail
           for name in \
             DOCKER_USERNAME DOCKER_PASSWORD \
             VPS_HOST VPS_USER VPS_SSH_KEY VPS_PORT \
-            FTP_HOST FTP_USERNAME FTP_PASSWORD FTP_REMOTE_DIR \
-            API_URL BRANDING_URL ORDER_URL CONSOLE_URL; do
+            FTP_HOST CPANEL_SSH_KEY CPANEL_SSH_PASSPHRASE CPANEL_USER CPANEL_REMOTE_DIR \
+            API_URL BRANDING_URL ORDER_URL CONSOLE_URL CONTACT_ENDPOINT; do
             if [ -z "${!name}" ]; then
               echo "Missing required secret: $name"
               exit 1
@@ -155,7 +157,8 @@ jobs:
           CPANEL_USER: ${{ secrets.CPANEL_USER }}
           CPANEL_REMOTE_DIR: ${{ secrets.CPANEL_REMOTE_DIR }}
         run: |
-          sudo apt-get install -yqq lftp sshpass >/dev/null 2>&1
+          sudo apt-get update -qq
+          sudo apt-get install -yqq lftp sshpass
           mkdir -p ~/.ssh
           echo "$CPANEL_SSH_KEY" > ~/.ssh/cpanel_key
           chmod 600 ~/.ssh/cpanel_key
@@ -285,7 +288,6 @@ jobs:
             set -e
             sleep 30
 
-            # Assert each port serves the EXPECTED app. A plain liveness check
             # Assert each port serves the EXPECTED app. A plain liveness check
             # can't catch an order/console image swap (both return 200), so we
             # match the app identity reported by /api/health.
