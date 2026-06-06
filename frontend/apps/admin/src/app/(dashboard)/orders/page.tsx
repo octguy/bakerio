@@ -4,13 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { getOrders } from "@repo/api-client";
 import type { Order } from "@repo/api-client";
 import { formatCurrency } from "@/lib/utils";
-import { ChevronDown } from "lucide-react";
-
-const CHANNEL: Record<string, { l: string; bg: string; c: string }> = {
-  app: { l: "APP", bg: "rgba(212,148,58,0.16)", c: "var(--cinnamon)" },
-  web: { l: "WEB", bg: "rgba(107,143,94,0.16)", c: "var(--sage)" },
-  phone: { l: "TEL", bg: "rgba(201,123,107,0.16)", c: "var(--rose)" },
-};
+import { useAuth } from "@/lib/auth";
 
 const getBranchCode = (branchId: string) => {
   const branchMap: Record<string, string> = {
@@ -31,28 +25,6 @@ const getOrderCodeTail = (order: Order) => {
   return order.id.replace("order-", "#");
 };
 
-const getTag = (id: string) => {
-  if (id === "order-11056") return "New cust";
-  if (id === "order-11053") return "Pre-order";
-  if (id === "order-11052") return "VIP";
-  return undefined;
-};
-
-type OrdersView = "list" | "board" | "map" | "timeline";
-type OrderColumnKey = "queued" | "baking" | "delivery" | "done";
-
-type FilterOption = {
-  value: string;
-  label: string;
-};
-
-type OrderFilters = {
-  branch: string;
-  channel: "all" | keyof typeof CHANNEL;
-  mode: "all" | "pickup" | "delivery";
-  sla: "all" | "late";
-};
-
 const TERMINAL_STATUSES: Order["status"][] = [
   "DELIVERED",
   "COMPLETED",
@@ -70,42 +42,16 @@ const getOrderAgeMinutes = (order: Order) =>
     Math.floor((Date.now() - new Date(order.created_at).getTime()) / 60000),
   );
 
-const getOrderMode = (order: Order): "pickup" | "delivery" => {
-  const explicitMode = (order as Order & { delivery_mode?: string })
-    .delivery_mode;
-  if (explicitMode === "pickup" || explicitMode === "delivery")
-    return explicitMode;
-  return order.delivery_address?.toLowerCase().includes("pickup")
-    ? "pickup"
-    : "delivery";
-};
-
-const getOrderChannel = (order: Order): keyof typeof CHANNEL => {
-  const explicitChannel = (order as Order & { channel?: keyof typeof CHANNEL })
-    .channel;
-  if (explicitChannel && CHANNEL[explicitChannel]) return explicitChannel;
-  return order.id === "order-11056" || order.id === "order-11052"
-    ? "web"
-    : "app";
-};
-
-const getOrderColumnKey = (status: Order["status"]): OrderColumnKey => {
-  if (["DRAFT", "PENDING_PAYMENT", "PAID", "CONFIRMED"].includes(status))
-    return "queued";
-  if (status === "PREPARING") return "baking";
-  if (["READY", "OUT_FOR_DELIVERY"].includes(status)) return "delivery";
-  return "done";
-};
-
 export default function OrdersPage() {
+  const { user } = useAuth();
+  const roles = user?.roles ?? [];
+  // Branch-level roles only ever see their own branch's orders, so the branch
+  // label is redundant noise for them.
+  const isBranchScoped =
+    !roles.includes("super_admin") &&
+    (roles.includes("branch_manager") || roles.includes("branch_staff"));
+
   const [orders, setOrders] = useState<Order[]>([]);
-  const [view, setView] = useState<OrdersView>("board");
-  const [filters, setFilters] = useState<OrderFilters>({
-    branch: "all",
-    channel: "all",
-    mode: "all",
-    sla: "all",
-  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
@@ -116,17 +62,17 @@ export default function OrdersPage() {
   const fetchOrders = async (showLoading = false, requestedPage = pageRef.current) => {
     if (showLoading) setLoading(true);
     setError("");
-      try {
-        const data = await getOrders({
-          page: requestedPage,
-          size: ORDERS_PAGE_SIZE,
-        });
-        setOrders(data.items || []);
-        pageRef.current = data.page;
-        setPage(data.page);
-        setTotalOrders(data.total);
-        setTotalPages(data.pages || Math.ceil(data.total / data.size) || 1);
-      } catch (err) {
+    try {
+      const data = await getOrders({
+        page: requestedPage,
+        size: ORDERS_PAGE_SIZE,
+      });
+      setOrders(data.items || []);
+      pageRef.current = data.page;
+      setPage(data.page);
+      setTotalOrders(data.total);
+      setTotalPages(data.pages || Math.ceil(data.total / data.size) || 1);
+    } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("permission") || msg.includes("forbidden")) {
         setError("You don't have permission to view orders.");
@@ -147,105 +93,16 @@ export default function OrdersPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Grouping logic based on columns
-  // Queued: PENDING_PAYMENT, PAID, CONFIRMED, DRAFT
-  // Baking: PREPARING
-  // Delivery: READY, OUT_FOR_DELIVERY
-  // Done: COMPLETED, DELIVERED, CANCELLED
-  const branchOptions = Array.from(
-    new Map(
-      orders.map((order) => [order.branch_id, getBranchCode(order.branch_id)]),
-    ),
+  // Latest orders first.
+  const visibleOrders = [...orders].sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
-  const branchFilterOptions = [
-    { value: "all", label: "All branches" },
-    ...branchOptions.map(([id, label]) => ({ value: id, label })),
-  ];
-  const channelFilterOptions = [
-    { value: "all", label: "All channels" },
-    ...Object.entries(CHANNEL).map(([value, channel]) => ({ value, label: channel.l })),
-  ];
-  const modeFilterOptions = [
-    { value: "all", label: "Any mode" },
-    { value: "delivery", label: "Delivery" },
-    { value: "pickup", label: "Pickup" },
-  ];
-  const slaFilterOptions = [
-    { value: "all", label: "SLA all" },
-    { value: "late", label: "SLA late" },
-  ];
-
-  const filteredOrders = orders.filter((order) => {
-    const mode = getOrderMode(order);
-    const late =
-      getOrderAgeMinutes(order) > 20 && !isTerminalOrder(order.status);
-    if (filters.branch !== "all" && order.branch_id !== filters.branch)
-      return false;
-    if (filters.channel !== "all" && getOrderChannel(order) !== filters.channel)
-      return false;
-    if (filters.mode !== "all" && mode !== filters.mode) return false;
-    if (filters.sla === "late" && !late) return false;
-    return true;
-  });
-
-  const queuedOrders = filteredOrders.filter(
-    (o) => getOrderColumnKey(o.status) === "queued",
-  );
-  const bakingOrders = filteredOrders.filter(
-    (o) => getOrderColumnKey(o.status) === "baking",
-  );
-  const deliveryOrders = filteredOrders.filter(
-    (o) => getOrderColumnKey(o.status) === "delivery",
-  );
-  const completedOrders = filteredOrders.filter(
-    (o) => getOrderColumnKey(o.status) === "done",
-  );
-
-  const COLS = [
-    {
-      key: "queued",
-      title: "Queued",
-      sub: "awaiting kitchen",
-      accent: "var(--caramel)",
-      badge: queuedOrders.length.toString(),
-      cta: "Start ▸",
-      orders: queuedOrders,
-    },
-    {
-      key: "baking",
-      title: "In the kitchen",
-      sub: "baking · plating",
-      accent: "var(--golden)",
-      badge: bakingOrders.length.toString(),
-      pulse: true,
-      cta: "Ready ✓",
-      orders: bakingOrders,
-    },
-    {
-      key: "delivery",
-      title: "Out for delivery",
-      sub: "rider en route / ready",
-      accent: "var(--cinnamon)",
-      badge: deliveryOrders.length.toString(),
-      pulse: true,
-      cta: "Complete ✓",
-      orders: deliveryOrders,
-    },
-    {
-      key: "done",
-      title: "Completed",
-      sub: "today · last 30",
-      accent: "var(--sage)",
-      badge: completedOrders.length.toString(),
-      cta: "Receipt",
-      orders: completedOrders,
-    },
-  ];
 
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="mb-3.5 flex items-end justify-between">
+      <div className="mb-4 flex items-end justify-between border-b border-[var(--admin-line)] pb-3">
         <div>
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
@@ -268,86 +125,8 @@ export default function OrdersPage() {
             </span>
           </h1>
         </div>
-        <div className="flex gap-2">
-          <div className="flex overflow-hidden rounded-full border border-[var(--admin-line)] bg-white">
-            {[
-              { l: "List", key: "list" as const, disabled: false },
-              { l: "Board", key: "board" as const, disabled: false },
-              { l: "Map", key: "map" as const, disabled: true },
-              { l: "Timeline", key: "timeline" as const, disabled: true },
-            ].map((v) => (
-              <button
-                type="button"
-                key={v.key}
-                onClick={() => setView(v.key)}
-                disabled={v.disabled}
-                aria-pressed={view === v.key}
-                className={`px-4 py-2 font-mono text-[10.5px] tracking-[0.12em] transition-colors ${
-                  view === v.key
-                    ? "bg-espresso font-bold text-white"
-                    : "text-[var(--admin-muted)]"
-                } ${
-                  v.disabled
-                    ? "cursor-not-allowed opacity-45"
-                    : "hover:bg-[var(--admin-panel)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cinnamon"
-                }`}
-              >
-                {v.l}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Filter */}
-      <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-[var(--admin-line)] pb-3">
-        <span className="mr-1 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--admin-muted)]">
-          Filter
-        </span>
-        <OrderFilterCombobox
-          label="Branch"
-          value={filters.branch}
-          options={branchFilterOptions}
-          onChange={(branch) => setFilters((current) => ({ ...current, branch }))}
-        />
-        <OrderFilterCombobox
-          label="Channel"
-          value={filters.channel}
-          options={channelFilterOptions}
-          onChange={(channel) =>
-            setFilters((current) => ({
-              ...current,
-              channel: channel as OrderFilters["channel"],
-            }))
-          }
-        />
-        <OrderFilterCombobox
-          label="Mode"
-          value={filters.mode}
-          options={modeFilterOptions}
-          onChange={(mode) =>
-            setFilters((current) => ({
-              ...current,
-              mode: mode as OrderFilters["mode"],
-            }))
-          }
-        />
-        <OrderFilterCombobox
-          label="SLA"
-          value={filters.sla}
-          options={slaFilterOptions}
-          onChange={(sla) =>
-            setFilters((current) => ({
-              ...current,
-              sla: sla as OrderFilters["sla"],
-            }))
-          }
-        />
-        <div className="flex-1" />
         <span className="font-mono text-[11px] tracking-[0.08em] text-[var(--admin-muted)]">
-          SLA · <span className="font-bold text-sage">98.5%</span>
-          <span className="ml-3">Avg prep · </span>
-          <span className="font-bold text-espresso">10m 15s</span>
+          {totalOrders} orders
         </span>
       </div>
 
@@ -371,224 +150,91 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Board */}
+      {/* Cards */}
       {loading ? (
         <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--admin-line)] bg-white font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">
           Loading orders...
         </div>
-      ) : view === "list" ? (
-        <>
-        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-[var(--admin-line)] bg-white">
-          <div
-            className="grid items-center border-b border-[var(--admin-line)] px-4 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--admin-muted)]"
-            style={{
-              gridTemplateColumns:
-                "1fr 1.3fr 0.7fr 0.7fr 0.8fr 0.7fr 0.9fr 1fr",
-            }}
-          >
-            <span>Order</span>
-            <span>Customer</span>
-            <span>Branch</span>
-            <span>Channel</span>
-            <span>Mode</span>
-            <span>Age</span>
-            <span>Status</span>
-            <span className="text-right">Next</span>
-          </div>
-          <div className="max-h-[calc(100vh-260px)] overflow-auto">
-            {filteredOrders.length === 0 && (
-              <div className="px-4 py-8 text-center font-editorial text-[14px] italic text-caramel">
-                No orders match these filters.
-              </div>
-            )}
-            {filteredOrders.map((o, i) => {
-              const mode = getOrderMode(o);
-              const channel = getOrderChannel(o);
-              const mins = getOrderAgeMinutes(o);
-              const late = mins > 20 && !isTerminalOrder(o.status);
-              return (
-                <div
-                  key={o.id}
-                  className="grid items-center px-4 py-3 text-[12px]"
-                  style={{
-                    gridTemplateColumns:
-                      "1fr 1.3fr 0.7fr 0.7fr 0.8fr 0.7fr 0.9fr 1fr",
-                    borderBottom:
-                      i === filteredOrders.length - 1
-                        ? undefined
-                        : "1px solid var(--admin-line)",
-                    background: late ? "rgba(196,91,74,0.06)" : undefined,
-                  }}
-                >
-                  <span className="font-mono font-semibold text-espresso">
-                    {getOrderCodeTail(o)}
+      ) : visibleOrders.length === 0 ? (
+        <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--admin-line)] bg-white px-4 text-center font-editorial text-[14px] italic text-caramel">
+          No orders yet.
+        </div>
+      ) : (
+        <div className="grid min-h-0 flex-1 auto-rows-min content-start gap-3 overflow-y-auto grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {visibleOrders.map((o) => {
+            const orderNum = getOrderCodeTail(o);
+            const mins = getOrderAgeMinutes(o);
+            const late = mins > 20 && !isTerminalOrder(o.status);
+
+            return (
+              <div
+                key={o.id}
+                className="flex flex-col rounded-lg bg-white p-3.5"
+                style={{
+                  border: `1px solid ${late ? "var(--sienna)" : "var(--admin-line)"}`,
+                  boxShadow: late ? "0 0 0 2px rgba(196,91,74,0.13)" : "none",
+                }}
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span className="font-mono text-[11.5px] font-bold tracking-[0.04em] text-espresso">
+                    {orderNum}
                   </span>
-                  <span className="truncate font-editorial italic text-cocoa">
-                    {o.delivery_address || "—"}
-                  </span>
-                  <span className="font-mono text-[10.5px] font-bold tracking-[0.1em] text-cinnamon">
-                    {getBranchCode(o.branch_id)}
-                  </span>
+                  {!isBranchScoped && (
+                    <span className="font-mono text-[9px] font-bold tracking-[0.16em] text-cinnamon">
+                      {getBranchCode(o.branch_id)}
+                    </span>
+                  )}
                   <span
-                    className="font-mono text-[10.5px] font-bold tracking-[0.14em]"
-                    style={{ color: CHANNEL[channel].c }}
-                  >
-                    {CHANNEL[channel].l}
-                  </span>
-                  <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
-                    {mode}
-                  </span>
-                  <span
-                    className={`font-mono text-[10.5px] font-bold ${late ? "text-sienna" : "text-[var(--admin-muted)]"}`}
+                    className="ml-auto font-mono text-[10.5px] font-bold tracking-[0.04em]"
+                    style={{
+                      color: late
+                        ? "var(--sienna)"
+                        : mins > 15
+                          ? "var(--cinnamon)"
+                          : "var(--admin-muted)",
+                    }}
                   >
                     {mins}m
                   </span>
-                  <span className="font-mono text-[10px] tracking-[0.08em] text-espresso">
-                    {o.status}
-                  </span>
-                  <span className="text-right">
-                    <span className="rounded-full bg-[var(--admin-panel)] px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-[var(--admin-muted)]">
-                      Read only
+                </div>
+
+                <div className="mb-1.5 truncate text-[12px] font-semibold leading-tight text-espresso">
+                  {o.delivery_address || "—"}
+                </div>
+
+                <ul className="mb-2.5 flex flex-col gap-1">
+                  {o.items.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex items-baseline justify-between gap-2 text-[12px] text-cocoa"
+                    >
+                      <span className="min-w-0 truncate">
+                        <span className="mr-1.5 font-mono text-[11px] font-bold tabular-nums text-cinnamon">
+                          {item.quantity}×
+                        </span>
+                        {item.product_name}
+                      </span>
+                      <span className="shrink-0 font-mono text-[11px] tabular-nums text-[var(--admin-muted)]">
+                        {formatCurrency(item.total_price).replace("₫", "")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-auto flex items-center justify-between border-t border-dashed border-[var(--admin-line)] pt-2.5">
+                  <span className="font-display text-[15px] text-espresso">
+                    {formatCurrency(o.total_amount).replace("₫", "")}
+                    <span className="ml-0.5 text-[11px] text-[var(--admin-muted)]">
+                      ₫
                     </span>
                   </span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-        </>
-      ) : (
-        <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {COLS.map((col) => (
-            <div
-              key={col.key}
-              className="flex min-h-0 flex-col rounded-xl border border-[var(--admin-line)] bg-[var(--admin-panel)]"
-            >
-              <div className="flex items-center gap-2.5 rounded-t-xl border-b border-[var(--admin-line)] bg-[#fffaf2] px-3.5 py-3">
-                <span
-                  className={`block h-2 w-2 rounded-full ${col.pulse ? "bkr-pulse" : ""}`}
-                  style={{ background: col.accent }}
-                />
-                <div className="flex-1">
-                  <div className="font-display text-[16px] leading-none tracking-tight text-espresso">
-                    {col.title}
-                  </div>
-                  <div className="mt-0.5 font-editorial text-[11.5px] italic text-[var(--admin-muted)]">
-                    {col.sub}
-                  </div>
-                </div>
-                <span className="rounded-full bg-espresso px-2.5 py-0.5 font-mono text-[11px] font-bold tracking-[0.06em] text-white">
-                  {col.badge}
-                </span>
               </div>
-
-              <div className="flex flex-1 flex-col gap-2 overflow-auto p-2.5">
-                {col.orders.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-[var(--admin-line)] bg-white/60 p-4 text-center font-editorial text-[13px] italic text-[var(--admin-muted)]">
-                    No orders here.
-                  </div>
-                )}
-                {col.orders.map((o) => {
-                  const orderNum = getOrderCodeTail(o);
-                  const mins = Math.max(0, getOrderAgeMinutes(o));
-                  const mode = getOrderMode(o);
-                  const channel = getOrderChannel(o);
-                  const ch = CHANNEL[channel];
-                  const late = mins > 20 && !isTerminalOrder(o.status);
-                  const tag = getTag(o.id);
-                  const itemsStr = o.items
-                    .map(
-                      (item) =>
-                        `${item.product_name.split(" ")[0]} × ${item.quantity}`,
-                    )
-                    .join(" · ");
-
-                  return (
-                    <div
-                      key={o.id}
-                      className="rounded-lg bg-white p-3.5"
-                      style={{
-                        border: `1px solid ${late ? "var(--sienna)" : "var(--admin-line)"}`,
-                        boxShadow: late
-                          ? "0 0 0 2px rgba(196,91,74,0.13)"
-                          : "none",
-                      }}
-                    >
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="font-mono text-[11.5px] font-bold tracking-[0.04em] text-espresso">
-                          {orderNum}
-                        </span>
-                        <span
-                          className="rounded px-1.5 py-0.5 font-mono text-[8.5px] font-bold tracking-[0.18em]"
-                          style={{ background: ch.bg, color: ch.c }}
-                        >
-                          {ch.l}
-                        </span>
-                        <span className="rounded border border-[var(--admin-line-2)] px-1.5 py-0.5 font-mono text-[8.5px] tracking-[0.18em] text-[var(--admin-muted)]">
-                          {mode === "delivery" ? "⏍ DEL" : "◧ PU"}
-                        </span>
-                        <span
-                          className="ml-auto font-mono text-[10.5px] font-bold tracking-[0.04em]"
-                          style={{
-                            color: late
-                              ? "var(--sienna)"
-                              : mins > 15
-                                ? "var(--cinnamon)"
-                                : "var(--admin-muted)",
-                          }}
-                        >
-                          {mins}m
-                        </span>
-                      </div>
-
-                      <div className="mb-1.5 flex items-center gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-[12px] font-semibold leading-tight text-espresso">
-                            {o.delivery_address || "—"}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mb-2.5 font-editorial text-[12.5px] italic leading-[1.35] text-cocoa">
-                        {itemsStr}
-                      </div>
-
-                      <div className="flex items-center justify-between border-t border-dashed border-[var(--admin-line)] pt-2.5">
-                        <span className="font-display text-[15px] text-espresso">
-                          {formatCurrency(o.total_amount).replace("₫", "")}
-                          <span className="ml-0.5 text-[11px] text-[var(--admin-muted)]">
-                            ₫
-                          </span>
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          {tag && (
-                            <span
-                              className="rounded px-1.5 py-0.5 font-mono text-[8.5px] font-bold tracking-[0.18em]"
-                              style={{
-                                background: late
-                                  ? "rgba(196,91,74,0.15)"
-                                  : "rgba(212,148,58,0.15)",
-                                color: late
-                                  ? "var(--sienna)"
-                                  : "var(--cinnamon)",
-                              }}
-                            >
-                              {tag}
-                            </span>
-                          )}
-                          <span className="rounded-full bg-[var(--admin-panel)] px-2.5 py-1 font-mono text-[10px] font-semibold tracking-[0.06em] text-[var(--admin-muted)]">
-                            Read only
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
       {!loading && totalPages > 1 && (
         <nav
           aria-label="Orders pagination"
@@ -614,95 +260,6 @@ export default function OrdersPage() {
             Next
           </button>
         </nav>
-      )}
-    </div>
-  );
-}
-
-function OrderFilterCombobox({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: FilterOption[];
-  onChange: (value: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const selected = options.find((option) => option.value === value) ?? options[0];
-  const filtered = options.filter((option) =>
-    option.label.toLowerCase().includes(search.toLowerCase()),
-  );
-  const active = value !== "all";
-
-  return (
-    <div ref={containerRef} className="relative min-w-[150px]">
-      <button
-        type="button"
-        onClick={() => {
-          setOpen(!open);
-          setSearch("");
-        }}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={`${label} filter. Current: ${selected?.label ?? value}`}
-        className={`flex w-full items-center justify-between rounded-full border border-[var(--admin-line)] px-3 py-1.5 text-left font-mono text-[11px] text-espresso ${
-          active ? "bg-[var(--admin-panel)] font-bold" : "bg-white"
-        }`}
-      >
-        <span className="truncate">{selected?.label ?? value}</span>
-        <ChevronDown aria-hidden="true" className="ml-2 h-3.5 w-3.5 shrink-0 text-[var(--admin-muted)]" />
-      </button>
-      {open && (
-        <div className="absolute z-50 mt-1 w-56 rounded-lg border border-[var(--admin-line)] bg-white p-2 shadow-lg">
-          <input
-            autoFocus
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={`Search ${label.toLowerCase()}...`}
-            className="mb-2 h-8 w-full rounded-md border border-[var(--admin-line)] px-2 font-mono text-[11px] text-espresso outline-none focus:border-cinnamon"
-          />
-          <div className="max-h-56 space-y-1 overflow-y-auto" role="listbox">
-            {filtered.length > 0 ? (
-              filtered.map((option) => (
-                <button
-                  type="button"
-                  key={option.value}
-                  role="option"
-                  aria-selected={value === option.value}
-                  onClick={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                  }}
-                  className={`w-full rounded-md px-2 py-1.5 text-left font-mono text-[11px] text-espresso hover:bg-[var(--admin-panel)] ${
-                    value === option.value ? "bg-[var(--admin-panel)] font-bold" : ""
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))
-            ) : (
-              <p className="px-2 py-2 text-center font-mono text-[11px] text-[var(--admin-muted)]">
-                No matches.
-              </p>
-            )}
-          </div>
-        </div>
       )}
     </div>
   );
