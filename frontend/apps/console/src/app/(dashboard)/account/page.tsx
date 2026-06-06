@@ -121,8 +121,9 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* Profile details — GET/PATCH /profile */}
-      <div className="max-w-xl rounded-lg border border-[var(--console-line)] bg-white p-5">
+      {/* Profile & Security side by side */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
+      <div className="rounded-lg border border-[var(--console-line)] bg-white p-5">
         <h2 className="mb-1 font-display text-[18px] tracking-tight">Profile</h2>
         <p className="mb-4 font-mono text-[11px] text-[var(--console-muted)]">
           Shown across the back office. Your roles and branch are managed by an administrator.
@@ -214,7 +215,7 @@ export default function AccountPage() {
         )}
       </div>
 
-      <div className="max-w-xl rounded-lg border border-[var(--console-line)] bg-white p-5">
+      <div className="rounded-lg border border-[var(--console-line)] bg-white p-5">
         <h2 className="mb-4 font-display text-[18px] tracking-tight">Security</h2>
         <form
           onSubmit={handleSubmit((data) => passwordMut.mutate(data))}
@@ -272,6 +273,7 @@ export default function AccountPage() {
             </Button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   );
