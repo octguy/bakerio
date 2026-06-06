@@ -77,6 +77,12 @@ export interface Profile {
   branch?: BranchBrief;
 }
 
+export interface Membership {
+  tier: string;
+  total_spent: number;
+  next_tier_threshold: number;
+}
+
 export interface CreateUserResponse {
   id: string;
   email: string;
@@ -88,6 +94,7 @@ export interface CreateUserResponse {
 
 export interface Order {
   id: string;
+  code?: string;
   branch_id: string;
   status: OrderStatus;
   items: OrderItem[];

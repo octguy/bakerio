@@ -6,7 +6,6 @@ import { useAuth } from "@/lib/auth";
 import { LogOut } from "lucide-react";
 
 const navItems = [
-  { href: "/", label: "Home" },
   { href: "/menu", label: "Menu" },
   { href: "/orders", label: "Orders" },
   { href: "/profile", label: "Profile" },
