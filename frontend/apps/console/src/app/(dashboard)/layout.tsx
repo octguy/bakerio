@@ -37,6 +37,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (pathname.startsWith("/all-users")) {
     hasAccess = isSuperAdmin;
+  } else if (pathname.startsWith("/roles")) {
+    hasAccess = isSuperAdmin;
   } else if (pathname.startsWith("/staff")) {
     hasAccess = isSuperAdmin || isBranchManager;
   } else if (pathname.startsWith("/branch-products")) {
