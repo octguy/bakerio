@@ -255,7 +255,7 @@ jobs:
             # Backend CD via APP_IMAGE_TAG), which would 404 on a frontend SHA.
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull order console
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps order console
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps nginx
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps --force-recreate nginx
             docker exec bakerio-nginx nginx -t
             docker exec bakerio-nginx nginx -s reload
             sleep 3
