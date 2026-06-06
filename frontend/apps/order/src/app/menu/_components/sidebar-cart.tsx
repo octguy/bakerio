@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { Croissant } from "lucide-react";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
-import { maxRedeemableFor } from "@repo/api-client/mock/loyalty";
 import { CrossSells } from "@/components/cross-sells";
 
 export default function SidebarCart() {
@@ -18,29 +16,7 @@ export default function SidebarCart() {
   const syncing = useCartStore((s) => s.syncing);
   const cartError = useCartStore((s) => s.cartError);
 
-  const [loyalty, setLoyalty] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    const loadLoyalty = async () => {
-      try {
-        const disc = await maxRedeemableFor(subtotal);
-        if (active) {
-          setLoyalty(disc);
-        }
-      } catch {
-        if (active) {
-          setLoyalty(0);
-        }
-      }
-    };
-    loadLoyalty();
-    return () => {
-      active = false;
-    };
-  }, [subtotal]);
-
-  const total = Math.max(0, subtotal - loyalty);
+  const total = subtotal;
   const handleCloseCart = () => setCartOpen(false);
 
   if (items.length === 0) {
@@ -188,14 +164,13 @@ export default function SidebarCart() {
       <div className="mt-4 shrink-0 rounded-[1.5rem] border border-crust-deep bg-white p-4 shadow-[0_18px_40px_-34px_rgba(44,24,16,0.75)]">
         {[
           { l: "Subtotal", v: formatVND(subtotal) },
-          { l: "Loyalty", v: `−${formatVND(loyalty)}`, accent: true },
         ].map((r) => (
           <div
             key={r.l}
             className="flex justify-between py-1 text-[12px] font-medium"
             style={{
-              color: r.accent ? "var(--sage)" : "var(--cocoa)",
-              fontWeight: r.accent ? 600 : 500,
+              color: "var(--cocoa)",
+              fontWeight: 500,
             }}
           >
             <span>{r.l}</span>
