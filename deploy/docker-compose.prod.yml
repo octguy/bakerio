@@ -93,7 +93,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ../db/migrations:/migrations
+      - ../backend/db/migrations:/migrations
     command:
       - -path=/migrations
       - -database=postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable
