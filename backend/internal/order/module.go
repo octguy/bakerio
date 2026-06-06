@@ -10,6 +10,7 @@ import (
 	"github.com/octguy/bakerio/backend/internal/order/repository"
 	"github.com/octguy/bakerio/backend/internal/order/service"
 	"github.com/octguy/bakerio/backend/internal/platform/cache"
+	"github.com/octguy/bakerio/backend/internal/platform/outbox"
 	voucherSvc "github.com/octguy/bakerio/backend/internal/voucher/service"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 
@@ -43,6 +44,8 @@ type Deps struct {
 	Membership     branchSvc.MembershipService
 	Voucher        voucherSvc.Service    // optional — nil disables voucher integration
 	UserMembership membershipSvc.Service // optional — nil disables tier tracking
+	Outbox         *outbox.Repository    // optional — nil disables event publishing
+	Users          service.UserLookup    // optional — used to enrich order.placed with email
 }
 
 func New(deps Deps) *Module {
@@ -50,7 +53,7 @@ func New(deps Deps) *Module {
 
 	orderRepo := repository.NewOrderRepository(ordersdb.New(deps.Pool), deps.Pool)
 	sessionStore := service.NewCheckoutSessionStore(deps.Redis)
-	checkout := service.NewCheckoutService(deps.Router, deps.Catalog, sessionStore, orderRepo, deps.TX, deps.Voucher, deps.UserMembership)
+	checkout := service.NewCheckoutService(deps.Router, deps.Catalog, sessionStore, orderRepo, deps.TX, deps.Voucher, deps.UserMembership, deps.Outbox, deps.Users)
 	query := service.NewQueryService(orderRepo, deps.Membership)
 
 	return &Module{

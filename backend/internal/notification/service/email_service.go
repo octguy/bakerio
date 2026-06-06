@@ -18,7 +18,7 @@ type EmailProvider interface {
 }
 
 type EmailService interface {
-	HandleUserRegistered(ctx context.Context, body []byte) error
+	HandleUserRegistered(ctx context.Context, routingKey string, body []byte) error
 	Verify(ctx context.Context, userID, submitted string) (bool, error)
 }
 
@@ -44,7 +44,7 @@ func NewEmailService(
 // This means: if the email send fails, the message stays in the queue and will be
 // retried. Design handlers to be idempotent — generating a new OTP on retry is fine
 // because the new code overwrites the old Redis key (same key, same TTL reset).
-func (s *emailService) HandleUserRegistered(ctx context.Context, body []byte) error {
+func (s *emailService) HandleUserRegistered(ctx context.Context, _ string, body []byte) error {
 	// 1. Deserialise the event payload from JSON.
 	//    The payload struct mirrors exactly what auth.Register() passed to outboxRepo.Save().
 	var payload event.UserRegisteredPayload

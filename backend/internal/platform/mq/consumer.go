@@ -6,7 +6,10 @@ import (
 	"go.uber.org/zap"
 )
 
-type HandlerFunc func(ctx context.Context, body []byte) error
+// HandlerFunc receives the AMQP routing key alongside the body so a single
+// handler attached to a wildcard-bound queue (e.g. "auth.#") can fan out
+// to per-event-type sub-handlers without declaring a queue per event.
+type HandlerFunc func(ctx context.Context, routingKey string, body []byte) error
 
 type Consumer struct {
 	rmq    *RabbitMQ
@@ -43,7 +46,7 @@ func (c *Consumer) Consume(ctx context.Context, queue string, handler HandlerFun
 				if !ok {
 					return
 				}
-				if err := handler(ctx, msg.Body); err != nil {
+				if err := handler(ctx, msg.RoutingKey, msg.Body); err != nil {
 					c.logger.Error("consumer: handler failed, nacking",
 						zap.String("queue", queue),
 						zap.Error(err),
