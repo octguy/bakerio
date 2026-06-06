@@ -20,14 +20,6 @@ type AuthAuthCredential struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
-type AuthOutbox struct {
-	ID          uuid.UUID  `json:"id"`
-	RoutingKey  string     `json:"routing_key"`
-	Payload     []byte     `json:"payload"`
-	CreatedAt   time.Time  `json:"created_at"`
-	PublishedAt *time.Time `json:"published_at"`
-}
-
 type AuthPermission struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
@@ -95,6 +87,17 @@ type CartCartItem struct {
 	AddedAt       time.Time       `json:"added_at"`
 }
 
+type NotificationUserNotification struct {
+	ID        uuid.UUID  `json:"id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	Type      string     `json:"type"`
+	Title     string     `json:"title"`
+	Body      string     `json:"body"`
+	Data      []byte     `json:"data"`
+	ReadAt    *time.Time `json:"read_at"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
 type OrdersOrder struct {
 	ID                uuid.UUID       `json:"id"`
 	Code              string          `json:"code"`
@@ -123,6 +126,14 @@ type OrdersOrderItem struct {
 	UnitPriceSnap decimal.Decimal `json:"unit_price_snap"`
 	Quantity      int32           `json:"quantity"`
 	LineTotal     decimal.Decimal `json:"line_total"`
+}
+
+type OutboxEvent struct {
+	ID          uuid.UUID  `json:"id"`
+	RoutingKey  string     `json:"routing_key"`
+	Payload     []byte     `json:"payload"`
+	CreatedAt   time.Time  `json:"created_at"`
+	PublishedAt *time.Time `json:"published_at"`
 }
 
 type ProductBranchProduct struct {

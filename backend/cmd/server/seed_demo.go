@@ -32,6 +32,7 @@ type SeedDemoSummary struct {
 	Orders         int  `json:"orders"`          // placed orders
 	Vouchers       int  `json:"vouchers"`        // seeded voucher codes
 	Memberships    int  `json:"memberships"`     // membership rows derived from seeded orders
+	ProductImages  int  `json:"product_images"`  // image rows seeded for products
 } // @name SeedDemoSummary
 
 // seedDemoData populates a fresh database with realistic sample data for manual
@@ -62,7 +63,8 @@ func seedDemoData(ctx context.Context, mods *modules, pool *pgxpool.Pool) SeedDe
 	logger.Log.Info("seed demo: populating sample data")
 	branchIDs := seedBranches(ctx, pool)
 	catIDs := seedCategories(ctx, pool, adminID)
-	seedProducts(ctx, pool, adminID, catIDs)
+	productIDs := seedProducts(ctx, pool, adminID, catIDs)
+	seedProductImages(ctx, pool, adminID, productIDs)
 	activateAllBranchProducts(ctx, pool, adminID)
 	seedBranchProductQuantities(ctx, pool)
 	seedExtraCustomers(ctx, mods)
@@ -98,6 +100,7 @@ func readSeedCounts(ctx context.Context, pool *pgxpool.Pool, skipped bool) SeedD
 	scan("SELECT COUNT(*) FROM orders.orders", &s.Orders)
 	scan("SELECT COUNT(*) FROM voucher.vouchers", &s.Vouchers)
 	scan("SELECT COUNT(*) FROM users.memberships", &s.Memberships)
+	scan("SELECT COUNT(*) FROM product.product_images", &s.ProductImages)
 	return s
 }
 
@@ -292,6 +295,40 @@ func seedProducts(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, ca
 	return out
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Product images — picsum.photos placeholders, seeded so each product gets
+// the same image across DB resets. The hostname is hashed into the seed via
+// the product UUID's first 8 chars, which gives us 4-billion possible seeds
+// (effectively unique per product) without needing to bundle real assets.
+// ─────────────────────────────────────────────────────────────────────────────
+
+func seedProductImages(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID, productIDs []uuid.UUID) {
+	const stmt = `
+INSERT INTO product.product_images (product_id, image_url, alt_text, sort_order, created_by, updated_by)
+VALUES ($1, $2, $3, $4, $5, $5)
+ON CONFLICT DO NOTHING`
+
+	var inserted int
+	for _, pid := range productIDs {
+		// Two images per product so the gallery on the product detail page
+		// has something to swipe through. The seed string is the product
+		// UUID's prefix → image stays the same across reseeds.
+		shortID := pid.String()[:8]
+		for sort := 0; sort < 2; sort++ {
+			url := fmt.Sprintf("https://picsum.photos/seed/%s-%d/600/400", shortID, sort)
+			alt := fmt.Sprintf("Product photo %d", sort+1)
+			if _, err := pool.Exec(ctx, stmt, pid, url, alt, int32(sort), adminID); err != nil {
+				logger.Log.Warn("seed demo: product image insert failed",
+					zap.String("product_id", pid.String()), zap.Error(err))
+				continue
+			}
+			inserted++
+		}
+	}
+	logger.Log.Info("seed demo: product images inserted",
+		zap.Int("count", inserted), zap.Int("products", len(productIDs)))
+}
+
 // activateAllBranchProducts creates the (product × branch) availability matrix
 // in one shot, all active.
 func activateAllBranchProducts(ctx context.Context, pool *pgxpool.Pool, adminID uuid.UUID) {
@@ -378,8 +415,10 @@ func seedExtraCustomers(ctx context.Context, mods *modules) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func seedBranchStaff(ctx context.Context, mods *modules, branchIDs []uuid.UUID) {
-	// Suffixes used to make staff emails unique within a branch.
-	staffSuffixes := []string{"a", "b"}
+	// Suffixes used to make staff emails unique within a branch. Bumped to
+	// 4 staff per branch (a–d) so order.placed.branch fanout testing has a
+	// realistic crew size and the branch detail page has real headcount.
+	staffSuffixes := []string{"a", "b", "c", "d"}
 	for i, branchID := range branchIDs {
 		idx := i + 1
 		// 1 manager per branch
@@ -387,7 +426,7 @@ func seedBranchStaff(ctx context.Context, mods *modules, branchIDs []uuid.UUID) 
 			fmt.Sprintf("manager%d@bakerio.com", idx),
 			fmt.Sprintf("Manager %d", idx),
 			"branch_manager")
-		// 2 staff per branch (suffixed a/b for unique emails)
+		// 4 staff per branch (a/b/c/d).
 		for _, suf := range staffSuffixes {
 			createBranchUser(ctx, mods, branchID,
 				fmt.Sprintf("staff%d%s@bakerio.com", idx, suf),

@@ -91,6 +91,14 @@ func (c *Client) Delete(ctx context.Context, key string) error {
 }
 
 // PublicURL builds the externally-reachable URL for an object key.
+//
+// If the stored value is already an absolute URL (starts with http:// or
+// https://) we return it as-is. This lets seed data (or any future flow
+// that wants to point at an external CDN / placeholder service) bypass the
+// MinIO bucket prefix without confusing the read path.
 func (c *Client) PublicURL(key string) string {
+	if strings.HasPrefix(key, "http://") || strings.HasPrefix(key, "https://") {
+		return key
+	}
 	return fmt.Sprintf("%s/%s/%s", c.publicURL, c.bucket, key)
 }
