@@ -20,20 +20,22 @@ type OrderListFilter struct {
 	To       *time.Time // placed_at <  To
 }
 
-// OrderSummary is one row in /orders. Excludes items (call GET /orders/:id
-// for full detail) but joins branch name so the UI can render the list
-// without a second round-trip.
+// OrderSummary is one row in /orders. Joins branch name so the UI can render
+// the list without a second round-trip. Items are inlined for admin /
+// branch staff / branch manager callers (operational view) but omitted for
+// customer callers — they can fetch GET /orders/:id for full detail.
 type OrderSummary struct {
-	ID              uuid.UUID       `json:"id"`
-	Code            string          `json:"code"`
-	UserID          uuid.UUID       `json:"user_id"`
-	BranchID        uuid.UUID       `json:"branch_id"`
-	BranchName      string          `json:"branch_name"`
-	Subtotal        decimal.Decimal `json:"subtotal"`
-	ShippingFee     decimal.Decimal `json:"shipping_fee"`
-	Total           decimal.Decimal `json:"total"`
-	ShippingAddress string          `json:"shipping_address"`
-	PlacedAt        time.Time       `json:"placed_at"`
+	ID              uuid.UUID           `json:"id"`
+	Code            string              `json:"code"`
+	UserID          uuid.UUID           `json:"user_id"`
+	BranchID        uuid.UUID           `json:"branch_id"`
+	BranchName      string              `json:"branch_name"`
+	Subtotal        decimal.Decimal     `json:"subtotal"`
+	ShippingFee     decimal.Decimal     `json:"shipping_fee"`
+	Total           decimal.Decimal     `json:"total"`
+	ShippingAddress string              `json:"shipping_address"`
+	PlacedAt        time.Time           `json:"placed_at"`
+	Items           []OrderItemResponse `json:"items,omitempty"`
 } // @name OrderSummary
 
 type OrderListResponse struct {

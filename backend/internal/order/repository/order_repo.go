@@ -24,6 +24,7 @@ type OrderRepository interface {
 
 	GetOrderByID(ctx context.Context, id uuid.UUID) (*domain.Order, error)
 	ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domain.OrderItem, error)
+	ListItemsByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) ([]domain.OrderItem, error)
 
 	// ListOrders is the dynamic-filter list query for GET /orders. Joins
 	// branch.branches for the summary's branch_name — accepted cross-schema
@@ -120,6 +121,21 @@ func (r *orderRepo) GetOrderByID(ctx context.Context, id uuid.UUID) (*domain.Ord
 
 func (r *orderRepo) ListItemsByOrderID(ctx context.Context, orderID uuid.UUID) ([]domain.OrderItem, error) {
 	rows, err := r.queries(ctx).ListOrderItemsByOrderID(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.OrderItem, len(rows))
+	for i, row := range rows {
+		out[i] = *orderItemRowToEntity(row)
+	}
+	return out, nil
+}
+
+func (r *orderRepo) ListItemsByOrderIDs(ctx context.Context, orderIDs []uuid.UUID) ([]domain.OrderItem, error) {
+	if len(orderIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.queries(ctx).ListOrderItemsByOrderIDs(ctx, orderIDs)
 	if err != nil {
 		return nil, err
 	}

@@ -25,8 +25,11 @@ type CheckoutSession struct {
 	Items             []CheckoutSessionItem `json:"items"`
 	Subtotal          decimal.Decimal       `json:"subtotal"`
 	ShippingFee       decimal.Decimal       `json:"shipping_fee"`
-	DiscountAmount    decimal.Decimal       `json:"discount_amount"`
+	TierDiscount      decimal.Decimal       `json:"tier_discount"`
+	VoucherDiscount   decimal.Decimal       `json:"voucher_discount"`
+	DiscountAmount    decimal.Decimal       `json:"discount_amount"` // tier + voucher
 	Total             decimal.Decimal       `json:"total"`
+	Tier              string                `json:"tier"`
 	VoucherID         *uuid.UUID            `json:"voucher_id,omitempty"`
 	VoucherCode       *string               `json:"voucher_code,omitempty"`
 	ShippingAddress   string                `json:"shipping_address"`

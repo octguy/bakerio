@@ -4267,6 +4267,12 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/OrderItemResponse"
+                    }
+                },
                 "placed_at": {
                     "type": "string"
                 },
@@ -4781,6 +4787,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "discount_amount": {
+                    "description": "= tier + voucher",
                     "type": "number"
                 },
                 "distance_km": {
@@ -4804,6 +4811,12 @@ const docTemplate = `{
                 "subtotal": {
                     "type": "number"
                 },
+                "tier": {
+                    "type": "string"
+                },
+                "tier_discount": {
+                    "type": "number"
+                },
                 "total": {
                     "type": "number"
                 },
@@ -4812,6 +4825,9 @@ const docTemplate = `{
                 },
                 "voucher_code": {
                     "type": "string"
+                },
+                "voucher_discount": {
+                    "type": "number"
                 }
             }
         },

@@ -599,6 +599,10 @@ definitions:
         type: string
       id:
         type: string
+      items:
+        items:
+          $ref: '#/definitions/OrderItemResponse'
+        type: array
       placed_at:
         type: string
       shipping_address:
@@ -945,6 +949,7 @@ definitions:
       branch_name:
         type: string
       discount_amount:
+        description: = tier + voucher
         type: number
       distance_km:
         type: number
@@ -960,12 +965,18 @@ definitions:
         type: number
       subtotal:
         type: number
+      tier:
+        type: string
+      tier_discount:
+        type: number
       total:
         type: number
       ttl_seconds:
         type: integer
       voucher_code:
         type: string
+      voucher_discount:
+        type: number
     type: object
   SetPasswordRequest:
     properties:
