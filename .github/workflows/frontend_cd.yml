@@ -191,8 +191,8 @@ jobs:
             ORDER_URL=${{ secrets.ORDER_URL }}
             ADMIN_URL=${{ secrets.ADMIN_URL }}
             CONTACT_ENDPOINT=${{ secrets.CONTACT_ENDPOINT }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=order
+          cache-to: type=gha,mode=max,scope=order
 
   docker-admin:
     needs: [gate, validate]
@@ -224,8 +224,8 @@ jobs:
             ORDER_URL=${{ secrets.ORDER_URL }}
             ADMIN_URL=${{ secrets.ADMIN_URL }}
             CONTACT_ENDPOINT=${{ secrets.CONTACT_ENDPOINT }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,mode=max,scope=admin
 
   deploy-apps:
     needs: [docker-order, docker-admin]
@@ -275,9 +275,21 @@ jobs:
           script: |
             set -e
             sleep 5
-            curl -sf http://localhost:3001 > /dev/null || (echo "❌ Order app down" && exit 1)
-            echo "✅ Order app healthy"
-            curl -sf http://localhost:3002 > /dev/null || (echo "❌ Admin app down" && exit 1)
-            echo "✅ Admin app healthy"
-            curl -sf '${{ secrets.ORDER_URL }}' > /dev/null || (echo "❌ Public order URL down" && exit 1)
-            curl -sf '${{ secrets.ADMIN_URL }}' > /dev/null || (echo "❌ Public admin URL down" && exit 1)
+
+            # Assert each port serves the EXPECTED app. A plain liveness check
+            # can't catch an order/admin image swap (both return 200), so we
+            # match the app identity reported by /api/health.
+            check() {
+              local label="$1" target="$2" expected="$3"
+              local body
+              body="$(curl -sf "$target/api/health")" || { echo "❌ $label unreachable ($target)"; exit 1; }
+              case "$body" in
+                *"\"app\":\"$expected\""*) echo "✅ $label healthy ($expected)" ;;
+                *) echo "❌ $label served WRONG app — expected '$expected', got: $body"; exit 1 ;;
+              esac
+            }
+
+            check "Order (local)" "http://localhost:3001" "order"
+            check "Admin (local)" "http://localhost:3002" "admin"
+            check "Order (public)" "${{ secrets.ORDER_URL }}" "order"
+            check "Admin (public)" "${{ secrets.ADMIN_URL }}" "admin"
