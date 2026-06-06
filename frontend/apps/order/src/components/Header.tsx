@@ -4,6 +4,7 @@ import { Link } from "next-view-transitions";
 import { useAuth } from "@/lib/auth";
 import { useCartStore } from "@/store/cart";
 import { ShoppingBag, LogOut } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -23,6 +24,7 @@ export function Header() {
           <span className="font-display text-[18px] leading-none tracking-tight">Bakerio</span>
         </Link>
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <Link
             href="/cart"
             aria-label="Shopping cart"

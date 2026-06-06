@@ -8,6 +8,8 @@
     ".": "./src/index.ts",
     "./staff": "./src/staff.ts",
     "./voucher": "./src/voucher.ts",
+    "./notifications": "./src/notifications.ts",
+    "./rbac": "./src/rbac.ts",
     "./mock": "./src/mock/index.ts"
   },
   "scripts": {

@@ -1,9 +1,10 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Search, ToggleLeft, ToggleRight } from "lucide-react";
+import { ToggleLeft, ToggleRight } from "lucide-react";
 import { useFilterStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/notification-bell";
 
 const SEGMENT_LABEL: Record<string, string> = {
   "": "Counter",
@@ -73,7 +74,8 @@ export function ConsoleTopBar() {
         </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="ml-auto flex items-center gap-3">
+        <NotificationBell />
         <div className="flex items-center gap-2 rounded-full border border-[var(--console-line)] bg-white px-3 py-1.5 font-mono text-[11px] text-espresso">
           <span>{today}</span>
         </div>
