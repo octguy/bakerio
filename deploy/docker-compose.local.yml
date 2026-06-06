@@ -151,7 +151,7 @@ services:
       SERVER_ENV: development
       SERVER_PORT: 8080
       GIN_MODE: debug
-      JWT_SECRET: local-dev-secret-change-me
+      JWT_SECRET: ASto0B7KDmExxVqMHtGl0quCnJhq2IcxDldEEaChTeE=
       JWT_EXPIRY: 15m
       DB_HOST: postgres
       DB_PORT: 5432
