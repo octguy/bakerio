@@ -31,7 +31,7 @@ const GROUPS: NavGroup[] = [
     head: "Bánh · Catalog",
     items: [
       { href: "/products", label: "Products", glyph: "⬡" },
-      { href: "/branch-products", label: "My Branch Stock", glyph: "▦" },
+      { href: "/branch-products", label: "Branch Stock", glyph: "▦" },
       { href: "/categories", label: "Categories", glyph: "⬢" },
       { href: "/vouchers", label: "Vouchers", glyph: "⬔" },
     ],
@@ -74,7 +74,7 @@ function getAuthorizedGroups(roles: string[]): NavGroup[] {
         return isSuperAdmin || isProductManager;
       }
       if (it.href === "/products") {
-        return isSuperAdmin || isBranchManager || isProductManager;
+        return isSuperAdmin || isProductManager;
       }
       if (it.href === "/orders") {
         return isSuperAdmin || isBranchManager || roles.includes("branch_staff");
