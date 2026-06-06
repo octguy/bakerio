@@ -97,8 +97,8 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             cd backend/deployments
-            grep -v '^IMAGE_TAG=' .env.prod > .env.prod.tmp || true
-            printf 'IMAGE_TAG=%s\n' '${{ github.sha }}' >> .env.prod.tmp
+            grep -v '^APP_IMAGE_TAG=' .env.prod > .env.prod.tmp || true
+            printf 'APP_IMAGE_TAG=%s\n' '${{ github.sha }}' >> .env.prod.tmp
             mv .env.prod.tmp .env.prod
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull app
 

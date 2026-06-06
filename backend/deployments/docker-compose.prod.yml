@@ -107,7 +107,7 @@ services:
         max-file: "3"
 
   app:
-    image: ${DOCKER_USERNAME}/bakerio:${IMAGE_TAG:-latest}
+    image: ${DOCKER_USERNAME}/bakerio:${APP_IMAGE_TAG:-latest}
     container_name: bakerio-app
     depends_on:
       postgres:
@@ -209,7 +209,6 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - certbot_www:/var/www/certbot:ro
     depends_on:
-      - app
       - order
       - admin
     # Reload every 6h so renewed certs are picked up without downtime.
