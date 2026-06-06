@@ -27,6 +27,9 @@ ENV NEXT_PUBLIC_BRANDING_URL=$BRANDING_URL
 ENV NEXT_PUBLIC_ORDER_URL=$ORDER_URL
 ENV NEXT_PUBLIC_CONSOLE_URL=$CONSOLE_URL
 ENV NEXT_PUBLIC_CONTACT_ENDPOINT=$CONTACT_ENDPOINT
+# Fail loud instead of silently baking mock fixtures into the prerendered HTML
+# if a build-time catalog fetch fails. Production images must never serve mocks.
+ENV NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true
 COPY --from=deps /app/node_modules ./node_modules
 # The console app pins deps (lucide-react, tailwind-merge, recharts, @radix-ui,
 # zod) at versions that conflict with the other workspaces, so npm cannot hoist

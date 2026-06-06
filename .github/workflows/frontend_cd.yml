@@ -255,7 +255,7 @@ jobs:
             # Backend CD via APP_IMAGE_TAG), which would 404 on a frontend SHA.
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull order console
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps order console
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps nginx
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps --force-recreate nginx
             docker exec bakerio-nginx nginx -t
             docker exec bakerio-nginx nginx -s reload
             sleep 3
@@ -276,7 +276,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            sleep 5
+            sleep 30
 
             # Assert each port serves the EXPECTED app. A plain liveness check
             # Assert each port serves the EXPECTED app. A plain liveness check
@@ -284,6 +284,9 @@ jobs:
             # match the app identity reported by /api/health.
             check() {
               local label="$1" target="$2" expected="$3"
+              # Strip trailing slashes so a stray slash in *_URL secrets can't
+              # produce `//api/health` (which returns the literal "/api/health").
+              target="${target%/}"
               local body
               body="$(curl -sf "$target/api/health")" || { echo "❌ $label unreachable ($target)"; exit 1; }
               case "$body" in
