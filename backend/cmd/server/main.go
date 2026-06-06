@@ -49,7 +49,7 @@ func main() {
 	seedAdmins(ctx, mods.auth.AuthService(), i.pool)
 
 	// Background workers.
-	go outbox.NewWorker(i.publisher, logger.Log, i.authOutbox).Run(ctx)
+	go outbox.NewWorker(i.publisher, logger.Log, i.outboxRepo).Run(ctx)
 	must("notification consumers", mods.notif.RegisterConsumers(ctx, i.consumer))
 
 	// HTTP — blocks until shutdown.

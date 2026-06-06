@@ -15,8 +15,10 @@ type Worker struct {
 	logger    *zap.Logger
 }
 
-// NewWorker accepts one Source per module.
-// outbox.NewWorker(publisher, logger, authOutbox, orderOutbox, paymentOutbox)
+// NewWorker accepts one or more Sources. v1 ships a single shared
+// outbox.events table, but the variadic signature lets us add per-module
+// tables later (with their own polling cadence) without breaking callers.
+// outbox.NewWorker(publisher, logger, outboxRepo)
 func NewWorker(publisher *mq.Publisher, logger *zap.Logger, sources ...Source) *Worker {
 	return &Worker{sources: sources, publisher: publisher, logger: logger}
 }

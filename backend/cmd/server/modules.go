@@ -52,7 +52,7 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 		Redis:          i.redis,
 		TX:             i.tx,
 		ProfileCreator: userMod.ProfileService(),
-		AuthOutbox:     i.authOutbox,
+		Outbox:         i.outboxRepo,
 		OTP:            i.otpService,
 		JWTSecret:      cfg.JWT.SecretKey,
 		JWTExpiry:      cfg.JWT.Expiry,
