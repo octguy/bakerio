@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
@@ -96,3 +98,45 @@ type ProductStatsResponse struct {
 	Items []ProductStat `json:"items"`
 	pagination.Meta
 } // @name ProductStatsResponse
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /statistics/timeseries
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TimeseriesPoint is one chart datapoint. orders=0/revenue=0 rows still
+// appear (zero-filled by SQL) so the chart x-axis stays continuous.
+type TimeseriesPoint struct {
+	BucketStart time.Time       `json:"bucket_start"`
+	Orders      int64           `json:"orders"`
+	Revenue     decimal.Decimal `json:"revenue"`
+} // @name TimeseriesPoint
+
+// TimeseriesResponse echoes the effective parameters (after defaulting +
+// scope) so the frontend doesn't have to guess what it actually got.
+type TimeseriesResponse struct {
+	Granularity string            `json:"granularity"`
+	From        time.Time         `json:"from"`
+	To          time.Time         `json:"to"`
+	BranchID    *uuid.UUID        `json:"branch_id,omitempty"`
+	Points      []TimeseriesPoint `json:"points"`
+} // @name TimeseriesResponse
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /statistics/products/:id/timeseries
+// ─────────────────────────────────────────────────────────────────────────────
+
+type ProductTimeseriesPoint struct {
+	BucketStart time.Time       `json:"bucket_start"`
+	QtySold     int64           `json:"qty_sold"`
+	Revenue     decimal.Decimal `json:"revenue"`
+} // @name ProductTimeseriesPoint
+
+type ProductTimeseriesResponse struct {
+	ProductID   uuid.UUID                `json:"product_id"`
+	ProductName string                   `json:"product_name"`
+	Granularity string                   `json:"granularity"`
+	From        time.Time                `json:"from"`
+	To          time.Time                `json:"to"`
+	BranchID    *uuid.UUID               `json:"branch_id,omitempty"`
+	Points      []ProductTimeseriesPoint `json:"points"`
+} // @name ProductTimeseriesResponse

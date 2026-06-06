@@ -2891,6 +2891,147 @@
                 }
             }
         },
+        "/statistics/products/{id}/timeseries": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Same calendar buckets as /statistics/timeseries but\naggregated over orders.order_items filtered by product_id.\nScope: super_admin + product_manager may target any branch\nvia ?branch_id= (omit for all branches); branch_manager is\nforced to own branch.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "statistics"
+                ],
+                "summary": "Per-product time-series (units sold + revenue)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Product UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "day | week | month | year",
+                        "name": "granularity",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC3339 datetime. Default: 30 days back (day), 12 weeks back (week), 12 months back (month), 5 years back (year).",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC3339 datetime. Default: now.",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Branch UUID. Admin + product_manager may target any branch; omit for all branches. Ignored for branch_manager (forced to own branch).",
+                        "name": "branch_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ProductTimeseriesResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/statistics/timeseries": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns one point per calendar-aligned bucket in\nAsia/Ho_Chi_Minh. Empty buckets are zero-filled. Granularity\nwhitelist: day / week / month / year.\nDefaults when from/to omitted: last 30 d (day), 12 w (week),\n12 mo (month), 5 y (year).\nScope: super_admin may target any branch via ?branch_id= or\nomit for all branches; branch_manager is forced to own branch.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "statistics"
+                ],
+                "summary": "Time-series of orders + revenue (chart-friendly)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "day | week | month | year",
+                        "name": "granularity",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC3339 datetime. Default: 30 days back (day), 12 weeks back (week), 12 months back (month), 5 years back (year).",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC3339 datetime. Default: now.",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Branch UUID (admin only — ignored for branch_manager, who is forced to own branch)",
+                        "name": "branch_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/TimeseriesResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "security": [
@@ -4324,6 +4465,49 @@
                 }
             }
         },
+        "ProductTimeseriesPoint": {
+            "type": "object",
+            "properties": {
+                "bucket_start": {
+                    "type": "string"
+                },
+                "qty_sold": {
+                    "type": "integer"
+                },
+                "revenue": {
+                    "type": "number"
+                }
+            }
+        },
+        "ProductTimeseriesResponse": {
+            "type": "object",
+            "properties": {
+                "branch_id": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "granularity": {
+                    "type": "string"
+                },
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ProductTimeseriesPoint"
+                    }
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "product_name": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                }
+            }
+        },
         "ProfileResponse": {
             "type": "object",
             "properties": {
@@ -4634,6 +4818,43 @@
                 "password": {
                     "type": "string",
                     "minLength": 6
+                }
+            }
+        },
+        "TimeseriesPoint": {
+            "type": "object",
+            "properties": {
+                "bucket_start": {
+                    "type": "string"
+                },
+                "orders": {
+                    "type": "integer"
+                },
+                "revenue": {
+                    "type": "number"
+                }
+            }
+        },
+        "TimeseriesResponse": {
+            "type": "object",
+            "properties": {
+                "branch_id": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "granularity": {
+                    "type": "string"
+                },
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/TimeseriesPoint"
+                    }
+                },
+                "to": {
+                    "type": "string"
                 }
             }
         },
