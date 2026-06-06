@@ -4,10 +4,8 @@ import { useState, useEffect, useId, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { getLoyalty } from "@repo/api-client/mock/loyalty";
-import type { LoyaltyBalance } from "@repo/api-client/mock/loyalty";
-import { getMyProfile, getOrderStats, updateMyProfile, changePassword, getAddresses, addAddress, updateAddress, removeAddress, setDefaultAddress } from "@repo/api-client";
-import type { Profile, SavedAddress } from "@repo/api-client";
+import { getMembership, getMyProfile, getOrderStats, updateMyProfile, changePassword, getAddresses, addAddress, updateAddress, removeAddress, setDefaultAddress } from "@repo/api-client";
+import type { Membership, Profile, SavedAddress } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 
 const AddressMapPicker = dynamic(
@@ -53,7 +51,7 @@ function ProfileContent() {
   const [profileError, setProfileError] = useState("");
   const memberSince = formatMemberSince(profileUser?.created_at);
 
-  const [loyalty, setLoyalty] = useState<LoyaltyBalance | undefined>(undefined);
+  const [membership, setMembership] = useState<Membership | undefined>(undefined);
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [lifetimeOrders, setLifetimeOrders] = useState<number | undefined>(undefined);
 
@@ -86,9 +84,12 @@ function ProfileContent() {
         }
       }
       try {
-        const loy = await getLoyalty();
-        if (!active) return;
-        setLoyalty(loy);
+        const m = await getMembership();
+        if (active) setMembership(m);
+      } catch (err) {
+        if (process.env.NODE_ENV !== "production") console.error("Failed to load membership:", err);
+      }
+      try {
         const addrs = await getAddresses();
         if (!active) return;
         setAddresses(addrs);
@@ -248,6 +249,11 @@ function ProfileContent() {
     }
   };
 
+  const hasMembership = !!membership;
+  const spent = membership?.total_spent ?? 0;
+  const threshold = membership?.next_tier_threshold ?? 0;
+  const progress = hasMembership && threshold > 0 ? Math.min(1, spent / threshold) : 0;
+
   return (
     <main className="mx-auto max-w-5xl px-6 pt-4 pb-32 md:pb-12">
       {/* Header (Mobile only) */}
@@ -312,26 +318,26 @@ function ProfileContent() {
                 <span className="text-[14px] text-honey" aria-hidden="true">
                   ✦
                 </span>
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-honey">Bakerio crumbs</span>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-honey">Membership</span>
               </div>
               <div className="flex items-baseline gap-2.5">
-                <span className="font-display text-[48px] leading-none tracking-tight">{loyalty?.balance.toLocaleString() ?? "0"}</span>
-                <span className="font-editorial text-[14px] italic text-honey">= {formatVND(loyalty?.asMoney ?? 0)} off</span>
+                <span className="font-display text-[48px] leading-none tracking-tight">{membership?.tier ?? "—"}</span>
+                <span className="font-editorial text-[14px] italic text-honey">{formatVND(spent)} spent</span>
               </div>
               <div className="mt-3.5 h-1.5 overflow-hidden rounded-sm bg-white/15">
                 <div
                   className="bkr-fill h-full rounded-sm bg-honey"
                   style={
                     {
-                      "--fill-scale": loyalty?.progress ?? 0,
-                      transform: `scaleX(${loyalty?.progress ?? 0})`,
+                      "--fill-scale": progress,
+                      transform: `scaleX(${progress})`,
                     } as React.CSSProperties
                   }
                 />
               </div>
               <div className="mt-2 flex justify-between font-mono text-[10px] tracking-[0.08em] opacity-80">
-                <span>{loyalty?.tier ?? "Croissant"} tier</span>
-                <span>{loyalty?.nextTier ? `${loyalty.toNextTier.toLocaleString()} → ${loyalty.nextTier} tier` : "Max tier reached"}</span>
+                <span>{membership?.tier ?? "—"} tier</span>
+                <span>{!hasMembership ? "—" : threshold > 0 ? `${formatVND(Math.max(0, threshold - spent))} → next tier` : "Top tier"}</span>
               </div>
             </div>
           </div>
