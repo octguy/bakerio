@@ -5,10 +5,12 @@ node_modules
 .pnp
 .pnp.js
 
-# Local env overrides only — .env and .env.production are committed
+# Local env overrides only — only .env (shared dev defaults) is committed.
+# Production values come from GitHub Actions secrets (see secrets-template.txt).
 .env.local
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
 
 # Testing

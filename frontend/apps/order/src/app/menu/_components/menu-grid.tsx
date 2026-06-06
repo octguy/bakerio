@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, type MouseEvent } from "react";
+import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { useSearchParams } from "next/navigation";
@@ -8,6 +9,7 @@ import { Croissant, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   getProductsPage,
   getProduct,
+  listProductImages,
   type Product,
   type Category,
   type PaginatedResponse,
@@ -18,6 +20,37 @@ import { useCartStore } from "@/store/cart";
 import { SortDropdown } from "./sort-dropdown";
 import { ProductBanner } from "./product-banner";
 import { MenuEmptyState } from "./menu-empty-state";
+
+// Module-level cache: product_id → primary image URL
+const imgCache = new Map<string, string | null>();
+const imgPending = new Set<string>();
+
+function useProductImages(productIds: string[]) {
+  const [rev, setRev] = useState(0);
+  const idsKey = productIds.join(",");
+
+  useEffect(() => {
+    const missing = productIds.filter((id) => !imgCache.has(id) && !imgPending.has(id));
+    if (missing.length === 0) return;
+    missing.forEach((id) => imgPending.add(id));
+    Promise.allSettled(
+      missing.map(async (id) => {
+        try {
+          const imgs = await listProductImages(id);
+          const primary = imgs.find((i) => i.is_primary) ?? imgs[0];
+          imgCache.set(id, primary?.url ?? null);
+        } catch {
+          imgCache.set(id, null);
+        } finally {
+          imgPending.delete(id);
+        }
+      }),
+    ).then(() => setRev((n) => n + 1));
+  }, [idsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  void rev;
+  return imgCache;
+}
 
 type MenuProduct = Product & {
   price?: number;
@@ -172,7 +205,7 @@ export function MenuGrid({
           slug: product.slug,
           description: "",
           basePrice: price,
-          image: "",
+          image: imgCache.get(product.id) || "",
           category: getProductCategoryId(product),
           options: [],
         },
@@ -214,6 +247,7 @@ export function MenuGrid({
   const totalPages = productsPage.total_pages;
   const total = productsPage.total;
   const pageProducts = productsPage.items;
+  const productImages = useProductImages(pageProducts.map((p) => p.id));
   const hasPreviousPage = page > 1;
   const hasNextPage = page < totalPages;
   const normalizedSearch = search.trim().toLowerCase();
@@ -559,7 +593,7 @@ export function MenuGrid({
                 slug: product.slug,
                 description: "",
                 basePrice: price,
-                image: "",
+                image: productImages.get(product.id) || "",
                 category: getProductCategoryId(product),
                 options: [],
               },
@@ -580,11 +614,22 @@ export function MenuGrid({
                   aria-label={`View ${product.name}`}
                 >
                   <div className="flex h-full w-full items-center justify-center transition-transform duration-500 group-hover:rotate-[-6deg] group-hover:scale-110">
-                    <Croissant
-                      className="text-golden"
-                      size={44}
-                      aria-hidden="true"
-                    />
+                    {productImages.get(product.id) ? (
+                      <Image
+                        src={productImages.get(product.id)!}
+                        alt={product.name}
+                        fill
+                        className="object-cover"
+                        sizes="(min-width: 768px) 25vw, (min-width: 380px) 50vw, 100vw"
+                        unoptimized
+                      />
+                    ) : (
+                      <Croissant
+                        className="text-golden"
+                        size={44}
+                        aria-hidden="true"
+                      />
+                    )}
                   </div>
                 </Link>
                 <div className="absolute left-3 top-3 rounded-full bg-cream/90 px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-caramel">
