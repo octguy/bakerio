@@ -8,7 +8,6 @@ import {
   confirmOrder,
   findOrderBranches,
   getMembership,
-  getMockOrderSessionUser,
   selectOrderBranch,
   type Membership,
   type OrderBranchOption,
@@ -21,7 +20,6 @@ import type { Coupon } from "@/types";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/auth";
 import { useCartStore } from "@/store/cart";
-import { useOrderDetailsStore } from "@/store/orderDetails";
 import { formatVND } from "@/lib/format";
 import Loading from "./loading";
 
@@ -237,23 +235,8 @@ function CheckoutPageInner() {
         items: backendItems,
         voucher_code: appliedVoucher?.code,
       });
-      const order = await confirmOrder(quote.session_id);
+      await confirmOrder(quote.session_id);
 
-      const sessionUser = getMockOrderSessionUser();
-      if (order && order.id) {
-        useOrderDetailsStore.getState().saveOrderDetail(sessionUser, order.id, {
-          fulfillment_mode: "DELIVERY",
-          delivery_address: deliveryAddress,
-          requested_time: "ASAP · 15–25m",
-          payment_method: selectedPaymentMethod.value,
-          delivery_fee_amount: Number(quote.shipping_fee ?? deliveryFee),
-          loyalty_discount_amount: 0,
-          crumbs_redeemed: 0,
-          subtotal_amount: Number(quote.subtotal ?? subtotal),
-          total_amount: Number(quote.total ?? total),
-          items: order.items || [],
-        });
-      }
       clearCart();
       setOrdered(true);
     } catch {
