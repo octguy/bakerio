@@ -12,7 +12,7 @@
 #   4. Reload nginx with the real cert.
 #
 # Run ONCE on the VPS:
-#   cd /home/deploy/bakerio/backend/deployments && ./init-letsencrypt.sh
+#   cd /home/deploy/bakerio/deploy && ./init-letsencrypt.sh
 #
 # Idempotent: re-running with an existing real cert is a no-op unless --force.
 

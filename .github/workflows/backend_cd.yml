@@ -96,7 +96,7 @@ jobs:
             cd /home/deploy/bakerio
             git fetch origin main
             git reset --hard origin/main
-            cd backend/deployments
+            cd deploy
             grep -v '^APP_IMAGE_TAG=' .env.prod > .env.prod.tmp || true
             printf 'APP_IMAGE_TAG=%s\n' '${{ github.sha }}' >> .env.prod.tmp
             mv .env.prod.tmp .env.prod
@@ -117,7 +117,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd /home/deploy/bakerio/backend/deployments
+            cd /home/deploy/bakerio/deploy
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d postgres
             docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm migrate || \
               (docker compose -f docker-compose.prod.yml --env-file .env.prod logs postgres --tail 50 && exit 1)
@@ -137,7 +137,7 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd /home/deploy/bakerio/backend/deployments
+            cd /home/deploy/bakerio/deploy
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app
             sleep 3
             docker compose -f docker-compose.prod.yml --env-file .env.prod logs app --tail 10

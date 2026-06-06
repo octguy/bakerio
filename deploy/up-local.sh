@@ -43,6 +43,33 @@ for i in $(seq 1 60); do
   sleep 2
 done
 
+echo "==> Phase 2b: seeding demo catalog (so frontend prerender sees real data)"
+# The order app statically prerenders /menu at build time with `"use cache"`,
+# baking whatever the catalog returns into the page for cacheLife("hours"). If
+# the DB only holds boot-time admin accounts when the build runs, /menu renders
+# empty and stays empty until the cache expires. Seed-demo before building.
+# Idempotent: the handler short-circuits when branches already exist.
+SUPERADMIN_EMAIL="superadmin@bakerio.com"
+SUPERADMIN_PASSWORD="123456"
+LOGIN_BODY=$(printf '{"email":"%s","password":"%s"}' \
+  "$SUPERADMIN_EMAIL" "$SUPERADMIN_PASSWORD")
+LOGIN_RESPONSE=$(docker run --rm --network "$NETWORK" curlimages/curl:latest \
+  -fsS -X POST "http://app:8080/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "$LOGIN_BODY")
+# Extract access_token without depending on jq.
+TOKEN=$(printf '%s' "$LOGIN_RESPONSE" | \
+  sed -n 's/.*"access_token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+if [ -z "$TOKEN" ]; then
+  echo "    failed to obtain super_admin token; aborting." >&2
+  echo "    login response: $LOGIN_RESPONSE" >&2
+  exit 1
+fi
+SEED_RESPONSE=$(docker run --rm --network "$NETWORK" curlimages/curl:latest \
+  -fsS -X POST "http://app:8080/api/v1/admin/seed-demo" \
+  -H "Authorization: Bearer $TOKEN")
+echo "    seed-demo response: $SEED_RESPONSE"
+
 echo "==> Phase 3: building frontends against the live API (--network $NETWORK)"
 # Each frontend service sets `build.network: bakerio_local` in compose so the
 # build container joins the live network and can resolve `app:8080` during

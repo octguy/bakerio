@@ -22,4 +22,4 @@ secrets-template.txt
 .gitnexus
 backend/.env
 backend/bin/server
-backend/deployments/.env.prod
+deploy/.env.prod

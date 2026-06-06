@@ -253,7 +253,7 @@ jobs:
             cd /home/deploy/bakerio
             git fetch origin main
             git reset --hard origin/main
-            cd backend/deployments
+            cd deploy
             grep -v '^IMAGE_TAG=' .env.prod > .env.prod.tmp || true
             printf 'IMAGE_TAG=%s\n' '${{ github.sha }}' >> .env.prod.tmp
             mv .env.prod.tmp .env.prod
