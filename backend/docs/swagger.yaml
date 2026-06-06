@@ -489,6 +489,11 @@ definitions:
       access_token:
         type: string
     type: object
+  MarkReadAllResponse:
+    properties:
+      updated:
+        type: integer
+    type: object
   MemberInfo:
     properties:
       display_name:
@@ -521,6 +526,40 @@ definitions:
         type: string
       requested:
         type: integer
+    type: object
+  NotificationListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/NotificationResponse'
+        type: array
+      page:
+        type: integer
+      size:
+        type: integer
+      total:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  NotificationResponse:
+    properties:
+      body:
+        type: string
+      created_at:
+        type: string
+      data:
+        items:
+          type: integer
+        type: array
+      id:
+        type: string
+      read_at:
+        type: string
+      title:
+        type: string
+      type:
+        type: string
     type: object
   OrderItemResponse:
     properties:
@@ -1009,6 +1048,11 @@ definitions:
         type: array
       to:
         type: string
+    type: object
+  UnreadCountResponse:
+    properties:
+      count:
+        type: integer
     type: object
   UpdateAddressRequest:
     properties:
@@ -2277,6 +2321,85 @@ paths:
       summary: Get caller's membership tier + cumulative spend
       tags:
       - membership
+  /notifications:
+    get:
+      parameters:
+      - description: true → unread only, false → read only, omit → all
+        in: query
+        name: unread
+        type: boolean
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20)
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/NotificationListResponse'
+      security:
+      - BearerAuth: []
+      summary: List caller's notifications (paginated, newest first)
+      tags:
+      - notifications
+  /notifications/{id}/read:
+    patch:
+      parameters:
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/NotificationResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Mark one notification as read (idempotent)
+      tags:
+      - notifications
+  /notifications/read-all:
+    patch:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/MarkReadAllResponse'
+      security:
+      - BearerAuth: []
+      summary: Mark every unread notification as read
+      tags:
+      - notifications
+  /notifications/unread-count:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UnreadCountResponse'
+      security:
+      - BearerAuth: []
+      summary: Bell-icon badge count (polled every ~10s)
+      tags:
+      - notifications
   /orders:
     get:
       description: 'Customer → own orders only. branch_manager/branch_staff → orders

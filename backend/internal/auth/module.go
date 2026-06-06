@@ -30,7 +30,7 @@ type Deps struct {
 	Redis          *cache.Client
 	TX             *txmanager.TxManager
 	ProfileCreator service.ProfileCreator
-	AuthOutbox     *outbox.Repository
+	Outbox         *outbox.Repository
 	OTP            *otp.Service
 	JWTSecret      string
 	JWTExpiry      time.Duration
@@ -43,7 +43,7 @@ func New(deps Deps) *Module {
 	rbacSvc := service.NewRBACService(rbacRepo, deps.Redis, deps.TX)
 	authSvc := service.NewAuthService(
 		authRepo, rbacSvc, deps.Redis, deps.TX,
-		deps.ProfileCreator, deps.AuthOutbox, deps.OTP,
+		deps.ProfileCreator, deps.Outbox, deps.OTP,
 		deps.JWTSecret, deps.JWTExpiry,
 	)
 	return &Module{

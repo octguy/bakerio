@@ -274,7 +274,23 @@ func (s *authService) ChangePassword(ctx context.Context, userID uuid.UUID, curr
 	if err != nil {
 		return err
 	}
-	return s.repo.UpdatePassword(ctx, userID, string(newHash))
+	// Look up the email for the notification payload before the tx starts.
+	user, err := s.repo.FindUserByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	// Same tx for the update + outbox row → we never notify about a change
+	// that didn't actually commit.
+	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.UpdatePassword(txCtx, userID, string(newHash)); err != nil {
+			return err
+		}
+		return s.outboxRepo.Save(txCtx, event.AuthPasswordChanged, event.AuthPasswordChangedPayload{
+			UserID:    userID,
+			Email:     user.Email,
+			ChangedAt: time.Now(),
+		})
+	})
 }
 
 func (s *authService) AdminSetPassword(ctx context.Context, targetUserID uuid.UUID, newPw string) error {
@@ -282,7 +298,20 @@ func (s *authService) AdminSetPassword(ctx context.Context, targetUserID uuid.UU
 	if err != nil {
 		return err
 	}
-	return s.repo.UpdatePassword(ctx, targetUserID, string(newHash))
+	user, err := s.repo.FindUserByID(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		if err := s.repo.UpdatePassword(txCtx, targetUserID, string(newHash)); err != nil {
+			return err
+		}
+		return s.outboxRepo.Save(txCtx, event.AuthPasswordResetByAdmin, event.AuthPasswordResetByAdminPayload{
+			UserID:  targetUserID,
+			Email:   user.Email,
+			ResetAt: time.Now(),
+		})
+	})
 }
 
 func (s *authService) CreateStaff(ctx context.Context, email, fullName, password, roleName string) (dto.RegisterResponse, error) {

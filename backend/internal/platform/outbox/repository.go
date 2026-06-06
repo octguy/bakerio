@@ -26,9 +26,11 @@ type Source interface {
 }
 
 // Repository is generic — configure it with any schema-qualified table name.
+// In practice we use a single shared outbox.events table for the whole app;
+// the routing-key column tells the downstream consumer what kind of event
+// each row represents.
 //
-//	outbox.NewRepository(pool, "auth.outbox")
-//	outbox.NewRepository(pool, "order.outbox")
+//	outbox.NewRepository(pool, "outbox.events")
 type Repository struct {
 	pool  *pgxpool.Pool
 	table string

@@ -44,15 +44,17 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 	branchMod := branch.New(branch.Deps{Pool: i.pool, TX: i.tx})
 	productMod := product.New(product.Deps{Pool: i.pool, TX: i.tx, Store: i.objectStore})
 	notifMod := notification.New(notification.Deps{
-		Mail: email.NewMailService(cfg.Email, cfg.Server),
-		OTP:  i.otpService,
+		Pool:       i.pool,
+		Mail:       email.NewMailService(cfg.Email, cfg.Server),
+		OTP:        i.otpService,
+		BranchMems: branchMod.MembershipService(),
 	})
 	authMod := auth.New(auth.Deps{
 		Pool:           i.pool,
 		Redis:          i.redis,
 		TX:             i.tx,
 		ProfileCreator: userMod.ProfileService(),
-		AuthOutbox:     i.authOutbox,
+		Outbox:         i.outboxRepo,
 		OTP:            i.otpService,
 		JWTSecret:      cfg.JWT.SecretKey,
 		JWTExpiry:      cfg.JWT.Expiry,
@@ -101,6 +103,8 @@ func buildModules(cfg *config.Config, i *infra) *modules {
 		Membership:     branchMod.MembershipService(),
 		Voucher:        voucherMod.Service(),
 		UserMembership: membershipMod.Service(),
+		Outbox:         i.outboxRepo,
+		Users:          authMod.AuthService(),
 	})
 
 	return &modules{

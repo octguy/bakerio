@@ -13,13 +13,21 @@ import (
 	membershipSvc "github.com/octguy/bakerio/backend/internal/membership/service"
 	"github.com/octguy/bakerio/backend/internal/order/dto"
 	"github.com/octguy/bakerio/backend/internal/order/repository"
+	"github.com/octguy/bakerio/backend/internal/platform/outbox"
 	productdto "github.com/octguy/bakerio/backend/internal/product/dto"
 	productrepo "github.com/octguy/bakerio/backend/internal/product/repository"
 	"github.com/octguy/bakerio/backend/internal/shared/apperrors"
 	"github.com/octguy/bakerio/backend/internal/shared/domain"
+	"github.com/octguy/bakerio/backend/internal/shared/event"
 	voucherSvc "github.com/octguy/bakerio/backend/internal/voucher/service"
 	"github.com/octguy/bakerio/backend/pkg/txmanager"
 )
+
+// UserLookup is the narrow contract checkout needs to enrich order.placed
+// with a customer email. Satisfied by auth.AuthService.
+type UserLookup interface {
+	GetEmailByUserID(ctx context.Context, id uuid.UUID) (string, error)
+}
 
 // SessionTTL — 10 min, per the agreed checkout flow. Long enough to enter
 // contact info; short enough that stock staleness is bounded.
@@ -56,6 +64,8 @@ type checkoutService struct {
 	tx         *txmanager.TxManager
 	voucher    voucherSvc.Service    // optional — nil disables voucher integration
 	membership membershipSvc.Service // optional — nil disables membership tracking
+	outbox     *outbox.Repository    // optional — nil disables event publishing
+	users      UserLookup            // optional — used to enrich order.placed with email
 }
 
 func NewCheckoutService(
@@ -66,6 +76,8 @@ func NewCheckoutService(
 	tx *txmanager.TxManager,
 	voucher voucherSvc.Service,
 	membership membershipSvc.Service,
+	outboxRepo *outbox.Repository,
+	users UserLookup,
 ) CheckoutService {
 	return &checkoutService{
 		router:     router,
@@ -75,6 +87,8 @@ func NewCheckoutService(
 		tx:         tx,
 		voucher:    voucher,
 		membership: membership,
+		outbox:     outboxRepo,
+		users:      users,
 	}
 }
 
@@ -419,9 +433,48 @@ func (s *checkoutService) Confirm(ctx context.Context, userID, sessionID uuid.UU
 		//     order without a membership update, since /membership reads
 		//     would be wrong forever. The increment uses order.Total (post-
 		//     discount), matching what the user actually paid.
+		var tierChange membershipSvc.TierChange
 		if s.membership != nil && order.Total.GreaterThan(decimal.Zero) {
-			if err := s.membership.ApplyOrderSpend(ctx, userID, order.Total); err != nil {
+			tc, err := s.membership.ApplyOrderSpend(ctx, userID, order.Total)
+			if err != nil {
 				return err
+			}
+			tierChange = tc
+		}
+
+		// 3h. Outbox events in the same tx — order.placed always, and
+		//     membership.tier_upgraded only when the spend bump promoted the
+		//     user. Worker never publishes a phantom event for a rolled-back
+		//     tx because the outbox row commits together with the order row.
+		if s.outbox != nil {
+			email := ""
+			if s.users != nil {
+				if e, err := s.users.GetEmailByUserID(ctx, userID); err == nil {
+					email = e
+				}
+			}
+			if err := s.outbox.Save(ctx, event.OrderPlaced, event.OrderPlacedPayload{
+				OrderID:    order.ID,
+				OrderCode:  order.Code,
+				UserID:     userID,
+				UserEmail:  email,
+				BranchID:   order.BranchID,
+				BranchName: session.BranchName,
+				Total:      order.Total,
+				ItemCount:  len(session.Items),
+				PlacedAt:   order.PlacedAt,
+			}); err != nil {
+				return apperrors.Internal("failed to save order.placed outbox", err)
+			}
+			if tierChange.Changed {
+				if err := s.outbox.Save(ctx, event.MembershipTierUpgrade, event.MembershipTierUpgradedPayload{
+					UserID:     userID,
+					FromTier:   tierChange.From,
+					ToTier:     tierChange.To,
+					UpgradedAt: time.Now(),
+				}); err != nil {
+					return apperrors.Internal("failed to save tier-upgrade outbox", err)
+				}
 			}
 		}
 

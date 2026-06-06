@@ -27,7 +27,7 @@ type infra struct {
 	tx         *txmanager.TxManager
 	publisher  *mq.Publisher
 	consumer   *mq.Consumer
-	authOutbox *outbox.Repository
+	outboxRepo *outbox.Repository
 	otpService *otp.Service
 }
 
@@ -58,7 +58,7 @@ func setupInfra(ctx context.Context, cfg *config.Config) *infra {
 		tx:         txmanager.New(pool),
 		publisher:  mq.NewPublisher(rmq),
 		consumer:   mq.NewConsumer(rmq, logger.Log),
-		authOutbox: outbox.NewRepository(pool, "auth.outbox"),
+		outboxRepo: outbox.NewRepository(pool, "outbox.events"),
 		otpService: otp.NewService(redisClient),
 	}
 }

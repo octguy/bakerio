@@ -42,8 +42,16 @@ type Service interface {
 	// ApplyOrderSpend increments the user's lifetime spend by delta and
 	// recomputes their tier from the new total. Must be called inside the
 	// caller's tx (tx-aware ctx); both the upsert and the tier update share
-	// that tx so the row is consistent on commit.
-	ApplyOrderSpend(ctx context.Context, userID uuid.UUID, delta decimal.Decimal) error
+	// that tx so the row is consistent on commit. Returns the before/after
+	// tier so the caller can emit a tier-upgrade event when they differ.
+	ApplyOrderSpend(ctx context.Context, userID uuid.UUID, delta decimal.Decimal) (TierChange, error)
+}
+
+// TierChange captures the tier transition produced by ApplyOrderSpend.
+type TierChange struct {
+	From    string
+	To      string
+	Changed bool
 }
 
 type service struct {
@@ -131,22 +139,23 @@ func (s *service) GetForUser(ctx context.Context, userID uuid.UUID) (dto.Members
 	}, nil
 }
 
-func (s *service) ApplyOrderSpend(ctx context.Context, userID uuid.UUID, delta decimal.Decimal) error {
+func (s *service) ApplyOrderSpend(ctx context.Context, userID uuid.UUID, delta decimal.Decimal) (TierChange, error) {
 	if delta.LessThanOrEqual(decimal.Zero) {
-		// Defensive: confirm should pass a positive total. Refusing to write
-		// keeps the ledger monotonic.
-		return apperrors.Internal("membership spend delta must be positive", nil)
+		return TierChange{}, apperrors.Internal("membership spend delta must be positive", nil)
 	}
 	m, err := s.repo.UpsertSpend(ctx, userID, delta)
 	if err != nil {
-		return apperrors.Internal("failed to upsert membership spend", err)
+		return TierChange{}, apperrors.Internal("failed to upsert membership spend", err)
 	}
-	want := TierFor(m.TotalSpent)
-	if want == m.Tier {
-		return nil
+	// m.Tier is the value before this spend (UpsertSpend bumps total_spent
+	// but doesn't touch the tier column). m.TotalSpent is the new total.
+	from := m.Tier
+	to := TierFor(m.TotalSpent)
+	if to == from {
+		return TierChange{From: from, To: to, Changed: false}, nil
 	}
-	if _, err := s.repo.UpdateTier(ctx, userID, want); err != nil {
-		return apperrors.Internal("failed to update membership tier", err)
+	if _, err := s.repo.UpdateTier(ctx, userID, to); err != nil {
+		return TierChange{}, apperrors.Internal("failed to update membership tier", err)
 	}
-	return nil
+	return TierChange{From: from, To: to, Changed: true}, nil
 }
