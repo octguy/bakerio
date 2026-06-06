@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   getStatisticsOverview,
@@ -25,11 +26,18 @@ function formatCompactVnd(value: string | number): string {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user } = useAuth();
   const roles = user?.roles ?? [];
   const isSuperAdmin = roles.includes("super_admin");
   const isProductManager = roles.includes("product_manager");
   const isBranchManager = roles.includes("branch_manager");
+  const isBranchStaff = roles.includes("branch_staff");
+
+  if (isBranchStaff && !isSuperAdmin && !isBranchManager && !isProductManager) {
+    router.replace("/orders");
+    return null;
+  }
 
   if (isSuperAdmin) return <SuperAdminDashboard />;
   if (isBranchManager) return <BranchManagerDashboard />;
