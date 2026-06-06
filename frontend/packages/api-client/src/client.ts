@@ -611,6 +611,25 @@ export const getBranch = cache(async (id: string): Promise<Branch> => {
   return await request<Branch>(`/branch/${id}`);
 });
 
+// Module-level cache of a branch id -> name map. Unlike React's cache() (which
+// only dedupes within a single server request), this persists for the lifetime
+// of the client bundle, so components can resolve branch names without
+// re-fetching the list on every render/navigation.
+let branchNameMapPromise: Promise<Map<string, string>> | null = null;
+
+export function getBranchNameMap(): Promise<Map<string, string>> {
+  if (!branchNameMapPromise) {
+    branchNameMapPromise = getBranches()
+      .then((branches) => new Map(branches.map((b) => [b.id, b.name])))
+      .catch((err) => {
+        // Reset so a later call can retry instead of caching the failure.
+        branchNameMapPromise = null;
+        throw err;
+      });
+  }
+  return branchNameMapPromise;
+}
+
 export async function createBranch(data: {
   name: string;
   address: string;
@@ -1001,12 +1020,14 @@ function toOrder(data: BackendOrder): Order {
     id: data.id,
     code: data.code,
     branch_id: data.branch_id,
+    branch_name: data.branch_name,
     status: "CONFIRMED",
     items,
     subtotal_amount: subtotal,
     total_amount: total,
     fulfillment_mode: data.shipping_address ? "DELIVERY" : "PICKUP",
     delivery_address: data.shipping_address,
+    contact_phone: data.contact_phone,
     delivery_fee_amount: deliveryFee,
     loyalty_discount_amount: discount,
     note: data.note,

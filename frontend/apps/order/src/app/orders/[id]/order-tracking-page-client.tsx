@@ -161,12 +161,26 @@ export function OrderTrackingPageClient({ id }: OrderTrackingPageClientProps) {
 
       {/* Fulfillment Details */}
       <div className="mt-4 rounded-2xl border border-crust bg-white p-5">
-        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-caramel mb-3">Fulfillment</div>
+        <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-caramel mb-3">
+          {order.fulfillment_mode === "PICKUP" ? "Pickup" : "Shipping"}
+        </div>
         <div className="flex flex-col gap-2.5 text-[13.5px] text-espresso">
-          {order.delivery_address && (
+          {order.branch_name && (
             <div className="flex flex-col gap-1">
-              <span className="text-cocoa text-left">Address</span>
+              <span className="text-cocoa text-left">From branch</span>
+              <span className="text-[12.5px] italic text-cinnamon text-left">{order.branch_name}</span>
+            </div>
+          )}
+          {order.delivery_address && (
+            <div className="flex flex-col gap-1 border-t border-crust/50 pt-2">
+              <span className="text-cocoa text-left">Deliver to</span>
               <span className="text-[12.5px] italic text-cinnamon text-left">{order.delivery_address}</span>
+            </div>
+          )}
+          {order.contact_phone && (
+            <div className="flex flex-col gap-1 border-t border-crust/50 pt-2">
+              <span className="text-cocoa text-left">Contact</span>
+              <span className="font-mono text-[12.5px] tabular-nums tracking-wide text-cinnamon text-left">{order.contact_phone}</span>
             </div>
           )}
           {order.note && (

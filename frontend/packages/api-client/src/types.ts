@@ -96,6 +96,7 @@ export interface Order {
   id: string;
   code?: string;
   branch_id: string;
+  branch_name?: string;
   status: OrderStatus;
   items: OrderItem[];
   total_amount: number;
@@ -103,6 +104,7 @@ export interface Order {
   fulfillment_mode?: OrderFulfillmentMode;
   payment_method?: string;
   delivery_address?: string;
+  contact_phone?: string;
   requested_time?: string;
   delivery_fee_amount?: number;
   loyalty_discount_amount?: number;

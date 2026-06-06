@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getMembership, getMyProfile, getOrderStats, updateMyProfile, changePassword, getAddresses, addAddress, updateAddress, removeAddress, setDefaultAddress } from "@repo/api-client";
 import type { Membership, Profile, SavedAddress } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
+import { Star, Pencil, Trash2 } from "lucide-react";
 
 const AddressMapPicker = dynamic(
   () => import("@/components/AddressMapPicker").then((mod) => mod.AddressMapPicker),
@@ -209,7 +210,13 @@ function ProfileContent() {
   const handleSetDefaultAddress = async (id: string) => {
     try {
       const all = await setDefaultAddress(id);
-      setAddresses(all);
+      // The backend returns the list re-sorted (default first). Keep the current
+      // on-screen order and just apply the updated is_default flags so the row
+      // the user clicked doesn't jump positions.
+      const byId = new Map(all.map((a) => [a.id, a]));
+      setAddresses((current) =>
+        current.map((a) => byId.get(a.id) ?? a).concat(all.filter((a) => !current.some((c) => c.id === a.id))),
+      );
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
         console.error("Failed to set default address:", err);
@@ -363,37 +370,43 @@ function ProfileContent() {
                   📍
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[13.5px] font-semibold text-espresso flex items-center gap-2">
-                    <span>{r.is_default ? "Default address" : "Saved address"}</span>
+                  {/* Tag row — always reserved (2 rows) so card height stays consistent */}
+                  <div className="mb-1 flex min-h-[18px] items-center">
                     {r.is_default && (
                       <span className="rounded bg-golden px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-white">Default</span>
                     )}
                   </div>
-                  <div className="font-editorial text-[11.5px] italic text-caramel truncate">{r.address}</div>
+                  <div className="text-[15px] font-bold text-espresso truncate">{r.address}</div>
                 </div>
-                <div className="flex flex-col gap-2 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   {!r.is_default && (
-                    <button 
-                      type="button" 
-                      onClick={() => handleSetDefaultAddress(r.id)} 
-                      className="font-mono text-[9px] uppercase tracking-[0.1em] text-sage hover:text-espresso"
+                    <button
+                      type="button"
+                      onClick={() => handleSetDefaultAddress(r.id)}
+                      aria-label="Set as default address"
+                      title="Set as default"
+                      className="flex h-8 w-8 items-center justify-center rounded-md text-golden transition-colors hover:bg-butter"
                     >
-                      Set Default
+                      <Star size={16} />
                     </button>
                   )}
                   <button
                     type="button"
                     onClick={() => openAddressEditor(r)}
-                    className="font-mono text-[9px] uppercase tracking-[0.1em] text-sage hover:text-espresso"
+                    aria-label="Edit address"
+                    title="Edit"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-sage transition-colors hover:bg-butter hover:text-espresso"
                   >
-                    Edit
+                    <Pencil size={16} />
                   </button>
-                  <button 
-                    type="button" 
-                    onClick={() => handleRemoveAddress(r.id)} 
-                    className="font-mono text-[9px] uppercase tracking-[0.1em] text-cinnamon hover:text-espresso"
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAddress(r.id)}
+                    aria-label="Remove address"
+                    title="Remove"
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-cinnamon transition-colors hover:bg-butter hover:text-espresso"
                   >
-                    Remove
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
