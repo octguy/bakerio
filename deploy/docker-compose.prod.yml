@@ -73,11 +73,18 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    # `rabbitmq-diagnostics ping` only checks the Erlang VM is alive, which
+    # goes green BEFORE the AMQP listener on :5672 starts accepting. The
+    # backend would then dial 5672, get TCP RST, and fatal-exit on first try.
+    # `check_port_connectivity` waits until every listener (AMQP + mgmt) is
+    # actually bound. start_period gives Rabbit time to finish its first boot
+    # without counting early failures against `retries`.
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     networks:
       - bakerio_network
     restart: unless-stopped
