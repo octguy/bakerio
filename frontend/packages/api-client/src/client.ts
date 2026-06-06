@@ -197,6 +197,25 @@ export async function logout() {
   token = null;
 }
 
+export interface SeedDemoSummary {
+  skipped: boolean;
+  branches: number;
+  categories: number;
+  products: number;
+  branch_products: number;
+  customers: number;
+  staff: number;
+  addresses: number;
+  orders: number;
+  vouchers: number;
+  memberships: number;
+  product_images: number;
+}
+
+export async function seedDemo(): Promise<SeedDemoSummary> {
+  return request<SeedDemoSummary>("/admin/seed-demo", { method: "POST" });
+}
+
 export function setToken(t: string) {
   token = t;
 }

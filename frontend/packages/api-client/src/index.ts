@@ -127,7 +127,12 @@ export {
   updateAddress,
   removeAddress,
   setDefaultAddress,
+
+  // Admin (REAL)
+  seedDemo,
 } from "./client";
+
+export type { SeedDemoSummary } from "./client";
 
 // Mock data for seeding/testing
 export {

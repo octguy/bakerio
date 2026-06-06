@@ -46,6 +46,12 @@ const GROUPS: NavGroup[] = [
       { href: "/account", label: "Account", glyph: "◈" },
     ],
   },
+  {
+    head: "Quản trị · Admin",
+    items: [
+      { href: "/admin/seed-demo", label: "Seed Demo", glyph: "✦" },
+    ],
+  },
 ];
 
 function getAuthorizedGroups(roles: string[]): NavGroup[] {
@@ -85,6 +91,9 @@ function getAuthorizedGroups(roles: string[]): NavGroup[] {
       }
       if (it.href === "/") {
         return isSuperAdmin || isBranchManager;
+      }
+      if (it.href === "/admin/seed-demo") {
+        return isSuperAdmin;
       }
       return true; // /account
     }),
