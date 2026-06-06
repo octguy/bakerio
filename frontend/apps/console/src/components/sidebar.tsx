@@ -83,7 +83,10 @@ function getAuthorizedGroups(roles: string[]): NavGroup[] {
       if (it.href === "/orders") {
         return isSuperAdmin || isBranchManager || roles.includes("branch_staff");
       }
-      return true; // /, /account
+      if (it.href === "/") {
+        return isSuperAdmin || isBranchManager;
+      }
+      return true; // /account
     }),
   })).filter((g) => g.items.length > 0);
 }
