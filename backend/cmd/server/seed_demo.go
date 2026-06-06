@@ -312,14 +312,18 @@ func activateAllBranchProducts(ctx context.Context, pool *pgxpool.Pool, adminID 
 // seedBranchProductQuantities randomizes per-(branch, product) stock so dev
 // data exercises the order-routing eligibility rules immediately. Tiers match
 // the price bands in seedProducts: cheap high-volume goods get big stock,
-// expensive cakes/pizzas get small batches and will sell out during testing.
+// expensive cakes/pizzas get small batches.
+//
+// Quantities are sized so the larger demo-order seed (~300 orders spanning
+// ~2 years) does not exhaust stock at any branch. Run before seedDemoOrders
+// since the order seeder decrements from these starting numbers.
 func seedBranchProductQuantities(ctx context.Context, pool *pgxpool.Pool) {
 	_, err := pool.Exec(ctx, `
 		UPDATE product.branch_products bp
 		SET quantity = CASE
-		    WHEN p.price < 50000  THEN (floor(random() * 61) + 20)::int  -- 20..80
-		    WHEN p.price < 100000 THEN (floor(random() * 31) + 10)::int  -- 10..40
-		    ELSE                       (floor(random() * 13) + 3)::int   -- 3..15
+		    WHEN p.price < 50000  THEN (floor(random() * 201) + 200)::int  -- 200..400
+		    WHEN p.price < 100000 THEN (floor(random() * 101) + 100)::int  -- 100..200
+		    ELSE                       (floor(random() *  51) +  50)::int  -- 50..100
 		END
 		FROM product.products p
 		WHERE bp.product_id = p.id`)
@@ -491,7 +495,7 @@ func seedCustomerAddresses(ctx context.Context, pool *pgxpool.Pool) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func seedDemoOrders(ctx context.Context, pool *pgxpool.Pool) {
-	const targetOrders = 100
+	const targetOrders = 300
 	const maxAttempts = targetOrders * 3
 
 	type custRow struct {
@@ -623,8 +627,11 @@ func seedDemoOrders(ctx context.Context, pool *pgxpool.Pool) {
 		shippingFee := decimal.NewFromInt(int64(tierFeeDemo(bestDist)))
 		total := subtotal.Add(shippingFee)
 
-		// Spread placed_at over the last 30 days for a realistic histogram.
-		placedAt := time.Now().Add(-time.Duration(rng.Int63n(int64(30 * 24 * time.Hour))))
+		// Spread placed_at across the last ~2 years with a weighted distribution:
+		// recent activity dominates (so daily/weekly charts look alive) but
+		// older months/years still show data (so monthly/yearly charts have
+		// something to draw). See demoOrderTimestamp for the buckets.
+		placedAt := demoOrderTimestamp(rng)
 
 		code, err := genOrderCodeDemo(placedAt)
 		if err != nil {
@@ -859,6 +866,35 @@ func insertOrderTx(
 		}
 	}
 	return tx.Commit(ctx)
+}
+
+// demoOrderTimestamp returns a placed_at sampled from a weighted distribution
+// so the timeseries chart is interesting at every granularity:
+//
+//   - 40% within the last 14 days     — dense recent activity (day chart)
+//   - 25% within the last 30–90 days  — rest of "this quarter" (week chart)
+//   - 20% within the last 90–365 days — last year baseline    (month chart)
+//   - 15% within the last 365–730 days — last year and prior (year chart)
+//
+// Weights are tuned so a 300-order seed renders well at all 4 chart scales.
+func demoOrderTimestamp(rng *rand.Rand) time.Time {
+	now := time.Now()
+	day := int64(24 * time.Hour)
+	roll := rng.Intn(100)
+	switch {
+	case roll < 40:
+		// 0..14 days ago
+		return now.Add(-time.Duration(rng.Int63n(14 * day)))
+	case roll < 65:
+		// 30..90 days ago
+		return now.Add(-time.Duration(30*day + rng.Int63n(60*day)))
+	case roll < 85:
+		// 90..365 days ago
+		return now.Add(-time.Duration(90*day + rng.Int63n(275*day)))
+	default:
+		// 365..730 days ago
+		return now.Add(-time.Duration(365*day + rng.Int63n(365*day)))
+	}
 }
 
 // haversineKmDemo + tierFeeDemo mirror internal/branch/service/routing_service

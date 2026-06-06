@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -17,6 +18,21 @@ import (
 // sellers list. Hardcoded since the spec calls for 5.
 const TopProductsLimit = 5
 
+// Timeseries granularity values + bucket caps. The caps protect the API from
+// "give me daily data for 50 years" requests; over → 422 with a
+// "narrow your range" message.
+const (
+	GranDay   = "day"
+	GranWeek  = "week"
+	GranMonth = "month"
+	GranYear  = "year"
+
+	maxBucketsDay   = 365
+	maxBucketsWeek  = 53
+	maxBucketsMonth = 60
+	maxBucketsYear  = 20
+)
+
 // Service is the read-only statistics facade. No transactions — every method
 // is a single SELECT (or a small bundle of independent SELECTs that don't
 // need to be consistent with each other beyond eventual freshness).
@@ -25,6 +41,17 @@ type Service interface {
 	ListBranchStats(ctx context.Context) (dto.BranchStatsResponse, error)
 	GetBranchDetail(ctx context.Context, branchID uuid.UUID) (dto.BranchDetailStats, error)
 	ListProductStats(ctx context.Context, p pagination.Params) (dto.ProductStatsResponse, error)
+	GetTimeseries(ctx context.Context, q TimeseriesQuery) (dto.TimeseriesResponse, error)
+	GetProductTimeseries(ctx context.Context, productID uuid.UUID, q TimeseriesQuery) (dto.ProductTimeseriesResponse, error)
+}
+
+// TimeseriesQuery is the resolved-and-validated input. Handler does scope
+// resolution before constructing this; service does defaulting + capping.
+type TimeseriesQuery struct {
+	Granularity string     // raw — gets whitelist-validated in the service
+	From        *time.Time // nil → defaulted per granularity
+	To          *time.Time // nil → "now" (end of current bucket)
+	BranchID    *uuid.UUID // nil → all branches
 }
 
 type service struct {
@@ -152,4 +179,178 @@ func (s *service) ListProductStats(ctx context.Context, p pagination.Params) (dt
 		Items: items,
 		Meta:  pagination.NewMeta(p, total),
 	}, nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+func (s *service) GetTimeseries(ctx context.Context, q TimeseriesQuery) (dto.TimeseriesResponse, error) {
+	gran := q.Granularity
+	if !isValidGranularity(gran) {
+		return dto.TimeseriesResponse{}, apperrors.Validation("granularity must be one of: day, week, month, year")
+	}
+
+	to := time.Now()
+	if q.To != nil {
+		to = *q.To
+	}
+	from := defaultFrom(gran, to)
+	if q.From != nil {
+		from = *q.From
+	}
+	if !from.Before(to) {
+		return dto.TimeseriesResponse{}, apperrors.Validation("`from` must be earlier than `to`")
+	}
+	if buckets := estimateBuckets(gran, from, to); buckets > maxBuckets(gran) {
+		return dto.TimeseriesResponse{}, apperrors.Validation(
+			"requested range yields too many buckets — narrow `from`/`to` or pick a coarser granularity",
+		)
+	}
+
+	rows, err := s.db.GetOrderTimeseries(ctx, statisticsdb.GetOrderTimeseriesParams{
+		Granularity: gran,
+		FromTime:    from,
+		ToTime:      to,
+		BranchID:    q.BranchID,
+	})
+	if err != nil {
+		return dto.TimeseriesResponse{}, apperrors.Internal("failed to load timeseries", err)
+	}
+
+	points := make([]dto.TimeseriesPoint, len(rows))
+	for i, r := range rows {
+		points[i] = dto.TimeseriesPoint{
+			BucketStart: r.BucketStart,
+			Orders:      r.Orders,
+			Revenue:     r.Revenue,
+		}
+	}
+	return dto.TimeseriesResponse{
+		Granularity: gran,
+		From:        from,
+		To:          to,
+		BranchID:    q.BranchID,
+		Points:      points,
+	}, nil
+}
+
+func (s *service) GetProductTimeseries(ctx context.Context, productID uuid.UUID, q TimeseriesQuery) (dto.ProductTimeseriesResponse, error) {
+	// Look up the product first — gives us the name to echo back and lets us
+	// 404 cleanly when the id doesn't exist or has been soft-deleted, before
+	// the heavier timeseries query runs.
+	name, err := s.db.GetProductName(ctx, productID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dto.ProductTimeseriesResponse{}, apperrors.NotFound("product not found")
+		}
+		return dto.ProductTimeseriesResponse{}, apperrors.Internal("failed to load product", err)
+	}
+
+	gran := q.Granularity
+	if !isValidGranularity(gran) {
+		return dto.ProductTimeseriesResponse{}, apperrors.Validation("granularity must be one of: day, week, month, year")
+	}
+
+	to := time.Now()
+	if q.To != nil {
+		to = *q.To
+	}
+	from := defaultFrom(gran, to)
+	if q.From != nil {
+		from = *q.From
+	}
+	if !from.Before(to) {
+		return dto.ProductTimeseriesResponse{}, apperrors.Validation("`from` must be earlier than `to`")
+	}
+	if buckets := estimateBuckets(gran, from, to); buckets > maxBuckets(gran) {
+		return dto.ProductTimeseriesResponse{}, apperrors.Validation(
+			"requested range yields too many buckets — narrow `from`/`to` or pick a coarser granularity",
+		)
+	}
+
+	rows, err := s.db.GetProductTimeseries(ctx, statisticsdb.GetProductTimeseriesParams{
+		Granularity: gran,
+		ProductID:   productID,
+		FromTime:    from,
+		ToTime:      to,
+		BranchID:    q.BranchID,
+	})
+	if err != nil {
+		return dto.ProductTimeseriesResponse{}, apperrors.Internal("failed to load product timeseries", err)
+	}
+
+	points := make([]dto.ProductTimeseriesPoint, len(rows))
+	for i, r := range rows {
+		points[i] = dto.ProductTimeseriesPoint{
+			BucketStart: r.BucketStart,
+			QtySold:     r.QtySold,
+			Revenue:     r.Revenue,
+		}
+	}
+	return dto.ProductTimeseriesResponse{
+		ProductID:   productID,
+		ProductName: name,
+		Granularity: gran,
+		From:        from,
+		To:          to,
+		BranchID:    q.BranchID,
+		Points:      points,
+	}, nil
+}
+
+func isValidGranularity(g string) bool {
+	switch g {
+	case GranDay, GranWeek, GranMonth, GranYear:
+		return true
+	}
+	return false
+}
+
+// defaultFrom returns the from-date when the caller omits it: ~one chart's
+// worth of history at the requested granularity. Picked to give the frontend
+// useful data without forcing it to specify a range every time.
+func defaultFrom(gran string, to time.Time) time.Time {
+	switch gran {
+	case GranDay:
+		return to.AddDate(0, 0, -30)
+	case GranWeek:
+		return to.AddDate(0, 0, -7*12)
+	case GranMonth:
+		return to.AddDate(0, -12, 0)
+	case GranYear:
+		return to.AddDate(-5, 0, 0)
+	}
+	return to.AddDate(0, 0, -30)
+}
+
+// estimateBuckets is a conservative upper bound; the actual SQL bucket count
+// depends on calendar alignment but never exceeds this. Cheaper than running
+// the query and counting.
+func estimateBuckets(gran string, from, to time.Time) int {
+	d := to.Sub(from)
+	switch gran {
+	case GranDay:
+		return int(d.Hours()/24) + 1
+	case GranWeek:
+		return int(d.Hours()/(24*7)) + 1
+	case GranMonth:
+		// 30.44 ≈ average days per month.
+		return int(d.Hours()/(24*30.44)) + 2
+	case GranYear:
+		return int(d.Hours()/(24*365.25)) + 2
+	}
+	return 0
+}
+
+func maxBuckets(gran string) int {
+	switch gran {
+	case GranDay:
+		return maxBucketsDay
+	case GranWeek:
+		return maxBucketsWeek
+	case GranMonth:
+		return maxBucketsMonth
+	case GranYear:
+		return maxBucketsYear
+	}
+	return 0
 }

@@ -23,6 +23,21 @@ func (q *Queries) CountProductStats(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const getProductName = `-- name: GetProductName :one
+SELECT name FROM product.products
+WHERE id = $1 AND deleted_at IS NULL
+LIMIT 1
+`
+
+// Cheap lookup so /products/:id/timeseries can 404 cleanly when the id
+// doesn't exist or has been soft-deleted, without re-running the big query.
+func (q *Queries) GetProductName(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getProductName, id)
+	var name string
+	err := row.Scan(&name)
+	return name, err
+}
+
 const listProductStats = `-- name: ListProductStats :many
 SELECT
     p.id, p.name, p.slug, p.price,

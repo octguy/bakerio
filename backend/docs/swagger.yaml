@@ -732,6 +732,34 @@ definitions:
       total_pages:
         type: integer
     type: object
+  ProductTimeseriesPoint:
+    properties:
+      bucket_start:
+        type: string
+      qty_sold:
+        type: integer
+      revenue:
+        type: number
+    type: object
+  ProductTimeseriesResponse:
+    properties:
+      branch_id:
+        type: string
+      from:
+        type: string
+      granularity:
+        type: string
+      points:
+        items:
+          $ref: '#/definitions/ProductTimeseriesPoint'
+        type: array
+      product_id:
+        type: string
+      product_name:
+        type: string
+      to:
+        type: string
+    type: object
   ProfileResponse:
     properties:
       avatar_url:
@@ -946,6 +974,30 @@ definitions:
         type: string
     required:
     - password
+    type: object
+  TimeseriesPoint:
+    properties:
+      bucket_start:
+        type: string
+      orders:
+        type: integer
+      revenue:
+        type: number
+    type: object
+  TimeseriesResponse:
+    properties:
+      branch_id:
+        type: string
+      from:
+        type: string
+      granularity:
+        type: string
+      points:
+        items:
+          $ref: '#/definitions/TimeseriesPoint'
+        type: array
+      to:
+        type: string
     type: object
   UpdateAddressRequest:
     properties:
@@ -3031,6 +3083,113 @@ paths:
       security:
       - BearerAuth: []
       summary: Paginated per-product breakdown
+      tags:
+      - statistics
+  /statistics/products/{id}/timeseries:
+    get:
+      description: |-
+        Same calendar buckets as /statistics/timeseries but
+        aggregated over orders.order_items filtered by product_id.
+        Scope: super_admin + product_manager may target any branch
+        via ?branch_id= (omit for all branches); branch_manager is
+        forced to own branch.
+      parameters:
+      - description: Product UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: day | week | month | year
+        in: query
+        name: granularity
+        required: true
+        type: string
+      - description: 'RFC3339 datetime. Default: 30 days back (day), 12 weeks back
+          (week), 12 months back (month), 5 years back (year).'
+        in: query
+        name: from
+        type: string
+      - description: 'RFC3339 datetime. Default: now.'
+        in: query
+        name: to
+        type: string
+      - description: Branch UUID. Admin + product_manager may target any branch; omit
+          for all branches. Ignored for branch_manager (forced to own branch).
+        in: query
+        name: branch_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ProductTimeseriesResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Per-product time-series (units sold + revenue)
+      tags:
+      - statistics
+  /statistics/timeseries:
+    get:
+      description: |-
+        Returns one point per calendar-aligned bucket in
+        Asia/Ho_Chi_Minh. Empty buckets are zero-filled. Granularity
+        whitelist: day / week / month / year.
+        Defaults when from/to omitted: last 30 d (day), 12 w (week),
+        12 mo (month), 5 y (year).
+        Scope: super_admin may target any branch via ?branch_id= or
+        omit for all branches; branch_manager is forced to own branch.
+      parameters:
+      - description: day | week | month | year
+        in: query
+        name: granularity
+        required: true
+        type: string
+      - description: 'RFC3339 datetime. Default: 30 days back (day), 12 weeks back
+          (week), 12 months back (month), 5 years back (year).'
+        in: query
+        name: from
+        type: string
+      - description: 'RFC3339 datetime. Default: now.'
+        in: query
+        name: to
+        type: string
+      - description: Branch UUID (admin only — ignored for branch_manager, who is
+          forced to own branch)
+        in: query
+        name: branch_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/TimeseriesResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Time-series of orders + revenue (chart-friendly)
       tags:
       - statistics
   /users:

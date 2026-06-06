@@ -29,3 +29,10 @@ LIMIT $1 OFFSET $2;
 
 -- name: CountProductStats :one
 SELECT COUNT(*) FROM product.products WHERE deleted_at IS NULL;
+
+-- name: GetProductName :one
+-- Cheap lookup so /products/:id/timeseries can 404 cleanly when the id
+-- doesn't exist or has been soft-deleted, without re-running the big query.
+SELECT name FROM product.products
+WHERE id = $1 AND deleted_at IS NULL
+LIMIT 1;
