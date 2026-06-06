@@ -44,12 +44,14 @@ for i in $(seq 1 60); do
 done
 
 echo "==> Phase 3: building frontends against the live API (--network $NETWORK)"
-# DOCKER_BUILDKIT lets build containers join an existing network so the
-# build-time prerender can resolve and reach http://app:8080.
-COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 \
-  "${DC[@]}" build \
-    --build-arg BUILDKIT_INLINE_CACHE=1 \
-    web order console
+# Each frontend service sets `build.network: bakerio_local` in compose so the
+# build container joins the live network and can resolve `app:8080` during
+# Next.js prerender. BuildKit refuses named docker networks (it only accepts
+# host/none or a builder configured via `buildx create --driver-opt network=`),
+# so use the legacy builder for this phase. The backend image in Phase 1 still
+# builds with BuildKit via the default env.
+COMPOSE_DOCKER_CLI_BUILD=0 DOCKER_BUILDKIT=0 \
+  "${DC[@]}" build web order console
 
 echo "==> Phase 4: starting frontends"
 "${DC[@]}" up -d web order console
