@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getOrders, getOrderStats, getProduct, reorderItems, getMockOrderSessionUser } from "@repo/api-client";
+import { getOrders, getOrderStats, getProduct, reorderItems } from "@repo/api-client";
 import type { Order, OrderStatus } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import { Link } from "next-view-transitions";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
-import { useOrderDetailsStore } from "@/store/orderDetails";
 
 const STATUS_LABEL: Record<OrderStatus, { l: string; c: string; live?: boolean }> = {
   DRAFT: { l: "Draft", c: "var(--caramel)" },
@@ -22,6 +21,22 @@ const STATUS_LABEL: Record<OrderStatus, { l: string; c: string; live?: boolean }
   COMPLETED: { l: "Picked up", c: "var(--sage)" },
   CANCELLED: { l: "Cancelled", c: "var(--sienna)" },
 };
+
+const TERMINAL_STATUSES: ReadonlySet<OrderStatus> = new Set<OrderStatus>([
+  "DELIVERED",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
+// Order codes look like "BKO-20260602-A3K7QM"; show the human-friendly tail.
+// Falls back to the legacy id format when the backend code is absent.
+function orderCodeTail(order: Pick<Order, "code" | "id">): string {
+  if (order.code) {
+    const parts = order.code.split("-");
+    return `#${parts[parts.length - 1]}`;
+  }
+  return order.id.replace("order-", "#");
+}
 
 export default function OrdersPage() {
   return (
@@ -72,26 +87,7 @@ function OrdersPageInner() {
       const statuses = currentTab === "All" ? undefined : currentTab === "In progress" ? "PENDING_PAYMENT,PAID,CONFIRMED,PREPARING,READY,OUT_FOR_DELIVERY" : currentTab === "Delivered" ? "DELIVERED,COMPLETED" : "CANCELLED";
       const data = await getOrders({ page: currentPage, size: 10, search: currentSearch, status: statuses });
       if (currentFetchId !== fetchCount.current) return;
-      const sessionUser = getMockOrderSessionUser();
-      const store = useOrderDetailsStore.getState();
-      const mergedOrders = data.items.map((o) => {
-        const localDetail = store.getOrderDetail(sessionUser, o.id);
-        if (!localDetail) return o;
-        return {
-          ...o,
-          fulfillment_mode: localDetail.fulfillment_mode,
-          delivery_address: localDetail.delivery_address,
-          requested_time: localDetail.requested_time,
-          payment_method: localDetail.payment_method,
-          delivery_fee_amount: localDetail.delivery_fee_amount,
-          loyalty_discount_amount: localDetail.loyalty_discount_amount,
-          crumbs_redeemed: localDetail.crumbs_redeemed,
-          subtotal_amount: localDetail.subtotal_amount,
-          total_amount: localDetail.total_amount ?? o.total_amount,
-          note: localDetail.note,
-        };
-      });
-      setOrders(prev => shouldAppend ? [...prev, ...mergedOrders] : mergedOrders);
+      setOrders(prev => shouldAppend ? [...prev, ...data.items] : data.items);
       setHasMore(currentPage * 10 < data.total);
       setError(null);
       if (!statsFetched.current) {
@@ -265,7 +261,8 @@ function OrdersPageInner() {
             {orders.map((o, index) => {
               const st = STATUS_LABEL[o.status] ?? { l: o.status, c: "var(--caramel)" };
               const itemsCount = o.items.reduce((s, i) => s + i.quantity, 0);
-              const displayId = o.id.replace("order-", "#");
+              const displayId = orderCodeTail(o);
+              const isTerminal = TERMINAL_STATUSES.has(o.status);
               const isLast = index === orders.length - 1;
               return (
                 <div
@@ -296,7 +293,11 @@ function OrdersPageInner() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <Link
+                    href={`/orders/${o.id}`}
+                    aria-label={`View order ${displayId}`}
+                    className="flex items-center gap-3"
+                  >
                     <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-butter font-display text-[16px] text-cinnamon">
                       {itemsCount}
                     </div>
@@ -308,21 +309,14 @@ function OrdersPageInner() {
                         {formatVND(o.total_amount)}
                       </div>
                     </div>
-                    {st.live ? (
-                      <Link href={`/orders/${o.id}`} aria-label={`Track order ${displayId}`}>
-                        <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
-                      </Link>
-                    ) : (
-                      <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
-                    )}
-                  </div>
+                    <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
+                  </Link>
 
                   <div className="mt-2.5 flex justify-between border-t border-dashed border-crust pt-2.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-cinnamon">
-                    {st.live ? (
-                      <Link href={`/orders/${o.id}`} className="hover:text-espresso transition-colors">
-                        Track →
-                      </Link>
-                    ) : (
+                    <Link href={`/orders/${o.id}`} className="hover:text-espresso transition-colors">
+                      {st.live ? "Track →" : "View details →"}
+                    </Link>
+                    {isTerminal && (
                       <button
                         type="button"
                         onClick={() => handleReorder(o.id)}
