@@ -2,10 +2,11 @@ import { Croissant } from "lucide-react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { Suspense } from "react";
-import { getProduct } from "@repo/api-client";
+import { getProduct, listProductImages } from "@repo/api-client";
 import type { Product } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import { AddToCartSection } from "../_components/add-to-cart";
+import { ProductImageCarousel } from "../_components/product-image-carousel";
 import Loading from "./loading";
 
 export const unstable_instant = false;
@@ -92,7 +93,17 @@ async function ProductDetailContent({
   }
 
   const price = getProductPrice(product);
-  const imageUrl = getPrimaryImageUrl(product);
+  let allImages: { url: string; alt?: string }[] = [];
+  const inlineUrl = getPrimaryImageUrl(product);
+  if (inlineUrl) {
+    allImages = [{ url: inlineUrl, alt: product.name }];
+  }
+  try {
+    const imgs = await listProductImages(product.id);
+    if (imgs.length > 0) {
+      allImages = imgs.map((i) => ({ url: i.url, alt: i.alt_text }));
+    }
+  } catch {}
 
   return (
     <main className="relative isolate min-h-screen overflow-hidden px-4 pt-4 pb-28 sm:px-6 md:px-8 md:py-10 xl:px-10">
@@ -106,24 +117,7 @@ async function ProductDetailContent({
             ‹ Back to menu
           </Link>
           <div className="relative aspect-[4/3] min-h-[300px] overflow-hidden rounded-[2rem] border border-espresso/10 bg-[radial-gradient(circle_at_36%_24%,var(--cream),var(--butter)_52%,var(--crust-deep))] shadow-[0_30px_70px_-48px_rgba(44,24,16,0.9)] sm:min-h-[420px] lg:aspect-[5/4] lg:rounded-[2.75rem]">
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={product.name}
-                fill
-                className="object-cover"
-                sizes="(min-width: 1024px) 58vw, 100vw"
-                priority
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <Croissant
-                  className="text-golden drop-shadow-[0_22px_28px_rgba(180,114,42,0.24)]"
-                  size={88}
-                  aria-hidden="true"
-                />
-              </div>
-            )}
+            <ProductImageCarousel images={allImages} productName={product.name} />
             <div className="absolute left-5 top-5 rounded-full bg-cream/92 px-4 py-2 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-espresso shadow-lg">
               fresh counter pick
             </div>

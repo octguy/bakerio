@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface Location {
   name: string;
@@ -27,11 +27,20 @@ const DOT_MASK = "linear-gradient(to right, transparent, #000 18%, #000 82%, tra
 
 export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps) {
   const count = featuredLocations.length;
+  // Clones on each side keep the peek neighbors filled during wrap transitions
+  const lead = Math.min(2, count);
 
-  // Start with the middle copy first item (index = 6)
-  const middleOffset = count;
-  const [currentIndex, setCurrentIndex] = useState(middleOffset);
-  const [isTransitioning, setIsTransitioning] = useState(true);
+  const [trackIndex, setTrackIndex] = useState(lead);
+  const [transition, setTransition] = useState(true);
+  const [isAnimating, setIsAnimating] = useState(false);
+
+  // Re-enable the transition on the next frame after a clone snap-back
+  useEffect(() => {
+    if (!transition) {
+      const raf = requestAnimationFrame(() => setTransition(true));
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [transition]);
 
   if (count === 0) {
     return (
@@ -41,64 +50,53 @@ export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps)
     );
   }
 
-  // Tripled list track (18 items total) to prevent showing empty blank spaces at viewport boundaries
+  // Clone the last `lead` and first `lead` cards onto each end so the peek
+  // neighbors stay filled while the track wraps around.
   const extendedLocations = [
+    ...featuredLocations.slice(count - lead),
     ...featuredLocations,
-    ...featuredLocations,
-    ...featuredLocations,
+    ...featuredLocations.slice(0, lead),
   ];
 
-  // Safe middle range is [6, 11] (corresponding to the middle copy)
+  const realIndex = (((trackIndex - lead) % count) + count) % count;
 
-  // Unified circular navigation logic (Next/Prev/Dots)
-  // Handles infinite boundary jumps instantly inside the click cycle
-  const goTo = (targetDotIndex: number) => {
-    const currentMod = currentIndex % count;
-    let diff = targetDotIndex - currentMod;
+  const next = () => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    setTrackIndex((i) => i + 1);
+  };
 
-    // Find the shortest offset (circular distance)
-    if (diff > count / 2) diff -= count;
-    if (diff < -count / 2) diff += count;
+  const prev = () => {
+    if (isAnimating) return;
+    setIsAnimating(true);
+    setTrackIndex((i) => i - 1);
+  };
 
-    const targetIndex = currentIndex + diff;
+  // Dots jump straight to the chosen card (stays within real bounds).
+  const goTo = (dotIndex: number) => {
+    if (isAnimating) return;
+    if (dotIndex === realIndex) return;
+    setIsAnimating(true);
+    setTransition(true);
+    setTrackIndex(dotIndex + lead);
+  };
 
-    // Safe middle range is [count, count * 2 - 1] (e.g. [6, 11])
-    if (targetIndex >= count && targetIndex < count * 2) {
-      setIsTransitioning(true);
-      setCurrentIndex(targetIndex);
-    } else {
-      // Smart Transition: target is out of middle copy bounds
-      if (targetIndex >= count * 2) {
-        // Jump down instantly (e.g. 11 to 5)
-        setIsTransitioning(false);
-        setCurrentIndex(currentIndex - count);
-        // Transition to target in next paint cycle (e.g. 5 to 6)
-        setTimeout(() => {
-          setIsTransitioning(true);
-          setCurrentIndex(targetIndex - count);
-        }, 20);
-      } else {
-        // Jump up instantly (e.g. 6 to 12)
-        setIsTransitioning(false);
-        setCurrentIndex(currentIndex + count);
-        // Transition to target in next paint cycle (e.g. 12 to 11)
-        setTimeout(() => {
-          setIsTransitioning(true);
-          setCurrentIndex(targetIndex + count);
-        }, 20);
-      }
+  // Snap back instantly when a wrap transition lands on a clone.
+  const handleTransitionEnd = () => {
+    if (trackIndex >= count + lead) {
+      setTransition(false);
+      setTrackIndex(trackIndex - count);
+    } else if (trackIndex < lead) {
+      setTransition(false);
+      setTrackIndex(trackIndex + count);
     }
+    setIsAnimating(false);
   };
 
-  const handleNext = () => {
-    goTo((currentIndex + 1) % count);
-  };
+  const handleNext = next;
+  const handlePrev = prev;
 
-  const handlePrev = () => {
-    goTo((currentIndex - 1 + count) % count);
-  };
-
-  const activeDot = currentIndex % count;
+  const activeDot = realIndex;
   const windowStart = Math.min(
     Math.max(activeDot - 2, 0),
     Math.max(0, count - DOT_WINDOW)
@@ -148,15 +146,16 @@ export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps)
           id="featured-locations-track"
           className="absolute left-1/2 top-0 h-full flex items-center"
           style={{
-            transform: `translate3d(calc(-1 * (var(--card-width) / 2) - (${currentIndex} * (var(--card-width) + var(--card-gap)))), 0, 0)`,
-            transition: isTransitioning
+            transform: `translate3d(calc(-1 * (var(--card-width) / 2) - (${trackIndex} * (var(--card-width) + var(--card-gap)))), 0, 0)`,
+            transition: transition
               ? "transform 500ms cubic-bezier(0.2, 0.7, 0.2, 1)"
               : "none",
             willChange: "transform",
           }}
+          onTransitionEnd={handleTransitionEnd}
         >
           {extendedLocations.map((l, i) => {
-            const isActive = i === currentIndex;
+            const isActive = i === trackIndex;
             return (
               <article
                 key={`${l.name}-${i}`}
