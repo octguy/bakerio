@@ -8,12 +8,7 @@
     ".": "./src/index.ts",
     "./staff": "./src/staff.ts",
     "./voucher": "./src/voucher.ts",
-    "./mock": "./src/mock/index.ts",
-    "./mock/analytics": "./src/mock/analytics.ts",
-    "./mock/inventory": "./src/mock/inventory.ts",
-    "./mock/kitchen": "./src/mock/kitchen.ts",
-    "./mock/loyalty": "./src/mock/loyalty.ts",
-    "./mock/addresses": "./src/mock/addresses.ts"
+    "./mock": "./src/mock/index.ts"
   },
   "scripts": {
     "check-types": "tsc --noEmit"
