@@ -4,13 +4,45 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import {
   getProductsPage,
+  listProductImages,
   type Product,
   type Category,
   type PaginatedResponse,
 } from "@repo/api-client";
 import { getOrderUrl } from "@/lib/public-config";
 
-const PRODUCT_IMAGE = "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80";
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80";
+
+// Global image cache to avoid refetching
+const imgCache = new Map<string, string | null>();
+const imgPending = new Set<string>();
+
+function useProductImages(productIds: string[]) {
+  const [rev, setRev] = useState(0);
+  const idsKey = productIds.join(",");
+
+  useEffect(() => {
+    const missing = productIds.filter((id) => !imgCache.has(id) && !imgPending.has(id));
+    if (missing.length === 0) return;
+    missing.forEach((id) => imgPending.add(id));
+    Promise.allSettled(
+      missing.map(async (id) => {
+        try {
+          const imgs = await listProductImages(id);
+          const primary = imgs.find((i) => i.is_primary) ?? imgs[0];
+          imgCache.set(id, primary?.url ?? null);
+        } catch {
+          imgCache.set(id, null);
+        } finally {
+          imgPending.delete(id);
+        }
+      }),
+    ).then(() => setRev((n) => n + 1));
+  }, [idsKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  void rev;
+  return imgCache;
+}
 
 interface MenuContentProps {
   initialCategories: Category[];
@@ -39,6 +71,7 @@ export default function MenuContent({
   const productsList = productsPage.items;
   const hasPreviousPage = page > 1;
   const hasNextPage = page < totalPages;
+  const productImages = useProductImages(productsList.map((p) => p.id));
 
   const loadPage = async (nextPage: number, categorySlug = active) => {
     if (nextPage < 1 || nextPage > totalPages || (nextPage === page && categorySlug === active)) return;
@@ -131,15 +164,11 @@ export default function MenuContent({
           >
             <span>All</span>
             <span className={`font-mono text-[10.5px] ${active === "All" ? "text-cinnamon" : "text-caramel"}`}>
-              {productsList.length}
+              {total}
             </span>
           </button>
 
           {categoriesList.map((c) => {
-            const count = productsList.filter((p) => {
-              const pCategory = categoriesList.find((cat) => cat.id === p.category_id);
-              return pCategory?.slug === c.slug;
-            }).length;
             const isActive = active === c.slug;
             return (
               <button
@@ -154,9 +183,6 @@ export default function MenuContent({
                 }`}
               >
                 <span>{c.name}</span>
-                <span className={`font-mono text-[10.5px] ${isActive ? "text-cinnamon" : "text-caramel"}`}>
-                  {count}
-                </span>
               </button>
             );
           })}
@@ -187,7 +213,7 @@ export default function MenuContent({
               >
                 <div className="relative h-[160px] w-full">
                   <Image
-                    src={PRODUCT_IMAGE}
+                    src={productImages.get(p.id) || FALLBACK_IMAGE}
                     alt={p.name}
                     fill
                     className="object-cover"
