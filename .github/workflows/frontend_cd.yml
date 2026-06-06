@@ -284,6 +284,9 @@ jobs:
             # match the app identity reported by /api/health.
             check() {
               local label="$1" target="$2" expected="$3"
+              # Strip trailing slashes so a stray slash in *_URL secrets can't
+              # produce `//api/health` (which returns the literal "/api/health").
+              target="${target%/}"
               local body
               body="$(curl -sf "$target/api/health")" || { echo "❌ $label unreachable ($target)"; exit 1; }
               case "$body" in
