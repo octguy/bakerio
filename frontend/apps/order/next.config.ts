@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_API_URL: process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "",
     NEXT_PUBLIC_BRANDING_URL: process.env.BRANDING_URL || process.env.NEXT_PUBLIC_BRANDING_URL || "",
     NEXT_PUBLIC_ORDER_URL: orderUrl,
-    NEXT_PUBLIC_ADMIN_URL: process.env.ADMIN_URL || process.env.NEXT_PUBLIC_ADMIN_URL || "",
+    NEXT_PUBLIC_CONSOLE_URL: process.env.CONSOLE_URL || process.env.NEXT_PUBLIC_CONSOLE_URL || "",
     NEXT_PUBLIC_API_PROXY_URL: orderUrl ? `${orderUrl.replace(/\/+$/, "")}/api/backend` : "",
   },
 };

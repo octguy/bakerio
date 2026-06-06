@@ -7,17 +7,17 @@ async function globalSetup() {
   const hasOrder =
     argv.includes("order") ||
     argv.some((arg) => arg.includes("--project=order"));
-  const hasAdmin =
-    argv.includes("admin") ||
-    argv.some((arg) => arg.includes("--project=admin"));
+  const hasConsole =
+    argv.includes("console") ||
+    argv.some((arg) => arg.includes("--project=console"));
   const hasA11y =
     argv.includes("a11y") || argv.some((arg) => arg.includes("--project=a11y"));
 
   const needsBackend =
     hasOrder ||
-    hasAdmin ||
+    hasConsole ||
     hasA11y ||
-    (!hasWeb && !hasOrder && !hasAdmin && !hasA11y);
+    (!hasWeb && !hasOrder && !hasConsole && !hasA11y);
 
   if (!needsBackend) {
     console.log(

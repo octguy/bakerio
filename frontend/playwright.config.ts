@@ -34,9 +34,9 @@ export default defineConfig({
       testMatch: /order\/.*/,
     },
     {
-      name: "admin",
+      name: "console",
       use: { baseURL: "http://localhost:3002" },
-      testMatch: /admin\/.*/,
+      testMatch: /console\/.*/,
     },
     {
       name: "a11y",
@@ -63,13 +63,13 @@ export default defineConfig({
       testMatch: /visual\/order-.*/,
     },
     {
-      name: "visual-admin",
+      name: "visual-console",
       use: {
         baseURL: "http://localhost:3002",
         screenshot: "on",
         video: "off",
       },
-      testMatch: /visual\/admin-.*/,
+      testMatch: /visual\/console-.*/,
     },
   ],
   webServer: skipWebServer
@@ -90,7 +90,7 @@ export default defineConfig({
         },
         {
           command:
-            "NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true npm run build -w admin && NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true npm run start -w admin -- -p 3002",
+            "NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true npm run build -w console && NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true npm run start -w console -- -p 3002",
           port: 3002,
           reuseExistingServer: false,
           timeout: 60_000,

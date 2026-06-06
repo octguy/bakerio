@@ -4,7 +4,7 @@ WORKDIR /app
 
 FROM base AS deps
 COPY package.json package-lock.json ./
-COPY apps/order/package.json ./apps/order/
+COPY apps/console/package.json ./apps/console/
 COPY packages/api-client/package.json ./packages/api-client/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/typescript-config/package.json ./packages/typescript-config/
@@ -28,18 +28,24 @@ ENV NEXT_PUBLIC_ORDER_URL=$ORDER_URL
 ENV NEXT_PUBLIC_CONSOLE_URL=$CONSOLE_URL
 ENV NEXT_PUBLIC_CONTACT_ENDPOINT=$CONTACT_ENDPOINT
 COPY --from=deps /app/node_modules ./node_modules
+# The console app pins deps (lucide-react, tailwind-merge, recharts, @radix-ui,
+# zod) at versions that conflict with the other workspaces, so npm cannot hoist
+# them to the root and installs them under apps/console/node_modules. That
+# nested tree must be carried forward explicitly — .dockerignore excludes
+# node_modules, so `COPY . .` will not bring it from the build context.
+COPY --from=deps /app/apps/console/node_modules ./apps/console/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npx turbo run build --filter=order
+RUN npx turbo run build --filter=console
 
 FROM base AS runner
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
-COPY --from=builder /app/apps/order/.next/standalone ./
-COPY --from=builder /app/apps/order/.next/static ./apps/order/.next/static
-COPY --from=builder /app/apps/order/public ./apps/order/public
+COPY --from=builder /app/apps/console/.next/standalone ./
+COPY --from=builder /app/apps/console/.next/static ./apps/console/.next/static
+COPY --from=builder /app/apps/console/public ./apps/console/public
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
-CMD ["node", "apps/order/server.js"]
+CMD ["node", "apps/console/server.js"]

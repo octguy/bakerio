@@ -80,19 +80,19 @@ function getApiBase(): string {
 let token: string | null = null;
 let authRedirecting = false;
 
-function isInvalidTokenError(status: number, json: unknown, adminAuthInvalid: boolean): boolean {
-  if (!adminAuthInvalid || status !== 401 || !json || typeof json !== "object") return false;
+function isInvalidTokenError(status: number, json: unknown, consoleAuthInvalid: boolean): boolean {
+  if (!consoleAuthInvalid || status !== 401 || !json || typeof json !== "object") return false;
   const error = (json as { error?: { code?: string; message?: string } }).error;
   if (error?.code !== "UNAUTHORIZED") return false;
   const message = error.message?.toLowerCase() ?? "";
   return message.includes("invalid token") || message.includes("token has been revoked");
 }
 
-async function redirectToLoginAfterInvalidToken(json: unknown, status: number, adminAuthInvalid: boolean) {
+async function redirectToLoginAfterInvalidToken(json: unknown, status: number, consoleAuthInvalid: boolean) {
   if (
     authRedirecting ||
     typeof window === "undefined" ||
-    !isInvalidTokenError(status, json, adminAuthInvalid)
+    !isInvalidTokenError(status, json, consoleAuthInvalid)
   ) {
     return;
   }
@@ -147,7 +147,7 @@ export async function request<T>(path: string, opts?: RequestInit): Promise<T> {
     await redirectToLoginAfterInvalidToken(
       parsedError,
       res.status,
-      res.headers.get("x-admin-auth-invalid") === "1",
+      res.headers.get("x-console-auth-invalid") === "1",
     );
     throw new Error(errorMsg);
   }

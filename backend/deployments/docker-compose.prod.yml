@@ -164,7 +164,7 @@ services:
       NEXT_PUBLIC_API_URL: ${API_URL}
       NEXT_PUBLIC_BRANDING_URL: ${BRANDING_URL:-}
       NEXT_PUBLIC_ORDER_URL: ${ORDER_URL:-}
-      NEXT_PUBLIC_ADMIN_URL: ${ADMIN_URL:-}
+      NEXT_PUBLIC_CONSOLE_URL: ${CONSOLE_URL:-}
       NEXT_PUBLIC_CONTACT_ENDPOINT: ${CONTACT_ENDPOINT:-}
     ports:
       - "3001:3000"
@@ -177,15 +177,15 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  admin:
-    image: ${DOCKER_USERNAME}/bakerio-admin:${IMAGE_TAG:-latest}
-    container_name: bakerio-admin
+  console:
+    image: ${DOCKER_USERNAME}/bakerio-console:${IMAGE_TAG:-latest}
+    container_name: bakerio-console
     environment:
       API_URL: ${API_URL}
       NEXT_PUBLIC_API_URL: ${API_URL}
       NEXT_PUBLIC_BRANDING_URL: ${BRANDING_URL:-}
       NEXT_PUBLIC_ORDER_URL: ${ORDER_URL:-}
-      NEXT_PUBLIC_ADMIN_URL: ${ADMIN_URL:-}
+      NEXT_PUBLIC_CONSOLE_URL: ${CONSOLE_URL:-}
       NEXT_PUBLIC_CONTACT_ENDPOINT: ${CONTACT_ENDPOINT:-}
     ports:
       - "3002:3000"
@@ -210,7 +210,7 @@ services:
       - certbot_www:/var/www/certbot:ro
     depends_on:
       - order
-      - admin
+      - console
     # Reload every 6h so renewed certs are picked up without downtime.
     command: >-
       sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"

@@ -41,15 +41,15 @@ export default defineWorkspace([
     plugins: [react()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, 'apps/admin/src'),
+        '@': path.resolve(__dirname, 'apps/console/src'),
         '@repo/api-client': path.resolve(__dirname, 'packages/api-client/src'),
       },
     },
     test: {
-      name: 'admin',
+      name: 'console',
       environment: 'jsdom',
       setupFiles: ['./vitest.setup.ts'],
-      include: ['apps/admin/src/**/*.test.{ts,tsx}'],
+      include: ['apps/console/src/**/*.test.{ts,tsx}'],
     },
   },
   {

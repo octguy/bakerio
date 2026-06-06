@@ -48,14 +48,14 @@ jobs:
           API_URL: ${{ secrets.API_URL }}
           BRANDING_URL: ${{ secrets.BRANDING_URL }}
           ORDER_URL: ${{ secrets.ORDER_URL }}
-          ADMIN_URL: ${{ secrets.ADMIN_URL }}
+          CONSOLE_URL: ${{ secrets.CONSOLE_URL }}
         run: |
           set -euo pipefail
           for name in \
             DOCKER_USERNAME DOCKER_PASSWORD \
             VPS_HOST VPS_USER VPS_SSH_KEY VPS_PORT \
             FTP_HOST FTP_USERNAME FTP_PASSWORD FTP_REMOTE_DIR \
-            API_URL BRANDING_URL ORDER_URL ADMIN_URL; do
+            API_URL BRANDING_URL ORDER_URL CONSOLE_URL; do
             if [ -z "${!name}" ]; then
               echo "Missing required secret: $name"
               exit 1
@@ -87,12 +87,12 @@ jobs:
           API_URL: ${{ secrets.API_URL }}
           BRANDING_URL: ${{ secrets.BRANDING_URL }}
           ORDER_URL: ${{ secrets.ORDER_URL }}
-          ADMIN_URL: ${{ secrets.ADMIN_URL }}
+          CONSOLE_URL: ${{ secrets.CONSOLE_URL }}
           CONTACT_ENDPOINT: ${{ secrets.CONTACT_ENDPOINT }}
           NEXT_PUBLIC_API_URL: ${{ secrets.API_URL }}
           NEXT_PUBLIC_BRANDING_URL: ${{ secrets.BRANDING_URL }}
           NEXT_PUBLIC_ORDER_URL: ${{ secrets.ORDER_URL }}
-          NEXT_PUBLIC_ADMIN_URL: ${{ secrets.ADMIN_URL }}
+          NEXT_PUBLIC_CONSOLE_URL: ${{ secrets.CONSOLE_URL }}
           NEXT_PUBLIC_CONTACT_ENDPOINT: ${{ secrets.CONTACT_ENDPOINT }}
 
       - name: Add .htaccess
@@ -160,7 +160,7 @@ jobs:
           dangerous-clean-slate: false
           state-name: .ftp-deploy-sync-state.json
 
-  # ─── Order + Admin → Docker → VPS ───
+  # ─── Order + Console → Docker → VPS ───
   docker-order:
     needs: [gate, validate]
     if: needs.gate.outputs.should_deploy == 'true'
@@ -189,12 +189,12 @@ jobs:
             API_URL=${{ secrets.API_URL }}
             BRANDING_URL=${{ secrets.BRANDING_URL }}
             ORDER_URL=${{ secrets.ORDER_URL }}
-            ADMIN_URL=${{ secrets.ADMIN_URL }}
+            CONSOLE_URL=${{ secrets.CONSOLE_URL }}
             CONTACT_ENDPOINT=${{ secrets.CONTACT_ENDPOINT }}
           cache-from: type=gha,scope=order
           cache-to: type=gha,mode=max,scope=order
 
-  docker-admin:
+  docker-console:
     needs: [gate, validate]
     if: needs.gate.outputs.should_deploy == 'true'
     runs-on: ubuntu-latest
@@ -213,22 +213,22 @@ jobs:
       - uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          file: ./frontend/apps/admin/Dockerfile
+          file: ./frontend/apps/console/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/bakerio-admin:latest
-            ${{ secrets.DOCKER_USERNAME }}/bakerio-admin:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/bakerio-console:latest
+            ${{ secrets.DOCKER_USERNAME }}/bakerio-console:${{ github.sha }}
           build-args: |
             API_URL=${{ secrets.API_URL }}
             BRANDING_URL=${{ secrets.BRANDING_URL }}
             ORDER_URL=${{ secrets.ORDER_URL }}
-            ADMIN_URL=${{ secrets.ADMIN_URL }}
+            CONSOLE_URL=${{ secrets.CONSOLE_URL }}
             CONTACT_ENDPOINT=${{ secrets.CONTACT_ENDPOINT }}
-          cache-from: type=gha,scope=admin
-          cache-to: type=gha,mode=max,scope=admin
+          cache-from: type=gha,scope=console
+          cache-to: type=gha,mode=max,scope=console
 
   deploy-apps:
-    needs: [docker-order, docker-admin]
+    needs: [docker-order, docker-console]
     runs-on: ubuntu-latest
     environment: production
 
@@ -250,14 +250,14 @@ jobs:
             grep -v '^IMAGE_TAG=' .env.prod > .env.prod.tmp || true
             printf 'IMAGE_TAG=%s\n' '${{ github.sha }}' >> .env.prod.tmp
             mv .env.prod.tmp .env.prod
-            # Frontend deploy only touches the order/admin images. --no-deps keeps
+            # Frontend deploy only touches the order/console images. --no-deps keeps
             # Compose from resolving/pulling the backend `app` image (owned by
             # Backend CD via APP_IMAGE_TAG), which would 404 on a frontend SHA.
-            docker compose -f docker-compose.prod.yml --env-file .env.prod pull order admin
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps order admin
+            docker compose -f docker-compose.prod.yml --env-file .env.prod pull order console
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps order console
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps nginx
             sleep 3
-            docker compose -f docker-compose.prod.yml --env-file .env.prod logs order admin --tail 20
+            docker compose -f docker-compose.prod.yml --env-file .env.prod logs order console --tail 20
 
   verify-apps:
     needs: deploy-apps
@@ -277,7 +277,8 @@ jobs:
             sleep 5
 
             # Assert each port serves the EXPECTED app. A plain liveness check
-            # can't catch an order/admin image swap (both return 200), so we
+            # Assert each port serves the EXPECTED app. A plain liveness check
+            # can't catch an order/console image swap (both return 200), so we
             # match the app identity reported by /api/health.
             check() {
               local label="$1" target="$2" expected="$3"
@@ -290,6 +291,6 @@ jobs:
             }
 
             check "Order (local)" "http://localhost:3001" "order"
-            check "Admin (local)" "http://localhost:3002" "admin"
+            check "Console (local)" "http://localhost:3002" "console"
             check "Order (public)" "${{ secrets.ORDER_URL }}" "order"
-            check "Admin (public)" "${{ secrets.ADMIN_URL }}" "admin"
+            check "Console (public)" "${{ secrets.CONSOLE_URL }}" "console"
