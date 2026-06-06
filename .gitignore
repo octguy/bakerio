@@ -23,3 +23,4 @@ secrets-template.txt
 backend/.env
 backend/bin/server
 deploy/.env.prod
+backend/deployments/.env.prod
