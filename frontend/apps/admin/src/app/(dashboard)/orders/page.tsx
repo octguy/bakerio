@@ -12,16 +12,6 @@ const CHANNEL: Record<string, { l: string; bg: string; c: string }> = {
   phone: { l: "TEL", bg: "rgba(201,123,107,0.16)", c: "var(--rose)" },
 };
 
-const getCustomerName = (id: string) => {
-  if (id === "order-11055") return "P. Ngọc";
-  if (id === "order-11056") return "M. Trần";
-  if (id === "order-11051") return "D. Linh";
-  if (id === "order-11052") return "A. Vũ";
-  if (id === "order-11053") return "Ms. Hằng";
-  if (id === "order-11054") return "B. Sơn";
-  return "Customer";
-};
-
 const getBranchCode = (branchId: string) => {
   const branchMap: Record<string, string> = {
     "br-le-loi": "LL",
@@ -32,10 +22,13 @@ const getBranchCode = (branchId: string) => {
   return branchMap[branchId] || branchId.replace("br-", "").toUpperCase();
 };
 
-const getRiderName = (id: string) => {
-  if (id === "order-11055") return "Hùng";
-  if (id === "order-11051") return "Quân";
-  return "";
+// Order codes look like "BKO-20260602-A3K7QM"; show the human-friendly tail.
+const getOrderCodeTail = (order: Order) => {
+  if (order.code) {
+    const parts = order.code.split("-");
+    return parts[parts.length - 1];
+  }
+  return order.id.replace("order-", "#");
 };
 
 const getTag = (id: string) => {
@@ -413,7 +406,6 @@ export default function OrdersPage() {
               const channel = getOrderChannel(o);
               const mins = getOrderAgeMinutes(o);
               const late = mins > 20 && !isTerminalOrder(o.status);
-              const cust = getCustomerName(o.id);
               return (
                 <div
                   key={o.id}
@@ -429,10 +421,10 @@ export default function OrdersPage() {
                   }}
                 >
                   <span className="font-mono font-semibold text-espresso">
-                    {o.id.replace("order-", "#")}
+                    {getOrderCodeTail(o)}
                   </span>
                   <span className="truncate font-editorial italic text-cocoa">
-                    {cust}
+                    {o.delivery_address || "—"}
                   </span>
                   <span className="font-mono text-[10.5px] font-bold tracking-[0.1em] text-cinnamon">
                     {getBranchCode(o.branch_id)}
@@ -497,15 +489,12 @@ export default function OrdersPage() {
                   </div>
                 )}
                 {col.orders.map((o) => {
-                  const orderNum = o.id.replace("order-", "#");
+                  const orderNum = getOrderCodeTail(o);
                   const mins = Math.max(0, getOrderAgeMinutes(o));
                   const mode = getOrderMode(o);
                   const channel = getOrderChannel(o);
                   const ch = CHANNEL[channel];
                   const late = mins > 20 && !isTerminalOrder(o.status);
-                  const cust = getCustomerName(o.id);
-                  const branch = getBranchCode(o.branch_id);
-                  const rider = getRiderName(o.id);
                   const tag = getTag(o.id);
                   const itemsStr = o.items
                     .map(
@@ -553,15 +542,9 @@ export default function OrdersPage() {
                       </div>
 
                       <div className="mb-1.5 flex items-center gap-2">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-cinnamon font-display text-[12px] text-white">
-                          {cust.charAt(0)}
-                        </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-[12px] font-semibold leading-tight text-espresso">
-                            {cust}
-                          </div>
-                          <div className="font-mono text-[9.5px] tracking-[0.08em] text-[var(--admin-muted)]">
-                            {branch} {rider ? `· 🛵 ${rider}` : ""}
+                          <div className="truncate text-[12px] font-semibold leading-tight text-espresso">
+                            {o.delivery_address || "—"}
                           </div>
                         </div>
                       </div>
