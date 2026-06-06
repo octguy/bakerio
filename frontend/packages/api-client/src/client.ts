@@ -32,6 +32,8 @@ import type {
   StatisticsOverview,
   ProductStat,
   BranchStat, BranchDetailStats,
+  TimeseriesResponse,
+  ProductTimeseriesResponse,
   SavedAddress,
 } from "./types";
 import {
@@ -1210,8 +1212,8 @@ export async function getStatisticsOverview(): Promise<StatisticsOverview> {
   return request<StatisticsOverview>("/statistics/overview");
 }
 
-export async function getStatisticsProducts(size = 6): Promise<{ items: ProductStat[] }> {
-  return request<{ items: ProductStat[] }>(`/statistics/products?size=${size}`);
+export async function getStatisticsProducts(size = 20, page = 1): Promise<{ items: ProductStat[]; page: number; size: number; total: number; total_pages: number }> {
+  return request<{ items: ProductStat[]; page: number; size: number; total: number; total_pages: number }>(`/statistics/products?page=${page}&size=${size}`);
 }
 
 export async function getStatisticsBranches(): Promise<{ items: BranchStat[] }> {
@@ -1220,4 +1222,35 @@ export async function getStatisticsBranches(): Promise<{ items: BranchStat[] }> 
 
 export async function getStatisticsBranch(id: string): Promise<BranchDetailStats> {
   return request<BranchDetailStats>(`/statistics/branches/${id}`);
+}
+
+export async function getStatisticsTimeseries(opts: {
+  granularity: string;
+  from?: string;
+  to?: string;
+  branch_id?: string;
+}): Promise<TimeseriesResponse> {
+  const params = new URLSearchParams();
+  params.set("granularity", opts.granularity);
+  if (opts.from) params.set("from", opts.from);
+  if (opts.to) params.set("to", opts.to);
+  if (opts.branch_id) params.set("branch_id", opts.branch_id);
+  return request<TimeseriesResponse>(`/statistics/timeseries?${params.toString()}`);
+}
+
+export async function getProductTimeseries(
+  productId: string,
+  opts: {
+    granularity: string;
+    from?: string;
+    to?: string;
+    branch_id?: string;
+  },
+): Promise<ProductTimeseriesResponse> {
+  const params = new URLSearchParams();
+  params.set("granularity", opts.granularity);
+  if (opts.from) params.set("from", opts.from);
+  if (opts.to) params.set("to", opts.to);
+  if (opts.branch_id) params.set("branch_id", opts.branch_id);
+  return request<ProductTimeseriesResponse>(`/statistics/products/${productId}/timeseries?${params.toString()}`);
 }

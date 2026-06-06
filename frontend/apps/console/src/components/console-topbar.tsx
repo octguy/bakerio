@@ -73,33 +73,9 @@ export function ConsoleTopBar() {
         </div>
       )}
 
-      <div className="mx-auto flex w-full max-w-[480px] items-center gap-2.5 rounded-md border border-[var(--console-line)] bg-white px-3.5 py-2 focus-within:border-cinnamon focus-within:ring-2 focus-within:ring-cinnamon/30">
-        <Search
-          aria-hidden="true"
-          className="h-3.5 w-3.5 text-[var(--console-muted)]"
-        />
-        <label htmlFor="console-global-search" className="sr-only">
-          Search orders, products, or branches
-        </label>
-        <input
-          id="console-global-search"
-          type="search"
-          placeholder="Search orders, products, branches..."
-          className="min-w-0 flex-1 bg-transparent font-editorial text-[13px] italic text-espresso outline-none placeholder:text-[var(--console-muted)]"
-        />
-        <kbd className="rounded border border-[var(--console-line)] bg-vanilla px-1.5 py-0.5 font-mono text-[10px] text-[var(--console-muted)]">
-          ⌘K
-        </kbd>
-      </div>
-
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 rounded-full border border-[var(--console-line)] bg-white px-3 py-1.5 font-mono text-[11px] text-espresso">
-          <span>{today} · today</span>
-          <span className="text-[var(--console-muted)]">▾</span>
-        </div>
-        <div className="flex items-center gap-1.5 rounded-full bg-sienna/10 px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-sienna">
-          <span className="bkr-pulse h-1.5 w-1.5 rounded-full bg-sienna" />
-          Live
+          <span>{today}</span>
         </div>
       </div>
     </header>

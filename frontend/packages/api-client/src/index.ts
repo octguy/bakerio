@@ -32,6 +32,10 @@ export type {
   StatisticsOverview,
   ProductStat,
   BranchStat, BranchDetailStats,
+  TimeseriesPoint,
+  TimeseriesResponse,
+  ProductTimeseriesPoint,
+  ProductTimeseriesResponse,
   GetOrdersOptions,
   PaginatedOrders,
   SavedAddress,
@@ -114,6 +118,8 @@ export {
   getStatisticsProducts,
   getStatisticsBranches,
   getStatisticsBranch,
+  getStatisticsTimeseries,
+  getProductTimeseries,
 
   // Addresses (REAL)
   getAddresses,

@@ -271,8 +271,8 @@ export interface StatisticsOverview {
   total_branches: number;
   total_products: number;
   total_orders: number;
-  total_revenue: number;
-  total_discount: number;
+  total_revenue: string;
+  total_discount: string;
   vouchers_redeemed: number;
   tier_bronze: number;
   tier_silver: number;
@@ -283,9 +283,9 @@ export interface ProductStat {
   id: string;
   name: string;
   slug: string;
-  price: number;
+  price: string;
   qty_sold: number;
-  revenue: number;
+  revenue: string;
   branches_active: number;
   total_stock: number;
 }
@@ -294,21 +294,21 @@ export interface BranchStat {
   branch_id: string;
   branch_name: string;
   order_count: number;
-  revenue: number;
+  revenue: string;
   staff_count: number;
   active_products: number;
 }
 
 export interface PeriodTotals {
   orders: number;
-  revenue: number;
+  revenue: string;
 }
 
 export interface BranchTopProduct {
   product_id: string;
   name: string;
   qty_sold: number;
-  revenue: number;
+  revenue: string;
 }
 
 export interface BranchDetailStats {
@@ -322,6 +322,36 @@ export interface BranchDetailStats {
   this_month: PeriodTotals;
   all_time: PeriodTotals;
   top_products: BranchTopProduct[];
+}
+
+export interface TimeseriesPoint {
+  bucket_start: string;
+  orders: number;
+  revenue: string;
+}
+
+export interface TimeseriesResponse {
+  granularity: string;
+  from: string;
+  to: string;
+  branch_id?: string;
+  points: TimeseriesPoint[];
+}
+
+export interface ProductTimeseriesPoint {
+  bucket_start: string;
+  qty_sold: number;
+  revenue: string;
+}
+
+export interface ProductTimeseriesResponse {
+  product_id: string;
+  product_name: string;
+  granularity: string;
+  from: string;
+  to: string;
+  branch_id?: string;
+  points: ProductTimeseriesPoint[];
 }
 
 export interface GetOrdersOptions {

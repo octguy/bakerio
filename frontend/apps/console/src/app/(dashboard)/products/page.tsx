@@ -235,7 +235,7 @@ export default function ProductsPage() {
         header: "Revenue",
         cell: ({ row }: { row: { original: Product } }) => {
           const s = statsMap.get(row.original.id);
-          return s ? formatCurrency(s.revenue) : "—";
+          return s ? formatCurrency(Number(s.revenue)) : "—";
         },
       },
       {
