@@ -1,0 +1,136 @@
+"use client";
+
+import { useState } from "react";
+import { Link } from "next-view-transitions";
+import { ChevronLeft } from "lucide-react";
+import { useNotifications, useMarkRead, useMarkAllRead, useUnreadCount } from "@/hooks/use-notifications";
+import type { Notification, NotificationType } from "@repo/api-client";
+
+const TYPE_ICON: Record<NotificationType, string> = {
+  "order.placed": "🛒",
+  "order.placed.branch": "📦",
+  "auth.password_changed": "🔒",
+  "auth.password_reset_by_admin": "⚠️",
+  "membership.tier_upgraded": "🏆",
+};
+
+function timeAgo(date: string) {
+  const diff = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "vừa xong";
+  if (mins < 60) return `${mins} phút trước`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} giờ trước`;
+  return `${Math.floor(hrs / 24)} ngày trước`;
+}
+
+function getLink(n: Notification): string {
+  if (n.type === "order.placed" && n.data?.order_id) return `/orders/${n.data.order_id}`;
+  if (n.type === "membership.tier_upgraded") return `/profile`;
+  return "#";
+}
+
+type Filter = "all" | "unread" | "read";
+
+export default function NotificationsPage() {
+  const [filter, setFilter] = useState<Filter>("all");
+  const [page, setPage] = useState(1);
+  const unreadOpt = filter === "unread" ? true : filter === "read" ? false : undefined;
+  const { data, isLoading } = useNotifications({ page, size: 20, unread: unreadOpt });
+  const { data: unreadCount = 0 } = useUnreadCount();
+  const markRead = useMarkRead();
+  const markAllRead = useMarkAllRead();
+
+  function handleClick(n: Notification) {
+    if (!n.read_at) markRead.mutate(n.id);
+  }
+
+  const tabs: { key: Filter; label: string }[] = [
+    { key: "all", label: "Tất cả" },
+    { key: "unread", label: "Chưa đọc" },
+    { key: "read", label: "Đã đọc" },
+  ];
+
+  return (
+    <div className="mx-auto max-w-2xl px-5 py-6">
+      <div className="flex items-center gap-3 mb-5">
+        <Link href="/" className="flex h-8 w-8 items-center justify-center rounded-xl border border-crust bg-white">
+          <ChevronLeft size={16} />
+        </Link>
+        <h1 className="font-display text-lg tracking-tight flex-1">Thông báo</h1>
+        {unreadCount > 0 && (
+          <button
+            onClick={() => markAllRead.mutate()}
+            className="font-mono text-[10.5px] uppercase tracking-wider text-cinnamon hover:underline"
+          >
+            Đọc tất cả
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-1.5 mb-4">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => { setFilter(t.key); setPage(1); }}
+            className={`rounded-full px-3.5 py-1.5 font-mono text-[10.5px] uppercase tracking-wider transition-colors ${
+              filter === t.key ? "bg-espresso text-cream" : "border border-crust bg-white text-caramel hover:bg-cream"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-crust border-t-cinnamon" />
+        </div>
+      ) : !data?.items?.length ? (
+        <p className="py-12 text-center text-[13px] text-caramel">Không có thông báo nào</p>
+      ) : (
+        <>
+          <div className="rounded-xl border border-crust bg-white overflow-hidden">
+            {data.items.map((n) => (
+              <Link
+                key={n.id}
+                href={getLink(n)}
+                onClick={() => handleClick(n)}
+                className={`flex gap-3 px-5 py-4 border-b border-crust/50 last:border-0 transition-colors hover:bg-cream ${!n.read_at ? "bg-cinnamon/5" : ""}`}
+              >
+                <span className="text-lg shrink-0 mt-0.5">{TYPE_ICON[n.type] ?? "🔔"}</span>
+                <div className="min-w-0 flex-1">
+                  <p className={`text-[13px] leading-snug ${!n.read_at ? "font-semibold" : ""}`}>{n.title}</p>
+                  {n.body && <p className="mt-0.5 text-[12px] text-caramel line-clamp-2">{n.body}</p>}
+                  <p className="mt-1 text-[11px] text-caramel">{timeAgo(n.created_at)}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {data.total_pages > 1 && (
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <button
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+                className="rounded-lg px-3 py-1.5 font-mono text-[11px] border border-crust disabled:opacity-40"
+              >
+                ←
+              </button>
+              <span className="font-mono text-[11px] text-caramel">
+                {page} / {data.total_pages}
+              </span>
+              <button
+                disabled={page >= data.total_pages}
+                onClick={() => setPage(page + 1)}
+                className="rounded-lg px-3 py-1.5 font-mono text-[11px] border border-crust disabled:opacity-40"
+              >
+                →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

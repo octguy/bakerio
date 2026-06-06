@@ -156,3 +156,35 @@ export type {
   CreateVoucherRequest,
   UpdateVoucherRequest,
 } from "./voucher";
+
+// Notifications (REAL)
+export {
+  getNotifications,
+  getUnreadCount,
+  markRead,
+  markAllRead,
+} from "./notifications";
+export type {
+  Notification,
+  NotificationType,
+  NotificationListResponse,
+  GetNotificationsOptions,
+} from "./notifications";
+
+// RBAC (REAL)
+export {
+  getPermissions,
+  getPermission,
+  getRoles,
+  getRole,
+  createRole,
+  updateRole,
+  getRolePermissions,
+  updateRolePermissions,
+} from "./rbac";
+export type {
+  Permission,
+  Role,
+  CreateRoleRequest,
+  UpdateRoleRequest,
+} from "./rbac";
