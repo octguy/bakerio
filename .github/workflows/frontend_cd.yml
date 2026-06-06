@@ -250,8 +250,12 @@ jobs:
             grep -v '^IMAGE_TAG=' .env.prod > .env.prod.tmp || true
             printf 'IMAGE_TAG=%s\n' '${{ github.sha }}' >> .env.prod.tmp
             mv .env.prod.tmp .env.prod
+            # Frontend deploy only touches the order/admin images. --no-deps keeps
+            # Compose from resolving/pulling the backend `app` image (owned by
+            # Backend CD via APP_IMAGE_TAG), which would 404 on a frontend SHA.
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull order admin
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d order admin nginx
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps order admin
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --no-deps nginx
             sleep 3
             docker compose -f docker-compose.prod.yml --env-file .env.prod logs order admin --tail 20
 
