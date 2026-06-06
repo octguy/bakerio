@@ -7,7 +7,7 @@ export default function NotFound() {
         <p className="text-brand-500 font-bold text-6xl mb-4">404</p>
         <h1 className="text-3xl font-bold text-foreground mb-4">Page Not Found</h1>
         <p className="text-muted-foreground mb-8">
-          The admin page you are looking for doesn&apos;t exist or has been moved. 
+          The console page you are looking for doesn&apos;t exist or has been moved. 
           Please check the URL or return to the dashboard.
         </p>
         <Link 

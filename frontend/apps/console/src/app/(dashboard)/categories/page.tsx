@@ -206,7 +206,7 @@ export default function CategoriesPage() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<FormData>({
+  } = useForm<z.input<typeof schema>, unknown, FormData>({
     resolver: zodResolver(schema),
     values: editing
       ? {

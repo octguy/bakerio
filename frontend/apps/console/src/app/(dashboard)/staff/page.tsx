@@ -55,7 +55,7 @@ const createSchema = z
   .superRefine((data, ctx) => {
     if (isBranchScopedRole(data.role) && !data.branch_id?.trim()) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: "Branch required for branch-scoped roles",
         path: ["branch_id"],
       });

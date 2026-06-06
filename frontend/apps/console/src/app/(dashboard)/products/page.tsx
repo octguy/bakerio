@@ -562,7 +562,7 @@ function ProductFormDialog({
     reset,
     control,
     formState: { errors },
-  } = useForm<FormData>({
+  } = useForm<z.input<typeof schema>, unknown, FormData>({
     resolver: zodResolver(schema),
     values: editing
       ? {

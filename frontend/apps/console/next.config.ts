@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const adminUrl = process.env.ADMIN_URL || process.env.NEXT_PUBLIC_ADMIN_URL || "";
+const consoleUrl = process.env.CONSOLE_URL || process.env.NEXT_PUBLIC_CONSOLE_URL || "";
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -18,8 +18,8 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_API_URL: process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "",
     NEXT_PUBLIC_BRANDING_URL: process.env.BRANDING_URL || process.env.NEXT_PUBLIC_BRANDING_URL || "",
     NEXT_PUBLIC_ORDER_URL: process.env.ORDER_URL || process.env.NEXT_PUBLIC_ORDER_URL || "",
-    NEXT_PUBLIC_ADMIN_URL: adminUrl,
-    NEXT_PUBLIC_API_PROXY_URL: adminUrl ? `${adminUrl.replace(/\/+$/, "")}/api/backend` : "",
+    NEXT_PUBLIC_CONSOLE_URL: consoleUrl,
+    NEXT_PUBLIC_API_PROXY_URL: consoleUrl ? `${consoleUrl.replace(/\/+$/, "")}/api/backend` : "",
   },
 };
 

@@ -9,8 +9,8 @@
     "NEXT_PUBLIC_BRANDING_URL",
     "ORDER_URL",
     "NEXT_PUBLIC_ORDER_URL",
-    "ADMIN_URL",
-    "NEXT_PUBLIC_ADMIN_URL"
+    "CONSOLE_URL",
+    "NEXT_PUBLIC_CONSOLE_URL"
   ],
   "tasks": {
     "build": {

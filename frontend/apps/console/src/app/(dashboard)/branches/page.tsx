@@ -40,12 +40,12 @@ const schema = z.object({
   name: z.string().min(1, "Name required"),
   address: z.string().min(1, "Address required"),
   lat: z
-    .number({ invalid_type_error: "Latitude must be a number" })
+    .number({ error: "Latitude must be a number" })
     .min(-90, "Latitude must be at least -90")
     .max(90, "Latitude must be at most 90")
     .optional(),
   lng: z
-    .number({ invalid_type_error: "Longitude must be a number" })
+    .number({ error: "Longitude must be a number" })
     .min(-180, "Longitude must be at least -180")
     .max(180, "Longitude must be at most 180")
     .optional(),

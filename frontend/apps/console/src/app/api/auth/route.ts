@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
       const token = json.data.access_token;
 
-      // Backend role IDs come from JWT claims; only staff roles may enter the admin app.
+      // Backend role IDs come from JWT claims; only staff roles may enter the console app.
       const roles = getTokenRoles(token);
       if (!hasStaffAccess(roles)) {
         return NextResponse.json({ error: "Access denied. Staff role required." }, { status: 403 });
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (e) {
-    console.error("[admin/api/auth] error:", e);
+    console.error("[console/api/auth] error:", e);
     return NextResponse.json({ error: e instanceof Error ? e.message : "Server error" }, { status: 500 });
   }
 }

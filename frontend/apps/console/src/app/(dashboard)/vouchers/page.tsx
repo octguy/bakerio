@@ -172,7 +172,7 @@ export default function VouchersPage() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<FormData>({
+  } = useForm<z.input<typeof schema>, unknown, FormData>({
     resolver: zodResolver(schema),
     values: editing
       ? {

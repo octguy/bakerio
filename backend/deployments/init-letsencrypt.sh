@@ -33,7 +33,7 @@ CERT_NAME="bakerio.thinhuit.id.vn"
 DOMAINS=(
   "api.bakerio.thinhuit.id.vn"
   "order.bakerio.thinhuit.id.vn"
-  "admin.bakerio.thinhuit.id.vn"
+  "console.bakerio.thinhuit.id.vn"
 )
 
 # Set EMAIL before running, or export it inline:  EMAIL=you@example.com ./init-letsencrypt.sh
@@ -74,7 +74,7 @@ else
 fi
 
 echo "### 2/4  Starting nginx (serves ACME webroot on :80) ..."
-# --no-deps: do NOT (re)create app/order/admin. Their images may be missing or
+# --no-deps: do NOT (re)create app/order/console. Their images may be missing or
 # mid-deploy; nginx only needs to serve the ACME webroot here. An already-running
 # nginx is reloaded in step 4 regardless.
 ${COMPOSE} up -d --no-deps nginx

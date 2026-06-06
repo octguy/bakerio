@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const appAliasRoots = [
-  { marker: '/apps/admin/', root: path.resolve(__dirname, 'apps/admin/src') },
+  { marker: '/apps/console/', root: path.resolve(__dirname, 'apps/console/src') },
   { marker: '/apps/order/', root: path.resolve(__dirname, 'apps/order/src') },
   { marker: '/apps/web/', root: path.resolve(__dirname, 'apps/web/src') },
 ];
