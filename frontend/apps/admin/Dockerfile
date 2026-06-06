@@ -6,6 +6,7 @@ FROM base AS deps
 COPY package.json package-lock.json ./
 COPY apps/admin/package.json ./apps/admin/
 COPY packages/api-client/package.json ./packages/api-client/
+COPY packages/ui/package.json ./packages/ui/
 COPY packages/typescript-config/package.json ./packages/typescript-config/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 RUN npm ci
@@ -29,7 +30,7 @@ ENV NEXT_PUBLIC_CONTACT_ENDPOINT=$CONTACT_ENDPOINT
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm ci && npx turbo run build --filter=admin
+RUN npx turbo run build --filter=admin
 
 FROM base AS runner
 ENV NODE_ENV=production
