@@ -25,6 +25,15 @@ var (
 	goldThreshold   = decimal.NewFromInt(5_000_000)
 )
 
+// Tier-based auto-discount percentages applied to subtotal at
+// /orders/select-branch. Applies before (and on top of) any voucher discount —
+// see documents/business/voucher-membership.md §2.4.
+const (
+	BronzeDiscountPercent = 0
+	SilverDiscountPercent = 5
+	GoldDiscountPercent   = 10
+)
+
 // Service is the cross-module facade. The order module calls ApplyOrderSpend
 // from inside /orders/confirm's tx; the customer-facing /me/membership reads
 // via GetForUser.
@@ -57,6 +66,31 @@ func TierFor(totalSpent decimal.Decimal) string {
 	default:
 		return TierBronze
 	}
+}
+
+// DiscountPercentFor returns the auto-discount percentage for a tier label.
+// Pure function so the order module can call it after GetForUser without
+// pulling additional state through the service.
+func DiscountPercentFor(tier string) int {
+	switch tier {
+	case TierGold:
+		return GoldDiscountPercent
+	case TierSilver:
+		return SilverDiscountPercent
+	default:
+		return BronzeDiscountPercent
+	}
+}
+
+// ComputeTierDiscount = floor(subtotal × discountPct / 100). Same flooring
+// rule as voucher.computeDiscount so the two stack cleanly without rounding
+// surprises.
+func ComputeTierDiscount(subtotal decimal.Decimal, tier string) decimal.Decimal {
+	pct := DiscountPercentFor(tier)
+	if pct == 0 {
+		return decimal.Zero
+	}
+	return subtotal.Mul(decimal.NewFromInt(int64(pct))).Div(decimal.NewFromInt(100)).Floor()
 }
 
 // NextTierThreshold returns the spend value the user needs to reach for the

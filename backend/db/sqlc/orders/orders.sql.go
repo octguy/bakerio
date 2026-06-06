@@ -224,3 +224,40 @@ func (q *Queries) ListOrderItemsByOrderID(ctx context.Context, orderID uuid.UUID
 	}
 	return items, nil
 }
+
+const listOrderItemsByOrderIDs = `-- name: ListOrderItemsByOrderIDs :many
+SELECT id, order_id, product_id, name_snap, unit_price_snap, quantity, line_total FROM orders.order_items
+WHERE order_id = ANY($1::uuid[])
+ORDER BY order_id, id
+`
+
+// Batch fetch used by GET /orders when the caller is admin/branch staff —
+// they get items inlined for each order so the list page doesn't need a
+// second round trip per row. Customer callers skip this.
+func (q *Queries) ListOrderItemsByOrderIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]OrdersOrderItem, error) {
+	rows, err := q.db.Query(ctx, listOrderItemsByOrderIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []OrdersOrderItem{}
+	for rows.Next() {
+		var i OrdersOrderItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.NameSnap,
+			&i.UnitPriceSnap,
+			&i.Quantity,
+			&i.LineTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

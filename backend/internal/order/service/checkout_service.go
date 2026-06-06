@@ -162,11 +162,26 @@ func (s *checkoutService) SelectBranch(ctx context.Context, userID uuid.UUID, re
 		}
 	}
 
-	// 5. If a voucher code was supplied, validate against the (already-priced)
-	//    subtotal. The voucher service returns the snapshotted Voucher plus
-	//    the computed discount in raw VND. The unique constraint in
-	//    voucher.redemptions enforces single-use under concurrency at confirm.
-	discount := decimal.Zero
+	// 5a. Tier-based auto-discount from membership. Looks up the caller's
+	//     current tier (synthetic BRONZE for users with no row yet → 0%) and
+	//     applies the rate from documents/business/voucher-membership.md §2.4.
+	//     Applied to subtotal, not to subtotal+shipping (shipping is never
+	//     discounted, same rule as vouchers).
+	tier := membershipSvc.TierBronze
+	if s.membership != nil {
+		m, err := s.membership.GetForUser(ctx, userID)
+		if err != nil {
+			return dto.SelectBranchResponse{}, err
+		}
+		tier = m.Tier
+	}
+	tierDiscount := membershipSvc.ComputeTierDiscount(out.Subtotal, tier)
+
+	// 5b. If a voucher code was supplied, validate against the original
+	//     subtotal — the min_subtotal gate is about cart size, not what the
+	//     user actually pays. Voucher discount stacks additively with the
+	//     tier discount (both apply to the same subtotal).
+	voucherDiscount := decimal.Zero
 	var voucherID *uuid.UUID
 	var voucherCode *string
 	if req.VoucherCode != nil && *req.VoucherCode != "" {
@@ -177,16 +192,18 @@ func (s *checkoutService) SelectBranch(ctx context.Context, userID uuid.UUID, re
 		if err != nil {
 			return dto.SelectBranchResponse{}, err
 		}
-		discount = vr.Discount
+		voucherDiscount = vr.Discount
 		vid := vr.Voucher.ID
 		voucherID = &vid
 		code := vr.Voucher.Code
 		voucherCode = &code
 	}
 
-	// 6. Build + save session. Total recomputed locally so it reflects the
-	//    discount; the router-supplied picked.Total is subtotal+shipping only.
-	total := out.Subtotal.Add(picked.ShippingFee).Sub(discount)
+	// 6. Build + save session. Total recomputed locally so it reflects both
+	//    discounts; the router-supplied picked.Total is subtotal+shipping
+	//    only, with no discount awareness.
+	totalDiscount := tierDiscount.Add(voucherDiscount)
+	total := out.Subtotal.Add(picked.ShippingFee).Sub(totalDiscount)
 	if total.LessThan(decimal.Zero) {
 		total = decimal.Zero
 	}
@@ -201,8 +218,11 @@ func (s *checkoutService) SelectBranch(ctx context.Context, userID uuid.UUID, re
 		Items:             sessionItems,
 		Subtotal:          out.Subtotal,
 		ShippingFee:       picked.ShippingFee,
-		DiscountAmount:    discount,
+		TierDiscount:      tierDiscount,
+		VoucherDiscount:   voucherDiscount,
+		DiscountAmount:    totalDiscount,
 		Total:             total,
+		Tier:              tier,
 		VoucherID:         voucherID,
 		VoucherCode:       voucherCode,
 		ShippingAddress:   req.ShippingAddress,
@@ -220,18 +240,21 @@ func (s *checkoutService) SelectBranch(ctx context.Context, userID uuid.UUID, re
 	}
 
 	return dto.SelectBranchResponse{
-		SessionID:      session.SessionID,
-		BranchID:       session.BranchID,
-		BranchName:     session.BranchName,
-		Subtotal:       session.Subtotal,
-		ShippingFee:    session.ShippingFee,
-		DiscountAmount: session.DiscountAmount,
-		Total:          session.Total,
-		VoucherCode:    session.VoucherCode,
-		DistanceKm:     session.DistanceKm,
-		Items:          quotedItems,
-		ExpiresAt:      expires,
-		TTLSeconds:     int(SessionTTL.Seconds()),
+		SessionID:       session.SessionID,
+		BranchID:        session.BranchID,
+		BranchName:      session.BranchName,
+		Subtotal:        session.Subtotal,
+		ShippingFee:     session.ShippingFee,
+		TierDiscount:    session.TierDiscount,
+		VoucherDiscount: session.VoucherDiscount,
+		DiscountAmount:  session.DiscountAmount,
+		Total:           session.Total,
+		Tier:            session.Tier,
+		VoucherCode:     session.VoucherCode,
+		DistanceKm:      session.DistanceKm,
+		Items:           quotedItems,
+		ExpiresAt:       expires,
+		TTLSeconds:      int(SessionTTL.Seconds()),
 	}, nil
 }
 

@@ -96,10 +96,16 @@ func (s *queryService) ListOrders(ctx context.Context, callerID uuid.UUID, perms
 	// Auto-scope the filter based on what the caller is allowed to see.
 	// Order matters: wildcard short-circuits everything; branch overrides
 	// any client-supplied branch_id; customer overrides user_id.
+	// includeItems = caller is operational (admin or branch staff); customer
+	// callers get the lean list and fetch GET /orders/:id when they need
+	// the line items.
+	var includeItems bool
 	switch {
 	case hasPerm(perms, permWildcard), hasPerm(perms, permViewAll):
+		includeItems = true
 		// No scope tightening.
 	case hasPerm(perms, permViewBranch):
+		includeItems = true
 		bid, err := s.callerBranch(ctx, callerID)
 		if err != nil {
 			return dto.OrderListResponse{}, err
@@ -127,6 +133,33 @@ func (s *queryService) ListOrders(ctx context.Context, callerID uuid.UUID, perms
 	if err != nil {
 		return dto.OrderListResponse{}, apperrors.Internal("failed to list orders", err)
 	}
+
+	// Inline line items in one batch query (avoids N+1).
+	if includeItems && len(items) > 0 {
+		ids := make([]uuid.UUID, len(items))
+		for i, it := range items {
+			ids[i] = it.ID
+		}
+		rows, err := s.orders.ListItemsByOrderIDs(ctx, ids)
+		if err != nil {
+			return dto.OrderListResponse{}, apperrors.Internal("failed to load order items", err)
+		}
+		byOrder := make(map[uuid.UUID][]dto.OrderItemResponse, len(items))
+		for _, r := range rows {
+			byOrder[r.OrderID] = append(byOrder[r.OrderID], dto.OrderItemResponse{
+				ID:        r.ID,
+				ProductID: r.ProductID,
+				Name:      r.NameSnap,
+				UnitPrice: r.UnitPriceSnap,
+				Quantity:  r.Quantity,
+				LineTotal: r.LineTotal,
+			})
+		}
+		for i := range items {
+			items[i].Items = byOrder[items[i].ID]
+		}
+	}
+
 	return dto.OrderListResponse{
 		Items: items,
 		Meta:  pagination.NewMeta(p, total),

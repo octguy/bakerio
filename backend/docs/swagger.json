@@ -4261,6 +4261,12 @@
                 "id": {
                     "type": "string"
                 },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/OrderItemResponse"
+                    }
+                },
                 "placed_at": {
                     "type": "string"
                 },
@@ -4775,6 +4781,7 @@
                     "type": "string"
                 },
                 "discount_amount": {
+                    "description": "= tier + voucher",
                     "type": "number"
                 },
                 "distance_km": {
@@ -4798,6 +4805,12 @@
                 "subtotal": {
                     "type": "number"
                 },
+                "tier": {
+                    "type": "string"
+                },
+                "tier_discount": {
+                    "type": "number"
+                },
                 "total": {
                     "type": "number"
                 },
@@ -4806,6 +4819,9 @@
                 },
                 "voucher_code": {
                     "type": "string"
+                },
+                "voucher_discount": {
+                    "type": "number"
                 }
             }
         },

@@ -36,18 +36,21 @@ type SelectBranchItem struct {
 // SelectBranchResponse is the frozen quote handed to the client. ExpiresAt
 // drives the countdown timer in the UI; ConfirmEndpoint is informational.
 type SelectBranchResponse struct {
-	SessionID      uuid.UUID                `json:"session_id"`
-	BranchID       uuid.UUID                `json:"branch_id"`
-	BranchName     string                   `json:"branch_name"`
-	Subtotal       decimal.Decimal          `json:"subtotal"`
-	ShippingFee    decimal.Decimal          `json:"shipping_fee"`
-	DiscountAmount decimal.Decimal          `json:"discount_amount"`
-	Total          decimal.Decimal          `json:"total"`
-	VoucherCode    *string                  `json:"voucher_code,omitempty"`
-	DistanceKm     *float64                 `json:"distance_km,omitempty"`
-	Items          []SelectBranchItemQuoted `json:"items"`
-	ExpiresAt      time.Time                `json:"expires_at"`
-	TTLSeconds     int                      `json:"ttl_seconds"`
+	SessionID       uuid.UUID                `json:"session_id"`
+	BranchID        uuid.UUID                `json:"branch_id"`
+	BranchName      string                   `json:"branch_name"`
+	Subtotal        decimal.Decimal          `json:"subtotal"`
+	ShippingFee     decimal.Decimal          `json:"shipping_fee"`
+	TierDiscount    decimal.Decimal          `json:"tier_discount"`
+	VoucherDiscount decimal.Decimal          `json:"voucher_discount"`
+	DiscountAmount  decimal.Decimal          `json:"discount_amount"` // = tier + voucher
+	Total           decimal.Decimal          `json:"total"`
+	Tier            string                   `json:"tier"`
+	VoucherCode     *string                  `json:"voucher_code,omitempty"`
+	DistanceKm      *float64                 `json:"distance_km,omitempty"`
+	Items           []SelectBranchItemQuoted `json:"items"`
+	ExpiresAt       time.Time                `json:"expires_at"`
+	TTLSeconds      int                      `json:"ttl_seconds"`
 } // @name SelectBranchResponse
 
 type SelectBranchItemQuoted struct {

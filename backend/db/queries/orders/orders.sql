@@ -12,6 +12,14 @@ SELECT * FROM orders.order_items
 WHERE order_id = $1
 ORDER BY id;
 
+-- name: ListOrderItemsByOrderIDs :many
+-- Batch fetch used by GET /orders when the caller is admin/branch staff —
+-- they get items inlined for each order so the list page doesn't need a
+-- second round trip per row. Customer callers skip this.
+SELECT * FROM orders.order_items
+WHERE order_id = ANY($1::uuid[])
+ORDER BY order_id, id;
+
 -- name: CreateOrder :one
 INSERT INTO orders.orders (
     code, user_id, branch_id,
