@@ -8,24 +8,23 @@ import {
 import { MenuGrid } from "./_components/menu-grid";
 import { MenuLayoutClient } from "./_components/menu-layout-client";
 import { Link } from "next-view-transitions";
-import { cacheLife } from "next/cache";
 import { Suspense } from "react";
 
 export const unstable_instant = { prefetch: "static" };
 
 const MENU_PAGE_SIZE = 12;
 
-// Cache the catalog across navigations so the branch -> menu transition lands on
-// warm data instead of re-suspending into the loading fallback every time. The
-// branch list (app/page.tsx) caches the same way; without this the Suspense
-// fallback flashes on each visit.
-async function getCachedCatalog(): Promise<{
+// Fetch the catalog at request time. With Cache Components enabled, wrapping
+// this in `"use cache"` would prerender it at build time, which forces a live
+// backend fetch during `docker build` (unreachable in the builder -> the build
+// fails with ECONNREFUSED). The `<Suspense>` boundary in MenuPage already
+// provides the static shell required by `unstable_instant`, so the catalog
+// streams in at request time instead.
+async function getCatalog(): Promise<{
   products: Product[];
   categories: Category[];
   productsPage: PaginatedResponse<Product>;
 }> {
-  "use cache";
-  cacheLife("hours");
   const [productsPage, categories] = await Promise.all([
     getProductsPage({ size: MENU_PAGE_SIZE }),
     getCategories(),
@@ -50,7 +49,7 @@ async function MenuCatalog() {
   let loadError = false;
 
   try {
-    ({ products, categories, productsPage } = await getCachedCatalog());
+    ({ products, categories, productsPage } = await getCatalog());
   } catch {
     loadError = true;
   }
