@@ -1,0 +1,230 @@
+# Local full-stack for testing all apps together.
+# Usage: docker compose -f docker-compose.local.yml up --build
+#
+# App URLs once running:
+#   web (branding)  http://localhost:3001
+#   order           http://localhost:3002
+#   console         http://localhost:3003
+#   backend API     http://localhost:8080
+#   MailHog UI      http://localhost:8025
+#   MinIO console   http://localhost:9001  (minioadmin / minioadmin)
+#   RabbitMQ UI     http://localhost:15672 (guest / guest)
+
+x-frontend-build-args: &frontend-build-args
+  # Server-side prerender + runtime SSR talk to the backend by its compose
+  # service name. This value is baked into the image (NEXT_PUBLIC_API_URL) and
+  # must be reachable both during the build (frontends are built on the
+  # bakerio_local network) and at runtime. The browser never uses this — it
+  # goes through each app's /api/backend proxy.
+  API_URL: http://app:8080/api/v1
+  # Public cross-link URLs are browser-facing, so they stay on localhost.
+  BRANDING_URL: http://localhost:3001
+  ORDER_URL: http://localhost:3002
+  CONSOLE_URL: http://localhost:3003
+  CONTACT_ENDPOINT: ""
+  # Mocks fully disabled — prerender hits the live API, matching production.
+  NEXT_PUBLIC_DISABLE_MOCK_FALLBACK: "true"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bakerio-postgres
+    environment:
+      POSTGRES_USER: bakerio
+      POSTGRES_PASSWORD: bakerio
+      POSTGRES_DB: bakeriodb
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bakerio -d bakeriodb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
+  migrate:
+    image: migrate/migrate:v4.17.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../backend/db/migrations:/migrations
+    command:
+      - -path=/migrations
+      - -database=postgres://bakerio:bakerio@postgres:5432/bakeriodb?sslmode=disable
+      - -verbose
+      - up
+    networks:
+      - bakerio_network
+    restart: on-failure
+
+  redis:
+    image: redis:7-alpine
+    container_name: bakerio-redis
+    command: redis-server --requirepass bakerio
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "bakerio", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: bakerio-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: bakerio-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: bakerio-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: bakerio-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      SERVER_ENV: development
+      SERVER_PORT: 8080
+      GIN_MODE: debug
+      JWT_SECRET: local-dev-secret-change-me
+      JWT_EXPIRY: 15m
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: bakerio
+      DB_PASSWORD: bakerio
+      DB_NAME: bakeriodb
+      DB_SSLMODE: disable
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: bakerio
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      EMAIL_HOST: mailhog
+      EMAIL_PORT: 1025
+      EMAIL_USER: ""
+      EMAIL_PASSWORD: ""
+      EMAIL_FROM: bakerio@example.com
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: uploads
+      MINIO_USE_SSL: "false"
+      MINIO_PUBLIC_URL: http://localhost:9000
+    ports:
+      - "8080:8080"
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../frontend
+      dockerfile: apps/web/Dockerfile
+      args:
+        <<: *frontend-build-args
+    container_name: bakerio-web
+    ports:
+      - "3001:80"
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
+  order:
+    build:
+      context: ../frontend
+      dockerfile: apps/order/Dockerfile
+      args:
+        <<: *frontend-build-args
+    container_name: bakerio-order
+    ports:
+      - "3002:3000"
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
+  console:
+    build:
+      context: ../frontend
+      dockerfile: apps/console/Dockerfile
+      args:
+        <<: *frontend-build-args
+    container_name: bakerio-console
+    ports:
+      - "3003:3000"
+    networks:
+      - bakerio_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  minio_data:
+
+networks:
+  bakerio_network:
+    name: bakerio_local
+    driver: bridge
