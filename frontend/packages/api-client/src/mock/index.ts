@@ -664,5 +664,3 @@ export async function deleteProductImage(productId: string, imageId: string): Pr
   const existingImages = mockProductImages[productId] ?? [];
   mockProductImages[productId] = existingImages.filter((img) => img.id !== imageId);
 }
-
-export * from "./addresses";
