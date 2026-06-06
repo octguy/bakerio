@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { getOrders, getOrderStats, getProduct, reorderItems } from "@repo/api-client";
+import { getOrders, getOrderStats, getProduct, reorderItems, getBranchNameMap } from "@repo/api-client";
 import type { Order, OrderStatus } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
 import { Link } from "next-view-transitions";
@@ -52,6 +52,7 @@ function OrdersPageInner() {
   const setBranch = useCartStore((s) => s.setBranch);
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [branchNames, setBranchNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +111,22 @@ function OrdersPageInner() {
       }
     }
   };
+
+  // Load the global (cached) branch id -> name map once for resolving branch
+  // names on order cards. Cached at the api-client module level across renders.
+  useEffect(() => {
+    let cancelled = false;
+    getBranchNameMap()
+      .then((map) => {
+        if (!cancelled) setBranchNames(map);
+      })
+      .catch((err) => {
+        if (process.env.NODE_ENV !== "production") console.error("Failed to load branches:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Reset page and clear orders when tab or search changes
   useEffect(() => {
@@ -260,7 +277,6 @@ function OrdersPageInner() {
           <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {orders.map((o, index) => {
               const st = STATUS_LABEL[o.status] ?? { l: o.status, c: "var(--caramel)" };
-              const itemsCount = o.items.reduce((s, i) => s + i.quantity, 0);
               const displayId = orderCodeTail(o);
               const isTerminal = TERMINAL_STATUSES.has(o.status);
               const isLast = index === orders.length - 1;
@@ -278,19 +294,21 @@ function OrdersPageInner() {
                       Live
                     </div>
                   )}
-                  <div className="mb-2 flex items-center gap-2.5">
-                    <span className="font-mono text-[11.5px] font-bold tracking-[0.04em] text-espresso">
-                      {displayId}
-                    </span>
-                    <span className="font-mono text-[10px] tracking-wider text-caramel">
-                      · {o.branch_id === "br-le-loi" ? "Lê Lợi" : o.branch_id === "br-pasteur" ? "Pasteur" : o.branch_id === "br-thao-dien" ? "Thảo Điền" : "Phú Mỹ Hưng"}
-                    </span>
-                    <span
-                      className="ml-auto font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]"
-                      style={{ color: st.c }}
-                    >
-                      {st.l}
-                    </span>
+                  <div className="mb-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-[11.5px] font-bold tracking-[0.04em] text-espresso">
+                        {displayId}
+                      </span>
+                      <span
+                        className="ml-auto font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]"
+                        style={{ color: st.c }}
+                      >
+                        {st.l}
+                      </span>
+                    </div>
+                    <div className="mt-1 font-mono text-[10px] leading-snug tracking-wider text-caramel">
+                      {branchNames.get(o.branch_id) ?? "…"}
+                    </div>
                   </div>
 
                   <Link
@@ -298,12 +316,12 @@ function OrdersPageInner() {
                     aria-label={`View order ${displayId}`}
                     className="flex items-center gap-3"
                   >
-                    <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-butter font-display text-[16px] text-cinnamon">
-                      {itemsCount}
+                    <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-butter text-[18px] text-cinnamon" aria-hidden="true">
+                      🛍️
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-editorial text-[13px] text-cocoa">
-                        {itemsCount} items · {new Date(o.created_at).toLocaleDateString("vi-VN")}
+                        {new Date(o.created_at).toLocaleDateString("vi-VN")}
                       </div>
                       <div className="mt-0.5 font-display text-[18px] text-espresso">
                         {formatVND(o.total_amount)}
@@ -312,11 +330,8 @@ function OrdersPageInner() {
                     <span className="text-[18px] text-caramel" aria-hidden="true">›</span>
                   </Link>
 
-                  <div className="mt-2.5 flex justify-between border-t border-dashed border-crust pt-2.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-cinnamon">
-                    <Link href={`/orders/${o.id}`} className="hover:text-espresso transition-colors">
-                      {st.live ? "Track →" : "View details →"}
-                    </Link>
-                    {isTerminal && (
+                  {isTerminal && (
+                    <div className="mt-2.5 flex justify-end border-t border-dashed border-crust pt-2.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-cinnamon">
                       <button
                         type="button"
                         onClick={() => handleReorder(o.id)}
@@ -324,8 +339,8 @@ function OrdersPageInner() {
                       >
                         Reorder
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

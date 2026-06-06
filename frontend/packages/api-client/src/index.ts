@@ -68,6 +68,7 @@ export {
   getBranches,
   getBranchesPage,
   getBranch,
+  getBranchNameMap,
   createBranch,
   updateBranch,
   updateBranchStatus,
