@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s | Bakerio",
   },
   description: "A bakery rooted in Saigon. Sourdough fermented 48 hours, butter croissants laminated by hand, bánh mì on a crust we don't apologise for.",
-  metadataBase: new URL("https://bakerio.vn"),
+  metadataBase: new URL("https://thinhuit.id.vn"),
   openGraph: {
     type: "website",
     locale: "vi_VN",

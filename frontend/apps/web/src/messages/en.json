@@ -211,6 +211,6 @@
     "subjectRequired": "Subject is required",
     "messageRequired": "Message is required",
     "genericError": "We couldn't send your message. Please try again in a moment.",
-    "notConfigured": "Contact form is not configured yet. Please email hello@bakerio.vn directly."
+    "notConfigured": "Contact form is not configured yet. Please email admin@thinhuit.id.vn directly."
   }
 }

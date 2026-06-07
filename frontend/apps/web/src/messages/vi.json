@@ -211,6 +211,6 @@
     "subjectRequired": "Vui lòng nhập chủ đề",
     "messageRequired": "Vui lòng nhập tin nhắn",
     "genericError": "Không thể gửi tin nhắn. Vui lòng thử lại sau.",
-    "notConfigured": "Form liên hệ chưa được cấu hình. Vui lòng gửi email trực tiếp đến hello@bakerio.vn."
+    "notConfigured": "Form liên hệ chưa được cấu hình. Vui lòng gửi email trực tiếp đến admin@thinhuit.id.vn."
   }
 }
