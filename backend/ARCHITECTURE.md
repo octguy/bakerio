@@ -155,8 +155,6 @@ For "own resource" scoping (a branch_manager can only see their branch),
 the handler does an in-process check using the caller's id and the resource
 id, returning 403 (or 404 if you want to hide existence) on mismatch.
 
-Read more in [`authorization/`](authorization/).
-
 ## 7. Messaging — outbox + RabbitMQ
 
 The transactional outbox pattern decouples "I want to fire an event" from
@@ -197,8 +195,6 @@ Topology (declared in `internal/platform/mq/topology.go`):
 | `order.notifications` | `order.#` | `dispatcher.HandleOrderQueue` |
 | `auth.notifications` | `auth.#` | `dispatcher.HandleAuthQueue` |
 | `membership.notifications` | `membership.#` | `dispatcher.HandleMembershipQueue` |
-
-More patterns + exchange-type guidance in [`mq/`](mq/).
 
 ## 8. Time
 

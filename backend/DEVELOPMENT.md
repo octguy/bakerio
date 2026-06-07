@@ -130,7 +130,7 @@ go test ./internal/membership/...      # the few packages that have tests
 go test ./...                          # everything
 ```
 
-For now, ad-hoc curl is the main verification path. End-to-end tests live in `test/`.
+For now, ad-hoc curl is the main verification path.
 
 ## 8. Stuck?
 

@@ -73,7 +73,6 @@ db/
 
 deployments/       docker-compose for Postgres, Redis, RabbitMQ, MinIO, MailHog
 docs/              Swagger output (docs.go, swagger.json, swagger.yaml) — generated
-test/              Manual test fixtures + scripts
 ```
 
 ## Common commands
@@ -108,5 +107,5 @@ All passwords are `123456` (dev seed only).
 
 - **`ARCHITECTURE.md`** — modular-monolith shape, schemas, tx model, outbox + MQ pipeline, end-to-end order flow
 - **`DEVELOPMENT.md`** — daily workflow (add an endpoint / module / event / permission), reset & seed cycles, common gotchas
-- **`CLAUDE.md`** — guidance for AI assistants working in this repo
 - **Swagger UI** — `http://localhost:8080/swagger/index.html` (authoritative API reference)
+- **Root [`README.md`](../README.md)** — monorepo overview and how the backend fits with the frontends and deployment

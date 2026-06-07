@@ -164,10 +164,6 @@ services:
     build:
       context: ../frontend
       dockerfile: apps/web/Dockerfile
-      # Attach the build container to the compose network so build-time
-      # prerender fetches to http://app:8080 can resolve `app`. Requires the
-      # network (and the `app` service) to already exist — up-local.sh ensures
-      # that before invoking `compose build` on the frontends.
       network: bakerio_local
       args:
         <<: *frontend-build-args

@@ -1,159 +1,103 @@
-# Turborepo starter
+# Bakerio Frontend
 
-This Turborepo starter is maintained by the Turborepo core team.
+The Bakerio web frontend — a [Turborepo](https://turborepo.dev) monorepo (npm
+workspaces) holding **three Next.js 16 apps** that share a typed API client and a
+component library. Everything talks to the [Go backend](../backend/README.md).
 
-## Using this example
+## Apps
 
-Run the following command:
+| App | Audience | Dev port | Responsibility |
+|---|---|---|---|
+| [`apps/web`](apps/web) | Public | 3000 | Branding / marketing landing site |
+| [`apps/order`](apps/order) | Customers | 3001 | Storefront — menu, cart, multi-step checkout, order tracking, profile & addresses, notifications |
+| [`apps/console`](apps/console) | Staff / managers / admins | 3002 | Back-office — catalog & categories, per-branch stock, branches, staff & roles (RBAC), vouchers, statistics dashboards |
 
-```sh
-npx create-turbo@latest
+## Shared packages
+
+| Package | What |
+|---|---|
+| [`packages/api-client`](packages/api-client) (`@repo/api-client`) | Typed client for the backend API — split by area (`/staff`, `/voucher`, `/notifications`, `/rbac`) plus a `/mock` layer for building without a live backend |
+| [`packages/ui`](packages/ui) (`@repo/ui`) | Shared React component library |
+| [`packages/eslint-config`](packages/eslint-config) | Shared ESLint config |
+| [`packages/typescript-config`](packages/typescript-config) | Shared `tsconfig` bases |
+
+## Tech stack
+
+Next.js 16 (App Router, SSR + static prerender), React 19, TanStack Query (server
+state), Zustand (client state, e.g. the cart), Tailwind CSS 4, Radix UI primitives,
+`next-intl` (internationalization), Leaflet (branch maps), TypeScript throughout.
+Tests: Vitest + Testing Library (unit) and Playwright (e2e).
+
+## Prerequisites
+
+- Node.js ≥ 18
+- npm 10 (`packageManager` is pinned to `npm@10.9.4`)
+- A running backend API for live data — see [backend/README.md](../backend/README.md).
+  Without one, the apps fall back to the `@repo/api-client` mock layer.
+
+## Setup
+
+```bash
+cd frontend
+npm install
 ```
 
-## What's inside?
+Environment defaults are committed in [`.env`](.env) (no secrets — dev URLs only).
+Override locally with `frontend/.env.local` (gitignored). Key variables:
 
-This Turborepo includes the following packages/apps:
+| Variable | Default | Meaning |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` / `API_URL` | `http://localhost:8080/api/v1` | Backend API base URL |
+| `NEXT_PUBLIC_BRANDING_URL` | `http://localhost:3001` | URL of the `web` app |
+| `NEXT_PUBLIC_ORDER_URL` | `http://localhost:3002` | URL of the `order` app |
+| `NEXT_PUBLIC_CONSOLE_URL` | `http://localhost:3003` | URL of the `console` app |
 
-### Apps and Packages
+> The committed defaults match the Docker Compose stack ports (3001/3002/3003). When
+> you run apps directly with `npm run dev`, each app uses its own dev port
+> (3000/3001/3002) from its `package.json` — point the URL vars at those if you rely
+> on cross-app links locally.
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+## Common commands
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+Run from `frontend/`. Turbo fans tasks out across all workspaces.
 
-### Utilities
+| Command | What |
+|---|---|
+| `npm run dev` | Run all apps in dev mode (web :3000, order :3001, console :3002) |
+| `npm run dev -- --filter=order` | Run a single app (`order`, `console`, or `web`) |
+| `npm run build` | Build all apps and packages |
+| `npm run lint` | Lint everything |
+| `npm run check-types` | Type-check everything (`tsc --noEmit`) |
+| `npm run format` | Prettier-format `**/*.{ts,tsx,md}` |
+| `npm run test` | Vitest (watch) |
+| `npm run test:run` | Vitest (single run, CI mode) |
+| `npm run test:e2e` | Playwright e2e suite |
+| `npm run test:e2e:ui` | Playwright in UI mode |
 
-This Turborepo has some additional tools already setup for you:
+Use Turbo [filters](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
+(`--filter=<app>`) to scope `build` / `lint` / `dev` to one workspace.
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+## Layout
 
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+```
+apps/
+  web/        Branding site        (App Router, i18n, marketing components)
+  order/      Customer storefront  (cart store, checkout proxy, order tracking)
+  console/    Back-office console  (catalog, stock, staff/RBAC, vouchers, stats)
+packages/
+  api-client/ @repo/api-client — typed backend client + mock layer
+  ui/         @repo/ui — shared components
+  eslint-config/ , typescript-config/   shared configs
+e2e/          Playwright specs
 ```
 
-Without global `turbo`, use your package manager:
+Each app uses a `proxy.ts` server route to forward authenticated requests to the
+backend so tokens stay server-side.
 
-```sh
-cd my-turborepo
-npx turbo build
-npm dlx turbo build
-npm exec turbo build
-```
+## Deployment
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-npm exec turbo build --filter=docs
-npm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-npm exec turbo dev
-npm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-npm exec turbo dev --filter=web
-npm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-npm exec turbo login
-npm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-npm exec turbo link
-npm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+Only `order` and `console` are containerized and deployed to production (the `web`
+branding site is built the same way locally). Production images are built and pushed
+by the [Frontend CI/CD workflows](../.github/workflows/) and run behind Nginx — see
+[deploy/README.md](../deploy/README.md). The full local stack (all three apps + backend
++ infra) comes up via [`deploy/up-local.sh`](../deploy/up-local.sh).
