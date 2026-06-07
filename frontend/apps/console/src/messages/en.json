@@ -283,7 +283,43 @@
     "permsSaveFailed": "Failed to save permissions",
     "notFound": "Role not found",
     "backToRoles": "← Back to roles",
-    "noPermissions": "No permissions defined"
+    "noPermissions": "No permissions defined",
+    "searchPermissions": "Search permissions…",
+    "noPermMatch": "No permissions match your search",
+    "selectAll": "Select all",
+    "clearAll": "Clear",
+    "selectedCount": "{count} selected",
+    "groupCount": "{checked}/{total}",
+    "permsSummary": "{count} of {total} permissions granted",
+    "fullAccess": "Full access",
+    "noAccess": "No access",
+    "res": {
+      "user": "Users",
+      "branch": "Branches",
+      "product": "Products",
+      "order": "Orders",
+      "payment": "Payments",
+      "cart": "Cart",
+      "voucher": "Vouchers",
+      "address": "Addresses",
+      "profile": "Profile",
+      "other": "Other"
+    },
+    "act": {
+      "manage": "Manage",
+      "view": "View",
+      "create": "Create",
+      "update": "Update",
+      "cancel": "Cancel",
+      "apply": "Apply",
+      "mark": "Mark",
+      "pay": "Pay"
+    },
+    "scope": {
+      "all": "all",
+      "branch": "their branch",
+      "own": "their own"
+    }
   },
   "notifications": {
     "title": "Notifications",
