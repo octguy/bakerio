@@ -1,22 +1,16 @@
 #!/usr/bin/env bash
-# Bring up the full local stack with production fidelity: mocks are disabled and
-# the frontend apps prerender against a LIVE backend during their image build,
-# exactly like CI builds against the deployed API.
+# Bring up the full local stack.
 #
-# Why a script instead of plain `docker compose up --build`:
-#   `compose up --build` builds every image up front, before any service starts.
-#   The order/console apps prerender pages by fetching the catalog at build time
-#   (NEXT_PUBLIC_DISABLE_MOCK_FALLBACK=true means a failed fetch aborts the build
-#   instead of baking mocks). So the backend must already be running and healthy
-#   on the compose network before the frontends are built.
+# The frontends run in dev mode (`next dev`, see frontend/Dockerfile.local), so
+# they fetch from the backend at REQUEST time, not at image-build time. That
+# means a single `docker compose up --build` is enough — no need to start the
+# backend first, no build-time prerender, and no attaching the image build to the
+# docker network (the legacy-builder hack that broke on Docker 28).
 #
-# Phases:
-#   1. Build + start infra and the backend (postgres, redis, rabbitmq, minio,
-#      mailhog, migrate, app).
+# Steps:
+#   1. Build + start everything (infra, backend, frontends).
 #   2. Wait for the backend /health/ready endpoint.
-#   3. Build the frontends attached to the live compose network so their
-#      build-time fetch to http://app:8080 succeeds.
-#   4. Start the frontends.
+#   3. Seed the demo catalog so the apps show real data.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -25,10 +19,10 @@ COMPOSE_FILE="docker-compose.local.yml"
 NETWORK="bakerio_local"
 DC=(docker compose -f "$COMPOSE_FILE")
 
-echo "==> Phase 1: building and starting backend + infra"
-"${DC[@]}" up -d --build postgres redis rabbitmq minio mailhog app
+echo "==> Step 1: building and starting the full stack"
+"${DC[@]}" up -d --build
 
-echo "==> Phase 2: waiting for backend to become ready"
+echo "==> Step 2: waiting for backend to become ready"
 for i in $(seq 1 60); do
   if docker run --rm --network "$NETWORK" curlimages/curl:latest \
       -fsS "http://app:8080/health/ready" >/dev/null 2>&1; then
@@ -43,11 +37,9 @@ for i in $(seq 1 60); do
   sleep 2
 done
 
-echo "==> Phase 2b: seeding demo catalog (so frontend prerender sees real data)"
-# The order app statically prerenders /menu at build time with `"use cache"`,
-# baking whatever the catalog returns into the page for cacheLife("hours"). If
-# the DB only holds boot-time admin accounts when the build runs, /menu renders
-# empty and stays empty until the cache expires. Seed-demo before building.
+echo "==> Step 3: seeding demo catalog"
+# Give the apps something real to render. The frontends fetch live at request
+# time, so this only needs to run once the backend is up (no build dependency).
 # Idempotent: the handler short-circuits when branches already exist.
 SUPERADMIN_EMAIL="superadmin@bakerio.com"
 SUPERADMIN_PASSWORD="123456"
@@ -70,19 +62,6 @@ SEED_RESPONSE=$(docker run --rm --network "$NETWORK" curlimages/curl:latest \
   -H "Authorization: Bearer $TOKEN")
 echo "    seed-demo response: $SEED_RESPONSE"
 
-echo "==> Phase 3: building frontends against the live API (--network $NETWORK)"
-# Each frontend service sets `build.network: bakerio_local` in compose so the
-# build container joins the live network and can resolve `app:8080` during
-# Next.js prerender. BuildKit refuses named docker networks (it only accepts
-# host/none or a builder configured via `buildx create --driver-opt network=`),
-# so use the legacy builder for this phase. The backend image in Phase 1 still
-# builds with BuildKit via the default env.
-COMPOSE_DOCKER_CLI_BUILD=0 DOCKER_BUILDKIT=0 \
-  "${DC[@]}" build web order console
-
-echo "==> Phase 4: starting frontends"
-"${DC[@]}" up -d web order console
-
 echo
 echo "==> Stack is up:"
 echo "    web (branding)  http://localhost:3001"
@@ -92,3 +71,6 @@ echo "    backend API     http://localhost:8080"
 echo "    MailHog UI      http://localhost:8025"
 echo "    MinIO console   http://localhost:9001  (minioadmin / minioadmin)"
 echo "    RabbitMQ UI     http://localhost:15672 (guest / guest)"
+echo
+echo "    Frontends run in dev mode with hot reload — edits under frontend/"
+echo "    are picked up live. First page load may take a moment to compile."

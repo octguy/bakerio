@@ -5,9 +5,10 @@ development with production fidelity, and a **production** stack for the VPS beh
 Nginx + Let's Encrypt.
 
 ```
-docker-compose.local.yml    Full local stack (infra + backend + all 3 frontends)
+docker-compose.local.yml    Full local stack (infra + backend + all 3 frontends in dev mode)
 docker-compose.prod.yml     Production stack (pulls pushed images, Nginx, Certbot)
-up-local.sh                 One-command local bring-up (ordered build, seeds demo)
+Makefile                    Shortcuts for the local stack (make up / down / logs / ...)
+up-local.sh                 One-command local bring-up (build, wait for backend, seed demo)
 init-letsencrypt.sh         One-time TLS bootstrap on the VPS
 nginx.conf                  Reverse proxy + TLS termination + ACME webroot
 .env.prod.example           Template for the production runtime env
@@ -37,24 +38,46 @@ are containerized here.
 
 ## Local stack
 
-Use this to run the whole platform on your machine the way CI builds it — the frontends
-prerender against a **live** backend (no mock fallback), so the backend must be healthy
-before they build. `up-local.sh` orchestrates that ordering for you.
+Runs the whole platform on your machine. The three frontends run in **dev mode**
+(`next dev`, see [../frontend/Dockerfile.local](../frontend/Dockerfile.local)), so they
+fetch from the backend at **request time** rather than baking data in at build time. That
+keeps the bring-up to a single `docker compose up --build` — no build-time prerender, and
+no attaching the image build to the Compose network. Source under `frontend/` is
+bind-mounted, so edits hot-reload without a rebuild.
 
 ```bash
 cd deploy
-./up-local.sh
+make up          # or: ./up-local.sh
 ```
 
-What the script does:
+Common tasks (run `make` with no target to list them all):
 
-1. Builds and starts infra + backend (`postgres`, `redis`, `rabbitmq`, `minio`,
-   `mailhog`, `migrate`, `app`).
+| Command | What it does |
+|---|---|
+| `make up` | Build + start everything, wait for backend, seed demo |
+| `make down` | Stop and remove containers (keeps data) |
+| `make clean` | `down` **and wipe volumes** (DB, MinIO, …) |
+| `make restart` | `down` then `up` |
+| `make logs` | Tail all logs (`make logs s=order` for one service) |
+| `make ps` | Container status |
+| `make build` | Rebuild images (`s=console` for one; `make rebuild` for no-cache) |
+| `make sh s=app` | Open a shell in a container |
+| `make health` | Curl the backend readiness endpoint |
+
+What `up-local.sh` (`make up`) does:
+
+1. Builds and starts the whole stack in one pass — infra (`postgres`, `redis`,
+   `rabbitmq`, `minio`, `mailhog`), `migrate`, the backend `app`, and the three
+   frontends.
 2. Waits for the backend `/health/ready` endpoint.
-3. Seeds the demo catalog (idempotent) so frontend prerender sees real data.
-4. Builds the frontends attached to the live Compose network so their build-time
-   fetch to `http://app:8080` succeeds.
-5. Starts the frontends.
+3. Seeds the demo catalog (idempotent) so the apps have real data to render.
+
+> First load of each frontend page is slower while the dev server compiles it on demand.
+>
+> API routing: `order` and `console` run a Node server, so the browser calls their
+> same-origin `/api/backend` proxy, which forwards to `app:8080` inside the network. The
+> `web` branding site is a static export with no server, so its browser calls hit the
+> backend directly at `localhost:8080` (the backend's CORS is permissive in dev).
 
 URLs once it's up:
 
@@ -69,8 +92,8 @@ URLs once it's up:
 | MinIO console | <http://localhost:9001> (`minioadmin` / `minioadmin`) |
 | RabbitMQ management | <http://localhost:15672> (`guest` / `guest`) |
 
-Tear down with `docker compose -f docker-compose.local.yml down` (add `-v` to wipe
-volumes / data).
+Tear down with `make down` (or `docker compose -f docker-compose.local.yml down`). Use
+`make clean` (i.e. `down -v`) to also wipe volumes / data.
 
 ## Production stack
 

@@ -1,10 +1,12 @@
-x-frontend-build-args: &frontend-build-args
-  API_URL: http://app:8080/api/v1
-  BRANDING_URL: http://localhost:3001
-  ORDER_URL: http://localhost:3002
-  CONSOLE_URL: http://localhost:3003
-  CONTACT_ENDPOINT: ""
-  NEXT_PUBLIC_DISABLE_MOCK_FALLBACK: "true"
+# Hot-reload mounts shared by all three frontend dev containers. The bind mount
+# gives live source; the anonymous volumes shadow it so each container keeps the
+# Linux node_modules installed in the image (the host has none / has macOS ones).
+x-frontend-volumes: &frontend-volumes
+  - ../frontend:/app
+  - /app/node_modules
+  - /app/apps/web/node_modules
+  - /app/apps/order/node_modules
+  - /app/apps/console/node_modules
 
 services:
   postgres:
@@ -163,13 +165,21 @@ services:
   web:
     build:
       context: ../frontend
-      dockerfile: apps/web/Dockerfile
-      network: bakerio_local
+      dockerfile: Dockerfile.local
       args:
-        <<: *frontend-build-args
+        APP: web
     container_name: bakerio-web
+    depends_on:
+      - app
+    environment:
+      # The branding site is a static export with no server-side proxy: the
+      # browser calls the backend directly, so it must use a host-reachable URL
+      # (localhost:8080), not the compose-internal app:8080.
+      API_URL: http://localhost:8080/api/v1
+      NEXT_PUBLIC_API_URL: http://localhost:8080/api/v1
     ports:
-      - "3001:80"
+      - "3001:3000"
+    volumes: *frontend-volumes
     networks:
       - bakerio_network
     restart: unless-stopped
@@ -177,13 +187,20 @@ services:
   order:
     build:
       context: ../frontend
-      dockerfile: apps/order/Dockerfile
-      network: bakerio_local
+      dockerfile: Dockerfile.local
       args:
-        <<: *frontend-build-args
+        APP: order
     container_name: bakerio-order
+    depends_on:
+      - app
+    environment:
+      # order runs a Node server. The browser hits its same-origin /api/backend
+      # proxy, which forwards server-side to the backend over the compose
+      # network — so the server target uses app:8080.
+      API_URL: http://app:8080/api/v1
     ports:
       - "3002:3000"
+    volumes: *frontend-volumes
     networks:
       - bakerio_network
     restart: unless-stopped
@@ -191,13 +208,18 @@ services:
   console:
     build:
       context: ../frontend
-      dockerfile: apps/console/Dockerfile
-      network: bakerio_local
+      dockerfile: Dockerfile.local
       args:
-        <<: *frontend-build-args
+        APP: console
     container_name: bakerio-console
+    depends_on:
+      - app
+    environment:
+      # Same proxy model as order: browser -> /api/backend -> app:8080.
+      API_URL: http://app:8080/api/v1
     ports:
       - "3003:3000"
+    volumes: *frontend-volumes
     networks:
       - bakerio_network
     restart: unless-stopped
