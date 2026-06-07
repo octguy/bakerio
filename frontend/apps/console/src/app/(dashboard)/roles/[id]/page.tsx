@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, Check, Loader2 } from "lucide-react";
+import { ChevronLeft, Check, Loader2, Search } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
@@ -27,6 +27,12 @@ const roleSchema = z.object({
 
 type RoleForm = z.infer<typeof roleSchema>;
 
+// Permission names follow "resource:action:scope" (e.g. "product:manage:all").
+function parsePermission(name: string) {
+  const [resource = "other", action = "", scope = ""] = name.split(":");
+  return { resource, action, scope };
+}
+
 export default function RoleDetailPage() {
   const { id } = useParams() as { id: string };
   const t = useTranslations("roles");
@@ -41,11 +47,11 @@ export default function RoleDetailPage() {
   // Track checked permission IDs locally for debounced save
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [permSaveState, setPermSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [permSearch, setPermSearch] = useState("");
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const syncedRef = useRef<string>("");
 
   // Sync from server data
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     const key = rolePermissions?.map((p) => p.id).sort().join(",") ?? "";
     if (rolePermissions && key !== syncedRef.current) {
@@ -54,23 +60,60 @@ export default function RoleDetailPage() {
     }
   }, [rolePermissions]);
 
-  // Group permissions by prefix
+  // Humanize a permission into "Action scope" (e.g. "Manage all").
+  function describePermission(name: string) {
+    const { action, scope } = parsePermission(name);
+    const actLabel = t.has(`act.${action}`) ? t(`act.${action}`) : action;
+    const scopeLabel = scope ? (t.has(`scope.${scope}`) ? t(`scope.${scope}`) : scope) : "";
+    return scopeLabel ? `${actLabel} ${scopeLabel}` : actLabel;
+  }
+
+  function resourceLabel(resource: string) {
+    return t.has(`res.${resource}`) ? t(`res.${resource}`) : resource;
+  }
+
+  // Group permissions by resource (the part before the first ":"), filtered by
+  // the search box. Each group carries its checked count for the header.
   const groups = useMemo(() => {
     if (!allPermissions) return [];
+    const q = permSearch.trim().toLowerCase();
     const map = new Map<string, typeof allPermissions>();
     for (const p of allPermissions) {
-      const group = p.name.split(".")[0] || "other";
-      if (!map.has(group)) map.set(group, []);
-      map.get(group)!.push(p);
+      const { resource } = parsePermission(p.name);
+      if (q && !p.name.toLowerCase().includes(q) && !resourceLabel(resource).toLowerCase().includes(q)) {
+        continue;
+      }
+      if (!map.has(resource)) map.set(resource, []);
+      map.get(resource)!.push(p);
     }
-    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [allPermissions]);
+    return Array.from(map.entries())
+      .map(([resource, perms]) => ({
+        resource,
+        perms: [...perms].sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      .sort((a, b) => resourceLabel(a.resource).localeCompare(resourceLabel(b.resource)));
+  }, [allPermissions, permSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const totalPerms = allPermissions?.length ?? 0;
 
   function togglePermission(permId: string) {
     setCheckedIds((prev) => {
       const next = new Set(prev);
       if (next.has(permId)) next.delete(permId);
       else next.add(permId);
+      scheduleSave(next);
+      return next;
+    });
+  }
+
+  // Bulk toggle every permission in a resource group at once.
+  function toggleGroup(permIds: string[], checked: boolean) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      for (const id of permIds) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
       scheduleSave(next);
       return next;
     });
@@ -169,27 +212,71 @@ export default function RoleDetailPage() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          {groups.map(([group, perms]) => (
-            <div key={group} className="rounded border border-[var(--console-line)] p-3">
-              <div className="font-mono text-[9.5px] uppercase tracking-[0.18em] text-[var(--console-muted)] mb-2">{group}</div>
-              <div className="flex flex-wrap gap-x-6 gap-y-2">
-                {perms.map((p) => (
-                  <label key={p.id} className="flex items-center gap-2 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={checkedIds.has(p.id)}
-                      onChange={() => togglePermission(p.id)}
-                      className="h-3.5 w-3.5 rounded border-[var(--console-line)] accent-cinnamon"
-                    />
-                    <span className="text-[12px]">{p.name}</span>
-                  </label>
-                ))}
+        {/* Summary + search */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <p className="text-[12px] text-[var(--console-muted)]">
+            {t("permsSummary", { count: checkedIds.size, total: totalPerms })}
+          </p>
+          <div className="relative w-full max-w-[220px]">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--console-muted)]" />
+            <Input
+              value={permSearch}
+              onChange={(e) => setPermSearch(e.target.value)}
+              placeholder={t("searchPermissions")}
+              className="h-8 pl-8 text-[12px]"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {groups.map(({ resource, perms }) => {
+            const ids = perms.map((p) => p.id);
+            const checkedInGroup = ids.filter((id) => checkedIds.has(id)).length;
+            const allChecked = checkedInGroup === ids.length && ids.length > 0;
+            return (
+              <div key={resource} className="rounded-lg border border-[var(--console-line)] overflow-hidden">
+                <div className="flex items-center justify-between gap-2 bg-cream/50 px-3 py-2 border-b border-[var(--console-line)]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12.5px] font-semibold">{resourceLabel(resource)}</span>
+                    <span className="font-mono text-[10px] text-[var(--console-muted)]">
+                      {t("groupCount", { checked: checkedInGroup, total: ids.length })}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(ids, !allChecked)}
+                    className="rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-cinnamon hover:bg-cinnamon/10 transition-colors"
+                  >
+                    {allChecked ? t("clearAll") : t("selectAll")}
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 p-3 sm:grid-cols-2">
+                  {perms.map((p) => {
+                    const checked = checkedIds.has(p.id);
+                    return (
+                      <label
+                        key={p.id}
+                        className="flex items-center gap-2.5 rounded px-2 py-1.5 cursor-pointer select-none hover:bg-cream/40 transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => togglePermission(p.id)}
+                          className="h-4 w-4 rounded border-[var(--console-line)] accent-cinnamon"
+                        />
+                        <span className="flex-1 text-[12.5px]">{describePermission(p.name)}</span>
+                        <code className="font-mono text-[9.5px] text-[var(--console-muted)]">{p.name}</code>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {!groups.length && (
-            <p className="text-[12px] text-[var(--console-muted)] text-center py-4">{t("noPermissions")}</p>
+            <p className="text-[12px] text-[var(--console-muted)] text-center py-4">
+              {permSearch.trim() ? t("noPermMatch") : t("noPermissions")}
+            </p>
           )}
         </div>
       </section>

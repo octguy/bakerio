@@ -283,7 +283,43 @@
     "permsSaveFailed": "Không thể lưu quyền hạn",
     "notFound": "Không tìm thấy vai trò",
     "backToRoles": "← Quay lại vai trò",
-    "noPermissions": "Chưa có quyền hạn nào"
+    "noPermissions": "Chưa có quyền hạn nào",
+    "searchPermissions": "Tìm quyền hạn…",
+    "noPermMatch": "Không có quyền hạn nào khớp",
+    "selectAll": "Chọn tất cả",
+    "clearAll": "Bỏ chọn",
+    "selectedCount": "Đã chọn {count}",
+    "groupCount": "{checked}/{total}",
+    "permsSummary": "Đã cấp {count}/{total} quyền hạn",
+    "fullAccess": "Toàn quyền",
+    "noAccess": "Không có quyền",
+    "res": {
+      "user": "Người dùng",
+      "branch": "Chi nhánh",
+      "product": "Sản phẩm",
+      "order": "Đơn hàng",
+      "payment": "Thanh toán",
+      "cart": "Giỏ hàng",
+      "voucher": "Mã giảm giá",
+      "address": "Địa chỉ",
+      "profile": "Hồ sơ",
+      "other": "Khác"
+    },
+    "act": {
+      "manage": "Quản lý",
+      "view": "Xem",
+      "create": "Tạo",
+      "update": "Cập nhật",
+      "cancel": "Huỷ",
+      "apply": "Áp dụng",
+      "mark": "Đánh dấu",
+      "pay": "Thanh toán"
+    },
+    "scope": {
+      "all": "tất cả",
+      "branch": "chi nhánh của họ",
+      "own": "của riêng họ"
+    }
   },
   "notifications": {
     "title": "Thông báo",
