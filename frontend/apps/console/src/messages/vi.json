@@ -260,6 +260,8 @@
   },
   "roles": {
     "title": "Vai trò",
+    "subtitle": "Kiểm soát truy cập",
+    "rolesCount": "{count} vai trò",
     "createRole": "Tạo vai trò",
     "created": "Đã tạo vai trò",
     "nameExists": "Tên vai trò đã tồn tại",

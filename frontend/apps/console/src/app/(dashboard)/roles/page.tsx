@@ -3,12 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Plus, Pencil } from "lucide-react";
+import { type ColumnDef } from "@tanstack/react-table";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
+import type { Role } from "@repo/api-client";
 import { useRoles, useRolePermissions, useCreateRole } from "@/lib/use-rbac";
-import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-table";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
@@ -28,7 +31,7 @@ type CreateForm = z.infer<typeof createSchema>;
 
 function RolePermCount({ roleId }: { roleId: string }) {
   const { data } = useRolePermissions(roleId);
-  return <span>{data?.length ?? "—"}</span>;
+  return <span className="font-mono tabular-nums">{data?.length ?? "—"}</span>;
 }
 
 export default function RolesPage() {
@@ -59,53 +62,73 @@ export default function RolesPage() {
     }
   }
 
+  const columns: ColumnDef<Role, unknown>[] = [
+    {
+      accessorKey: "name",
+      header: t("colName"),
+      cell: ({ row }) => (
+        <span className="font-semibold text-espresso">{row.original.name}</span>
+      ),
+    },
+    {
+      accessorKey: "description",
+      header: t("colDescription"),
+      cell: ({ row }) => (
+        <span className="text-console-muted">{row.original.description || "—"}</span>
+      ),
+    },
+    {
+      id: "perms",
+      header: t("colPerms"),
+      cell: ({ row }) => <RolePermCount roleId={row.original.id} />,
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <Link
+            href={`/roles/${row.original.id}`}
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
+          >
+            <Pencil aria-hidden="true" className="h-4 w-4" /> {tc("edit")}
+          </Link>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="flex items-center justify-between mb-5">
-        <h1 className="font-display text-lg tracking-tight">{t("title")}</h1>
-        <Button size="sm" onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-1.5 h-3.5 w-3.5" /> {t("createRole")}
+    <div className="space-y-4">
+      <div className="flex items-end justify-between">
+        <div>
+          <div className="mb-1.5 flex items-center gap-3">
+            <span className="block h-px w-6 bg-golden" />
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
+              {t("subtitle")}
+            </span>
+          </div>
+          <h1
+            className="font-display tracking-tight"
+            style={{
+              fontSize: "clamp(26px,3.6vw,32px)",
+              lineHeight: 1,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            {t("title")}{" "}
+            <span className="font-editorial text-cinnamon">· {t("rolesCount", { count: roles?.length ?? 0 })}</span>
+          </h1>
+        </div>
+        <Button onClick={() => setDialogOpen(true)}>
+          <Plus aria-hidden="true" className="h-4 w-4" /> {t("createRole")}
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-12">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-crust border-t-cinnamon" />
-        </div>
-      ) : !roles?.length ? (
-        <p className="py-12 text-center text-[13px] text-[var(--console-muted)]">{t("noRoles")}</p>
+        <p>{tc("loading")}</p>
       ) : (
-        <div className="rounded-lg border border-[var(--console-line)] bg-white overflow-hidden">
-          <table className="w-full text-[12.5px]">
-            <thead>
-              <tr className="border-b border-[var(--console-line)] bg-cream/50">
-                <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-[var(--console-muted)]">{t("colName")}</th>
-                <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-[var(--console-muted)]">{t("colDescription")}</th>
-                <th className="px-4 py-2.5 text-center font-mono text-[10px] uppercase tracking-wider text-[var(--console-muted)]">{t("colPerms")}</th>
-                <th className="px-4 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-[var(--console-muted)]">{t("colAction")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {roles.map((role) => (
-                <tr key={role.id} className="border-b border-[var(--console-line)] last:border-0 hover:bg-cream/30 transition-colors">
-                  <td className="px-4 py-3 font-semibold">{role.name}</td>
-                  <td className="px-4 py-3 text-[var(--console-muted)]">{role.description || "—"}</td>
-                  <td className="px-4 py-3 text-center">
-                    <RolePermCount roleId={role.id} />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/roles/${role.id}`}
-                      className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-mono uppercase tracking-wider text-cinnamon hover:bg-cinnamon/10 transition-colors"
-                    >
-                      <Pencil className="h-3 w-3" /> {tc("edit")}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable columns={columns} data={roles ?? []} showFooter={false} />
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

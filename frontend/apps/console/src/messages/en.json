@@ -260,6 +260,8 @@
   },
   "roles": {
     "title": "Roles",
+    "subtitle": "Access control",
+    "rolesCount": "{count} roles",
     "createRole": "Create Role",
     "created": "Role created",
     "nameExists": "Role name already exists",
