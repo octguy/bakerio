@@ -110,6 +110,7 @@ h1, h2, h3 {
 .font-news       { font-family: var(--font-news), 'Newsreader', Georgia, serif; }
 .font-mono       { font-family: var(--font-mono), ui-monospace, monospace; }
 .font-script     { font-family: var(--font-script), cursive; }
+.font-slab       { font-family: var(--font-slab), serif; }
 
 /* ── Bakerio motion vocabulary ──────────────────────────── */
 @keyframes bkr-pulse {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { display, editorial, news, sans, mono, script } from "@/lib/fonts";
+import { display, editorial, news, sans, mono, script, slab } from "@/lib/fonts";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { SmoothScroll } from "@/app/_components/SmoothScroll";
@@ -27,7 +27,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const fontVars = `${sans.variable} ${display.variable} ${editorial.variable} ${news.variable} ${mono.variable} ${script.variable}`;
+  const fontVars = `${sans.variable} ${display.variable} ${editorial.variable} ${news.variable} ${mono.variable} ${script.variable} ${slab.variable}`;
   return (
     <html lang="vi" className={`${fontVars} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-cream text-espresso">
