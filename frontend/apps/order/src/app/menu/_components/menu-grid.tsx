@@ -109,19 +109,6 @@ function getProductCategoryName(product: Product, categories: Category[]) {
   );
 }
 
-function productMatchesCategory(product: Product, category: Category) {
-  const menuProduct = product as MenuProduct;
-  const productCategory = menuProduct.category;
-  const categoryId = getProductCategoryId(product);
-  return (
-    categoryId === category.id ||
-    categoryId === category.slug ||
-    productCategory?.id === category.id ||
-    productCategory?.id === category.slug ||
-    productCategory?.name === category.name
-  );
-}
-
 function getProductPrice(product: Product) {
   const menuProduct = product as MenuProduct;
   return menuProduct.price ?? menuProduct.base_price ?? 0;

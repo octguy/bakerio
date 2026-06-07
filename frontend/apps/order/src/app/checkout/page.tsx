@@ -51,6 +51,11 @@ const PAY_METHODS = [
 
 type Stage = "select" | "confirm";
 
+// The "select" stage is split into focused sub-steps so each fits on screen
+// without long scrolling. "confirm" remains the final server-quote stage.
+type SelectStep = "address" | "delivery" | "payment";
+const SELECT_STEPS: SelectStep[] = ["address", "delivery", "payment"];
+
 function formatCountdown(secondsLeft: number): string {
   const s = Math.max(0, secondsLeft);
   const m = Math.floor(s / 60);
@@ -82,6 +87,7 @@ function CheckoutPageInner() {
   const cartError = useCartStore((s) => s.cartError);
 
   const [stage, setStage] = useState<Stage>("select");
+  const [selectStep, setSelectStep] = useState<SelectStep>("address");
   const [payMethod, setPayMethod] = useState(3); // Default to "Pay on delivery"
   const [ordered, setOrdered] = useState(false);
   const [reviewing, setReviewing] = useState(false);
@@ -267,6 +273,33 @@ function CheckoutPageInner() {
   })();
   const total = Math.max(0, subtotal + deliveryFee - voucherDiscount);
 
+  // Per-step completeness gates the "Continue" button so users can't advance
+  // past a step that still needs input.
+  const phoneValid = /^(\+?84|0)\d{9}$/.test(contactPhone.trim());
+  const addressStepValid = deliveryAddress.trim().length > 0;
+  const deliveryStepValid = addressStepValid && phoneValid && !!selectedBranchId;
+  const stepIndex = SELECT_STEPS.indexOf(selectStep);
+  const isLastSelectStep = selectStep === "payment";
+
+  const selectStepValid =
+    selectStep === "address"
+      ? addressStepValid
+      : selectStep === "delivery"
+        ? deliveryStepValid
+        : deliveryStepValid; // payment step has no extra required input
+
+  const goNextStep = () => {
+    setError("");
+    const next = SELECT_STEPS[stepIndex + 1];
+    if (next) setSelectStep(next);
+  };
+
+  const goPrevStep = () => {
+    setError("");
+    const prev = SELECT_STEPS[stepIndex - 1];
+    if (prev) setSelectStep(prev);
+  };
+
   // Inline "Other address" form → persist via /addresses, then select it.
   const saveNewAddress = async () => {
     const trimmed = fallbackAddress.trim();
@@ -368,6 +401,7 @@ function CheckoutPageInner() {
   // Return to the select stage to build a fresh quote.
   const handleBackToSelect = () => {
     setStage("select");
+    setSelectStep("payment");
     setQuote(null);
     deadlineRef.current = null;
     setError("");
@@ -380,7 +414,7 @@ function CheckoutPageInner() {
         <div className="mb-3 flex items-center justify-between">
           <button onClick={handleBackToSelect} className="text-[22px] text-espresso" aria-label={t("backToCheckout")}>‹</button>
           <div className="text-center">
-            <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("step", { current: 2, total: 2, label: t("confirm") })}</div>
+            <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("step", { current: 4, total: 4, label: t("confirm") })}</div>
             <div className="font-display text-[16px] leading-none text-espresso">{t("reviewOrder")}</div>
           </div>
           <span className="w-[22px]" aria-hidden="true" />
@@ -501,18 +535,28 @@ function CheckoutPageInner() {
     <main className="mx-auto max-w-md lg:max-w-5xl px-6 pt-4 pb-44 lg:pb-16 lg:grid lg:grid-cols-12 lg:gap-12 lg:items-start">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between lg:col-span-12">
-        <Link href="/cart" className="text-[22px] text-espresso" aria-label={t("backToCart")}>‹</Link>
+        {stepIndex === 0 ? (
+          <Link href="/cart" className="text-[22px] text-espresso" aria-label={t("backToCart")}>‹</Link>
+        ) : (
+          <button onClick={goPrevStep} className="text-[22px] text-espresso" aria-label={t("back")}>‹</button>
+        )}
         <div className="text-center">
-          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("step", { current: 1, total: 2, label: t("details") })}</div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">
+            {t("step", { current: stepIndex + 1, total: 4, label: t(`step${selectStep.charAt(0).toUpperCase()}${selectStep.slice(1)}` as "stepAddress") })}
+          </div>
           <div className="font-display text-[16px] leading-none text-espresso">{t("title")}</div>
         </div>
         <span className="font-mono text-[11px] tracking-[0.1em] text-caramel">{t("help")}</span>
       </div>
 
-      {/* Progress */}
+      {/* Progress — 4 segments: address · delivery · payment · confirm */}
       <div className="mb-8 flex items-center gap-1.5 lg:col-span-12">
-        <div className="h-[3px] flex-1 rounded-sm bg-cinnamon" />
-        <div className="h-[3px] flex-1 rounded-sm bg-crust" />
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className={`h-[3px] flex-1 rounded-sm transition-colors ${i <= stepIndex ? "bg-cinnamon" : "bg-crust"}`}
+          />
+        ))}
       </div>
 
       <div className="lg:col-span-7 flex flex-col gap-3">
@@ -535,7 +579,8 @@ function CheckoutPageInner() {
           </p>
         )}
 
-        {/* Delivery address */}
+        {/* Step 1: Delivery address */}
+        {selectStep === "address" && (
         <div className="rounded-2xl border border-crust bg-white p-4">
           <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("deliverTo")}</div>
           <div className="flex flex-col gap-2">
@@ -614,8 +659,11 @@ function CheckoutPageInner() {
             </div>
           </div>
         </div>
+        )}
 
-        {/* Contact phone */}
+        {/* Step 2: Contact phone + branch picker */}
+        {selectStep === "delivery" && (
+        <>
         <div className="rounded-2xl border border-crust bg-white p-4">
           <label htmlFor="checkout-phone" className="mb-2 block font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">
             {t("contactNumber")}
@@ -680,8 +728,12 @@ function CheckoutPageInner() {
             </div>
           )}
         </div>
+        </>
+        )}
 
-        {/* Payment */}
+        {/* Step 3: Payment + loyalty + voucher */}
+        {selectStep === "payment" && (
+        <>
         <div>
           <div className="mb-2 mt-2 font-mono text-[9.5px] uppercase tracking-[0.22em] text-caramel">{t("payWith")}</div>
           <div className="flex flex-col gap-2">
@@ -816,6 +868,8 @@ function CheckoutPageInner() {
             </div>
           )}
         </div>
+        </>
+        )}
       </div>
 
       {/* Sticky bottom (mobile) / Static sticky sidebar (desktop) */}
@@ -856,11 +910,11 @@ function CheckoutPageInner() {
           </div>
 
           <button
-            onClick={handleReview}
-            disabled={reviewing || !selectedBranchId || !contactPhone.trim()}
+            onClick={isLastSelectStep ? handleReview : goNextStep}
+            disabled={isLastSelectStep ? (reviewing || !deliveryStepValid) : !selectStepValid}
             className="bkr-press flex w-full items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-cream disabled:opacity-50 transition-colors hover:bg-espresso/90"
           >
-            <span>{reviewing ? t("reviewing") : t("reviewOrder")}</span>
+            <span>{isLastSelectStep ? (reviewing ? t("reviewing") : t("reviewOrder")) : t("continue")}</span>
             <span aria-hidden="true">→</span>
           </button>
         </div>
