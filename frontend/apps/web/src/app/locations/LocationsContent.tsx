@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { getBranches } from "@repo/api-client";
 import type { WebLocation } from "@/lib/locations";
 import { toWebLocations } from "@/lib/locations";
@@ -10,7 +11,7 @@ const LocationMap = dynamic(() => import("./LocationMap"), {
   ssr: false,
   loading: () => (
     <div className="h-full w-full flex items-center justify-center bg-butter font-mono text-[11px] text-caramel">
-      Loading Atlas...
+      Loading…
     </div>
   ),
 });
@@ -18,17 +19,18 @@ const LocationMap = dynamic(() => import("./LocationMap"), {
 // Editorial atlas: SVG abstract HCMC map + tabular shop list.
 // Positions are normalised (0..1) — picked to roughly correspond to district.
 const PIN_LAYOUT = [
-  { x: 0.42, y: 0.55, tag: "Flagship" },
+  { x: 0.42, y: 0.55, tagKey: "flagship" },
   { x: 0.5, y: 0.5 },
-  { x: 0.46, y: 0.42, tag: "Coffee bar" },
+  { x: 0.46, y: 0.42, tagKey: "coffeeBar" },
   { x: 0.72, y: 0.45 },
-  { x: 0.55, y: 0.78, tag: "Family" },
+  { x: 0.55, y: 0.78, tagKey: "family" },
   { x: 0.35, y: 0.35 },
   { x: 0.32, y: 0.45 },
   { x: 0.28, y: 0.28 },
 ];
 
 export default function LocationsContent() {
+  const t = useTranslations("locations");
   const [locations, setLocations] = useState<WebLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedLocationName, setSelectedLocationName] = useState<string>(locations[0]?.name ?? "");
@@ -62,7 +64,7 @@ export default function LocationsContent() {
     return (
       <section className="px-6 pb-24 lg:px-14">
         <div className="mx-auto max-w-[1400px] rounded-sm border border-crust bg-white p-10 text-center">
-          <p className="font-editorial text-[16px] italic text-caramel">Loading shops from the bakery network...</p>
+          <p className="font-editorial text-[16px] italic text-caramel">{t("loadingShops")}</p>
         </div>
       </section>
     );
@@ -72,7 +74,7 @@ export default function LocationsContent() {
     return (
       <section className="px-6 pb-24 lg:px-14">
         <div className="mx-auto max-w-[1400px] rounded-sm border border-crust bg-white p-10 text-center">
-          <p className="font-editorial text-[16px] italic text-caramel">No shops are available right now.</p>
+          <p className="font-editorial text-[16px] italic text-caramel">{t("noShops")}</p>
         </div>
       </section>
     );
@@ -98,7 +100,7 @@ export default function LocationsContent() {
                     {String(selectedIdx + 1).padStart(2, "0")}
                   </span>
                   <span className="font-mono text-[9.5px] uppercase tracking-[0.2em] text-cinnamon">
-                    ★ {PIN_LAYOUT[locations.findIndex((item) => item.name === selectedLocation.name)]?.tag ?? "Bakerio shop"}
+                    ★ {(() => { const pin = PIN_LAYOUT[locations.findIndex((item) => item.name === selectedLocation.name)]; return pin?.tagKey ? t(pin.tagKey) : "Bakerio shop"; })()}
                   </span>
                 </div>
                 <h4 className="font-display text-[22px] tracking-tight text-espresso">{selectedLocation.name}</h4>

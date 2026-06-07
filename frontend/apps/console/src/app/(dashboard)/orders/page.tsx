@@ -5,6 +5,7 @@ import { getOrders } from "@repo/api-client";
 import type { Order } from "@repo/api-client";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { useTranslations } from "next-intl";
 
 const getBranchCode = (branchId: string) => {
   const branchMap: Record<string, string> = {
@@ -43,6 +44,8 @@ const getOrderAgeMinutes = (order: Order) =>
   );
 
 export default function OrdersPage() {
+  const t = useTranslations("orders");
+  const tc = useTranslations("common");
   const { user } = useAuth();
   const roles = user?.roles ?? [];
   // Branch-level roles only ever see their own branch's orders, so the branch
@@ -75,9 +78,9 @@ export default function OrdersPage() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg.includes("permission") || msg.includes("forbidden")) {
-        setError("You don't have permission to view orders.");
+        setError(t("noPermission"));
       } else {
-        setError("Could not load live orders. Retry when the API is reachable.");
+        setError(t("loadError"));
       }
       if (process.env.NODE_ENV !== "production") {
         console.error("Failed to fetch orders:", err);
@@ -107,7 +110,7 @@ export default function OrdersPage() {
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              auto-refresh 5s
+              {t("autoRefresh")}
             </span>
           </div>
           <h1
@@ -118,15 +121,14 @@ export default function OrdersPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Live orders.{" "}
+            {t("liveOrders")}{" "}
             <span className="font-editorial text-cinnamon">
-              {orders.filter((o) => !isTerminalOrder(o.status)).length} in
-              motion
+              {orders.filter((o) => !isTerminalOrder(o.status)).length} {t("inMotion")}
             </span>
           </h1>
         </div>
         <span className="font-mono text-[11px] tracking-[0.08em] text-[var(--console-muted)]">
-          {totalOrders} orders
+          {totalOrders} {t("ordersCount")}
         </span>
       </div>
 
@@ -144,7 +146,7 @@ export default function OrdersPage() {
               onClick={() => fetchOrders(true)}
               className="rounded-full border border-sienna/30 px-3 py-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-sienna"
             >
-              Retry
+              {tc("retry")}
             </button>
           </div>
         </div>
@@ -153,11 +155,11 @@ export default function OrdersPage() {
       {/* Cards */}
       {loading ? (
         <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--console-line)] bg-white font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--console-muted)]">
-          Loading orders...
+          {t("loadingOrders")}
         </div>
       ) : visibleOrders.length === 0 ? (
         <div className="flex min-h-[280px] flex-1 items-center justify-center rounded-xl border border-dashed border-[var(--console-line)] bg-white px-4 text-center font-editorial text-[14px] italic text-caramel">
-          No orders yet.
+          {t("noOrders")}
         </div>
       ) : (
         <div className="grid min-h-0 flex-1 auto-rows-min content-start gap-3 overflow-y-auto grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -237,7 +239,7 @@ export default function OrdersPage() {
 
       {!loading && totalPages > 1 && (
         <nav
-          aria-label="Orders pagination"
+          aria-label={t("paginationLabel")}
           className="mt-4 flex items-center justify-between rounded-lg border border-[var(--console-line)] bg-white px-4 py-3"
         >
           <button
@@ -246,10 +248,10 @@ export default function OrdersPage() {
             onClick={() => fetchOrders(true, page - 1)}
             className="rounded-full border border-[var(--console-line)] px-4 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-espresso disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Prev
+            {t("prev")}
           </button>
           <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--console-muted)]">
-            Page {page} of {totalPages} · {totalOrders} orders
+            {t("pageOf", { page, totalPages })} · {totalOrders} {t("ordersCount")}
           </span>
           <button
             type="button"
@@ -257,7 +259,7 @@ export default function OrdersPage() {
             onClick={() => fetchOrders(true, page + 1)}
             className="rounded-full border border-espresso bg-espresso px-4 py-2 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em] text-white disabled:cursor-not-allowed disabled:border-[var(--console-line)] disabled:bg-white disabled:text-espresso disabled:opacity-40"
           >
-            Next
+            {t("next")}
           </button>
         </nav>
       )}

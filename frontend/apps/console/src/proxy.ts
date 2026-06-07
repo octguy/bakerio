@@ -1,13 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { LOCALE_COOKIE, defaultLocale, locales } from "./i18n/config";
 
 const STAFF_ROLES = new Set(["super_admin", "product_manager", "branch_manager", "branch_staff"]);
-
-function redirectToLogin(request: NextRequest) {
-  const loginUrl = request.nextUrl.clone();
-  loginUrl.pathname = "/login";
-  loginUrl.searchParams.set("next", request.nextUrl.pathname);
-  return NextResponse.redirect(loginUrl);
-}
 
 function decodeJwtPayload(token: string): { roles?: unknown; exp?: unknown } | null {
   const [, payload] = token.split(".");
@@ -38,7 +32,18 @@ export function proxy(request: NextRequest) {
 
   const token = request.cookies.get("console_token")?.value;
   if (!token || !hasValidStaffToken(token)) {
-    return redirectToLogin(request);
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // Set locale cookie if missing
+  const localeCookie = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (!localeCookie || !locales.includes(localeCookie as typeof locales[number])) {
+    const response = NextResponse.next();
+    response.cookies.set(LOCALE_COOKIE, defaultLocale, { path: "/", maxAge: 60 * 60 * 24 * 365 });
+    return response;
   }
 
   return NextResponse.next();

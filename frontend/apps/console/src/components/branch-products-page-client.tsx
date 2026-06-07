@@ -36,6 +36,7 @@ import {
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 interface BranchProductsPageClientProps {
   branchId: string;
@@ -48,8 +49,10 @@ export function BranchProductsPageClient({
   branchId,
   branchName,
   backHref = "/branches",
-  backLabel = "Branches",
+  backLabel,
 }: BranchProductsPageClientProps) {
+  const t = useTranslations("branchProducts");
+  const tc = useTranslations("common");
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -124,7 +127,7 @@ export function BranchProductsPageClient({
         delete next[variables.productId];
         return next;
       });
-      toast("Product availability updated");
+      toast(t("availabilityUpdated"));
     },
     onError: (e: Error, variables) => {
       setOverrides((current) => {
@@ -152,7 +155,7 @@ export function BranchProductsPageClient({
         return next;
       });
       setStockTarget(null);
-      toast("Stock updated");
+      toast(t("stockUpdated"));
     },
     onError: (e: Error, variables) => {
       setStockOverrides((current) => {
@@ -167,7 +170,7 @@ export function BranchProductsPageClient({
   const columns: ColumnDef<Product, unknown>[] = [
     {
       accessorKey: "name",
-      header: "Product",
+      header: t("product"),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <span className="text-[14px] font-semibold text-espresso">
@@ -175,7 +178,7 @@ export function BranchProductsPageClient({
           </span>
           {!row.original.is_active && (
             <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-sienna">
-              Globally off
+              {t("globallyOff")}
             </span>
           )}
         </div>
@@ -183,7 +186,7 @@ export function BranchProductsPageClient({
     },
     {
       accessorKey: "category_id",
-      header: "Category",
+      header: t("category"),
       cell: ({ row }) => {
         const cat = categories.find((c) => c.id === row.original.category_id);
         return cat?.name || "—";
@@ -191,7 +194,7 @@ export function BranchProductsPageClient({
     },
     {
       id: "stock",
-      header: "Stock",
+      header: t("stock"),
       cell: ({ row }) => {
         const product = row.original;
         const branchDetail = branchMap[product.id];
@@ -218,7 +221,7 @@ export function BranchProductsPageClient({
     },
     {
       id: "available",
-      header: "Available",
+      header: t("available"),
       cell: ({ row }) => {
         const product = row.original;
         const branchDetail = branchMap[product.id];
@@ -271,12 +274,12 @@ export function BranchProductsPageClient({
             className="mb-3 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-cinnamon"
           >
             <ArrowLeft aria-hidden="true" className="h-3.5 w-3.5" />
-            {backLabel}
+            {backLabel ?? t("backLabel")}
           </Link>
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              {total} catalog products
+              {t("catalogCount", { total })}
             </span>
           </div>
           <h1
@@ -287,7 +290,7 @@ export function BranchProductsPageClient({
               letterSpacing: "-0.02em",
             }}
           >
-            Products{" "}
+            {t("title")}{" "}
             <span className="font-editorial text-cinnamon">· {branchName}</span>
           </h1>
         </div>
@@ -296,17 +299,17 @@ export function BranchProductsPageClient({
       <div className="flex flex-col gap-3 rounded-xl border border-console-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="grid w-full gap-3 sm:max-w-2xl sm:grid-cols-2">
           <div>
-            <Label htmlFor="branch-product-search">Search</Label>
+            <Label htmlFor="branch-product-search">{t("search")}</Label>
             <Input
               id="branch-product-search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search products..."
+              placeholder={t("searchPlaceholder")}
               className="mt-1"
             />
           </div>
           <div>
-            <Label htmlFor="branch-category-filter">Category</Label>
+            <Label htmlFor="branch-category-filter">{t("category_label")}</Label>
             <Select
               id="branch-category-filter"
               value={category}
@@ -316,7 +319,7 @@ export function BranchProductsPageClient({
               }}
               className="mt-1"
             >
-              <option value="">All categories</option>
+              <option value="">{t("allCategories")}</option>
               {categories.map((c) => (
                 <option key={c.id} value={c.slug}>
                   {c.name}
@@ -347,7 +350,7 @@ export function BranchProductsPageClient({
             <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-1 text-sm text-console-muted">
-            <span>Page</span>
+            <span>{t("page")}</span>
             <Input
               aria-label="Jump to branch product page"
               type="number"
@@ -361,7 +364,7 @@ export function BranchProductsPageClient({
               }}
               className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
-            <span>of {totalPages}</span>
+            <span>{t("of", { total: totalPages })}</span>
           </div>
           <Button
             type="button"
@@ -387,7 +390,7 @@ export function BranchProductsPageClient({
       </div>
 
       {isLoading ? (
-        <p>Loading...</p>
+        <p>{t("loading")}</p>
       ) : (
         <DataTable columns={columns} data={products} showFooter={false} />
       )}
@@ -400,16 +403,16 @@ export function BranchProductsPageClient({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update stock</DialogTitle>
+            <DialogTitle>{t("updateStock")}</DialogTitle>
             <DialogDescription>
               {stockTarget
-                ? `Set the stock quantity for ${stockTarget.name} at ${branchName}.`
-                : "Set the stock quantity for this product."}
+                ? t("stockDesc", { name: stockTarget.name, branch: branchName })
+                : t("stockDescGeneric")}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-4">
             <div>
-              <Label htmlFor="stock-quantity">Stock quantity</Label>
+              <Label htmlFor="stock-quantity">{t("stockQuantity")}</Label>
               <Input
                 id="stock-quantity"
                 type="number"
@@ -426,7 +429,7 @@ export function BranchProductsPageClient({
                 variant="outline"
                 onClick={() => setStockTarget(null)}
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button
                 type="button"
@@ -439,7 +442,7 @@ export function BranchProductsPageClient({
                   if (!stockTarget) return;
                   const parsed = Number(stockValue);
                   if (!Number.isInteger(parsed) || parsed < 0) {
-                    toast("Enter a whole number of 0 or more", "error");
+                    toast(t("stockValidation"), "error");
                     return;
                   }
                   setStockOverrides((current) => ({
@@ -452,7 +455,7 @@ export function BranchProductsPageClient({
                   });
                 }}
               >
-                {stockMut.isPending ? "Saving..." : "Save"}
+                {stockMut.isPending ? tc("saving") : tc("save")}
               </Button>
             </div>
           </div>

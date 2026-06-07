@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import {
   getProductsPage,
   listProductImages,
@@ -55,6 +56,7 @@ export default function MenuContent({
   initialPage,
   pageSize,
 }: MenuContentProps) {
+  const t = useTranslations("menu");
   const [productsPage, setProductsPage] = useState(initialPage);
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -87,7 +89,7 @@ export default function MenuContent({
       setVisibleCount(12);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
-      setPageError("Could not load more menu items. Please retry.");
+      setPageError(t("loadError"));
     } finally {
       setIsPageLoading(false);
     }
@@ -129,8 +131,8 @@ export default function MenuContent({
     <section className="px-6 pb-24 lg:px-14 bg-cream">
       <div className="mx-auto max-w-[1400px]">
         <div className="mb-6 flex items-center justify-between gap-4 border-b border-crust pb-3 font-mono text-[10.5px] uppercase tracking-[0.16em] text-caramel">
-          <span>Page {page} of {Math.max(totalPages, 1)}</span>
-          <span>Showing {filtered.length} of {total || productsList.length}</span>
+          <span>{t("pageOf", { page, total: Math.max(totalPages, 1) })}</span>
+          <span>{t("showing", { count: filtered.length, total: total || productsList.length })}</span>
         </div>
 
         <div className="grid grid-cols-1 gap-9 md:grid-cols-[220px_1fr] items-start">
@@ -139,7 +141,7 @@ export default function MenuContent({
           <div className="mb-8">
             <input 
               type="text" 
-              placeholder="Search our menu..." 
+              placeholder={t("searchPlaceholder")} 
               aria-label="Search menu"
               value={searchQuery}
               onChange={(e) => {
@@ -150,7 +152,7 @@ export default function MenuContent({
             />
           </div>
 
-          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-caramel">Category</div>
+          <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-caramel">{t("category")}</div>
           
           <button
             onClick={() => {
@@ -162,7 +164,7 @@ export default function MenuContent({
               active === "All" ? "bg-butter font-semibold text-espresso" : "text-cocoa hover:bg-vanilla"
             }`}
           >
-            <span>All</span>
+            <span>{t("all")}</span>
             <span className={`font-mono text-[10.5px] ${active === "All" ? "text-cinnamon" : "text-caramel"}`}>
               {total}
             </span>
@@ -189,10 +191,10 @@ export default function MenuContent({
 
           <div className="mt-6 rounded-md border border-crust bg-butter p-4">
             <div className="mb-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-cinnamon">
-              ★ Refresh
+              {t("refresh")}
             </div>
             <div className="font-editorial text-[14px] leading-[1.45] text-cocoa">
-              New seasonal bakes every Monday. Subscribe to our journal for announcements.
+              {t("seasonalNote")}
             </div>
           </div>
 
@@ -237,7 +239,7 @@ export default function MenuContent({
                       href={`${orderUrl}/menu?add-to-cart=${p.slug}`}
                       className="bkr-press rounded-full border border-espresso px-2.5 py-1 font-mono text-[9.5px] uppercase tracking-[0.18em] text-espresso transition-colors hover:bg-espresso hover:text-white"
                     >
-                      Add +
+                      {t("addToCart")}
                     </a>
                   </div>
                 </div>
@@ -247,7 +249,7 @@ export default function MenuContent({
             
             {visibleCount < filtered.length && (
               <div ref={loadMoreRef} className="h-10 w-full flex items-center justify-center">
-                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">Loading more...</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">{t("loadingMore")}</span>
               </div>
             )}
 
@@ -266,7 +268,7 @@ export default function MenuContent({
                       : "pointer-events-none border border-crust text-caramel opacity-45"
                   }`}
                 >
-                  Prev
+                  {t("prev")}
                 </a>
                 <span className="font-editorial text-[13px] italic text-caramel">
                   {(page - 1) * pageSize + 1}-{(page - 1) * pageSize + productsList.length} of {total}
@@ -284,7 +286,7 @@ export default function MenuContent({
                       : "pointer-events-none border border-crust text-caramel opacity-45"
                   }`}
                 >
-                  Next
+                  {t("next")}
                 </a>
               </nav>
             )}

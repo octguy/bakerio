@@ -1,36 +1,35 @@
+"use client";
+
 import Image from "next/image";
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "About — One oven, eleven shops",
-  description: "Bakerio started in 2024 with one oven on Lê Lợi. Two years later, eleven shops across Saigon — same dough, same cloth.",
-};
-
-const PILLARS = [
-  {
-    n: "01",
-    title: "Sourdough",
-    sub: "Levain · 48-hour ferment",
-    body: "A wild starter we keep on rotation — wheat from Đà Lạt, water filtered, salt from Phú Quốc. Time does the rest.",
-    image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1200&q=85&auto=format",
-  },
-  {
-    n: "02",
-    title: "Pâtisserie",
-    sub: "AOP butter · 81 layers",
-    body: "Lamination by hand at 4 a.m. before the city wakes. The butter does what the butter does best.",
-    image: "https://images.unsplash.com/photo-1568051243851-f9b136146e97?w=1200&q=85&auto=format",
-  },
-  {
-    n: "03",
-    title: "Bánh mì",
-    sub: "Saigon · since 2024",
-    body: "Our own recipe — a thinner crust, a softer crumb. Pâté made every morning. Chả lụa from the family in Long An.",
-    image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1400&q=85&auto=format",
-  },
-];
+import { useTranslations } from "next-intl";
 
 export default function AboutPage() {
+  const t = useTranslations("about");
+
+  const PILLARS = [
+    {
+      n: "01",
+      title: t("pillar1Title"),
+      sub: t("pillar1Sub"),
+      body: t("pillar1Body"),
+      image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1200&q=85&auto=format",
+    },
+    {
+      n: "02",
+      title: t("pillar2Title"),
+      sub: t("pillar2Sub"),
+      body: t("pillar2Body"),
+      image: "https://images.unsplash.com/photo-1568051243851-f9b136146e97?w=1200&q=85&auto=format",
+    },
+    {
+      n: "03",
+      title: t("pillar3Title"),
+      sub: t("pillar3Sub"),
+      body: t("pillar3Body"),
+      image: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1400&q=85&auto=format",
+    },
+  ];
+
   return (
     <div className="bg-cream text-espresso">
       {/* Hero — split */}
@@ -39,26 +38,24 @@ export default function AboutPage() {
           <div>
             <div className="mb-5 flex items-center gap-3">
               <span className="block h-px w-7 bg-golden" />
-              <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">§ i — Our story</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">{t("sectionLabel")}</span>
             </div>
             <h1
               className="font-display tracking-tight"
               style={{ fontSize: "clamp(56px,9vw,96px)", lineHeight: 0.92, letterSpacing: "-0.025em" }}
             >
-              We started{" "}
+              {t("title1")}{" "}
               <br />
-              with one <span className="font-editorial text-cinnamon">oven.</span>
+              {t("title2")} <span className="font-editorial text-cinnamon">{t("titleAccent")}</span>
             </h1>
             <p className="mt-7 max-w-[480px] font-news text-[17px] leading-[1.55] text-cocoa">
-              In 2024, Linh and Khoa opened a 14m² shop on Lê Lợi with a stone oven, a stand mixer, and a single
-              recipe their grandmother used to fold by hand. Two years later there are eleven shops, but the same
-              dough still rests under the same cloth.
+              {t("intro")}
             </p>
             <div className="mt-8 flex gap-8">
               {[
-                { n: "mmxxiv", l: "Established" },
-                { n: "11", l: "Shops" },
-                { n: "46", l: "Bakers" },
+                { n: "mmxxiv", l: t("established") },
+                { n: "11", l: t("shops") },
+                { n: "46", l: t("bakers") },
               ].map((d) => (
                 <div key={d.l}>
                   <div className="font-display text-[32px] leading-none text-espresso">{d.n}</div>
@@ -72,7 +69,7 @@ export default function AboutPage() {
             <div className="absolute right-0 top-0 h-[380px] w-[78%] overflow-hidden rounded-sm shadow-[0_24px_50px_-20px_rgba(44,24,16,0.4)]">
               <Image
                 src="https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=1600&q=85&auto=format"
-                alt="Baker at work"
+                alt={t("bakerAlt")}
                 fill
                 priority
                 className="object-cover"
@@ -85,7 +82,7 @@ export default function AboutPage() {
             >
               <Image
                 src="https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=1400&q=85&auto=format"
-                alt="Sourdough loaves resting"
+                alt={t("loavesAlt")}
                 fill
                 className="object-cover"
                 sizes="(max-width: 1024px) 60vw, 30vw"
@@ -95,7 +92,7 @@ export default function AboutPage() {
               className="absolute right-[-8px] top-[168px] hidden border border-crust bg-cream px-4 py-3 font-script text-[28px] text-cinnamon md:block"
               style={{ transform: "rotate(4deg)" }}
             >
-              made by hand
+              {t("madeByHand")}
             </div>
           </div>
         </div>
@@ -109,10 +106,10 @@ export default function AboutPage() {
               className="font-display tracking-tight text-espresso"
               style={{ fontSize: "clamp(28px,4vw,44px)", letterSpacing: "-0.02em" }}
             >
-              The craft, <span className="font-editorial text-cinnamon">three ways.</span>
+              {t("craftTitle")} <span className="font-editorial text-cinnamon">{t("craftTitleAccent")}</span>
             </h2>
             <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-caramel">
-              FIG. 02 · WHAT WE BAKE
+              {t("craftLabel")}
             </span>
           </div>
 
@@ -135,23 +132,22 @@ export default function AboutPage() {
       {/* Pull-quote */}
       <section className="bg-espresso px-6 py-20 text-cream lg:px-14 lg:py-24">
         <div className="mx-auto flex max-w-[880px] items-start gap-9">
-          <div className="font-display text-[120px] leading-[0.6] text-honey">“</div>
+          <div className="font-display text-[120px] leading-[0.6] text-honey">&ldquo;</div>
           <div>
             <p
               className="font-display tracking-tight"
               style={{ fontSize: "clamp(24px,3.6vw,36px)", lineHeight: 1.2, letterSpacing: "-0.01em" }}
             >
-              The trick isn&apos;t the crust, or the crumb, or even the butter. It&apos;s{" "}
-              <span className="font-editorial text-honey">showing up</span> before everyone else, and caring more
-              than the recipe asks you to.
+              {t("quoteText")}{" "}
+              <span className="font-editorial text-honey">{t("quoteHighlight")}</span> {t("quoteEnd")}
             </p>
             <div className="mt-6 flex items-center gap-3.5">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cinnamon font-display text-[16px] text-cream">
                 L
               </div>
               <div>
-                <div className="font-semibold">Linh Phạm</div>
-                <div className="font-editorial text-[13px] text-honey">Founder · Head baker</div>
+                <div className="font-semibold">{t("quoteAuthor")}</div>
+                <div className="font-editorial text-[13px] text-honey">{t("quoteRole")}</div>
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ import { Croissant } from "lucide-react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import { getProduct, listProductImages } from "@repo/api-client";
 import type { Product } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
@@ -58,6 +59,7 @@ async function ProductDetailContent({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const t = await getTranslations("menu");
   let product: Product;
 
   try {
@@ -72,20 +74,19 @@ async function ProductDetailContent({
           className="mx-auto flex min-h-[62vh] w-full max-w-[760px] flex-col items-center justify-center rounded-[2rem] border border-crust-deep bg-white/86 p-6 text-center shadow-[0_24px_60px_-45px_rgba(44,24,16,0.8)] md:rounded-[2.5rem] md:p-10"
         >
           <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-cinnamon">
-            menu miss
+            {t("menuMiss")}
           </div>
           <h1 className="font-display text-[clamp(2.6rem,12vw,5rem)] leading-[0.82] tracking-[-0.06em] text-espresso">
-            Product not found
+            {t("productNotFound")}
           </h1>
           <p className="mt-4 max-w-md font-editorial text-[16px] italic leading-relaxed text-caramel md:text-[18px]">
-            That counter card is gone or has moved. Return to the menu to pick
-            something warm.
+            {t("productNotFoundDesc")}
           </p>
           <Link
             href="/menu"
             className="bkr-press mt-6 inline-flex min-h-12 items-center rounded-full bg-espresso px-5 font-mono text-[10px] font-black uppercase tracking-[0.16em] text-cream shadow-[0_16px_30px_-20px_rgba(44,24,16,0.8)]"
           >
-            Back to menu
+            {t("backToMenu")}
           </Link>
         </section>
       </main>
@@ -114,19 +115,19 @@ async function ProductDetailContent({
             href="/menu"
             className="bkr-press mb-4 inline-flex min-h-11 items-center rounded-full border border-crust-deep bg-white px-4 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-caramel"
           >
-            ‹ Back to menu
+            ‹ {t("backToMenu")}
           </Link>
           <div className="relative aspect-[4/3] min-h-[300px] overflow-hidden rounded-[2rem] border border-espresso/10 bg-[radial-gradient(circle_at_36%_24%,var(--cream),var(--butter)_52%,var(--crust-deep))] shadow-[0_30px_70px_-48px_rgba(44,24,16,0.9)] sm:min-h-[420px] lg:aspect-[5/4] lg:rounded-[2.75rem]">
             <ProductImageCarousel images={allImages} productName={product.name} />
             <div className="absolute left-5 top-5 rounded-full bg-cream/92 px-4 py-2 font-mono text-[10px] font-black uppercase tracking-[0.18em] text-espresso shadow-lg">
-              fresh counter pick
+              {t("freshCounterPick")}
             </div>
           </div>
         </section>
 
         <section className="bkr-rise-1 rounded-[2rem] border border-crust-deep bg-white/86 p-5 shadow-[0_24px_60px_-45px_rgba(44,24,16,0.8)] md:p-7 lg:sticky lg:top-10 lg:rounded-[2.5rem]">
           <div className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-cinnamon">
-            made for pickup
+            {t("madeForPickup")}
           </div>
           <h1 className="mt-2 font-display text-[clamp(2.7rem,14vw,5.8rem)] leading-[0.78] tracking-[-0.07em] text-espresso lg:text-[clamp(4rem,6.8vw,6.6rem)]">
             {product.name}
@@ -136,7 +137,7 @@ async function ProductDetailContent({
           </p>
           <div className="my-6 flex items-end justify-between gap-4 border-y border-crust-deep py-4">
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">
-              counter price
+              {t("counterPrice")}
             </span>
             <span className="font-display text-[34px] leading-none tracking-tight text-espresso">
               {formatVND(price)}

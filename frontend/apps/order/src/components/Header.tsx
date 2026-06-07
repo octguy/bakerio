@@ -1,12 +1,14 @@
 "use client";
 
 import { Link } from "next-view-transitions";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { useCartStore } from "@/store/cart";
 import { ShoppingBag, LogOut } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 
 export function Header() {
+  const t = useTranslations("nav");
   const { user, logout } = useAuth();
   const itemCount = useCartStore((s) => s.items.length);
   const userInitial = user ? (user.full_name?.trim() || user.email?.trim() || "B").charAt(0).toUpperCase() : "";
@@ -27,7 +29,7 @@ export function Header() {
           <NotificationBell />
           <Link
             href="/cart"
-            aria-label="Shopping cart"
+            aria-label={t("shoppingCart")}
             className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-crust bg-white text-espresso"
           >
             <ShoppingBag size={16} aria-hidden="true" />
@@ -41,18 +43,18 @@ export function Header() {
             <div className="flex items-center gap-1">
               <Link
                 href="/profile"
-                aria-label="Profile"
+                aria-label={t("profile")}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-cinnamon font-display text-[13px] text-white"
               >
                 {userInitial}
               </Link>
-              <button onClick={logout} aria-label="Log out" className="p-2 text-caramel transition-colors hover:text-espresso">
+              <button onClick={logout} aria-label={t("logOut")} className="p-2 text-caramel transition-colors hover:text-espresso">
                 <LogOut size={16} aria-hidden="true" />
               </button>
             </div>
           ) : (
             <Link href="/login" className="rounded-full bg-espresso px-3.5 py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-cream">
-              Sign in
+              {t("signIn")}
             </Link>
           )}
         </div>

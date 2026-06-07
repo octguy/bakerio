@@ -1,6 +1,7 @@
 "use client";
 
 import { Link } from "next-view-transitions";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import { Croissant } from "lucide-react";
 import { useCartStore } from "@/store/cart";
@@ -8,6 +9,7 @@ import { formatVND } from "@/lib/format";
 import { CrossSells } from "@/components/cross-sells";
 
 export default function SidebarCart() {
+  const t = useTranslations("cart");
   const items = useCartStore((s) => s.items);
   const clearCart = useCartStore((s) => s.clearCart);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
@@ -24,7 +26,7 @@ export default function SidebarCart() {
       <div className="flex h-full flex-col bg-[radial-gradient(circle_at_50%_20%,var(--butter),transparent_44%)] p-5">
         <div className="flex items-center justify-between rounded-[1.5rem] border border-crust-deep bg-white px-4 py-3 shadow-[0_18px_34px_-28px_rgba(44,24,16,0.8)]">
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-cinnamon">
-            ◆ your basket
+            ◆ {t("yourBasket")}
           </div>
           <button
             type="button"
@@ -37,11 +39,11 @@ export default function SidebarCart() {
         </div>
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <h2 className="font-display text-[24px] leading-tight text-espresso">
-            Nothing in the basket{" "}
-            <span className="font-editorial text-cinnamon">yet.</span>
+            {t("nothingYet")}{" "}
+            <span className="font-editorial text-cinnamon">{t("nothingYetSuffix")}</span>
           </h2>
           <p className="mt-2 font-editorial text-[13px] italic text-caramel">
-            Bring something warm in.
+            {t("emptyDesc")}
           </p>
         </div>
       </div>
@@ -54,10 +56,10 @@ export default function SidebarCart() {
       <div className="mb-4 flex items-center justify-between rounded-[1.5rem] border border-crust-deep bg-white px-4 py-3 shadow-[0_18px_34px_-28px_rgba(44,24,16,0.8)]">
         <div>
           <div className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-caramel">
-            counter ticket
+            {t("counterTicket")}
           </div>
           <h2 className="font-display text-[22px] leading-none text-espresso">
-            Your basket
+            {t("yourBasketTitle")}
           </h2>
         </div>
         <div className="flex items-center gap-3.5">
@@ -66,13 +68,13 @@ export default function SidebarCart() {
             onClick={() => clearCart(true)}
             className="font-mono text-[10px] tracking-[0.1em] text-caramel hover:text-espresso"
           >
-            Clear
+            {t("clear")}
           </button>
           <button
             type="button"
             onClick={handleCloseCart}
             className="text-[20px] leading-none font-mono text-caramel hover:text-espresso"
-            aria-label="Close cart"
+            aria-label={t("closeCart")}
           >
             ×
           </button>
@@ -93,7 +95,7 @@ export default function SidebarCart() {
           aria-live="polite"
           className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-caramel"
         >
-          Syncing…
+          {t("syncing")}
         </div>
       ) : null}
 
@@ -138,7 +140,7 @@ export default function SidebarCart() {
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
                     className="flex h-[20px] w-[20px] items-center justify-center text-caramel hover:text-espresso"
-                    aria-label="Decrease quantity"
+                    aria-label={t("decreaseQty")}
                   >
                     −
                   </button>
@@ -148,7 +150,7 @@ export default function SidebarCart() {
                   <button
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
                     className="flex h-[20px] w-[20px] items-center justify-center text-espresso"
-                    aria-label="Increase quantity"
+                    aria-label={t("increaseQty")}
                   >
                     +
                   </button>
@@ -163,7 +165,7 @@ export default function SidebarCart() {
       {/* Totals */}
       <div className="mt-4 shrink-0 rounded-[1.5rem] border border-crust-deep bg-white p-4 shadow-[0_18px_40px_-34px_rgba(44,24,16,0.75)]">
         {[
-          { l: "Subtotal", v: formatVND(subtotal) },
+          { l: t("subtotal"), v: formatVND(subtotal) },
         ].map((r) => (
           <div
             key={r.l}
@@ -178,7 +180,7 @@ export default function SidebarCart() {
           </div>
         ))}
         <div className="mt-2 flex items-baseline justify-between border-t border-crust pt-2">
-          <span className="font-display text-[16px] text-espresso">Total</span>
+          <span className="font-display text-[16px] text-espresso">{t("total")}</span>
           <span className="font-display tabular-nums text-[20px] tracking-tight text-espresso">
             {formatVND(total)}
           </span>
@@ -192,9 +194,9 @@ export default function SidebarCart() {
           onClick={handleCloseCart}
           className="bkr-press flex min-h-14 w-full items-center justify-between rounded-full bg-espresso px-5 py-3 font-mono text-[11px] font-black uppercase tracking-[0.08em] text-cream shadow-[0_16px_30px_-20px_rgba(44,24,16,0.8)] transition-colors hover:bg-cinnamon"
         >
-          <span className="tabular-nums">Pay {formatVND(total)}</span>
+          <span className="tabular-nums">{t("pay", { amount: formatVND(total) })}</span>
           <span className="flex items-center gap-1.5">
-            <span className="opacity-75">Continue</span>
+            <span className="opacity-75">{t("continue")}</span>
             <span aria-hidden="true">→</span>
           </span>
         </Link>

@@ -2,16 +2,18 @@
 
 import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { LogOut } from "lucide-react";
 
 const navItems = [
-  { href: "/menu", label: "Menu" },
-  { href: "/orders", label: "Orders" },
-  { href: "/profile", label: "Profile" },
+  { href: "/menu", key: "menu" as const },
+  { href: "/orders", key: "orders" as const },
+  { href: "/profile", key: "profile" as const },
 ];
 
 export function DesktopSidebarNav() {
+  const t = useTranslations("nav");
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const userInitial = user
@@ -62,7 +64,7 @@ export function DesktopSidebarNav() {
 
       {/* Navigation items */}
       <div className="flex flex-1 flex-col gap-1.5 px-4 py-4">
-        {navItems.map(({ href, label }) => {
+        {navItems.map(({ href, key }) => {
           const active =
             pathname === href || (href !== "/" && pathname.startsWith(href));
           return (
@@ -75,7 +77,7 @@ export function DesktopSidebarNav() {
                 fontWeight: active ? 700 : 500,
               }}
             >
-              {label}
+              {t(key)}
             </Link>
           );
         })}
@@ -97,13 +99,13 @@ export function DesktopSidebarNav() {
                   {user.full_name || user.email}
                 </p>
                 <p className="font-editorial text-[10px] text-caramel italic">
-                  My account
+                  {t("myAccount")}
                 </p>
               </div>
             </Link>
             <button
               onClick={logout}
-              aria-label="Log out"
+              aria-label={t("logOut")}
               className="p-2 text-caramel hover:text-espresso transition-colors shrink-0"
             >
               <LogOut size={16} aria-hidden="true" />
@@ -114,7 +116,7 @@ export function DesktopSidebarNav() {
             href="/login"
             className="flex w-full items-center justify-center rounded-full bg-espresso py-2.5 px-4 text-center font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em] text-cream transition-colors hover:bg-cinnamon"
           >
-            Sign in
+            {t("signIn")}
           </Link>
         )}
       </div>

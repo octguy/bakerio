@@ -21,6 +21,7 @@ import { getAddresses } from "@repo/api-client";
 import type { SavedAddress } from "@repo/api-client";
 import { getAvailableCoupons } from "@/lib/vouchers";
 import type { Coupon } from "@/types";
+import { useTranslations } from "next-intl";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useAuth } from "@/lib/auth";
 import { useCartStore } from "@/store/cart";
@@ -42,10 +43,10 @@ const checkoutSchema = z.object({
 });
 
 const PAY_METHODS = [
-  { l: "Apple Pay", s: "Touch ID · ★", color: "#000", value: "APPLE_PAY" },
-  { l: "Momo wallet", s: "•••• 4421", color: "#a50064", letters: "M", value: "MOMO_WALLET" },
-  { l: "Visa", s: "•••• 7011", color: "#1a1f71", letters: "VISA", value: "VISA" },
-  { l: "Pay on delivery", s: "cash or QR", color: "var(--crust)", letters: "$", value: "PAY_AT_COUNTER" },
+  { lKey: "applePay" as const, sKey: "applePaySub" as const, color: "#000", value: "APPLE_PAY" },
+  { lKey: "momoWallet" as const, sKey: "momoWalletSub" as const, color: "#a50064", letters: "M", value: "MOMO_WALLET" },
+  { lKey: "visa" as const, sKey: "visaSub" as const, color: "#1a1f71", letters: "VISA", value: "VISA" },
+  { lKey: "payOnDelivery" as const, sKey: "payOnDeliverySub" as const, color: "var(--crust)", letters: "$", value: "PAY_AT_COUNTER" },
 ];
 
 type Stage = "select" | "confirm";
@@ -66,6 +67,7 @@ export default function CheckoutPage() {
 }
 
 function CheckoutPageInner() {
+  const t = useTranslations("checkout");
   const router = useRouter();
   const { user } = useAuth();
   const [hydrated, setHydrated] = useState(false);
@@ -196,7 +198,7 @@ function CheckoutPageInner() {
       } catch {
         if (!cancelled) {
           setBranchOptions([]);
-          setBranchError("We couldn't find a branch to deliver this order to that address.");
+          setBranchError(t("branchError"));
         }
       } finally {
         if (!cancelled) setBranchLoading(false);
@@ -206,7 +208,7 @@ function CheckoutPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [stage, deliveryAddress, lat, lng, backendItems, noItems]);
+  }, [stage, deliveryAddress, lat, lng, backendItems, noItems, t]);
 
   // Countdown for the locked quote (Stage 2). Counts down from a client-anchored
   // deadline (set in handleReview from ttl_seconds), so no clock-skew artifacts.
@@ -223,13 +225,6 @@ function CheckoutPageInner() {
 
   if (!hydrated) return <Loading />;
 
-  // A completed order leaves the cart empty and `ordered` sticky so the success
-  // screen persists. If items reappear, the user is starting a fresh order —
-  // reset the transaction state *during render* (React's recommended pattern for
-  // adjusting state when an input changes) so we don't get stuck on the
-  // "Order placed" screen when re-entering checkout without a full unmount.
-  // deadlineRef isn't touched here: it's only read while stage === "confirm"
-  // and handleReview re-anchors it before we can return to that stage.
   if (ordered && items.length > 0) {
     setOrdered(false);
     setStage("select");
@@ -245,16 +240,16 @@ function CheckoutPageInner() {
           <span aria-hidden="true">✓</span>
         </div>
         <h1 className="font-display text-[36px] leading-[0.95] tracking-tight text-espresso">
-          Order placed. <span className="font-editorial text-cinnamon">Out of the oven soon.</span>
+          {t("orderPlaced")} <span className="font-editorial text-cinnamon">{t("orderPlacedSuffix")}</span>
         </h1>
         <p className="mx-auto mt-3 max-w-xs font-editorial text-[14px] italic text-caramel">
-          We&apos;ll text when your basket is on the way.
+          {t("orderPlacedDesc")}
         </p>
         <Link
           href="/orders"
           className="bkr-press mt-8 inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream"
         >
-          Track my order <span aria-hidden="true">→</span>
+          {t("trackOrder")} <span aria-hidden="true">→</span>
         </Link>
       </main>
     );
@@ -277,11 +272,11 @@ function CheckoutPageInner() {
     const trimmed = fallbackAddress.trim();
     setAddressError("");
     if (!trimmed) {
-      setAddressError("Please enter your delivery address.");
+      setAddressError(t("enterDeliveryAddress"));
       return;
     }
     if (newAddressLat == null || newAddressLng == null) {
-      setAddressError("Pin your spot on the map first.");
+      setAddressError(t("pinMap"));
       return;
     }
     setSavingAddress(true);
@@ -297,7 +292,7 @@ function CheckoutPageInner() {
       setNewAddressLat(undefined);
       setNewAddressLng(undefined);
     } catch {
-      setAddressError("Could not save that address. Please try again.");
+      setAddressError(t("couldNotSave"));
     } finally {
       setSavingAddress(false);
     }
@@ -309,11 +304,11 @@ function CheckoutPageInner() {
     if (!code) return;
     const match = availableCoupons.find((c) => c.code.toUpperCase() === code);
     if (!match) {
-      setVoucherError("Mã giảm giá không hợp lệ hoặc đã hết hạn.");
+      setVoucherError(t("invalidVoucher"));
       return;
     }
     if (match.minOrder && subtotal < match.minOrder) {
-      setVoucherError(`Đơn tối thiểu ${formatVND(match.minOrder)} để dùng mã này.`);
+      setVoucherError(t("minOrderVoucher", { amount: formatVND(match.minOrder) }));
       return;
     }
     setAppliedVoucher(match);
@@ -328,7 +323,7 @@ function CheckoutPageInner() {
       return;
     }
     if (!deliveryAddress.trim()) {
-      setError("Please provide a delivery address.");
+      setError(t("addressError"));
       return;
     }
     setReviewing(true);
@@ -348,7 +343,7 @@ function CheckoutPageInner() {
       deadlineRef.current = Date.now() + (Number.isFinite(ttl) && ttl > 0 ? ttl : 600) * 1000;
       setStage("confirm");
     } catch {
-      setError("We couldn't lock in that order. Please review your details and try again.");
+      setError(t("lockError"));
     } finally {
       setReviewing(false);
     }
@@ -364,7 +359,7 @@ function CheckoutPageInner() {
       clearCart();
       setOrdered(true);
     } catch {
-      setError("Failed to place order. The quote may have expired — please start again.");
+      setError(t("confirmError"));
     } finally {
       setSubmitting(false);
     }
@@ -383,10 +378,10 @@ function CheckoutPageInner() {
     return (
       <main className="mx-auto max-w-md px-6 pt-4 pb-44 lg:pb-16">
         <div className="mb-3 flex items-center justify-between">
-          <button onClick={handleBackToSelect} className="text-[22px] text-espresso" aria-label="Back to checkout">‹</button>
+          <button onClick={handleBackToSelect} className="text-[22px] text-espresso" aria-label={t("backToCheckout")}>‹</button>
           <div className="text-center">
-            <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">step 2 / 2 · confirm</div>
-            <div className="font-display text-[16px] leading-none text-espresso">Review order</div>
+            <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("step", { current: 2, total: 2, label: t("confirm") })}</div>
+            <div className="font-display text-[16px] leading-none text-espresso">{t("reviewOrder")}</div>
           </div>
           <span className="w-[22px]" aria-hidden="true" />
         </div>
@@ -398,7 +393,7 @@ function CheckoutPageInner() {
           }`}
         >
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-caramel">
-            {expired ? "Quote expired" : "Confirm within"}
+            {expired ? t("quoteExpired") : t("confirmWithin")}
           </span>
           <span className={`font-display text-[22px] tabular-nums ${expired ? "text-sienna" : "text-espresso"}`}>
             {formatCountdown(secondsLeft)}
@@ -408,20 +403,20 @@ function CheckoutPageInner() {
         {expired && (
           <div role="alert" className="mb-4 rounded-2xl border border-sienna/30 bg-sienna/10 p-3 text-center">
             <p className="font-editorial text-[13px] italic text-sienna">
-              This quote has expired. Please go back and review the branch and pricing again.
+              {t("expiredNote")}
             </p>
             <button
               onClick={handleBackToSelect}
               className="mt-2 inline-flex rounded-full bg-espresso px-4 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cream"
             >
-              Back to checkout
+              {t("backToCheckout")}
             </button>
           </div>
         )}
 
         {/* Delivery summary */}
         <div className="mb-3 rounded-2xl border border-crust bg-white p-4">
-          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">Delivering from</div>
+          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("deliveringFrom")}</div>
           <div className="font-display text-[18px] leading-tight text-espresso">{quote.branch_name}</div>
           <div className="mt-0.5 font-editorial text-[12px] italic text-caramel">
             {typeof quote.distance_km === "number" ? `${quote.distance_km.toFixed(1)} km · ` : ""}
@@ -431,7 +426,7 @@ function CheckoutPageInner() {
 
         {/* Recipient */}
         <div className="mb-3 rounded-2xl border border-crust bg-white p-4">
-          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">Delivering to</div>
+          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("deliveringTo")}</div>
           {(user?.full_name || user?.display_name) && (
             <div className="text-[15px] font-bold text-espresso">{user.full_name ?? user.display_name}</div>
           )}
@@ -443,7 +438,7 @@ function CheckoutPageInner() {
 
         {/* Items */}
         <div className="mb-3 rounded-2xl border border-crust bg-white p-4">
-          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">Your basket</div>
+          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("yourBasket")}</div>
           <ul className="flex flex-col gap-1.5">
             {quote.items.map((it) => (
               <li key={it.product_id} className="flex items-baseline justify-between gap-2 text-[13px] text-espresso">
@@ -460,23 +455,23 @@ function CheckoutPageInner() {
         {/* Server-authoritative totals */}
         <div className="mb-4 rounded-2xl border border-crust bg-white p-4">
           <div className="flex justify-between py-1 text-[13px] text-cocoa">
-            <span>Subtotal</span>
+            <span>{t("subtotal")}</span>
             <span className="font-mono tabular-nums">{formatVND(Number(quote.subtotal))}</span>
           </div>
           {Number(quote.discount_amount) > 0 && (
             <div className="flex justify-between py-1 text-[13px] font-semibold text-cinnamon">
-              <span>Voucher{quote.voucher_code ? ` · ${quote.voucher_code}` : ""}</span>
+              <span>{t("voucher")}{quote.voucher_code ? ` · ${quote.voucher_code}` : ""}</span>
               <span className="font-mono tabular-nums">−{formatVND(Number(quote.discount_amount))}</span>
             </div>
           )}
           {Number(quote.shipping_fee) > 0 && (
             <div className="flex justify-between py-1 text-[13px] text-cocoa">
-              <span>Delivery</span>
+              <span>{t("delivery")}</span>
               <span className="font-mono tabular-nums">{formatVND(Number(quote.shipping_fee))}</span>
             </div>
           )}
           <div className="mt-3 flex items-end justify-between border-t border-crust pt-3">
-            <span className="font-display text-[18px]">Total</span>
+            <span className="font-display text-[18px]">{t("estTotal")}</span>
             <span className="font-display text-[24px] text-espresso">{formatVND(Number(quote.total))}</span>
           </div>
         </div>
@@ -493,7 +488,7 @@ function CheckoutPageInner() {
             disabled={submitting || expired}
             className="bkr-press flex w-full items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-cream disabled:opacity-50 transition-colors hover:bg-espresso/90"
           >
-            <span>{submitting ? "Placing…" : "Confirm order"}</span>
+            <span>{submitting ? t("placing") : t("confirmOrder")}</span>
             <span aria-hidden="true">→</span>
           </button>
         </div>
@@ -506,12 +501,12 @@ function CheckoutPageInner() {
     <main className="mx-auto max-w-md lg:max-w-5xl px-6 pt-4 pb-44 lg:pb-16 lg:grid lg:grid-cols-12 lg:gap-12 lg:items-start">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between lg:col-span-12">
-        <Link href="/cart" className="text-[22px] text-espresso" aria-label="Back to cart">‹</Link>
+        <Link href="/cart" className="text-[22px] text-espresso" aria-label={t("backToCart")}>‹</Link>
         <div className="text-center">
-          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">step 1 / 2 · details</div>
-          <div className="font-display text-[16px] leading-none text-espresso">Checkout</div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("step", { current: 1, total: 2, label: t("details") })}</div>
+          <div className="font-display text-[16px] leading-none text-espresso">{t("title")}</div>
         </div>
-        <span className="font-mono text-[11px] tracking-[0.1em] text-caramel">Help</span>
+        <span className="font-mono text-[11px] tracking-[0.1em] text-caramel">{t("help")}</span>
       </div>
 
       {/* Progress */}
@@ -527,7 +522,7 @@ function CheckoutPageInner() {
             role="alert"
             className="rounded-md border border-sienna/30 bg-sienna/10 px-3 py-2 font-mono text-[11px] text-sienna"
           >
-            Cart sync issue: {cartError}
+            {t("cartSyncIssue", { error: cartError })}
           </div>
         )}
 
@@ -542,7 +537,7 @@ function CheckoutPageInner() {
 
         {/* Delivery address */}
         <div className="rounded-2xl border border-crust bg-white p-4">
-          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">Deliver to</div>
+          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("deliverTo")}</div>
           <div className="flex flex-col gap-2">
             {addresses.map((addr) => (
               <button
@@ -556,7 +551,7 @@ function CheckoutPageInner() {
                     <div className="text-[13.5px] font-semibold text-espresso flex items-center gap-2">
                       <span>{addr.label}</span>
                       {addr.is_default && (
-                        <span className="rounded bg-golden px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-white">Default</span>
+                        <span className="rounded bg-golden px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-white">{t("default")}</span>
                       )}
                     </div>
                     <div className="font-editorial text-[11.5px] italic text-caramel truncate mt-0.5">{addr.address}</div>
@@ -578,7 +573,7 @@ function CheckoutPageInner() {
                 onClick={() => setSelectedAddressId("custom")}
                 className="flex items-center justify-between w-full text-left gap-3"
               >
-                <div className="text-[13.5px] font-semibold text-espresso">Other Address</div>
+                <div className="text-[13.5px] font-semibold text-espresso">{t("otherAddress")}</div>
                 <span
                   className="h-[18px] w-[18px] rounded-full border-[1.5px] transition-colors shrink-0"
                   style={{
@@ -592,7 +587,7 @@ function CheckoutPageInner() {
                   <input
                     value={fallbackAddress}
                     onChange={(e) => setFallbackAddress(e.target.value)}
-                    placeholder="Enter your delivery address"
+                    placeholder={t("enterAddress")}
                     className="w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
                   />
                   <AddressMapPicker
@@ -612,7 +607,7 @@ function CheckoutPageInner() {
                     disabled={savingAddress}
                     className="rounded-xl bg-espresso px-4 py-2.5 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream transition-colors hover:bg-espresso/90 disabled:opacity-50"
                   >
-                    {savingAddress ? "Saving…" : "Save address"}
+                    {savingAddress ? t("saving") : t("saveAddress")}
                   </button>
                 </div>
               )}
@@ -623,7 +618,7 @@ function CheckoutPageInner() {
         {/* Contact phone */}
         <div className="rounded-2xl border border-crust bg-white p-4">
           <label htmlFor="checkout-phone" className="mb-2 block font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">
-            Contact number
+            {t("contactNumber")}
           </label>
           <input
             id="checkout-phone"
@@ -632,29 +627,29 @@ function CheckoutPageInner() {
             autoComplete="tel"
             value={contactPhone}
             onChange={(e) => setContactPhone(e.target.value)}
-            placeholder="e.g. 0901 234 567"
+            placeholder={t("phonePlaceholder")}
             className="w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-mono text-[14px] tracking-wide text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
           />
           <p className="mt-2 font-editorial text-[11px] italic text-caramel">
-            The rider will call this number if they can&apos;t find you.
+            {t("phoneHint")}
           </p>
         </div>
 
         {/* Branch picker */}
         <div className="rounded-2xl border border-crust bg-white p-4">
-          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">Delivered from</div>
+          <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("deliveredFrom")}</div>
           {branchLoading ? (
-            <div className="py-4 text-center font-editorial text-[13px] italic text-caramel">Finding nearby branches…</div>
+            <div className="py-4 text-center font-editorial text-[13px] italic text-caramel">{t("findingBranches")}</div>
           ) : !deliveryAddress.trim() ? (
-            <div className="py-4 text-center font-editorial text-[13px] italic text-caramel">Add a delivery address to see branches.</div>
+            <div className="py-4 text-center font-editorial text-[13px] italic text-caramel">{t("addAddressFirst")}</div>
           ) : missing.length > 0 ? (
             <p className="font-mono text-[11px] text-sienna">
-              Out of stock: {missing.map((m) => m.name).join(", ")}. Please update your cart.
+              {t("outOfStock", { items: missing.map((m) => m.name).join(", ") })}
             </p>
           ) : branchError ? (
             <p className="font-mono text-[11px] text-sienna">{branchError}</p>
           ) : branchOptions.length === 0 ? (
-            <p className="font-mono text-[11px] text-sienna">No branch can deliver to this address.</p>
+            <p className="font-mono text-[11px] text-sienna">{t("noBranch")}</p>
           ) : (
             <div className="flex flex-col gap-2">
               {branchOptions.map((opt) => (
@@ -669,7 +664,7 @@ function CheckoutPageInner() {
                       <div className="text-[13.5px] font-semibold text-espresso truncate">{opt.name}</div>
                       <div className="font-editorial text-[11.5px] italic text-caramel mt-0.5">
                         {typeof opt.distance_km === "number" ? `${opt.distance_km.toFixed(1)} km · ` : ""}
-                        Ship {formatVND(Number(opt.shipping_fee))}
+                        {t("ship")} {formatVND(Number(opt.shipping_fee))}
                       </div>
                     </div>
                     <span
@@ -688,14 +683,14 @@ function CheckoutPageInner() {
 
         {/* Payment */}
         <div>
-          <div className="mb-2 mt-2 font-mono text-[9.5px] uppercase tracking-[0.22em] text-caramel">Pay with</div>
+          <div className="mb-2 mt-2 font-mono text-[9.5px] uppercase tracking-[0.22em] text-caramel">{t("payWith")}</div>
           <div className="flex flex-col gap-2">
             {PAY_METHODS.map((p, i) => {
               const active = i === payMethod;
               const isStub = i < 3;
               return (
                 <button
-                  key={p.l}
+                  key={p.value}
                   type="button"
                   aria-pressed={active}
                   disabled={isStub}
@@ -711,12 +706,12 @@ function CheckoutPageInner() {
                     {p.letters ?? ""}
                   </div>
                   <div className="flex-1">
-                    <div className="text-[13.5px] font-semibold text-espresso">{p.l}</div>
-                    <div className="font-mono text-[10px] tracking-[0.08em] text-caramel">{p.s}</div>
+                    <div className="text-[13.5px] font-semibold text-espresso">{t(p.lKey)}</div>
+                    <div className="font-mono text-[10px] tracking-[0.08em] text-caramel">{t(p.sKey)}</div>
                   </div>
                   {isStub ? (
                     <span className="rounded bg-caramel/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-caramel">
-                      coming soon
+                      {t("comingSoon")}
                     </span>
                   ) : (
                     <span
@@ -745,13 +740,13 @@ function CheckoutPageInner() {
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 text-[13px] font-semibold text-espresso">
-              <span>Crumbs redemption</span>
+              <span>{t("crumbsRedemption")}</span>
               <span className="rounded bg-caramel/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.1em] text-caramel">
-                coming soon
+                {t("comingSoon")}
               </span>
             </div>
             <div className="font-editorial text-[11.5px] italic text-caramel">
-              {membership?.tier ? `${membership.tier} member` : "Member"} · redemption coming soon
+              {t("memberRedemption", { tier: membership?.tier ?? "Member" })}
             </div>
           </div>
         </button>
@@ -759,7 +754,7 @@ function CheckoutPageInner() {
         {/* Voucher */}
         <div className="rounded-2xl border border-crust bg-white p-4">
           <div className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">
-            Voucher code
+            {t("voucherCode")}
           </div>
           {appliedVoucher ? (
             <div className="flex items-center justify-between gap-3 rounded-xl border border-sage/40 bg-sage/10 px-3 py-2.5">
@@ -779,7 +774,7 @@ function CheckoutPageInner() {
                 }}
                 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-cinnamon"
               >
-                Remove
+                {t("removeVoucher")}
               </button>
             </div>
           ) : (
@@ -787,8 +782,8 @@ function CheckoutPageInner() {
               <input
                 value={voucherInput}
                 onChange={(e) => setVoucherInput(e.target.value.toUpperCase())}
-                placeholder="Enter code"
-                aria-label="Voucher code"
+                placeholder={t("enterCode")}
+                aria-label={t("voucherCode")}
                 className="flex-1 rounded-xl border border-crust bg-white px-3.5 py-2.5 font-mono text-[13px] uppercase tracking-wide text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
               />
               <button
@@ -796,7 +791,7 @@ function CheckoutPageInner() {
                 onClick={applyVoucher}
                 className="rounded-xl bg-espresso px-4 py-2.5 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream transition-colors hover:bg-espresso/90"
               >
-                Apply
+                {t("apply")}
               </button>
             </div>
           )}
@@ -830,33 +825,33 @@ function CheckoutPageInner() {
           style={{ background: "linear-gradient(180deg, transparent, var(--cream) 30%)" }}
         >
           <div className="hidden lg:block lg:mb-4 lg:font-mono lg:text-[10px] lg:uppercase lg:tracking-[0.2em] lg:text-caramel">
-            Order Summary
+            {t("orderSummary")}
           </div>
           <div className="mb-3 rounded-2xl border border-crust bg-white p-4 shadow-sm lg:shadow-none">
             <div className="flex justify-between py-1 text-[13px] text-cocoa">
-              <span>Subtotal</span>
+              <span>{t("subtotal")}</span>
               <span className="font-mono">{formatVND(subtotal)}</span>
             </div>
             {voucherDiscount > 0 && appliedVoucher && (
               <div className="flex justify-between py-1 text-[13px] font-semibold text-cinnamon">
-                <span>Voucher · {appliedVoucher.code}</span>
+                <span>{t("voucher")} · {appliedVoucher.code}</span>
                 <span className="font-mono">−{formatVND(voucherDiscount)}</span>
               </div>
             )}
             {deliveryFee > 0 && (
               <div className="flex justify-between py-1 text-[13px] text-cocoa">
-                <span>Delivery</span>
+                <span>{t("delivery")}</span>
                 <span className="font-mono">{formatVND(deliveryFee)}</span>
               </div>
             )}
             <div className="mt-3 flex items-end justify-between border-t border-crust pt-3">
-              <span className="font-display text-[18px]">Est. total</span>
+              <span className="font-display text-[18px]">{t("estTotal")}</span>
               <span className="font-display text-[24px] text-espresso">
                 {formatVND(total)}
               </span>
             </div>
             <p className="mt-2 font-editorial text-[11px] italic text-caramel">
-              Final total is confirmed on the next screen.
+              {t("finalNote")}
             </p>
           </div>
 
@@ -865,7 +860,7 @@ function CheckoutPageInner() {
             disabled={reviewing || !selectedBranchId || !contactPhone.trim()}
             className="bkr-press flex w-full items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-cream disabled:opacity-50 transition-colors hover:bg-espresso/90"
           >
-            <span>{reviewing ? "Reviewing…" : "Review order"}</span>
+            <span>{reviewing ? t("reviewing") : t("reviewOrder")}</span>
             <span aria-hidden="true">→</span>
           </button>
         </div>

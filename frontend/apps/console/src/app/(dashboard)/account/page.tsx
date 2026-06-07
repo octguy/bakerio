@@ -8,33 +8,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
 import { useForm } from "react-hook-form";
+import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 const schema = z
   .object({
-    current_password: z.string().min(1, "Current password required"),
-    new_password: z.string().min(6, "Min 6 characters"),
-    confirm_password: z.string().min(1, "Confirm password required"),
+    current_password: z.string().min(1),
+    new_password: z.string().min(6),
+    confirm_password: z.string().min(1),
   })
   .refine((data) => data.new_password === data.confirm_password, {
-    message: "Passwords must match",
     path: ["confirm_password"],
   });
 
 type FormData = z.infer<typeof schema>;
 
 const profileSchema = z.object({
-  display_name: z.string().min(1, "Display name required").max(120, "Too long"),
-  phone: z.string().max(40, "Too long"),
-  address: z.string().max(255, "Too long"),
-  bio: z.string().max(500, "Too long"),
-  avatar_url: z.string().url("Must be a valid URL").or(z.literal("")),
+  display_name: z.string().min(1).max(120),
+  phone: z.string().max(40),
+  address: z.string().max(255),
+  bio: z.string().max(500),
+  avatar_url: z.string().url().or(z.literal("")),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function AccountPage() {
+  const t = useTranslations("account");
+  const tv = useTranslations("validation");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const {
@@ -66,7 +68,6 @@ export default function AccountPage() {
     defaultValues: { display_name: "", phone: "", address: "", bio: "", avatar_url: "" },
   });
 
-  // Hydrate the form once the profile loads (or refetches).
   useEffect(() => {
     const p = profileQuery.data;
     if (!p) return;
@@ -83,7 +84,7 @@ export default function AccountPage() {
     mutationFn: (data: ProfileFormData) => updateMyProfile(data),
     onSuccess: (updated: Profile) => {
       queryClient.setQueryData(["my-profile"], updated);
-      toast("Profile updated");
+      toast(t("profileUpdated"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -93,7 +94,7 @@ export default function AccountPage() {
       changePassword(data.current_password, data.new_password),
     onSuccess: () => {
       reset();
-      toast("Password changed");
+      toast(t("passwordChanged"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -105,7 +106,7 @@ export default function AccountPage() {
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              Account settings
+              {t("subtitle")}
             </span>
           </div>
           <h1
@@ -116,17 +117,16 @@ export default function AccountPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Account <span className="font-editorial text-cinnamon">· Profile &amp; Security</span>
+            {t("heading")} <span className="font-editorial text-cinnamon">· {t("profileAndSecurity")}</span>
           </h1>
         </div>
       </div>
 
-      {/* Profile & Security side by side */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 items-start">
       <div className="rounded-lg border border-[var(--console-line)] bg-white p-5">
-        <h2 className="mb-1 font-display text-[18px] tracking-tight">Profile</h2>
+        <h2 className="mb-1 font-display text-[18px] tracking-tight">{t("profile")}</h2>
         <p className="mb-4 font-mono text-[11px] text-[var(--console-muted)]">
-          Shown across the back office. Your roles and branch are managed by an administrator.
+          {t("profileDesc")}
         </p>
         {(profileQuery.data?.roles?.length || profileQuery.data?.branch) && (
           <div className="mb-4 flex flex-wrap items-center gap-1.5">
@@ -148,13 +148,13 @@ export default function AccountPage() {
         {profileQuery.isLoading ? (
           <div className="flex items-center gap-2 py-6 text-sm text-[var(--console-muted)]">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-crust border-t-cinnamon" />
-            Loading profile…
+            {tv("required")}…
           </div>
         ) : profileQuery.isError ? (
           <div className="space-y-3 py-2">
-            <p className="text-sm text-destructive">Couldn&apos;t load your profile.</p>
+            <p className="text-sm text-destructive">{t("loadError")}</p>
             <Button type="button" variant="outline" onClick={() => profileQuery.refetch()}>
-              Retry
+              {tv("required")}
             </Button>
           </div>
         ) : (
@@ -163,35 +163,35 @@ export default function AccountPage() {
             className="space-y-4"
           >
             <div>
-              <Label htmlFor="display-name">Display Name</Label>
+              <Label htmlFor="display-name">{t("displayName")}</Label>
               <Input id="display-name" autoComplete="name" {...registerProfile("display_name")} />
               {profileErrors.display_name && (
                 <p className="text-xs text-destructive mt-1">{profileErrors.display_name.message}</p>
               )}
             </div>
             <div>
-              <Label htmlFor="avatar-url">Avatar URL</Label>
+              <Label htmlFor="avatar-url">{t("avatarUrl")}</Label>
               <Input id="avatar-url" type="url" placeholder="https://…/photo.jpg" {...registerProfile("avatar_url")} />
               {profileErrors.avatar_url && (
                 <p className="text-xs text-destructive mt-1">{profileErrors.avatar_url.message}</p>
               )}
             </div>
             <div>
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">{t("phone")}</Label>
               <Input id="phone" type="tel" autoComplete="tel" placeholder="+84 901 234 567" {...registerProfile("phone")} />
               {profileErrors.phone && (
                 <p className="text-xs text-destructive mt-1">{profileErrors.phone.message}</p>
               )}
             </div>
             <div>
-              <Label htmlFor="address">Address</Label>
+              <Label htmlFor="address">{t("address")}</Label>
               <Input id="address" autoComplete="street-address" {...registerProfile("address")} />
               {profileErrors.address && (
                 <p className="text-xs text-destructive mt-1">{profileErrors.address.message}</p>
               )}
             </div>
             <div>
-              <Label htmlFor="bio">Bio</Label>
+              <Label htmlFor="bio">{t("bio")}</Label>
               <textarea
                 id="bio"
                 rows={3}
@@ -208,7 +208,7 @@ export default function AccountPage() {
                 disabled={profileMut.isPending}
                 className="bg-[var(--espresso-deep)] font-bold text-white shadow-[0_10px_22px_rgba(31,16,10,0.22)] ring-1 ring-black/10 hover:bg-[var(--cocoa)]"
               >
-                {profileMut.isPending ? "Saving..." : "Save Profile"}
+                {profileMut.isPending ? tv("required") : t("saveProfile")}
               </Button>
             </div>
           </form>
@@ -216,13 +216,13 @@ export default function AccountPage() {
       </div>
 
       <div className="rounded-lg border border-[var(--console-line)] bg-white p-5">
-        <h2 className="mb-4 font-display text-[18px] tracking-tight">Security</h2>
+        <h2 className="mb-4 font-display text-[18px] tracking-tight">{t("security")}</h2>
         <form
           onSubmit={handleSubmit((data) => passwordMut.mutate(data))}
           className="space-y-4"
         >
           <div>
-            <Label htmlFor="current-password">Current Password</Label>
+            <Label htmlFor="current-password">{t("currentPassword")}</Label>
             <Input
               id="current-password"
               type="password"
@@ -236,7 +236,7 @@ export default function AccountPage() {
             )}
           </div>
           <div>
-            <Label htmlFor="new-password">New Password</Label>
+            <Label htmlFor="new-password">{t("newPassword")}</Label>
             <Input
               id="new-password"
               type="password"
@@ -250,7 +250,7 @@ export default function AccountPage() {
             )}
           </div>
           <div>
-            <Label htmlFor="confirm-password">Confirm Password</Label>
+            <Label htmlFor="confirm-password">{t("confirmPassword")}</Label>
             <Input
               id="confirm-password"
               type="password"
@@ -269,7 +269,7 @@ export default function AccountPage() {
               disabled={passwordMut.isPending}
               className="bg-[var(--espresso-deep)] font-bold text-white shadow-[0_10px_22px_rgba(31,16,10,0.22)] ring-1 ring-black/10 hover:bg-[var(--cocoa)]"
             >
-              {passwordMut.isPending ? "Changing..." : "Change Password"}
+              {passwordMut.isPending ? t("changingPassword") : t("changePassword")}
             </Button>
           </div>
         </form>

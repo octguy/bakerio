@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useFilterStore } from "@/lib/store";
 import { useViewportPageSize } from "@/lib/use-viewport-page-size";
 import Link from "next/link";
@@ -53,6 +54,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function BranchesPage() {
+  const t = useTranslations("branches");
+  const tc = useTranslations("common");
   const qc = useQueryClient();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -141,7 +144,7 @@ export default function BranchesPage() {
   const columns: ColumnDef<Branch, unknown>[] = [
     {
       accessorKey: "status",
-      header: "Status",
+      header: t("status"),
       cell: ({ row }) => {
         const isActive = row.original.status === "active";
         const nextStatus = isActive ? "inactive" : "active";
@@ -170,16 +173,16 @@ export default function BranchesPage() {
         );
       },
     },
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "address", header: "Address" },
+    { accessorKey: "name", header: t("name") },
+    { accessorKey: "address", header: t("address") },
     {
       accessorKey: "lat",
-      header: "Lat",
+      header: t("latitude"),
       cell: ({ row }) => row.original.lat ?? "-",
     },
     {
       accessorKey: "lng",
-      header: "Lng",
+      header: t("longitude"),
       cell: ({ row }) => row.original.lng ?? "-",
     },
     {
@@ -250,7 +253,7 @@ export default function BranchesPage() {
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              {branches.length} shops · 3 opening soon
+              {t("subtitle", { count: branches.length })}
             </span>
           </div>
           <h1
@@ -261,8 +264,8 @@ export default function BranchesPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Branches{" "}
-            <span className="font-editorial text-cinnamon">· the network</span>
+            {t("title")}{" "}
+            <span className="font-editorial text-cinnamon">· {t("theNetwork")}</span>
           </h1>
         </div>
         <Button
@@ -271,18 +274,18 @@ export default function BranchesPage() {
             setOpen(true);
           }}
         >
-          <Plus aria-hidden="true" className="h-4 w-4" /> Add Branch
+          <Plus aria-hidden="true" className="h-4 w-4" /> {t("addBranch")}
         </Button>
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-console-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="w-full sm:max-w-xs">
-          <Label htmlFor="branch-search">Search</Label>
+          <Label htmlFor="branch-search">{tc("search")}</Label>
           <Input
             id="branch-search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search branches..."
+            placeholder={t("searchPlaceholder")}
             className="mt-1"
           />
         </div>
@@ -294,7 +297,7 @@ export default function BranchesPage() {
             <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-1 text-sm text-console-muted">
-            <span>Page</span>
+            <span>{tc("page")}</span>
             <Input
               aria-label="Jump to branch page"
               type="number"
@@ -308,7 +311,7 @@ export default function BranchesPage() {
               }}
               className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
-            <span>of {totalPages}</span>
+            <span>{tc("of", { total: totalPages })}</span>
           </div>
           <Button type="button" variant="outline" size="sm" aria-label="Next page" onClick={() => setPage((p) => p + 1)} disabled={!canGoNext || isLoading}>
             <ChevronRight aria-hidden="true" className="h-4 w-4" />
@@ -320,7 +323,7 @@ export default function BranchesPage() {
       </div>
 
       {isLoading ? (
-        <p>Loading...</p>
+        <p>{tc("loading")}</p>
       ) : (
         <DataTable
           columns={columns}
@@ -341,11 +344,11 @@ export default function BranchesPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Branch" : "New Branch"}</DialogTitle>
+            <DialogTitle>{editing ? t("editBranch") : t("newBranch")}</DialogTitle>
             <DialogDescription>
               {editing
-                ? "Update this branch's name, address, and coordinates."
-                : "Add a new branch with its name, address, and coordinates."}
+                ? t("editBranchDesc")
+                : t("newBranchDesc")}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -355,7 +358,7 @@ export default function BranchesPage() {
             className="space-y-4 mt-4"
           >
             <div>
-              <Label htmlFor="branch-name">Name</Label>
+              <Label htmlFor="branch-name">{t("name")}</Label>
               <Input id="branch-name" {...register("name")} />
               {errors.name && (
                 <p className="text-xs text-destructive mt-1">
@@ -364,7 +367,7 @@ export default function BranchesPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="branch-address">Address</Label>
+              <Label htmlFor="branch-address">{t("address")}</Label>
               <Input id="branch-address" {...register("address")} />
               {errors.address && (
                 <p className="text-xs text-destructive mt-1">
@@ -374,7 +377,7 @@ export default function BranchesPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="branch-lat">Latitude</Label>
+                <Label htmlFor="branch-lat">{t("latitude")}</Label>
                 <Input
                   id="branch-lat"
                   type="number"
@@ -391,7 +394,7 @@ export default function BranchesPage() {
                 )}
               </div>
               <div>
-                <Label htmlFor="branch-lng">Longitude</Label>
+                <Label htmlFor="branch-lng">{t("longitude")}</Label>
                 <Input
                   id="branch-lng"
                   type="number"
@@ -417,13 +420,13 @@ export default function BranchesPage() {
                   setEditing(null);
                 }}
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={createMut.isPending || updateMut.isPending}
               >
-                Save
+                {tc("save")}
               </Button>
             </div>
           </form>

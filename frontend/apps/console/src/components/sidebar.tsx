@@ -6,50 +6,51 @@ import { LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: string;
   glyph: string;
   badge?: string;
 }
 
 interface NavGroup {
-  head: string;
+  headKey: string;
   items: NavItem[];
 }
 
 const GROUPS: NavGroup[] = [
   {
-    head: "Trong ngày · Today",
+    headKey: "groupToday",
     items: [
-      { href: "/", label: "Counter", glyph: "◆" },
-      { href: "/orders", label: "Orders", glyph: "○" },
+      { href: "/", labelKey: "counter", glyph: "◆" },
+      { href: "/orders", labelKey: "orders", glyph: "○" },
     ],
   },
   {
-    head: "Bánh · Catalog",
+    headKey: "groupCatalog",
     items: [
-      { href: "/products", label: "Products", glyph: "⬡" },
-      { href: "/branch-products", label: "Branch Stock", glyph: "▦" },
-      { href: "/categories", label: "Categories", glyph: "⬢" },
-      { href: "/vouchers", label: "Vouchers", glyph: "⬔" },
+      { href: "/products", labelKey: "products", glyph: "⬡" },
+      { href: "/branch-products", labelKey: "branchProducts", glyph: "▦" },
+      { href: "/categories", labelKey: "categories", glyph: "⬢" },
+      { href: "/vouchers", labelKey: "vouchers", glyph: "⬔" },
     ],
   },
   {
-    head: "Vận hành · Operations",
+    headKey: "groupOperations",
     items: [
-      { href: "/branches", label: "Branches", glyph: "◉" },
-      { href: "/staff", label: "Staff", glyph: "◐" },
-      { href: "/all-users", label: "All Users", glyph: "◒" },
-      { href: "/roles", label: "Roles", glyph: "◎" },
-      { href: "/account", label: "Account", glyph: "◈" },
+      { href: "/branches", labelKey: "branches", glyph: "◉" },
+      { href: "/staff", labelKey: "staff", glyph: "◐" },
+      { href: "/all-users", labelKey: "allUsers", glyph: "◒" },
+      { href: "/roles", labelKey: "roles", glyph: "◎" },
+      { href: "/account", labelKey: "account", glyph: "◈" },
     ],
   },
   {
-    head: "Quản trị · Admin",
+    headKey: "groupAdmin",
     items: [
-      { href: "/admin/seed-demo", label: "Seed Demo", glyph: "✦" },
+      { href: "/admin/seed-demo", labelKey: "seedDemo", glyph: "✦" },
     ],
   },
 ];
@@ -62,39 +63,17 @@ function getAuthorizedGroups(roles: string[]): NavGroup[] {
   return GROUPS.map((g) => ({
     ...g,
     items: g.items.filter((it) => {
-      if (it.href === "/all-users") {
-        return isSuperAdmin;
-      }
-      if (it.href === "/roles") {
-        return isSuperAdmin;
-      }
-      if (it.href === "/staff") {
-        return isSuperAdmin || isBranchManager;
-      }
-      if (it.href === "/branches") {
-        return isSuperAdmin;
-      }
-      if (it.href === "/branch-products") {
-        return isBranchManager;
-      }
-      if (it.href === "/categories") {
-        return isSuperAdmin || isProductManager;
-      }
-      if (it.href === "/vouchers") {
-        return isSuperAdmin || isProductManager;
-      }
-      if (it.href === "/products") {
-        return isSuperAdmin || isProductManager;
-      }
-      if (it.href === "/orders") {
-        return isSuperAdmin || isBranchManager || roles.includes("branch_staff");
-      }
-      if (it.href === "/") {
-        return isSuperAdmin || isBranchManager;
-      }
-      if (it.href === "/admin/seed-demo") {
-        return isSuperAdmin;
-      }
+      if (it.href === "/all-users") return isSuperAdmin;
+      if (it.href === "/roles") return isSuperAdmin;
+      if (it.href === "/staff") return isSuperAdmin || isBranchManager;
+      if (it.href === "/branches") return isSuperAdmin;
+      if (it.href === "/branch-products") return isBranchManager;
+      if (it.href === "/categories") return isSuperAdmin || isProductManager;
+      if (it.href === "/vouchers") return isSuperAdmin || isProductManager;
+      if (it.href === "/products") return isSuperAdmin || isProductManager;
+      if (it.href === "/orders") return isSuperAdmin || isBranchManager || roles.includes("branch_staff");
+      if (it.href === "/") return isSuperAdmin || isBranchManager;
+      if (it.href === "/admin/seed-demo") return isSuperAdmin;
       return true; // /account
     }),
   })).filter((g) => g.items.length > 0);
@@ -103,6 +82,7 @@ function getAuthorizedGroups(roles: string[]): NavGroup[] {
 function SidebarContent() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const t = useTranslations("sidebar");
   const roleSubtitle = user?.roles?.length
     ? user.roles.map((role) => role.replace(/_/g, " ")).join(", ")
     : null;
@@ -146,9 +126,9 @@ function SidebarContent() {
 
       <nav className="flex-1 overflow-y-auto">
         {authorizedGroups.map((g) => (
-          <div key={g.head} className="px-3 pb-3.5">
+          <div key={g.headKey} className="px-3 pb-3.5">
             <div className="px-2 pt-0.5 pb-2 font-mono text-[9.5px] uppercase tracking-[0.22em] text-[var(--console-muted-dark)]">
-              {g.head}
+              {t(g.headKey)}
             </div>
             {g.items.map((it) => {
               const active =
@@ -172,7 +152,7 @@ function SidebarContent() {
                   >
                     {it.glyph}
                   </span>
-                  <span className="flex-1">{it.label}</span>
+                  <span className="flex-1">{t(it.labelKey)}</span>
                   {it.badge && (
                     <span
                       className={cn(

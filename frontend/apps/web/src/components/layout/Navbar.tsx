@@ -4,22 +4,24 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { getOrderUrl } from "@/lib/public-config";
 import MobileMenu from "./MobileMenu";
 
-const navLinks = [
-  { href: "/menu", label: "Bánh" },
-  { href: "/menu", label: "Pâtisserie" },
-  { href: "/menu", label: "Cà phê" },
-  { href: "/locations", label: "Locations" },
-  { href: "/blog", label: "Journal" },
-];
-
 export default function Navbar() {
+  const t = useTranslations("nav");
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const orderUrl = getOrderUrl();
+
+  const navLinks = [
+    { href: "/menu", label: t("bread") },
+    { href: "/menu", label: t("patisserie") },
+    { href: "/menu", label: t("coffee") },
+    { href: "/locations", label: t("locations") },
+    { href: "/blog", label: t("journal") },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50);
@@ -51,7 +53,7 @@ export default function Navbar() {
             </svg>
             <span className="font-display text-[1.4rem] leading-none tracking-tight">Bakerio</span>
             <span className="hidden md:inline font-mono text-[10px] uppercase tracking-[0.18em] transition-colors text-caramel">
-              est. mmxxiv · saigon
+              {t("est")}
             </span>
           </Link>
 
@@ -80,12 +82,12 @@ export default function Navbar() {
               href={orderUrl}
               className="hidden md:inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors bkr-press bg-espresso text-cream hover:bg-cocoa"
             >
-              Order online <span aria-hidden="true">→</span>
+              {t("orderOnline")} <span aria-hidden="true">→</span>
             </a>
             <button
               className={`md:hidden transition-all duration-300 ease-[ease] text-espresso ${menuOpen ? "rotate-180" : "rotate-0"}`}
               onClick={() => setMenuOpen(true)}
-              aria-label="Open menu"
+              aria-label={t("openMenu")}
             >
               <Menu size={24} aria-hidden="true" />
             </button>

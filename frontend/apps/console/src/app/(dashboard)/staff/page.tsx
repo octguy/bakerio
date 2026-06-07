@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useMutation } from "@tanstack/react-query";
 import {
   assignBranchMember,
@@ -104,6 +105,8 @@ function filterStaff(staff: StaffMember[], q: string): StaffMember[] {
 }
 
 export default function StaffPage() {
+  const t = useTranslations("staff");
+  const tc = useTranslations("common");
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<StaffMember | null>(null);
@@ -370,7 +373,7 @@ export default function StaffPage() {
   const columns: ColumnDef<StaffMember, unknown>[] = [
     {
       accessorKey: "name",
-      header: "Name",
+      header: t("name"),
       cell: ({ row }) => {
         const avatarColors: Record<string, string> = {
           cinnamon: "bg-cinnamon text-white",
@@ -401,12 +404,12 @@ export default function StaffPage() {
     },
     {
       accessorKey: "role",
-      header: "Role",
+      header: t("role"),
       cell: ({ row }) => roleLabel(String(row.original.role)),
     },
     {
       accessorKey: "branch",
-      header: "Branch",
+      header: t("branch"),
     },
     {
       id: "actions",
@@ -467,10 +470,10 @@ export default function StaffPage() {
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
               {loading && !counts
-                ? "Loading staff..."
+                ? t("loadingStaff")
                 : error && !counts
-                  ? "Staff data unavailable"
-                  : `${counts?.total ?? 0} staff · ${isSuperAdmin ? "global directory" : profile?.branch?.name ?? "branch scope"}`}
+                  ? t("dataUnavailable")
+                  : `${counts?.total ?? 0} ${t("staffCount")} · ${isSuperAdmin ? t("globalDirectory") : profile?.branch?.name ?? t("branchScope")}`}
             </span>
           </div>
           <h1
@@ -481,7 +484,7 @@ export default function StaffPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Staff <span className="font-editorial text-cinnamon">· the team</span>
+            {t("title")} <span className="font-editorial text-cinnamon">· {t("theTeam")}</span>
           </h1>
         </div>
         <Button
@@ -489,14 +492,14 @@ export default function StaffPage() {
           disabled={!canManageStaff}
           className="flex items-center gap-1.5"
         >
-          <Plus aria-hidden="true" className="h-4 w-4" /> Add Staff
+          <Plus aria-hidden="true" className="h-4 w-4" /> {t("addStaff")}
         </Button>
       </div>
 
       {!loading && !canManageStaff ? (
         <div className="rounded-lg border border-[var(--console-line)] bg-white px-4 py-6 text-center">
           <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--console-muted)]">
-            Staff directory is only available to super admins and branch managers.
+            {t("noAccessMessage")}
           </p>
         </div>
       ) : error ? (
@@ -505,50 +508,50 @@ export default function StaffPage() {
             {error}
           </p>
           <Button variant="outline" className="mt-3" onClick={() => fetchStaffData(true)}>
-            Retry
+            {tc("retry")}
           </Button>
         </div>
       ) : loading ? (
-        <p>Loading...</p>
+        <p>{tc("loading")}</p>
       ) : (
         <div className="space-y-3">
           <div className="flex flex-col gap-3 rounded-xl border border-console-line bg-white/70 p-3 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end sm:justify-start">
               <div className="w-full sm:max-w-xs">
-                <Label htmlFor="staff-search">Search</Label>
+                <Label htmlFor="staff-search">{tc("search")}</Label>
                 <Input
                   id="staff-search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search staff..."
+                  placeholder={t("searchPlaceholder")}
                   className="mt-1"
                 />
               </div>
               <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end sm:justify-start">
                 <div className="w-full sm:w-40">
-                  <Label htmlFor="role-filter">Role</Label>
+                  <Label htmlFor="role-filter">{t("role")}</Label>
                   <SearchableCombobox
                     id="role-filter"
                     value={roleFilter}
                     onChange={setRoleFilter}
                     options={roleOptions}
-                    placeholder="All Roles"
-                    searchPlaceholder="Search role..."
-                    emptyMessage="No roles found."
-                    allOption={{ value: "all", label: "All Roles" }}
+                    placeholder={t("allRoles")}
+                    searchPlaceholder={t("searchRole")}
+                    emptyMessage={t("noRolesFound")}
+                    allOption={{ value: "all", label: t("allRoles") }}
                   />
                 </div>
                 <div className="w-full sm:w-40">
-                  <Label htmlFor="branch-filter">Branch</Label>
+                  <Label htmlFor="branch-filter">{t("branch")}</Label>
                   <SearchableCombobox
                     id="branch-filter"
                     value={branchFilter}
                     onChange={setBranchFilter}
                     options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
-                    placeholder="All Branches"
-                    searchPlaceholder="Search branch..."
-                    emptyMessage="No branches found."
-                    allOption={{ value: "all", label: "All Branches" }}
+                    placeholder={t("allBranches")}
+                    searchPlaceholder={t("searchBranch")}
+                    emptyMessage={t("noBranchesFound")}
+                    allOption={{ value: "all", label: t("allBranches") }}
                   />
                 </div>
               </div>
@@ -561,7 +564,7 @@ export default function StaffPage() {
                 <ChevronLeft aria-hidden="true" className="h-4 w-4" />
               </Button>
               <div className="flex items-center gap-1 text-sm text-console-muted">
-                <span>Page</span>
+                <span>{tc("page")}</span>
                 <Input
                   aria-label="Jump to staff page"
                   type="number"
@@ -575,7 +578,7 @@ export default function StaffPage() {
                   }}
                   className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
-                <span>of {totalPages}</span>
+                <span>{tc("of", { total: totalPages })}</span>
               </div>
               <Button type="button" variant="outline" size="sm" aria-label="Next page" onClick={() => setPage((p) => p + 1)} disabled={!canGoNext || loading}>
                 <ChevronRight aria-hidden="true" className="h-4 w-4" />
@@ -602,14 +605,14 @@ export default function StaffPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New Staff</DialogTitle>
+            <DialogTitle>{t("newStaff")}</DialogTitle>
             <DialogDescription>
-              Create a staff account and assign it to the right operational scope.
+              {t("newStaffDesc")}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={createForm.handleSubmit((data) => createMut.mutate(data))} className="mt-4 space-y-4">
             <div>
-              <Label htmlFor="staff-name">Full Name</Label>
+              <Label htmlFor="staff-name">{t("fullName")}</Label>
               <Input id="staff-name" {...createForm.register("full_name")} />
               {createForm.formState.errors.full_name && (
                 <p className="mt-1 text-xs text-destructive">
@@ -618,7 +621,7 @@ export default function StaffPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="staff-email">Email</Label>
+              <Label htmlFor="staff-email">{t("email")}</Label>
               <Input id="staff-email" type="email" spellCheck={false} {...createForm.register("email")} />
               {createForm.formState.errors.email && (
                 <p className="mt-1 text-xs text-destructive">
@@ -627,7 +630,7 @@ export default function StaffPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="staff-password">Password</Label>
+              <Label htmlFor="staff-password">{t("password")}</Label>
               <Input id="staff-password" type="password" autoComplete="new-password" {...createForm.register("password")} />
               {createForm.formState.errors.password && (
                 <p className="mt-1 text-xs text-destructive">
@@ -636,15 +639,15 @@ export default function StaffPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="staff-role">Role</Label>
+              <Label htmlFor="staff-role">{t("role")}</Label>
               <SearchableCombobox
                 id="staff-role"
                 value={selectedRole}
                 onChange={(value) => createForm.setValue("role", value, { shouldDirty: true, shouldValidate: true })}
                 options={roleOptions}
-                placeholder="Select role..."
-                searchPlaceholder="Search role..."
-                emptyMessage="No roles found."
+                placeholder={t("selectRole")}
+                searchPlaceholder={t("searchRole")}
+                emptyMessage={t("noRolesFound")}
               />
               {createForm.formState.errors.role && (
                 <p className="mt-1 text-xs text-destructive">
@@ -653,16 +656,16 @@ export default function StaffPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="staff-branch">Branch</Label>
+              <Label htmlFor="staff-branch">{t("branch")}</Label>
               {isSuperAdmin ? (
                 <SearchableCombobox
                   id="staff-branch"
                   value={selectedBranchId ?? ""}
                   onChange={(value) => createForm.setValue("branch_id", value, { shouldDirty: true, shouldValidate: true })}
                   options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
-                  placeholder={isBranchScopedRole(selectedRole) ? "Select branch..." : "Not applicable"}
-                  searchPlaceholder="Search branch..."
-                  emptyMessage="No branches found."
+                  placeholder={isBranchScopedRole(selectedRole) ? t("selectBranch") : t("notApplicable")}
+                  searchPlaceholder={t("searchBranch")}
+                  emptyMessage={t("noBranchesFound")}
                   disabled={!isBranchScopedRole(selectedRole)}
                 />
               ) : (
@@ -679,10 +682,10 @@ export default function StaffPage() {
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={createMut.isPending}>
-                {createMut.isPending ? "Creating..." : "Create Staff"}
+                {createMut.isPending ? t("creating") : t("createStaff")}
               </Button>
             </div>
           </form>
@@ -697,14 +700,14 @@ export default function StaffPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Staff</DialogTitle>
+            <DialogTitle>{t("editStaff")}</DialogTitle>
             <DialogDescription>
-              Update the staff profile. Password is changed only when filled.
+              {t("editStaffDesc")}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={editForm.handleSubmit((data) => updateMut.mutate(data))} className="mt-4 space-y-4">
             <div>
-              <Label htmlFor="edit-staff-name">Display Name</Label>
+              <Label htmlFor="edit-staff-name">{t("displayName")}</Label>
               <Input id="edit-staff-name" {...editForm.register("display_name")} />
               {editForm.formState.errors.display_name && (
                 <p className="mt-1 text-xs text-destructive">
@@ -713,23 +716,23 @@ export default function StaffPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="edit-staff-phone">Phone</Label>
+              <Label htmlFor="edit-staff-phone">{t("phone")}</Label>
               <Input id="edit-staff-phone" {...editForm.register("phone")} />
             </div>
             <div>
-              <Label htmlFor="edit-staff-address">Address</Label>
+              <Label htmlFor="edit-staff-address">{t("address")}</Label>
               <Input id="edit-staff-address" {...editForm.register("address")} />
             </div>
             <div>
-              <Label htmlFor="edit-staff-password">Reset Password</Label>
+              <Label htmlFor="edit-staff-password">{t("resetPassword")}</Label>
               <Input id="edit-staff-password" type="password" autoComplete="new-password" {...editForm.register("password")} />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={updateMut.isPending}>
-                {updateMut.isPending ? "Saving..." : "Save"}
+                {updateMut.isPending ? tc("saving") : tc("save")}
               </Button>
             </div>
           </form>
@@ -747,14 +750,14 @@ export default function StaffPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Set Staff Password</DialogTitle>
+            <DialogTitle>{t("setPassword")}</DialogTitle>
             <DialogDescription>
-              Override the current password for {passwordTarget?.name ?? "this staff member"}.
+              {t("setPasswordDesc", { name: passwordTarget?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={passwordForm.handleSubmit((data) => passwordMut.mutate(data))} className="mt-4 space-y-4">
             <div>
-              <Label htmlFor="set-staff-password">New Password</Label>
+              <Label htmlFor="set-staff-password">{t("newPassword")}</Label>
               <Input id="set-staff-password" type="password" autoComplete="new-password" {...passwordForm.register("password")} />
               {passwordForm.formState.errors.password && (
                 <p className="mt-1 text-xs text-destructive">
@@ -764,10 +767,10 @@ export default function StaffPage() {
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setPasswordTarget(null)}>
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={passwordMut.isPending}>
-                {passwordMut.isPending ? "Updating..." : "Set Password"}
+                {passwordMut.isPending ? t("updating") : t("setPassword")}
               </Button>
             </div>
           </form>
@@ -785,14 +788,14 @@ export default function StaffPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reassign Branch</DialogTitle>
+            <DialogTitle>{t("reassignBranch")}</DialogTitle>
             <DialogDescription>
-              Move {reassigning?.name ?? "this staff member"} to another branch.
+              {t("reassignBranchDesc", { name: reassigning?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-4">
             <div>
-              <Label htmlFor="reassign-branch">Branch</Label>
+              <Label htmlFor="reassign-branch">{t("branch")}</Label>
               <BranchCombobox
                 value={reassignBranchId}
                 onChange={setReassignBranchId}
@@ -808,7 +811,7 @@ export default function StaffPage() {
                   setReassignBranchId("");
                 }}
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button
                 type="button"
@@ -819,7 +822,7 @@ export default function StaffPage() {
                 }
                 onClick={() => reassignMut.mutate()}
               >
-                {reassignMut.isPending ? "Moving..." : "Move Branch"}
+                {reassignMut.isPending ? t("moving") : t("moveBranch")}
               </Button>
             </div>
           </div>
@@ -836,14 +839,16 @@ interface BranchComboboxProps {
 }
 
 function BranchCombobox({ value, onChange, branches }: BranchComboboxProps) {
+  const t = useTranslations("staff");
+
   return (
     <SearchableCombobox
       value={value}
       onChange={onChange}
       options={branches.map((branch) => ({ value: branch.id, label: branch.name }))}
-      placeholder="Select branch..."
-      searchPlaceholder="Search branch..."
-      emptyMessage="No branches found."
+      placeholder={t("selectBranch")}
+      searchPlaceholder={t("searchBranch")}
+      emptyMessage={t("noBranchesFound")}
     />
   );
 }

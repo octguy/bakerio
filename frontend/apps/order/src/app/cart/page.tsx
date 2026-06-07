@@ -5,6 +5,7 @@ import { Link } from "next-view-transitions";
 import Image from "next/image";
 import { Croissant } from "lucide-react";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
+import { useTranslations } from "next-intl";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 import { formatVND } from "@/lib/format";
@@ -20,6 +21,7 @@ export default function CartPage() {
 }
 
 function CartPageInner() {
+  const t = useTranslations("cart");
   const [hydrated, setHydrated] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setHydrated(true), []);
@@ -49,16 +51,16 @@ function CartPageInner() {
   if (items.length === 0) {
     return (
       <main className="mx-auto max-w-md px-6 pt-16 pb-32 text-center">
-        <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">◆ your basket</div>
+        <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">◆ {t("yourBasket")}</div>
         <h1 className="font-display text-[36px] leading-[0.95] tracking-tight text-espresso">
-          Nothing in the basket <span className="font-editorial text-cinnamon">yet.</span>
+          {t("nothingYet")} <span className="font-editorial text-cinnamon">{t("nothingYetSuffix")}</span>
         </h1>
-        <p className="mx-auto mt-3 max-w-xs font-editorial text-[14px] italic text-caramel">Bring something warm in. We&apos;ll keep the oven on.</p>
+        <p className="mx-auto mt-3 max-w-xs font-editorial text-[14px] italic text-caramel">{t("emptyDesc")}</p>
         <Link
           href="/menu"
           className="bkr-press mt-8 inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream"
         >
-          Browse menu <span>→</span>
+          {t("browseMenu")} <span>→</span>
         </Link>
       </main>
     );
@@ -68,15 +70,15 @@ function CartPageInner() {
     <main className="mx-auto max-w-md px-6 pt-4 pb-40">
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <Link href="/menu" className="text-[22px] text-espresso" aria-label="Back to menu">
+        <Link href="/menu" className="text-[22px] text-espresso" aria-label={t("backToMenu")}>
           ‹
         </Link>
         <div className="text-center">
-          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">step 2 / 3</div>
-          <div className="font-display text-[16px] leading-none text-espresso">Your basket</div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("step", { current: 2, total: 3 })}</div>
+          <div className="font-display text-[16px] leading-none text-espresso">{t("yourBasket")}</div>
         </div>
         <button onClick={() => clearCart(true)} className="font-mono text-[11px] tracking-[0.1em] text-caramel">
-          Clear
+          {t("clear")}
         </button>
       </div>
 
@@ -89,7 +91,7 @@ function CartPageInner() {
           letterSpacing: "-0.02em",
         }}
       >
-        <span className="tabular-nums">{items.reduce((s, i) => s + i.quantity, 0)}</span> items, baked <span className="font-editorial text-cinnamon">fresh.</span>
+        <span className="tabular-nums">{items.reduce((s, i) => s + i.quantity, 0)}</span> {t("itemsFresh", { count: items.reduce((s, i) => s + i.quantity, 0) })} <span className="font-editorial text-cinnamon">{t("freshSuffix")}</span>
       </h1>
 
       {/* Pickup card */}
@@ -98,9 +100,9 @@ function CartPageInner() {
           <span aria-hidden="true">📍</span>
         </div>
         <div className="flex-1">
-          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">Pickup</div>
+          <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-caramel">{t("pickup")}</div>
           <div className="text-[14px] font-semibold text-espresso">Lê Lợi Flagship — 0.8 km</div>
-          <div className="mt-0.5 font-editorial text-[12px] text-cinnamon">Ready in 15–25 minutes</div>
+          <div className="mt-0.5 font-editorial text-[12px] text-cinnamon">{t("readyIn")}</div>
         </div>
         <span className="text-[18px] text-caramel" aria-hidden="true">
           ›
@@ -132,7 +134,7 @@ function CartPageInner() {
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity - 1)}
                   className="flex h-[22px] w-[22px] items-center justify-center text-caramel"
-                  aria-label="Decrease quantity"
+                  aria-label={t("decreaseQty")}
                 >
                   −
                 </button>
@@ -140,7 +142,7 @@ function CartPageInner() {
                 <button
                   onClick={() => updateQuantity(item.id, item.quantity + 1)}
                   className="flex h-[22px] w-[22px] items-center justify-center text-espresso"
-                  aria-label="Increase quantity"
+                  aria-label={t("increaseQty")}
                 >
                   +
                 </button>
@@ -155,8 +157,8 @@ function CartPageInner() {
       {/* Totals */}
       <div className="mt-3 rounded-2xl border border-crust bg-white p-4">
         {[
-          { l: "Subtotal", v: formatVND(subtotal) },
-          { l: "Pickup", v: "Free" },
+          { l: t("subtotal"), v: formatVND(subtotal) },
+          { l: t("pickupFee"), v: t("free") },
         ].map((r) => (
           <div
             key={r.l}
@@ -171,7 +173,7 @@ function CartPageInner() {
           </div>
         ))}
         <div className="mt-3 flex items-baseline justify-between border-t border-crust pt-3">
-          <span className="font-display text-[20px] text-espresso">Total</span>
+          <span className="font-display text-[20px] text-espresso">{t("total")}</span>
           <span className="font-display tabular-nums text-[26px] tracking-tight text-espresso">{formatVND(total)}</span>
         </div>
       </div>
@@ -189,14 +191,14 @@ function CartPageInner() {
           href="/checkout"
           className="bkr-press flex items-center justify-between rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream"
         >
-          <span className="tabular-nums">Pay {formatVND(total)}</span>
+          <span className="tabular-nums">{t("pay", { amount: formatVND(total) })}</span>
           <span className="flex items-center gap-2">
-            <span className="font-mono text-[11px] opacity-75">Continue</span>
+            <span className="font-mono text-[11px] opacity-75">{t("continue")}</span>
             <span aria-hidden="true">→</span>
           </span>
         </Link>
         <div className="mt-2 text-center font-editorial text-[12.5px] italic text-caramel">
-          Delivery branch and final total are confirmed at checkout.
+          {t("deliveryNote")}
         </div>
       </div>
     </main>

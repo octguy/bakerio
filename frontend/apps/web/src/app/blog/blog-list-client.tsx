@@ -3,15 +3,17 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { BlogPost } from "@/data/posts";
 
-const TABS = ["All", "Craft", "Recipes", "Saigon", "People", "Notes", "Behind the Scenes", "Ingredients", "News", "Sustainability"];
+const TAB_KEYS = ["All", "Craft", "Recipes", "Saigon", "People", "Notes", "Behind the Scenes", "Ingredients", "News", "Sustainability"];
 
 interface BlogListClientProps {
   posts: BlogPost[];
 }
 
 export function BlogListClient({ posts }: BlogListClientProps) {
+  const t = useTranslations("blog");
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -63,20 +65,20 @@ export function BlogListClient({ posts }: BlogListClientProps) {
             <div className="mb-3.5 flex items-center gap-3">
               <span className="block h-px w-7 bg-golden" />
               <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
-                The journal · since mmxxiv
+                {t("journalSince")}
               </span>
             </div>
             <h1
               className="font-display tracking-tight"
               style={{ fontSize: "clamp(48px,9vw,80px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
             >
-              Stories <span className="font-editorial text-cinnamon">from the oven.</span>
+              {t("title")} <span className="font-editorial text-cinnamon">{t("titleAccent")}</span>
             </h1>
           </div>
           <div className="mt-8 flex w-full flex-col items-end gap-6 md:mt-0 md:w-auto">
             <input
               type="text"
-              placeholder="Search stories..."
+              placeholder={t("searchStoriesPlaceholder")}
               aria-label="Search blog"
               value={searchQuery}
               onChange={(e) => {
@@ -86,20 +88,20 @@ export function BlogListClient({ posts }: BlogListClientProps) {
               className="w-full border-b border-crust bg-transparent pb-2 font-display text-2xl text-espresso outline-none placeholder:text-crust/50 focus:border-espresso focus:placeholder:text-transparent md:w-[300px]"
             />
             <div className="flex flex-wrap gap-1.5 md:flex-nowrap">
-              {TABS.map((t) => (
+              {TAB_KEYS.map((tab) => (
                 <button
-                  key={t}
+                  key={tab}
                   onClick={() => {
-                    setActiveTab(t);
+                    setActiveTab(tab);
                     setPage(1);
                   }}
                   className={`rounded-full px-3.5 py-2 font-mono text-[11px] tracking-[0.1em] transition-colors ${
-                    activeTab === t
+                    activeTab === tab
                       ? "bg-espresso font-bold text-white"
                       : "border border-crust bg-transparent text-cocoa hover:bg-crust/20"
                   }`}
                 >
-                  {t}
+                  {t(`tabs.${tab}`)}
                 </button>
               ))}
             </div>
@@ -122,7 +124,7 @@ export function BlogListClient({ posts }: BlogListClientProps) {
                 <div className="p-8">
                   <div className="mb-2.5 flex items-center gap-3">
                     <span className="rounded-full bg-golden px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-white">
-                      ★ Editor&apos;s pick
+                      {t("editorsPick")}
                     </span>
                     <span className="font-mono text-[11px] tracking-wider text-caramel">
                       {new Date(featured.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} · 11 min read
@@ -149,7 +151,7 @@ export function BlogListClient({ posts }: BlogListClientProps) {
                       <div className="font-editorial text-[12px] text-cinnamon">co-founder</div>
                     </div>
                     <span className="ml-auto font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-cinnamon">
-                      Read on →
+                      {t("readOn")}
                     </span>
                   </div>
                 </div>
@@ -187,7 +189,7 @@ export function BlogListClient({ posts }: BlogListClientProps) {
                 </Link>
               ))}
               {rest.length === 0 && !featured && (
-                <p className="py-8 font-news text-lg text-cocoa">No stories found matching your criteria.</p>
+                <p className="py-8 font-news text-lg text-cocoa">{t("noStoriesFound")}</p>
               )}
             </div>
           </div>
@@ -196,7 +198,7 @@ export function BlogListClient({ posts }: BlogListClientProps) {
             {page * itemsPerPage < filteredPosts.length && (
               <div className="flex justify-center">
                 <span className="font-mono text-[11px] uppercase tracking-widest text-cocoa animate-pulse">
-                  Loading more...
+                  {t("loadingMore")}
                 </span>
               </div>
             )}

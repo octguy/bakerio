@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCartStore } from "@/store/cart";
 import { useCrossSellProducts } from "@/hooks/use-cross-sell";
 import { formatVND } from "@/lib/format";
@@ -24,6 +25,7 @@ function getProductCategoryId(product: Product) {
 }
 
 export function CrossSells() {
+  const t = useTranslations("cart");
   const { items, addItem } = useCartStore();
   const { recommendations, loading } = useCrossSellProducts(items);
 
@@ -31,7 +33,7 @@ export function CrossSells() {
 
   return (
     <div className="mt-8 pt-8 border-t border-border">
-      <h3 className="text-xl font-display font-medium mb-4 text-espresso">Perfect Pairings</h3>
+      <h3 className="text-xl font-display font-medium mb-4 text-espresso">{t("perfectPairings")}</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {recommendations.map((product, i) => {
           const price = getProductPrice(product);
@@ -70,7 +72,7 @@ export function CrossSells() {
                 }}
                 className="mt-auto relative z-10 w-full py-2 bg-espresso text-white rounded-lg font-medium text-sm hover:bg-caramel transition-colors flex items-center justify-center gap-2 group-hover:scale-[1.02] active:scale-95 duration-200"
               >
-                <span>Add</span>
+                <span>{t("add")}</span>
               </button>
             </motion.div>
           );

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, type MouseEvent } from "react";
 import Image from "next/image";
 import { Link } from "next-view-transitions";
+import { useTranslations } from "next-intl";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { useSearchParams } from "next/navigation";
 import { Croissant, ChevronLeft, ChevronRight } from "lucide-react";
@@ -106,6 +107,7 @@ export function MenuGrid({
   initialPage: PaginatedResponse<Product>;
   pageSize: number;
 }) {
+  const t = useTranslations("menu");
   const [productsPage, setProductsPage] = useState(initialPage);
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -266,7 +268,7 @@ export function MenuGrid({
       setProductsPage(nextProductsPage);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
-      setPageError("Could not load more bakes. Please retry.");
+      setPageError(t("couldNotLoadMore"));
     } finally {
       setIsPageLoading(false);
     }
@@ -400,21 +402,21 @@ export function MenuGrid({
         <path d="M21 21l-4.3-4.3" />
       </svg>
       <label htmlFor="menu-search" className="sr-only">
-        Search menu
+        {t("searchMenu")}
       </label>
       <input
         id="menu-search"
         type="search"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search bread, pastry, coffee…"
+        placeholder={t("searchPlaceholder")}
         className="min-w-0 flex-1 bg-transparent font-editorial text-[15px] italic text-espresso placeholder:text-caramel focus:outline-none md:text-[16px]"
       />
       {search ? (
         <button
           type="button"
           onClick={() => setSearch("")}
-          aria-label="Clear search"
+          aria-label={t("clearSearch")}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-butter font-mono text-[16px] text-caramel transition-transform active:scale-90"
         >
           ×
@@ -444,13 +446,13 @@ export function MenuGrid({
           {/* Left column — heading + search + categories + price */}
           <div ref={leftColRef} className="flex flex-col gap-4 lg:col-start-1 lg:row-span-full">
             <div className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-cinnamon">
-              oven ledger
+              {t("ovenLedger")}
             </div>
             <h2 className="font-display text-[clamp(2rem,9vw,4.4rem)] leading-[0.86] tracking-[-0.055em] text-espresso">
-              Order by
+              {t("orderBy")}
               <span className="font-editorial italic text-sienna">
                 {" "}
-                appetite.
+                {t("appetite")}
               </span>
             </h2>
 
@@ -470,7 +472,7 @@ export function MenuGrid({
                     type="button"
                     onClick={scrollLeft}
                     className="absolute left-0 top-6 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-all active:scale-90 opacity-0 md:flex md:group-hover:opacity-100"
-                    aria-label="Scroll categories left"
+                    aria-label={t("scrollLeft")}
                   >
                     <ChevronLeft size={20} className="text-espresso" />
                   </button>
@@ -492,7 +494,7 @@ export function MenuGrid({
                       : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
                   }`}
                 >
-                  All
+                  {t("allCategory")}
                 </button>
                 {categories.map((cat) => {
                   const isActive = activeCategory === cat.id;
@@ -521,7 +523,7 @@ export function MenuGrid({
                     type="button"
                     onClick={scrollRight}
                     className="absolute right-0 top-6 z-20 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-honey text-espresso shadow-md transition-all active:scale-90 opacity-0 md:flex md:group-hover:opacity-100"
-                    aria-label="Scroll categories right"
+                    aria-label={t("scrollRight")}
                   >
                     <ChevronRight size={20} className="text-espresso" />
                   </button>
@@ -534,7 +536,7 @@ export function MenuGrid({
 
             {/* Price filter pills */}
             <div className="flex flex-wrap gap-2">
-              <span className="flex items-center font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">Price:</span>
+              <span className="flex items-center font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">{t("priceLabel")}:</span>
               <button
                 type="button"
                 onClick={() => setPriceFilter("all")}
@@ -544,7 +546,7 @@ export function MenuGrid({
                     : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
                 }`}
               >
-                All Prices
+                {t("allPrices")}
               </button>
               <button
                 type="button"
@@ -555,7 +557,7 @@ export function MenuGrid({
                     : "border border-crust-deep bg-white text-espresso hover:border-cinnamon"
                 }`}
               >
-                Under 50k
+                {t("under50k")}
               </button>
             </div>
           </div>
@@ -566,10 +568,10 @@ export function MenuGrid({
       <div className="mb-3 flex items-end justify-between gap-3 md:mb-4">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel">
-            Page {page} of {Math.max(totalPages, 1)} · {total} bakes
+            {t("pageOf", { page, totalPages: Math.max(totalPages, 1), total })}
           </div>
           <h2 className="font-display text-[26px] leading-none tracking-tight text-espresso md:text-[34px]">
-            From the counter
+            {t("fromTheCounter")}
           </h2>
         </div>
         <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
@@ -691,10 +693,10 @@ export function MenuGrid({
                 : "pointer-events-none border border-crust text-caramel opacity-45"
             }`}
           >
-            Prev
+            {t("prev")}
           </Link>
           <span className="text-center font-editorial text-[13px] italic text-caramel">
-            Showing {(page - 1) * pageSize + 1}-{(page - 1) * pageSize + pageProducts.length} of {total}
+            {t("showing", { from: (page - 1) * pageSize + 1, to: (page - 1) * pageSize + pageProducts.length, total })}
           </span>
           <Link
             href="/menu"
@@ -709,7 +711,7 @@ export function MenuGrid({
                 : "pointer-events-none border border-crust text-caramel opacity-45"
             }`}
           >
-            Next
+            {t("next")}
           </Link>
         </nav>
       )}
@@ -726,9 +728,9 @@ export function MenuGrid({
                 {totalCount}
               </div>
               <div>
-                <div className="text-[12.5px] font-semibold">View cart</div>
+                <div className="text-[12.5px] font-semibold">{t("viewCart")}</div>
                 <div className="font-mono text-[10px] tracking-[0.08em] opacity-70">
-                  15–25 min · ready
+                  {t("readyTime")}
                 </div>
               </div>
             </div>

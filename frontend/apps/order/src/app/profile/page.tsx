@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useId, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
+import { useTranslations, useLocale } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { getMembership, getMyProfile, getOrderStats, updateMyProfile, changePassword, getAddresses, addAddress, updateAddress, removeAddress, setDefaultAddress } from "@repo/api-client";
@@ -26,10 +27,12 @@ export default function ProfilePage() {
 }
 
 function ProfileContent() {
+  const t = useTranslations("profile");
+  const locale = useLocale();
   const { user, logout } = useAuth();
   const profileUser = user as (typeof user & { phone?: string | null; created_at?: string | null }) | null;
   const initial = (user?.full_name?.[0] ?? user?.email?.[0] ?? "T").toUpperCase();
-  const [displayName, setDisplayName] = useState(user?.display_name || user?.full_name || "Friend");
+  const [displayName, setDisplayName] = useState(user?.display_name || user?.full_name || t("friendFallback"));
   const [draftName, setDraftName] = useState(displayName);
   const [phone, setPhone] = useState("");
   const [profileAddress, setProfileAddress] = useState("");
@@ -50,7 +53,7 @@ function ProfileContent() {
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [profileError, setProfileError] = useState("");
-  const memberSince = formatMemberSince(profileUser?.created_at);
+  const memberSince = formatMemberSince(profileUser?.created_at, locale);
 
   const [membership, setMembership] = useState<Membership | undefined>(undefined);
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
@@ -135,7 +138,7 @@ function ProfileContent() {
       applyProfile(updated);
       setEditOpen(false);
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : "Failed to update profile. Please try again.");
+      setProfileError(err instanceof Error ? err.message : t("failedUpdateProfile"));
       if (process.env.NODE_ENV !== "production") {
         console.error("Failed to update profile:", err);
       }
@@ -210,9 +213,6 @@ function ProfileContent() {
   const handleSetDefaultAddress = async (id: string) => {
     try {
       const all = await setDefaultAddress(id);
-      // The backend returns the list re-sorted (default first). Keep the current
-      // on-screen order and just apply the updated is_default flags so the row
-      // the user clicked doesn't jump positions.
       const byId = new Map(all.map((a) => [a.id, a]));
       setAddresses((current) =>
         current.map((a) => byId.get(a.id) ?? a).concat(all.filter((a) => !current.some((c) => c.id === a.id))),
@@ -229,15 +229,15 @@ function ProfileContent() {
     setPasswordSuccess(false);
     
     if (!currentPassword) {
-      setPasswordError("Current password is required.");
+      setPasswordError(t("currentPasswordRequired"));
       return;
     }
     if (newPassword.length < 8) {
-      setPasswordError("New password must be at least 8 characters.");
+      setPasswordError(t("newPasswordMin"));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError("Passwords do not match.");
+      setPasswordError(t("passwordsNoMatch"));
       return;
     }
     
@@ -250,7 +250,7 @@ function ProfileContent() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : "Failed to change password. Please try again.");
+      setPasswordError(err instanceof Error ? err.message : t("failedChangePassword"));
     } finally {
       setIsChangingPassword(false);
     }
@@ -270,9 +270,9 @@ function ProfileContent() {
           onClick={openEdit}
           className="font-mono text-[11px] font-bold tracking-[0.16em] text-cinnamon"
         >
-          EDIT
+          {t("edit")}
         </button>
-        <div className="font-display text-[16px] leading-none">Profile</div>
+        <div className="font-display text-[16px] leading-none">{t("title")}</div>
         <span className="w-[3.5ch]" aria-hidden="true" />
       </div>
 
@@ -288,7 +288,7 @@ function ProfileContent() {
                 onClick={openEdit}
                 className="font-mono text-[10px] font-bold tracking-[0.12em] text-cinnamon hover:text-espresso transition-colors cursor-pointer"
               >
-                EDIT
+                {t("edit")}
               </button>
             </div>
 
@@ -303,7 +303,7 @@ function ProfileContent() {
             <h1 className="mt-4 font-display text-[30px] leading-none tracking-tight">{displayName}</h1>
             {(memberSince || lifetimeOrders !== undefined) && (
               <div className="mt-1 font-editorial text-[13px] italic text-cinnamon">
-                {[memberSince ? `member since ${memberSince}` : null, lifetimeOrders !== undefined ? `${lifetimeOrders} orders` : null].filter(Boolean).join(" · ")}
+                {[memberSince ? t("memberSince", { date: memberSince }) : null, lifetimeOrders !== undefined ? t("ordersCount", { count: lifetimeOrders }) : null].filter(Boolean).join(" · ")}
               </div>
             )}
             {bio && (
@@ -325,11 +325,11 @@ function ProfileContent() {
                 <span className="text-[14px] text-honey" aria-hidden="true">
                   ✦
                 </span>
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-honey">Membership</span>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-honey">{t("membership")}</span>
               </div>
               <div className="flex items-baseline gap-2.5">
                 <span className="font-display text-[48px] leading-none tracking-tight">{membership?.tier ?? "—"}</span>
-                <span className="font-editorial text-[14px] italic text-honey">{formatVND(spent)} spent</span>
+                <span className="font-editorial text-[14px] italic text-honey">{t("spent", { amount: formatVND(spent) })}</span>
               </div>
               <div className="mt-3.5 h-1.5 overflow-hidden rounded-sm bg-white/15">
                 <div
@@ -343,8 +343,8 @@ function ProfileContent() {
                 />
               </div>
               <div className="mt-2 flex justify-between font-mono text-[10px] tracking-[0.08em] opacity-80">
-                <span>{membership?.tier ?? "—"} tier</span>
-                <span>{!hasMembership ? "—" : threshold > 0 ? `${formatVND(Math.max(0, threshold - spent))} → next tier` : "Top tier"}</span>
+                <span>{t("tier", { tier: membership?.tier ?? "—" })}</span>
+                <span>{!hasMembership ? "—" : threshold > 0 ? t("nextTier", { amount: formatVND(Math.max(0, threshold - spent)) }) : t("topTier")}</span>
               </div>
             </div>
           </div>
@@ -353,27 +353,26 @@ function ProfileContent() {
         {/* Right column: Info & preferences */}
         <div className="space-y-4">
           {/* Account */}
-          <Section title="Account">
-            {[user?.email ? { i: "✉", l: user.email, s: "verified" } : null, phone ? { i: "☎", l: phone, s: "on profile" } : null]
+          <Section title={t("account")}>
+            {[user?.email ? { i: "✉", l: user.email, s: t("verified") } : null, phone ? { i: "☎", l: phone, s: t("onProfile") } : null]
               .filter((r): r is { i: string; l: string; s: string } => Boolean(r))
               .map((r, idx) => (
                 <Row key={idx} icon={r.i} label={r.l} sub={r.s} />
               ))}
-            <Row icon="🔑" label="Password" sub="Change password" onClick={() => setPasswordOpen(true)} last />
+            <Row icon="🔑" label={t("password")} sub={t("changePassword")} onClick={() => setPasswordOpen(true)} last />
           </Section>
 
           {/* Addresses */}
-          <Section title="Addresses" cta="＋ Add address" onCta={() => openAddressEditor()}>
+          <Section title={t("addresses")} cta={t("addAddress")} onCta={() => openAddressEditor()}>
             {addresses.map((r, idx, all) => (
               <div key={r.id} className={`flex w-full items-center gap-3 px-4 py-3.5 text-left ${idx === all.length - 1 ? "" : "border-b border-crust"}`}>
                 <div className="flex h-8 w-8 items-center justify-center rounded-md bg-butter text-[14px] text-cinnamon shrink-0" aria-hidden="true">
                   📍
                 </div>
                 <div className="min-w-0 flex-1">
-                  {/* Tag row — always reserved (2 rows) so card height stays consistent */}
                   <div className="mb-1 flex min-h-[18px] items-center">
                     {r.is_default && (
-                      <span className="rounded bg-golden px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-white">Default</span>
+                      <span className="rounded bg-golden px-1.5 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.18em] text-white">{t("default")}</span>
                     )}
                   </div>
                   <div className="text-[15px] font-bold text-espresso truncate">{r.address}</div>
@@ -383,8 +382,8 @@ function ProfileContent() {
                     <button
                       type="button"
                       onClick={() => handleSetDefaultAddress(r.id)}
-                      aria-label="Set as default address"
-                      title="Set as default"
+                      aria-label={t("setDefault")}
+                      title={t("setDefault")}
                       className="flex h-8 w-8 items-center justify-center rounded-md text-golden transition-colors hover:bg-butter"
                     >
                       <Star size={16} />
@@ -393,8 +392,8 @@ function ProfileContent() {
                   <button
                     type="button"
                     onClick={() => openAddressEditor(r)}
-                    aria-label="Edit address"
-                    title="Edit"
+                    aria-label={t("editBtn")}
+                    title={t("editBtn")}
                     className="flex h-8 w-8 items-center justify-center rounded-md text-sage transition-colors hover:bg-butter hover:text-espresso"
                   >
                     <Pencil size={16} />
@@ -402,8 +401,8 @@ function ProfileContent() {
                   <button
                     type="button"
                     onClick={() => handleRemoveAddress(r.id)}
-                    aria-label="Remove address"
-                    title="Remove"
+                    aria-label={t("removeAddress")}
+                    title={t("removeAddress")}
                     className="flex h-8 w-8 items-center justify-center rounded-md text-cinnamon transition-colors hover:bg-butter hover:text-espresso"
                   >
                     <Trash2 size={16} />
@@ -414,11 +413,11 @@ function ProfileContent() {
           </Section>
 
           {/* Preferences */}
-          <Section title="Preferences">
-            <Row icon="🔔" label="Push notifications" sub={pushEnabled ? "order updates on" : "muted"} toggle on={pushEnabled} onClick={() => setPushEnabled((value) => !value)} />
-            <Row icon="🌐" label="Language" sub="Tiếng Việt" badge="soon" />
-            <Row icon="🥄" label="Dietary" sub="no peanut" badge="soon" />
-            <Row icon="🔒" label="Privacy & data" badge="soon" last />
+          <Section title={t("preferences")}>
+            <Row icon="🔔" label={t("pushNotifications")} sub={pushEnabled ? t("orderUpdatesOn") : t("muted")} toggle on={pushEnabled} onClick={() => setPushEnabled((value) => !value)} />
+            <Row icon="🌐" label={t("language")} sub={t("vietnamese")} badge={t("soon")} />
+            <Row icon="🥄" label={t("dietary")} sub={t("noPeanut")} badge={t("soon")} />
+            <Row icon="🔒" label={t("privacy")} badge={t("soon")} last />
             <button
               type="button"
               onClick={logout}
@@ -427,18 +426,18 @@ function ProfileContent() {
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-butter text-[14px] text-sienna" aria-hidden="true">
                 ⏻
               </div>
-              <div className="text-[13.5px] font-semibold text-sienna">Sign out</div>
+              <div className="text-[13.5px] font-semibold text-sienna">{t("signOut")}</div>
             </button>
           </Section>
         </div>
       </div>
 
       {editOpen && (
-        <Modal title="Edit profile" onClose={() => setEditOpen(false)}>
+        <Modal title={t("editProfile")} onClose={() => setEditOpen(false)}>
           <div className="space-y-4">
             <div>
               <label htmlFor="profile-name" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                Display name
+                {t("displayName")}
               </label>
               <input
                 id="profile-name"
@@ -449,7 +448,7 @@ function ProfileContent() {
             </div>
             <div>
               <label htmlFor="profile-avatar" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                Avatar URL
+                {t("avatarUrl")}
               </label>
               <input
                 id="profile-avatar"
@@ -462,7 +461,7 @@ function ProfileContent() {
             </div>
             <div>
               <label htmlFor="profile-phone" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                Phone
+                {t("phone")}
               </label>
               <input
                 id="profile-phone"
@@ -475,26 +474,24 @@ function ProfileContent() {
             </div>
             <div>
               <label htmlFor="profile-default-address" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                Address
+                {t("address")}
               </label>
               <input
                 id="profile-default-address"
                 value={draftProfileAddress}
                 onChange={(e) => setDraftProfileAddress(e.target.value)}
-                placeholder="Your default address"
                 className="mt-1 w-full rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
               />
             </div>
             <div>
               <label htmlFor="profile-bio" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                Bio
+                {t("bio")}
               </label>
               <textarea
                 id="profile-bio"
                 value={draftBio}
                 onChange={(e) => setDraftBio(e.target.value)}
                 rows={3}
-                placeholder="A little about you"
                 className="mt-1 w-full resize-none rounded-xl border border-crust bg-white px-3.5 py-3 font-editorial text-[14px] italic text-espresso focus:border-cinnamon focus:outline-none focus:ring-2 focus:ring-cinnamon/30"
               />
             </div>
@@ -511,7 +508,7 @@ function ProfileContent() {
               disabled={isSavingProfile || !draftName.trim()}
               className="bkr-press mt-2 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
             >
-              {isSavingProfile ? "Saving..." : "Save profile"}
+              {isSavingProfile ? t("savingProfile") : t("saveProfile")}
             </button>
           </div>
         </Modal>
@@ -519,7 +516,7 @@ function ProfileContent() {
 
       {addressOpen && (
         <Modal
-          title={editingAddressId ? "Edit address" : "Add address"}
+          title={editingAddressId ? t("editAddress") : t("addAddressTitle")}
           onClose={() => {
             setAddressOpen(false);
             setEditingAddressId(null);
@@ -529,7 +526,7 @@ function ProfileContent() {
           <div className="space-y-4">
             <div>
               <label htmlFor="profile-address" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                Delivery address
+                {t("deliveryAddress")}
               </label>
               <textarea
                 id="profile-address"
@@ -541,7 +538,7 @@ function ProfileContent() {
             </div>
             <div className="space-y-2">
               <div className="font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                Pin location
+                {t("pinLocation")}
               </div>
               <AddressMapPicker
                 lat={newAddressLat ? Number(newAddressLat) : undefined}
@@ -559,11 +556,11 @@ function ProfileContent() {
               className="flex w-full items-center justify-between rounded-2xl border border-crust bg-white px-4 py-3 text-left disabled:opacity-70"
             >
               <span>
-                <span className="block text-[13.5px] font-semibold text-espresso">Use as default address</span>
+                <span className="block text-[13.5px] font-semibold text-espresso">{t("useAsDefault")}</span>
                 <span className="block font-editorial text-[11.5px] italic text-caramel">
                   {(!editingAddressId && addresses.length === 0)
-                    ? "Your first address is automatically default."
-                    : "Checkout will preselect this address."}
+                    ? t("firstAddressDefault")
+                    : t("checkoutPreselect")}
                 </span>
               </span>
               <span
@@ -583,14 +580,14 @@ function ProfileContent() {
               disabled={!newAddress.trim() || !newAddressLat || !newAddressLng || !Number.isFinite(Number(newAddressLat)) || !Number.isFinite(Number(newAddressLng)) || isSavingAddress}
               className="bkr-press mt-4 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
             >
-              {isSavingAddress ? "Saving..." : editingAddressId ? "Update address" : "Save address"}
+              {isSavingAddress ? t("savingAddress") : editingAddressId ? t("updateAddress") : t("saveAddressBtn")}
             </button>
           </div>
         </Modal>
       )}
 
       {passwordOpen && (
-        <Modal title="Change password" onClose={() => {
+        <Modal title={t("changePasswordTitle")} onClose={() => {
           setPasswordOpen(false);
           setPasswordError("");
           setPasswordSuccess(false);
@@ -603,23 +600,23 @@ function ProfileContent() {
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-sage text-white text-[24px]">
                 ✓
               </div>
-              <h3 className="font-display text-[20px] text-espresso">Password updated</h3>
+              <h3 className="font-display text-[20px] text-espresso">{t("passwordUpdated")}</h3>
               <p className="mt-2 font-editorial text-[14px] italic text-caramel">
-                Your password has been changed successfully.
+                {t("passwordUpdatedDesc")}
               </p>
               <button
                 type="button"
                 onClick={() => setPasswordOpen(false)}
                 className="bkr-press mt-6 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream"
               >
-                Done
+                {t("done")}
               </button>
             </div>
           ) : (
             <div className="space-y-4">
               <div>
                 <label htmlFor="current-password" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                  Current password
+                  {t("currentPassword")}
                 </label>
                 <input
                   id="current-password"
@@ -631,7 +628,7 @@ function ProfileContent() {
               </div>
               <div>
                 <label htmlFor="new-password" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                  New password
+                  {t("newPassword")}
                 </label>
                 <input
                   id="new-password"
@@ -643,7 +640,7 @@ function ProfileContent() {
               </div>
               <div>
                 <label htmlFor="confirm-password" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-                  Confirm new password
+                  {t("confirmPassword")}
                 </label>
                 <input
                   id="confirm-password"
@@ -666,7 +663,7 @@ function ProfileContent() {
                 disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
                 className="bkr-press mt-2 inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
               >
-                {isChangingPassword ? "Saving..." : "Change password"}
+                {isChangingPassword ? t("changingPassword") : t("changePasswordBtn")}
               </button>
             </div>
           )}
@@ -696,11 +693,11 @@ function Section({ title, cta, onCta, children }: { title: string; cta?: string;
   );
 }
 
-function formatMemberSince(value?: string | null) {
+function formatMemberSince(value?: string | null, locale?: string) {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en", {
+  return new Intl.DateTimeFormat(locale || "en", {
     month: "long",
     year: "numeric",
   }).format(date);
@@ -782,10 +779,8 @@ function Modal({
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Focus management: move focus into modal on mount, restore on unmount
   useEffect(() => {
     previouslyFocused.current = document.activeElement;
-    // focus the dialog container
     modalRef.current?.focus();
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -796,7 +791,6 @@ function Modal({
     document.addEventListener("keydown", handleKey);
     return () => {
       document.removeEventListener("keydown", handleKey);
-      // restore focus
       if (previouslyFocused.current instanceof HTMLElement) {
         previouslyFocused.current.focus();
       }

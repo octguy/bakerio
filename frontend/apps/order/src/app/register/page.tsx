@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { Link } from "next-view-transitions";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { registerSchema } from "./schema";
 
 export default function RegisterPage() {
+  const t = useTranslations("auth");
   const { register } = useAuth();
   const router = useRouter();
   const [name, setName] = useState("");
@@ -32,7 +34,7 @@ export default function RegisterPage() {
       return;
     }
     if (!agreed) {
-      setError("Please accept the terms to continue.");
+      setError(t("pleaseAgree"));
       return;
     }
 
@@ -54,7 +56,7 @@ export default function RegisterPage() {
       <Link href="/login" className="mb-2 inline-flex items-center gap-2 text-[18px] text-espresso">
         ‹
       </Link>
-      <span className="block font-script text-[26px] leading-none text-cinnamon">nice to meet you,</span>
+      <span className="block font-script text-[26px] leading-none text-cinnamon">{t("niceToMeet")}</span>
       <h1
         className="mt-1.5 font-display tracking-tight text-espresso"
         style={{
@@ -63,16 +65,16 @@ export default function RegisterPage() {
           letterSpacing: "-0.02em",
         }}
       >
-        Let&apos;s set you
+        {t("letsSetYou")}
         <br />
-        <span className="font-editorial text-cinnamon">up.</span>
+        <span className="font-editorial text-cinnamon">{t("up")}</span>
       </h1>
 
       <form onSubmit={handleSubmit} className="mt-7 space-y-3.5">
         {[
           {
             name: "name",
-            label: "Full name",
+            label: t("fullName"),
             value: name,
             set: setName,
             placeholder: "Thinh Nguyễn",
@@ -80,7 +82,7 @@ export default function RegisterPage() {
           },
           {
             name: "email",
-            label: "Email",
+            label: t("email"),
             value: email,
             set: setEmail,
             placeholder: "thinh@bakerio.vn",
@@ -109,7 +111,7 @@ export default function RegisterPage() {
 
         <div>
           <label htmlFor="reg-password" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-            Password
+            {t("password")}
           </label>
           <input
             id="reg-password"
@@ -127,10 +129,10 @@ export default function RegisterPage() {
         </div>
 
         <label className="mt-3 flex items-start gap-2 text-[11.5px] leading-[1.4] text-cocoa">
-          <input type="checkbox" aria-label="I agree to terms and conditions" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 flex-shrink-0 accent-cinnamon" />
+          <input type="checkbox" aria-label={t("agreeTerms")} checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 flex-shrink-0 accent-cinnamon" />
           <span className="font-editorial italic">
-            I agree to the <strong className="font-sans not-italic text-cinnamon">terms</strong> and{" "}
-            <strong className="font-sans not-italic text-cinnamon">crumb-collecting policy</strong>.
+            {t("agreeTerms")} <strong className="font-sans not-italic text-cinnamon">{t("terms")}</strong> {t("and")}{" "}
+            <strong className="font-sans not-italic text-cinnamon">{t("crumbPolicy")}</strong>.
           </span>
         </label>
 
@@ -140,14 +142,14 @@ export default function RegisterPage() {
           disabled={loading}
           className="bkr-press mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
         >
-          {loading ? "Sending…" : "Send verification code →"}
+          {loading ? t("sending") : t("sendVerification")}
         </button>
       </form>
 
       <p className="mt-6 text-center font-editorial text-[13px] text-caramel">
-        Already a member?{" "}
+        {t("alreadyMember")}{" "}
         <Link href="/login" className="font-sans font-semibold text-cinnamon not-italic">
-          Sign in →
+          {t("signInLink")}
         </Link>
       </p>
     </main>

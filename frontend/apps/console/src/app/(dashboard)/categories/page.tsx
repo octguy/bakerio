@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useFilterStore } from "@/lib/store";
 import { useViewportPageSize } from "@/lib/use-viewport-page-size";
@@ -38,6 +39,8 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function CategoriesPage() {
+  const t = useTranslations("categories");
+  const tc = useTranslations("common");
   const qc = useQueryClient();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -144,7 +147,7 @@ export default function CategoriesPage() {
   const columns: ColumnDef<Category, unknown>[] = [
     {
       accessorKey: "is_active",
-      header: "Status",
+      header: t("status"),
       cell: ({ row }) => {
         const isActive = row.original.is_active;
         const isPending =
@@ -173,9 +176,9 @@ export default function CategoriesPage() {
         );
       },
     },
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "slug", header: "Slug" },
-    { accessorKey: "sort_order", header: "Order" },
+    { accessorKey: "name", header: t("name") },
+    { accessorKey: "slug", header: t("slug") },
+    { accessorKey: "sort_order", header: t("order") },
     {
       id: "actions",
       header: "",
@@ -224,7 +227,7 @@ export default function CategoriesPage() {
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              How the menu is shelved
+              {t("subtitle")}
             </span>
           </div>
           <h1
@@ -235,9 +238,9 @@ export default function CategoriesPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Categories{" "}
+            {t("title")}{" "}
             <span className="font-editorial text-cinnamon">
-              · {categories.length} sections
+              · {t("sections", { count: categories.length })}
             </span>
           </h1>
         </div>
@@ -247,18 +250,18 @@ export default function CategoriesPage() {
             setOpen(true);
           }}
         >
-          <Plus aria-hidden="true" className="h-4 w-4" /> Add Category
+          <Plus aria-hidden="true" className="h-4 w-4" /> {t("addCategory")}
         </Button>
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-console-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="w-full sm:max-w-xs">
-          <Label htmlFor="category-search">Search</Label>
+          <Label htmlFor="category-search">{tc("search")}</Label>
           <Input
             id="category-search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search categories..."
+            placeholder={t("searchPlaceholder")}
             className="mt-1"
           />
         </div>
@@ -270,7 +273,7 @@ export default function CategoriesPage() {
             <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-1 text-sm text-console-muted">
-            <span>Page</span>
+            <span>{tc("page")}</span>
             <Input
               aria-label="Jump to category page"
               type="number"
@@ -284,7 +287,7 @@ export default function CategoriesPage() {
               }}
               className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
-            <span>of {totalPages}</span>
+            <span>{tc("of", { total: totalPages })}</span>
           </div>
           <Button type="button" variant="outline" size="sm" aria-label="Next page" onClick={() => setPage((p) => p + 1)} disabled={!canGoNext || isLoading}>
             <ChevronRight aria-hidden="true" className="h-4 w-4" />
@@ -296,7 +299,7 @@ export default function CategoriesPage() {
       </div>
 
       {isLoading ? (
-        <p>Loading…</p>
+        <p>{tc("loading")}</p>
       ) : (
         <DataTable
           columns={columns}
@@ -318,12 +321,12 @@ export default function CategoriesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editing ? "Edit Category" : "New Category"}
+              {editing ? t("editCategory") : t("newCategory")}
             </DialogTitle>
             <DialogDescription>
               {editing
-                ? "Update this category's name and display order."
-                : "Add a new category and choose its display order."}
+                ? t("editCategoryDesc")
+                : t("newCategoryDesc")}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -333,7 +336,7 @@ export default function CategoriesPage() {
             className="space-y-4 mt-4"
           >
             <div>
-              <Label htmlFor="category-name">Name</Label>
+              <Label htmlFor="category-name">{t("name")}</Label>
               <Input id="category-name" {...register("name")} />
               {errors.name && (
                 <p className="text-xs text-destructive mt-1">
@@ -342,7 +345,7 @@ export default function CategoriesPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="category-sort-order">Sort Order</Label>
+              <Label htmlFor="category-sort-order">{t("sortOrder")}</Label>
               <Input
                 id="category-sort-order"
                 type="number"
@@ -363,13 +366,13 @@ export default function CategoriesPage() {
                   setEditing(null);
                 }}
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button
                 type="submit"
                 disabled={createMut.isPending || updateMut.isPending}
               >
-                Save
+                {tc("save")}
               </Button>
             </div>
           </form>
@@ -379,24 +382,24 @@ export default function CategoriesPage() {
       <Dialog open={!!deleting} onOpenChange={() => setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Category</DialogTitle>
+            <DialogTitle>{t("deleteCategory")}</DialogTitle>
             <DialogDescription>
-              Confirm that you want to permanently remove this category.
+              {t("deleteCategoryDesc")}
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Delete &quot;{deleting?.name}&quot;?
+            {t("deleteConfirm", { name: deleting?.name ?? "" })}
           </p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDeleting(null)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={() => deleting && deleteMut.mutate(deleting.id)}
               disabled={deleteMut.isPending}
             >
-              Delete
+              {tc("delete")}
             </Button>
           </div>
         </DialogContent>

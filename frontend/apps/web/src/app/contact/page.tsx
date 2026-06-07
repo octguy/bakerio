@@ -3,23 +3,26 @@
 import { useEffect, useState } from "react";
 import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { z } from "zod";
+import { useTranslations } from "next-intl";
 import { getContactEndpoint } from "@/lib/public-config";
 
-const contactSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email format"),
-  subject: z.string().min(1, "Subject is required"),
-  message: z.string().min(1, "Message is required"),
-});
-
-const contactInfo = [
-  { icon: MapPin, label: "Address", value: "42 Lê Lợi, Bến Nghé, Q.1, HCMC" },
-  { icon: Phone, label: "Phone", value: "+84 28 1234 5678" },
-  { icon: Mail, label: "Email", value: "hello@bakerio.vn" },
-  { icon: Clock, label: "Hours", value: "Every day · 06:00 — 22:00" },
-];
-
 export default function ContactPage() {
+  const t = useTranslations("contact");
+
+  const contactSchema = z.object({
+    name: z.string().min(1, t("nameRequired")),
+    email: z.string().email(t("emailInvalid")),
+    subject: z.string().min(1, t("subjectRequired")),
+    message: z.string().min(1, t("messageRequired")),
+  });
+
+  const contactInfo = [
+    { icon: MapPin, label: t("address"), value: "42 Lê Lợi, Bến Nghé, Q.1, HCMC" },
+    { icon: Phone, label: t("phone"), value: "+84 28 1234 5678" },
+    { icon: Mail, label: t("email"), value: "hello@bakerio.vn" },
+    { icon: Clock, label: t("hours"), value: "Every day · 06:00 — 22:00" },
+  ];
+
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitState, setSubmitState] = useState<"idle" | "pending" | "success" | "error">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -62,13 +65,12 @@ export default function ContactPage() {
 
     setFieldErrors({});
     setSubmitError(null);
-
     setSubmitState("pending");
 
     try {
       const contactEndpoint = getContactEndpoint();
       if (!contactEndpoint) {
-        throw new Error("Contact form is not configured yet. Please email hello@bakerio.vn directly.");
+        throw new Error(t("notConfigured"));
       }
 
       const response = await fetch(contactEndpoint, {
@@ -82,7 +84,7 @@ export default function ContactPage() {
 
       if (!response.ok) {
         const contentType = response.headers.get("content-type") || "";
-        let message = "We couldn't send your message. Please try again in a moment.";
+        let message = t("genericError");
 
         if (contentType.includes("application/json")) {
           const body = await response.json().catch(() => null);
@@ -101,7 +103,7 @@ export default function ContactPage() {
     } catch (error) {
       setSubmitState("error");
       setSubmitError(
-        error instanceof Error ? error.message : "We couldn't send your message. Please try again in a moment.",
+        error instanceof Error ? error.message : t("genericError"),
       );
     }
   };
@@ -113,14 +115,14 @@ export default function ContactPage() {
           <div className="mb-4 flex items-center gap-3">
             <span className="block h-px w-7 bg-golden" />
             <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
-              § iv — say hello
+              {t("sectionLabel")}
             </span>
           </div>
           <h1
             className="font-display tracking-tight"
             style={{ fontSize: "clamp(48px,8vw,72px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
           >
-            We&apos;d love to <span className="font-editorial text-cinnamon">hear from you.</span>
+            {t("title")} <span className="font-editorial text-cinnamon">{t("titleAccent")}</span>
           </h1>
         </div>
       </section>
@@ -130,9 +132,9 @@ export default function ContactPage() {
         {submitState === "success" ? (
           <div className="flex min-h-[300px] items-center justify-center rounded-sm border border-crust bg-white p-10 text-center">
             <div>
-              <div className="font-display text-[40px] tracking-tight text-cinnamon">Thank you.</div>
+              <div className="font-display text-[40px] tracking-tight text-cinnamon">{t("thankYou")}</div>
               <p className="mt-3 font-editorial text-[16px] text-cocoa">
-                We&apos;ll write back from the bakery — usually within the same day.
+                {t("thankYouDesc")}
               </p>
             </div>
           </div>
@@ -144,9 +146,9 @@ export default function ContactPage() {
             aria-busy={submitState === "pending"}
           >
             {[
-              { name: "name", label: "Your name", placeholder: "Linh Phạm" },
-              { name: "email", label: "Email", placeholder: "you@example.com" },
-              { name: "subject", label: "Subject", placeholder: "What's on your mind?" },
+              { name: "name", label: t("nameLabel"), placeholder: t("namePlaceholder") },
+              { name: "email", label: t("emailLabel"), placeholder: t("emailPlaceholder") },
+              { name: "subject", label: t("subjectLabel"), placeholder: t("subjectPlaceholder") },
             ].map((f) => (
               <div key={f.name}>
                 <label
@@ -175,12 +177,12 @@ export default function ContactPage() {
                 htmlFor="contact-message"
                 className="mb-2 block font-mono text-[10px] uppercase tracking-[0.2em] text-caramel"
               >
-                Message
+                {t("messageLabel")}
               </label>
               <textarea
                 id="contact-message"
                 name="message"
-                placeholder="Tell us what you're thinking…"
+                placeholder={t("messagePlaceholder")}
                 rows={5}
                 disabled={submitState === "pending"}
                 className="w-full resize-none rounded-md border border-crust bg-white px-4 py-3.5 text-[15px] text-espresso outline-none transition focus:border-cinnamon focus:ring-2 focus:ring-cinnamon/15"
@@ -202,7 +204,7 @@ export default function ContactPage() {
               disabled={submitState === "pending"}
               className="bkr-press inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.12em] text-cream"
             >
-              {submitState === "pending" ? "Sending…" : "Send message"} <span>→</span>
+              {submitState === "pending" ? t("sending") : t("send")} <span>→</span>
             </button>
           </form>
         )}
@@ -226,10 +228,10 @@ export default function ContactPage() {
 
           <div className="mt-6 rounded-sm border border-crust-deep bg-butter p-5">
             <div className="mb-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.2em] text-cinnamon">
-              ♢ Wholesale & press
+              {t("wholesaleTitle")}
             </div>
             <p className="font-editorial text-[14px] text-cocoa">
-              For trade enquiries, write to <strong className="font-sans not-italic text-cinnamon">trade@bakerio.vn</strong>.
+              {t("wholesaleDesc")} <strong className="font-sans not-italic text-cinnamon">trade@bakerio.vn</strong>.
             </p>
           </div>
         </div>

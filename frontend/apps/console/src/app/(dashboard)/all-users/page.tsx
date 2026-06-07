@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { getUsersPage, type User } from "@repo/api-client";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
@@ -12,15 +13,18 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
-const ROLES = [
-  { value: "super_admin", label: "Super Admin" },
-  { value: "branch_manager", label: "Branch Manager" },
-  { value: "branch_staff", label: "Branch Staff" },
-  { value: "product_manager", label: "Product Manager" },
-  { value: "customer", label: "Customer" },
-];
-
 export default function AllUsersPage() {
+  const t = useTranslations("users");
+  const tc = useTranslations("common");
+
+  const ROLES = [
+    { value: "super_admin", label: t("roleSuperAdmin") },
+    { value: "branch_manager", label: t("roleBranchManager") },
+    { value: "branch_staff", label: t("roleBranchStaff") },
+    { value: "product_manager", label: t("roleProductManager") },
+    { value: "customer", label: t("roleCustomer") },
+  ];
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [role, setRole] = useState("");
@@ -54,7 +58,7 @@ export default function AllUsersPage() {
   const columns: ColumnDef<User, unknown>[] = [
     {
       accessorKey: "full_name",
-      header: "Name",
+      header: t("colName"),
       cell: ({ row }) => (
         <div className="flex flex-col">
           <span className="font-semibold text-espresso">{row.original.full_name}</span>
@@ -64,7 +68,7 @@ export default function AllUsersPage() {
     },
     {
       accessorKey: "roles",
-      header: "Roles",
+      header: t("colRoles"),
       cell: ({ row }) => row.original.roles.join(", "),
     },
   ];
@@ -76,7 +80,7 @@ export default function AllUsersPage() {
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              System Wide User List
+              {t("subtitle")}
             </span>
           </div>
           <h1
@@ -87,7 +91,7 @@ export default function AllUsersPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            All Users <span className="font-editorial text-cinnamon">· Database</span>
+            {t("title")} <span className="font-editorial text-cinnamon">· {t("database")}</span>
           </h1>
         </div>
       </div>
@@ -95,17 +99,17 @@ export default function AllUsersPage() {
       <div className="flex flex-col gap-3 rounded-xl border border-console-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="grid w-full gap-3 sm:max-w-2xl sm:grid-cols-2">
           <div>
-            <Label htmlFor="user-search">Search</Label>
+            <Label htmlFor="user-search">{tc("search")}</Label>
             <Input
               id="user-search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search all users..."
+              placeholder={t("searchPlaceholder")}
               className="mt-1"
             />
           </div>
           <div>
-            <Label htmlFor="role-filter">Role</Label>
+            <Label htmlFor="role-filter">{t("labelRole")}</Label>
             <Select
               id="role-filter"
               value={role}
@@ -115,7 +119,7 @@ export default function AllUsersPage() {
               }}
               className="mt-1"
             >
-              <option value="">All roles</option>
+              <option value="">{t("allRoles")}</option>
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.label}
@@ -132,7 +136,7 @@ export default function AllUsersPage() {
             <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-1 text-sm text-console-muted">
-            <span>Page</span>
+            <span>{t("page")}</span>
             <Input
               aria-label="Jump to users page"
               type="number"
@@ -146,7 +150,7 @@ export default function AllUsersPage() {
               }}
               className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
-            <span>of {totalPages}</span>
+            <span>{t("of", { total: totalPages })}</span>
           </div>
           <Button type="button" variant="outline" size="sm" aria-label="Next page" onClick={() => setPage((p) => p + 1)} disabled={!canGoNext || isLoading}>
             <ChevronRight aria-hidden="true" className="h-4 w-4" />
@@ -158,9 +162,9 @@ export default function AllUsersPage() {
       </div>
 
       {isLoading ? (
-        <p>Loading...</p>
+        <p>{tc("loading")}</p>
       ) : error ? (
-        <p className="text-destructive">Failed to load users.</p>
+        <p className="text-destructive">{t("loadError")}</p>
       ) : (
         <DataTable
           columns={columns}

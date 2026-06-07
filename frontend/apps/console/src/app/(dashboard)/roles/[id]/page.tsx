@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, Check, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -28,6 +29,7 @@ type RoleForm = z.infer<typeof roleSchema>;
 
 export default function RoleDetailPage() {
   const { id } = useParams() as { id: string };
+  const t = useTranslations("roles");
   const { toast } = useToast();
 
   const { data: role, isLoading: roleLoading } = useRole(id);
@@ -84,7 +86,7 @@ export default function RoleDetailPage() {
         setTimeout(() => setPermSaveState("idle"), 1500);
       } catch {
         setPermSaveState("idle");
-        toast("Failed to save permissions", "error");
+        toast(t("permsSaveFailed"), "error");
       }
     }, 500);
   }
@@ -102,9 +104,9 @@ export default function RoleDetailPage() {
   async function onSaveRole(values: RoleForm) {
     try {
       await updateRole.mutateAsync(values);
-      toast("Role updated");
+      toast(t("updated"));
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Failed to update";
+      const msg = e instanceof Error ? e.message : t("updateFailed");
       toast(msg, "error");
     }
   }
@@ -120,8 +122,8 @@ export default function RoleDetailPage() {
   if (!role) {
     return (
       <div className="py-16 text-center">
-        <p className="text-[13px] text-[var(--console-muted)]">Role not found</p>
-        <Link href="/roles" className="mt-2 inline-block text-[12px] text-cinnamon hover:underline">← Back to roles</Link>
+        <p className="text-[13px] text-[var(--console-muted)]">{t("notFound")}</p>
+        <Link href="/roles" className="mt-2 inline-block text-[12px] text-cinnamon hover:underline">{t("backToRoles")}</Link>
       </div>
     );
   }
@@ -133,26 +135,26 @@ export default function RoleDetailPage() {
         <Link href="/roles" className="flex h-7 w-7 items-center justify-center rounded border border-[var(--console-line)] bg-white hover:bg-cream transition-colors">
           <ChevronLeft size={14} />
         </Link>
-        <h1 className="font-display text-lg tracking-tight">Edit Role: <span className="text-cinnamon">{role.name}</span></h1>
+        <h1 className="font-display text-lg tracking-tight">{t("editRole")} <span className="text-cinnamon">{role.name}</span></h1>
       </div>
 
       {/* Role Info */}
       <section className="rounded-lg border border-[var(--console-line)] bg-white p-5 mb-6">
-        <h2 className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--console-muted)] mb-3">Role Info</h2>
+        <h2 className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--console-muted)] mb-3">{t("roleInfo")}</h2>
         <form onSubmit={form.handleSubmit(onSaveRole)} className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[180px] space-y-1">
-            <Label htmlFor="role-name" className="text-[11px]">Name</Label>
+            <Label htmlFor="role-name" className="text-[11px]">{t("labelName")}</Label>
             <Input id="role-name" {...form.register("name")} />
             {form.formState.errors.name && (
               <p className="text-[10px] text-red-600">{form.formState.errors.name.message}</p>
             )}
           </div>
           <div className="flex-1 min-w-[180px] space-y-1">
-            <Label htmlFor="role-desc" className="text-[11px]">Description</Label>
+            <Label htmlFor="role-desc" className="text-[11px]">{t("labelDescription")}</Label>
             <Input id="role-desc" {...form.register("description")} />
           </div>
           <Button type="submit" size="sm" disabled={updateRole.isPending}>
-            {updateRole.isPending ? "Saving..." : "Save"}
+            {updateRole.isPending ? t("saving") : t("save")}
           </Button>
         </form>
       </section>
@@ -160,10 +162,10 @@ export default function RoleDetailPage() {
       {/* Permission Matrix */}
       <section className="rounded-lg border border-[var(--console-line)] bg-white p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--console-muted)]">Permissions</h2>
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.15em] text-[var(--console-muted)]">{t("permissions")}</h2>
           <div className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--console-muted)]">
-            {permSaveState === "saving" && <><Loader2 className="h-3 w-3 animate-spin" /> Saving...</>}
-            {permSaveState === "saved" && <><Check className="h-3 w-3 text-green-600" /> <span className="text-green-600">Saved</span></>}
+            {permSaveState === "saving" && <><Loader2 className="h-3 w-3 animate-spin" /> {t("saving")}</>}
+            {permSaveState === "saved" && <><Check className="h-3 w-3 text-green-600" /> <span className="text-green-600">{t("saved")}</span></>}
           </div>
         </div>
 
@@ -187,7 +189,7 @@ export default function RoleDetailPage() {
             </div>
           ))}
           {!groups.length && (
-            <p className="text-[12px] text-[var(--console-muted)] text-center py-4">No permissions defined</p>
+            <p className="text-[12px] text-[var(--console-muted)] text-center py-4">{t("noPermissions")}</p>
           )}
         </div>
       </section>

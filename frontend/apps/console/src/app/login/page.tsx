@@ -4,11 +4,13 @@ import { useState, Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
+import { useTranslations } from "next-intl";
 
 function LoginContent() {
   const { login } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -31,7 +33,7 @@ function LoginContent() {
       router.push(redirectTo);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not sign in. Please retry.",
+        err instanceof Error ? err.message : t("genericError"),
       );
     } finally {
       setLoading(false);
@@ -81,7 +83,7 @@ function LoginContent() {
           <div className="mb-4 flex items-center gap-3">
             <span className="block h-px w-7 bg-golden" />
             <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
-              Bakerio Ops · staff only
+              {t("staffOnly")}
             </span>
           </div>
           <h1
@@ -92,12 +94,11 @@ function LoginContent() {
               letterSpacing: "-0.025em",
             }}
           >
-            Welcome back,{" "}
-            <span className="font-editorial text-cinnamon">baker.</span>
+            {t("welcomeBack")}{" "}
+            <span className="font-editorial text-cinnamon">{t("baker")}</span>
           </h1>
           <p className="mt-5 font-news text-[16px] leading-[1.5] text-cocoa">
-            The counter is waiting. Sign in with your work email to pick up
-            where you left off — pending orders, kitchen queue, inventory.
+            {t("subtitle")}
           </p>
 
           <form onSubmit={handleSubmit} className="mt-9 flex flex-col gap-4">
@@ -106,7 +107,7 @@ function LoginContent() {
                 htmlFor="email"
                 className="block font-mono text-[10px] uppercase tracking-[0.2em] text-caramel"
               >
-                Work email
+                {t("emailLabel")}
               </label>
               <div className="mt-2 flex items-center gap-2.5 rounded-xl border border-crust bg-white px-4 py-3.5 focus-within:ring-2 focus-within:ring-cinnamon">
                 <span className="text-caramel" aria-hidden="true">
@@ -133,15 +134,15 @@ function LoginContent() {
                   htmlFor="password"
                   className="font-mono text-[10px] uppercase tracking-[0.2em] text-caramel"
                 >
-                  Password
+                  {t("passwordLabel")}
                 </label>
                 <button
                   type="button"
                   disabled
-                  aria-label="Forgot password? Reset is unavailable/coming soon."
+                  aria-label={t("forgotPassword")}
                   className="cursor-default font-mono text-[10.5px] font-bold tracking-[0.16em] text-cinnamon"
                 >
-                  FORGOT?
+                  {t("forgot")}
                 </button>
               </div>
               <div className="mt-2 flex items-center gap-2.5 rounded-xl border-2 border-cinnamon bg-white px-4 py-3.5 focus-within:ring-2 focus-within:ring-cinnamon/60">
@@ -164,7 +165,7 @@ function LoginContent() {
                 <button
                   type="button"
                   onClick={() => setShowPw((s) => !s)}
-                  aria-label={showPw ? "Hide password" : "Show password"}
+                  aria-label={showPw ? t("hidePassword") : t("showPassword")}
                   aria-pressed={showPw}
                   className="text-caramel"
                 >
@@ -185,10 +186,10 @@ function LoginContent() {
               className="bkr-press inline-flex items-center justify-center gap-2 rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-cream disabled:opacity-50"
             >
               {loading ? (
-                "Signing in…"
+                t("signingIn")
               ) : (
                 <>
-                  Sign in to ops <span aria-hidden="true">→</span>
+                  {t("signIn")} <span aria-hidden="true">→</span>
                 </>
               )}
             </button>
@@ -199,11 +200,11 @@ function LoginContent() {
                   ♢
                 </span>
                 <span>
-                  If you&apos;re a customer, you want the{" "}
+                  {t("customerNote")}{" "}
                   <strong className="font-sans not-italic text-cinnamon">
-                    order app
+                    {t("orderApp")}
                   </strong>
-                  , not this.{" "}
+                  {" "}
                   <span className="font-sans not-italic font-bold text-cinnamon">
                     order.bakerio.vn ↗
                   </span>
@@ -225,7 +226,7 @@ function LoginContent() {
       >
         <Image
           src="https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=1600&q=85&auto=format"
-          alt="Baker at work"
+          alt={t("photoAlt")}
           fill
           priority
           className="object-cover"
@@ -263,15 +264,11 @@ function LoginContent() {
               letterSpacing: "-0.01em",
             }}
           >
-            &ldquo;The dough does its work in the dark.{" "}
-            <span className="font-editorial text-honey">
-              Our job is only to come back.
-            </span>
-            &rdquo;
+            {t("quote")}
           </div>
           <div className="mt-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] opacity-85">
             <span className="block h-px w-6 bg-honey" />
-            Linh Phạm · head baker
+            {t("quoteAuthor")}
           </div>
         </div>
       </section>

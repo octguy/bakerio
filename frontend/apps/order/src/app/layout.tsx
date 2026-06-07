@@ -7,6 +7,7 @@ import { QueryProvider } from "@/lib/providers";
 import { DesktopSidebarNav } from "@/components/DesktopSidebarNav";
 import { LayoutShell } from "@/components/LayoutShell";
 import { UndoToast } from "@/components/undo-toast";
+import { I18nProvider } from "@/i18n/provider";
 
 export const metadata: Metadata = {
   title: "Bakerio — Order Fresh Baked Goods",
@@ -29,6 +30,7 @@ export default function RootLayout({
         <ViewTransitions>
           <AuthProvider>
             <QueryProvider>
+            <I18nProvider>
             <a
               href="#main-content"
               className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-espresso focus:rounded"
@@ -38,6 +40,7 @@ export default function RootLayout({
             <DesktopSidebarNav />
             <LayoutShell>{children}</LayoutShell>
             <UndoToast />
+            </I18nProvider>
             </QueryProvider>
           </AuthProvider>
         </ViewTransitions>

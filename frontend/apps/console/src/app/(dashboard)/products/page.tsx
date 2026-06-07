@@ -34,6 +34,7 @@ import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/lib/auth";
+import { useTranslations } from "next-intl";
 
 const schema = z.object({
   name: z.string().min(1, "Name required"),
@@ -42,6 +43,8 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 export default function ProductsPage() {
+  const t = useTranslations("products");
+  const tc = useTranslations("common");
   const qc = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -115,7 +118,7 @@ export default function ProductsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
       setOpen(false);
-      toast("Product created");
+      toast(t("productCreated"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -133,7 +136,7 @@ export default function ProductsPage() {
       qc.invalidateQueries({ queryKey: ["products"] });
       setOpen(false);
       setEditing(null);
-      toast("Product updated");
+      toast(t("productUpdated"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -143,7 +146,7 @@ export default function ProductsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
       setDeleting(null);
-      toast("Product deleted");
+      toast(t("productDeleted"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -165,7 +168,7 @@ export default function ProductsPage() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
-      toast("Product status updated");
+      toast(t("statusUpdated"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -173,7 +176,7 @@ export default function ProductsPage() {
   const columns: ColumnDef<Product, unknown>[] = [
     {
       accessorKey: "is_active",
-      header: "Status",
+      header: t("status"),
       cell: ({ row }) => {
         const isActive = row.original.is_active;
         const isPending =
@@ -205,12 +208,12 @@ export default function ProductsPage() {
     {
       accessorFn: (row) => `${row.name} ${row.slug || ""}`,
       id: "name",
-      header: "Name",
+      header: t("name"),
       cell: ({ row }) => row.original.name,
     },
     {
       accessorKey: "category_id",
-      header: "Category",
+      header: t("category"),
       cell: ({ row }) => {
         const category = categories.find((c) => c.id === row.original.category_id);
         return category?.name || "—";
@@ -218,13 +221,13 @@ export default function ProductsPage() {
     },
     {
       accessorKey: "price",
-      header: "Price",
+      header: t("price"),
       cell: ({ row }) => formatCurrency(row.original.price),
     },
     ...(showStats ? [
       {
         id: "qty_sold",
-        header: "Sold",
+        header: t("sold"),
         cell: ({ row }: { row: { original: Product } }) => {
           const s = statsMap.get(row.original.id);
           return s ? s.qty_sold : "—";
@@ -232,7 +235,7 @@ export default function ProductsPage() {
       },
       {
         id: "revenue",
-        header: "Revenue",
+        header: t("revenue"),
         cell: ({ row }: { row: { original: Product } }) => {
           const s = statsMap.get(row.original.id);
           return s ? formatCurrency(Number(s.revenue)) : "—";
@@ -240,7 +243,7 @@ export default function ProductsPage() {
       },
       {
         id: "stock",
-        header: "Stock",
+        header: t("stock"),
         cell: ({ row }: { row: { original: Product } }) => {
           const s = statsMap.get(row.original.id);
           return s ? s.total_stock : "—";
@@ -278,8 +281,7 @@ export default function ProductsPage() {
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              {products.length} items · {categories.length} categories · 11
-              shops
+              {t("subtitle", { items: products.length, categories: categories.length })}
             </span>
           </div>
           <h1
@@ -290,8 +292,8 @@ export default function ProductsPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Products{" "}
-            <span className="font-editorial text-cinnamon">· the carte</span>
+            {t("title")}{" "}
+            <span className="font-editorial text-cinnamon">{t("theCarte")}</span>
           </h1>
         </div>
         <Button
@@ -300,24 +302,24 @@ export default function ProductsPage() {
             setOpen(true);
           }}
         >
-          <Plus aria-hidden="true" className="h-4 w-4" /> Add Product
+          <Plus aria-hidden="true" className="h-4 w-4" /> {t("addProduct")}
         </Button>
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-console-line bg-white/70 p-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="grid w-full gap-3 sm:max-w-2xl sm:grid-cols-2">
           <div>
-            <Label htmlFor="product-search">Search</Label>
+            <Label htmlFor="product-search">{tc("search")}</Label>
             <Input
               id="product-search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search products..."
+              placeholder={t("searchPlaceholder")}
               className="mt-1"
             />
           </div>
           <div>
-          <Label htmlFor="category-filter">Category</Label>
+          <Label htmlFor="category-filter">{t("category")}</Label>
           <Select
             id="category-filter"
             value={category}
@@ -327,7 +329,7 @@ export default function ProductsPage() {
             }}
             className="mt-1"
           >
-            <option value="">All categories</option>
+            <option value="">{t("allCategories")}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.slug}>
                 {c.name}
@@ -358,7 +360,7 @@ export default function ProductsPage() {
             <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-1 text-sm text-console-muted">
-            <span>Page</span>
+            <span>{tc("page")}</span>
             <Input
               aria-label="Jump to product page"
               type="number"
@@ -372,7 +374,7 @@ export default function ProductsPage() {
               }}
               className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
-            <span>of {totalPages}</span>
+            <span>{tc("of", { total: totalPages })}</span>
           </div>
           <Button
             type="button"
@@ -398,7 +400,7 @@ export default function ProductsPage() {
       </div>
 
       {isLoading ? (
-        <p>Loading...</p>
+        <p>{tc("loading")}</p>
       ) : (
         <DataTable
           columns={columns}
@@ -424,26 +426,24 @@ export default function ProductsPage() {
       <Dialog open={!!deleting} onOpenChange={() => setDeleting(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Product</DialogTitle>
+            <DialogTitle>{t("deleteProduct")}</DialogTitle>
             <DialogDescription>
-              Confirm that you want to permanently remove this product from the
-              catalog.
+              {t("deleteDesc")}
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete &quot;{deleting?.name}&quot;? This
-            action cannot be undone.
+            {t("deleteConfirm", { name: deleting?.name ?? "" })}
           </p>
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={() => setDeleting(null)}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={() => deleting && deleteMut.mutate(deleting.id)}
               disabled={deleteMut.isPending}
             >
-              Delete
+              {tc("delete")}
             </Button>
           </div>
         </DialogContent>
@@ -459,6 +459,7 @@ interface CategoryComboboxProps {
 }
 
 function CategoryCombobox({ value, onChange, categories }: CategoryComboboxProps) {
+  const t = useTranslations("products");
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -489,7 +490,7 @@ function CategoryCombobox({ value, onChange, categories }: CategoryComboboxProps
         }}
         className="w-full justify-between bg-background text-left font-normal border-input text-espresso shadow-sm"
       >
-        <span>{selectedCategory ? selectedCategory.name : "Select category..."}</span>
+        <span>{selectedCategory ? selectedCategory.name : t("selectCategory")}</span>
         <span className="text-console-muted text-xs">▼</span>
       </Button>
 
@@ -497,7 +498,7 @@ function CategoryCombobox({ value, onChange, categories }: CategoryComboboxProps
         <div className="absolute z-50 mt-1 w-full rounded-md border border-console-line bg-white p-2 shadow-lg max-h-60 overflow-y-auto">
           <Input
             autoFocus
-            placeholder="Search category..."
+            placeholder={t("searchCategory")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="mb-2 h-8 text-sm"
@@ -511,7 +512,7 @@ function CategoryCombobox({ value, onChange, categories }: CategoryComboboxProps
               }}
               className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-vanilla text-espresso"
             >
-              None
+              {t("none")}
             </button>
             {filtered.length > 0 ? (
               filtered.map((c) => (
@@ -531,7 +532,7 @@ function CategoryCombobox({ value, onChange, categories }: CategoryComboboxProps
               ))
             ) : (
               <p className="text-xs text-console-muted text-center py-2">
-                No categories found.
+                {t("noCategoriesFound")}
               </p>
             )}
           </div>
@@ -556,6 +557,8 @@ function ProductFormDialog({
   onSubmit: (d: FormData) => void;
   loading: boolean;
 }) {
+  const t = useTranslations("products");
+  const tc = useTranslations("common");
   const {
     register,
     handleSubmit,
@@ -585,16 +588,14 @@ function ProductFormDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? "Edit Product" : "New Product"}</DialogTitle>
+          <DialogTitle>{editing ? t("editProduct") : t("newProduct")}</DialogTitle>
           <DialogDescription>
-            {editing
-              ? "Update this product's name, price, and category."
-              : "Add a new product with its name, price, and category."}
+            {editing ? t("editDesc") : t("createDesc")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-4">
           <div>
-            <Label htmlFor="product-name">Name</Label>
+            <Label htmlFor="product-name">{t("name")}</Label>
             <Input id="product-name" {...register("name")} />
             {errors.name && (
               <p className="text-xs text-destructive mt-1">
@@ -603,7 +604,7 @@ function ProductFormDialog({
             )}
           </div>
           <div>
-            <Label htmlFor="product-price">Price (VND)</Label>
+            <Label htmlFor="product-price">{t("price")}</Label>
             <Input id="product-price" type="number" {...register("price")} />
             {errors.price && (
               <p className="text-xs text-destructive mt-1">
@@ -612,7 +613,7 @@ function ProductFormDialog({
             )}
           </div>
           <div>
-            <Label>Category</Label>
+            <Label>{t("category")}</Label>
             <Controller
               control={control}
               name="category_id"
@@ -632,10 +633,10 @@ function ProductFormDialog({
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
+              {tc("cancel")}
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save"}
+              {loading ? tc("saving") : tc("save")}
             </Button>
           </div>
         </form>

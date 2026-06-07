@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getAdminVouchers,
@@ -88,6 +89,8 @@ function formatCap(value?: string): string {
 }
 
 export default function VouchersPage() {
+  const t = useTranslations("vouchers");
+  const tc = useTranslations("common");
   const qc = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -133,7 +136,7 @@ export default function VouchersPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["console-vouchers"] });
       setOpen(false);
-      toast("Voucher created");
+      toast(t("created"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -152,7 +155,7 @@ export default function VouchersPage() {
       qc.invalidateQueries({ queryKey: ["console-vouchers"] });
       setOpen(false);
       setEditing(null);
-      toast("Voucher updated");
+      toast(t("updated"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -162,7 +165,7 @@ export default function VouchersPage() {
       updateVoucher(voucher.id, { is_active: isActive }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["console-vouchers"] });
-      toast("Voucher status updated");
+      toast(t("statusUpdated"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -190,7 +193,7 @@ export default function VouchersPage() {
   const columns: ColumnDef<Voucher, unknown>[] = [
     {
       accessorKey: "is_active",
-      header: "Status",
+      header: t("colStatus"),
       cell: ({ row }) => {
         const isActive = row.original.is_active;
         const isPending =
@@ -218,7 +221,7 @@ export default function VouchersPage() {
     },
     {
       accessorKey: "code",
-      header: "Code",
+      header: t("colCode"),
       cell: ({ row }) => (
         <span className="font-mono font-semibold tracking-wide">
           {row.original.code}
@@ -227,22 +230,22 @@ export default function VouchersPage() {
     },
     {
       accessorKey: "discount_percent",
-      header: "Discount",
+      header: t("colDiscount"),
       cell: ({ row }) => `${row.original.discount_percent}%`,
     },
     {
       id: "max_discount",
-      header: "Max cap",
+      header: t("colMaxCap"),
       cell: ({ row }) => formatCap(row.original.max_discount),
     },
     {
       id: "min_subtotal",
-      header: "Min order",
+      header: t("colMinOrder"),
       cell: ({ row }) => formatCap(row.original.min_subtotal),
     },
     {
       id: "validity",
-      header: "Valid",
+      header: t("colValid"),
       cell: ({ row }) => (
         <span className="font-mono text-xs text-console-muted">
           {formatRange(row.original.valid_from, row.original.valid_to)}
@@ -275,7 +278,7 @@ export default function VouchersPage() {
     return (
       <div className="rounded-lg border border-console-line bg-white px-4 py-10 text-center">
         <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-console-muted">
-          Vouchers are managed by super admins and product managers.
+          {t("noAccess")}
         </p>
       </div>
     );
@@ -288,7 +291,7 @@ export default function VouchersPage() {
           <div className="mb-1.5 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              Discounts &amp; promotions
+              {t("subtitle")}
             </span>
           </div>
           <h1
@@ -299,8 +302,8 @@ export default function VouchersPage() {
               letterSpacing: "-0.02em",
             }}
           >
-            Vouchers{" "}
-            <span className="font-editorial text-cinnamon">· {total} codes</span>
+            {t("title")}{" "}
+            <span className="font-editorial text-cinnamon">· {t("codes", { count: total })}</span>
           </h1>
         </div>
         <Button
@@ -318,7 +321,7 @@ export default function VouchersPage() {
             setOpen(true);
           }}
         >
-          <Plus aria-hidden="true" className="h-4 w-4" /> Add Voucher
+          <Plus aria-hidden="true" className="h-4 w-4" /> {t("addVoucher")}
         </Button>
       </div>
 
@@ -333,7 +336,7 @@ export default function VouchersPage() {
               onClick={() => setActiveFilter(value)}
               className="capitalize"
             >
-              {value}
+              {t(`filter_${value}`)}
             </Button>
           ))}
         </div>
@@ -345,7 +348,7 @@ export default function VouchersPage() {
             <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-1 text-sm text-console-muted">
-            <span>Page</span>
+            <span>{t("page")}</span>
             <Input
               aria-label="Jump to voucher page"
               type="number"
@@ -359,7 +362,7 @@ export default function VouchersPage() {
               }}
               className="h-8 w-16 appearance-none text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
-            <span>of {totalPages}</span>
+            <span>{t("of", { total: totalPages })}</span>
           </div>
           <Button type="button" variant="outline" size="sm" aria-label="Next page" onClick={() => setPage((p) => p + 1)} disabled={!canGoNext || isLoading}>
             <ChevronRight aria-hidden="true" className="h-4 w-4" />
@@ -371,7 +374,7 @@ export default function VouchersPage() {
       </div>
 
       {isLoading ? (
-        <p>Loading…</p>
+        <p>{tc("loading")}</p>
       ) : (
         <DataTable columns={columns} data={vouchers} showFooter={false} />
       )}
@@ -388,11 +391,9 @@ export default function VouchersPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Edit Voucher" : "New Voucher"}</DialogTitle>
+            <DialogTitle>{editing ? t("editVoucher") : t("newVoucher")}</DialogTitle>
             <DialogDescription>
-              {editing
-                ? "Update this voucher's discount and validity window."
-                : "Create a discount code customers can apply at checkout."}
+              {editing ? t("editDesc") : t("createDesc")}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -402,7 +403,7 @@ export default function VouchersPage() {
             className="mt-4 space-y-4"
           >
             <div>
-              <Label htmlFor="voucher-code">Code</Label>
+              <Label htmlFor="voucher-code">{t("labelCode")}</Label>
               <Input
                 id="voucher-code"
                 spellCheck={false}
@@ -415,7 +416,7 @@ export default function VouchersPage() {
               )}
             </div>
             <div>
-              <Label htmlFor="voucher-discount">Discount %</Label>
+              <Label htmlFor="voucher-discount">{t("labelDiscount")}</Label>
               <Input
                 id="voucher-discount"
                 type="number"
@@ -431,29 +432,29 @@ export default function VouchersPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="voucher-max">Max cap (₫)</Label>
+                <Label htmlFor="voucher-max">{t("labelMaxCap")}</Label>
                 <Input
                   id="voucher-max"
                   type="number"
                   min={0}
-                  placeholder="No cap"
+                  placeholder={t("placeholderNoCap")}
                   {...register("max_discount")}
                 />
               </div>
               <div>
-                <Label htmlFor="voucher-min">Min order (₫)</Label>
+                <Label htmlFor="voucher-min">{t("labelMinOrder")}</Label>
                 <Input
                   id="voucher-min"
                   type="number"
                   min={0}
-                  placeholder="No minimum"
+                  placeholder={t("placeholderNoMin")}
                   {...register("min_subtotal")}
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="voucher-from">Valid from</Label>
+                <Label htmlFor="voucher-from">{t("labelValidFrom")}</Label>
                 <Input id="voucher-from" type="datetime-local" {...register("valid_from")} />
                 {errors.valid_from && (
                   <p className="mt-1 text-xs text-destructive">
@@ -462,7 +463,7 @@ export default function VouchersPage() {
                 )}
               </div>
               <div>
-                <Label htmlFor="voucher-to">Valid to</Label>
+                <Label htmlFor="voucher-to">{t("labelValidTo")}</Label>
                 <Input id="voucher-to" type="datetime-local" {...register("valid_to")} />
                 {errors.valid_to && (
                   <p className="mt-1 text-xs text-destructive">
@@ -473,7 +474,7 @@ export default function VouchersPage() {
             </div>
             <label className="flex items-center gap-2 text-sm text-espresso">
               <input type="checkbox" {...register("is_active")} />
-              Active
+              {t("labelActive")}
             </label>
             <div className="flex justify-end gap-2">
               <Button
@@ -484,10 +485,10 @@ export default function VouchersPage() {
                   setEditing(null);
                 }}
               >
-                Cancel
+                {tc("cancel")}
               </Button>
               <Button type="submit" disabled={createMut.isPending || updateMut.isPending}>
-                Save
+                {tc("save")}
               </Button>
             </div>
           </form>

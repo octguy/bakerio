@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCategory, updateCategory } from "@repo/api-client";
 import { buttonVariants } from "@/components/ui/button";
@@ -18,6 +19,7 @@ interface CategoryDetailsPageClientProps {
 }
 
 export function CategoryDetailsPageClient({ categorySlug }: CategoryDetailsPageClientProps) {
+  const t = useTranslations("categories");
   const qc = useQueryClient();
   const { toast } = useToast();
   const [name, setName] = useState("");
@@ -50,7 +52,7 @@ export function CategoryDetailsPageClient({ categorySlug }: CategoryDetailsPageC
       qc.setQueryData(["category", categorySlug], updated);
       qc.setQueryData(["category", updated.slug], updated);
       qc.invalidateQueries({ queryKey: ["categories"] });
-      toast("Category updated");
+      toast(t("updated"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -61,7 +63,7 @@ export function CategoryDetailsPageClient({ categorySlug }: CategoryDetailsPageC
         <Link
           href="/categories"
           className={buttonVariants({ variant: "ghost", size: "icon" })}
-          aria-label="Back to categories"
+          aria-label={t("backToCategories")}
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -69,7 +71,7 @@ export function CategoryDetailsPageClient({ categorySlug }: CategoryDetailsPageC
           <div className="mb-1 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              Category Details
+              {t("detailLabel")}
             </span>
           </div>
           <h1
@@ -82,10 +84,10 @@ export function CategoryDetailsPageClient({ categorySlug }: CategoryDetailsPageC
           >
             {category ? (
               <>
-                Manage <span className="font-editorial text-cinnamon">{category.name}</span>
+                {t("manage")} <span className="font-editorial text-cinnamon">{category.name}</span>
               </>
             ) : (
-              "Loading Category..."
+              t("loadingCategory")
             )}
           </h1>
         </div>
@@ -95,18 +97,18 @@ export function CategoryDetailsPageClient({ categorySlug }: CategoryDetailsPageC
         <div className="flex flex-col items-center justify-center gap-4 py-20">
           <Loader2 className="h-8 w-8 animate-spin text-cinnamon" />
           <p className="font-mono text-sm text-console-muted">
-            Loading category details...
+            {t("loadingDetails")}
           </p>
         </div>
       ) : !category ? (
         <Card className="p-6 text-center text-sm text-console-muted">
-          Category not found.
+          {t("notFound")}
         </Card>
       ) : (
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
           <Card className="border-border bg-white p-5 shadow-sm lg:col-span-1">
             <h2 className="border-b border-console-line pb-2 font-display text-lg font-semibold text-espresso">
-              Category Information
+              {t("information")}
             </h2>
             <form
               className="mt-4 space-y-4"
@@ -116,7 +118,7 @@ export function CategoryDetailsPageClient({ categorySlug }: CategoryDetailsPageC
               }}
             >
               <div>
-                <Label htmlFor="category-name">Name</Label>
+                <Label htmlFor="category-name">{t("labelName")}</Label>
                 <Input
                   id="category-name"
                   value={name}
@@ -125,7 +127,7 @@ export function CategoryDetailsPageClient({ categorySlug }: CategoryDetailsPageC
                 />
               </div>
               <div>
-                <Label htmlFor="category-sort-order">Sort Order</Label>
+                <Label htmlFor="category-sort-order">{t("sortOrder")}</Label>
                 <Input
                   id="category-sort-order"
                   type="number"
@@ -134,24 +136,24 @@ export function CategoryDetailsPageClient({ categorySlug }: CategoryDetailsPageC
                 />
               </div>
               <div>
-                <Label htmlFor="category-status">Status</Label>
+                <Label htmlFor="category-status">{t("status")}</Label>
                 <Select
                   id="category-status"
                   value={isActive ? "active" : "inactive"}
                   onChange={(event) => setIsActive(event.target.value === "active")}
                 >
-                  <option value="active">Enabled</option>
-                  <option value="inactive">Disabled</option>
+                  <option value="active">{t("enabled")}</option>
+                  <option value="inactive">{t("disabled")}</option>
                 </Select>
               </div>
               <div>
-                <Label>Slug</Label>
+                <Label>{t("slug")}</Label>
                 <span className="mt-0.5 block font-mono text-xs text-cinnamon">
                   {category.slug}
                 </span>
               </div>
               <Button type="submit" className="w-full" disabled={updateMut.isPending}>
-                {updateMut.isPending ? "Saving..." : "Save Category"}
+                {updateMut.isPending ? t("saving") : t("saveCategory")}
               </Button>
             </form>
           </Card>

@@ -13,6 +13,7 @@ import type { ProductStat, BranchStat } from "@repo/api-client";
 import { useAuth } from "@/lib/auth";
 import { RevenueChart } from "@/components/charts/revenue-chart";
 import { ProductSalesChart } from "@/components/charts/product-sales-chart";
+import { useTranslations } from "next-intl";
 
 function formatVnd(value: string | number): string {
   return Number(value).toLocaleString("vi-VN") + "₫";
@@ -48,6 +49,7 @@ export default function DashboardPage() {
 // ─── SUPER ADMIN ─────────────────────────────────────────────────────────────
 
 function SuperAdminDashboard() {
+  const t = useTranslations("dashboard");
   const { data: stats } = useQuery({
     queryKey: ["statistics-overview"],
     queryFn: getStatisticsOverview,
@@ -59,10 +61,10 @@ function SuperAdminDashboard() {
   });
 
   const KPIS = [
-    { label: "Total Revenue", value: stats ? formatCompactVnd(stats.total_revenue) : "–" },
-    { label: "Total Orders", value: String(stats?.total_orders ?? "–") },
-    { label: "Customers", value: String(stats?.total_customers ?? "–") },
-    { label: "Branches", value: String(stats?.total_branches ?? "–") },
+    { label: t("totalRevenue"), value: stats ? formatCompactVnd(stats.total_revenue) : "–" },
+    { label: t("totalOrders"), value: String(stats?.total_orders ?? "–") },
+    { label: t("customers"), value: String(stats?.total_customers ?? "–") },
+    { label: t("branches"), value: String(stats?.total_branches ?? "–") },
   ];
 
   return (
@@ -84,19 +86,19 @@ function SuperAdminDashboard() {
 
       {/* Branch ranking table */}
       <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--console-line)] bg-white p-4">
-        <div className="mb-3 font-display text-[17px] tracking-tight">Branch Ranking</div>
+        <div className="mb-3 font-display text-[17px] tracking-tight">{t("branchRanking")}</div>
         {!branchStats?.items?.length ? (
-          <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--console-muted)]">No branch data yet.</p>
+          <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--console-muted)]">{t("noBranchData")}</p>
         ) : (
           <table className="w-full text-left text-[12px]">
             <thead>
               <tr className="border-b border-[var(--console-line)] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--console-muted)]">
                 <th className="pb-2 font-medium">#</th>
-                <th className="pb-2 font-medium">Branch</th>
-                <th className="pb-2 text-right font-medium">Orders</th>
-                <th className="pb-2 text-right font-medium">Revenue</th>
-                <th className="pb-2 text-right font-medium">Staff</th>
-                <th className="pb-2 text-right font-medium">Products</th>
+                <th className="pb-2 font-medium">{t("branch")}</th>
+                <th className="pb-2 text-right font-medium">{t("totalOrders")}</th>
+                <th className="pb-2 text-right font-medium">{t("revenue")}</th>
+                <th className="pb-2 text-right font-medium">{t("staff")}</th>
+                <th className="pb-2 text-right font-medium">{t("products")}</th>
               </tr>
             </thead>
             <tbody>
@@ -121,6 +123,7 @@ function SuperAdminDashboard() {
 // ─── BRANCH MANAGER ──────────────────────────────────────────────────────────
 
 function BranchManagerDashboard() {
+  const t = useTranslations("dashboard");
   const { user } = useAuth();
   const branchId = user?.branch?.id;
 
@@ -131,7 +134,7 @@ function BranchManagerDashboard() {
   });
 
   if (!branchId) {
-    return <p className="font-editorial italic text-[var(--console-muted)]">No branch assigned to your account.</p>;
+    return <p className="font-editorial italic text-[var(--console-muted)]">{t("noBranch")}</p>;
   }
 
   const today = data?.today ?? { orders: 0, revenue: "0" };
@@ -140,10 +143,10 @@ function BranchManagerDashboard() {
   const allTime = data?.all_time ?? { orders: 0, revenue: "0" };
 
   const KPIS = [
-    { label: "Today", value: formatCompactVnd(today.revenue), sub: `${today.orders} orders` },
-    { label: "This Week", value: formatCompactVnd(thisWeek.revenue), sub: `${thisWeek.orders} orders` },
-    { label: "This Month", value: formatCompactVnd(thisMonth.revenue), sub: `${thisMonth.orders} orders` },
-    { label: "All Time", value: formatCompactVnd(allTime.revenue), sub: `${allTime.orders} orders` },
+    { label: t("today"), value: formatCompactVnd(today.revenue), sub: t("ordersCount", { count: today.orders }) },
+    { label: t("thisWeek"), value: formatCompactVnd(thisWeek.revenue), sub: t("ordersCount", { count: thisWeek.orders }) },
+    { label: t("thisMonth"), value: formatCompactVnd(thisMonth.revenue), sub: t("ordersCount", { count: thisMonth.orders }) },
+    { label: t("allTime"), value: formatCompactVnd(allTime.revenue), sub: t("ordersCount", { count: allTime.orders }) },
   ];
 
   return (
@@ -167,17 +170,17 @@ function BranchManagerDashboard() {
       {/* Top products + extra cards */}
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="overflow-auto rounded-lg border border-[var(--console-line)] bg-white p-4 lg:col-span-2">
-          <div className="mb-3 font-display text-[17px] tracking-tight">Top Products</div>
+          <div className="mb-3 font-display text-[17px] tracking-tight">{t("topProducts")}</div>
           {!data?.top_products?.length ? (
-            <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--console-muted)]">No sales data yet.</p>
+            <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--console-muted)]">{t("noSalesData")}</p>
           ) : (
             <table className="w-full text-left text-[12px]">
               <thead>
                 <tr className="border-b border-[var(--console-line)] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--console-muted)]">
                   <th className="pb-2 font-medium">#</th>
-                  <th className="pb-2 font-medium">Product</th>
-                  <th className="pb-2 text-right font-medium">Sold</th>
-                  <th className="pb-2 text-right font-medium">Revenue</th>
+                  <th className="pb-2 font-medium">{t("product")}</th>
+                  <th className="pb-2 text-right font-medium">{t("sold")}</th>
+                  <th className="pb-2 text-right font-medium">{t("revenue")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -196,15 +199,15 @@ function BranchManagerDashboard() {
 
         <div className="flex flex-col gap-3">
           <div className="rounded-lg border border-[var(--console-line)] bg-white p-4">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--console-muted)]">Staff</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--console-muted)]">{t("staff")}</div>
             <div className="mt-1 font-display text-[28px] tabular-nums tracking-tight text-espresso">{data?.staff_count ?? 0}</div>
           </div>
           <div className="rounded-lg border border-[var(--console-line)] bg-white p-4">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--console-muted)]">Active Products</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--console-muted)]">{t("activeProducts")}</div>
             <div className="mt-1 font-display text-[28px] tabular-nums tracking-tight text-espresso">{data?.active_products ?? 0}</div>
           </div>
           <div className="rounded-lg border border-[var(--console-line)] bg-white p-4">
-            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--console-muted)]">Unique Customers</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--console-muted)]">{t("uniqueCustomers")}</div>
             <div className="mt-1 font-display text-[28px] tabular-nums tracking-tight text-espresso">{data?.unique_customers ?? 0}</div>
           </div>
         </div>
@@ -216,6 +219,8 @@ function BranchManagerDashboard() {
 // ─── PRODUCT MANAGER ─────────────────────────────────────────────────────────
 
 function ProductManagerDashboard() {
+  const t = useTranslations("dashboard");
+  const tc = useTranslations("common");
   const [page, setPage] = useState(1);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const size = 20;
@@ -232,19 +237,19 @@ function ProductManagerDashboard() {
     <div className="flex h-full flex-col gap-4">
       {/* Product stats table */}
       <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-[var(--console-line)] bg-white p-4">
-        <div className="mb-3 font-display text-[17px] tracking-tight">Product Statistics</div>
+        <div className="mb-3 font-display text-[17px] tracking-tight">{t("productStats")}</div>
         {items.length === 0 ? (
-          <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--console-muted)]">No product data yet.</p>
+          <p className="py-4 text-center font-editorial text-[13px] italic text-[var(--console-muted)]">{t("noProductData")}</p>
         ) : (
           <table className="w-full text-left text-[12px]">
             <thead>
               <tr className="border-b border-[var(--console-line)] font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--console-muted)]">
-                <th className="pb-2 font-medium">Product</th>
-                <th className="pb-2 text-right font-medium">Price</th>
-                <th className="pb-2 text-right font-medium">Sold</th>
-                <th className="pb-2 text-right font-medium">Revenue</th>
-                <th className="pb-2 text-right font-medium">Branches</th>
-                <th className="pb-2 text-right font-medium">Stock</th>
+                <th className="pb-2 font-medium">{t("product")}</th>
+                <th className="pb-2 text-right font-medium">{t("price")}</th>
+                <th className="pb-2 text-right font-medium">{t("sold")}</th>
+                <th className="pb-2 text-right font-medium">{t("revenue")}</th>
+                <th className="pb-2 text-right font-medium">{t("branchesActive")}</th>
+                <th className="pb-2 text-right font-medium">{t("stock")}</th>
               </tr>
             </thead>
             <tbody>
@@ -275,7 +280,7 @@ function ProductManagerDashboard() {
               onClick={() => setPage((p) => p - 1)}
               className="rounded px-2 py-1 font-mono text-[11px] text-espresso disabled:opacity-30"
             >
-              ← Prev
+              {tc("prev")}
             </button>
             <span className="font-mono text-[11px] text-[var(--console-muted)]">{page} / {totalPages}</span>
             <button
@@ -284,7 +289,7 @@ function ProductManagerDashboard() {
               onClick={() => setPage((p) => p + 1)}
               className="rounded px-2 py-1 font-mono text-[11px] text-espresso disabled:opacity-30"
             >
-              Next →
+              {tc("next")}
             </button>
           </div>
         )}
@@ -294,13 +299,13 @@ function ProductManagerDashboard() {
       {selectedProductId && (
         <div className="rounded-lg border border-[var(--console-line)] bg-white p-4">
           <div className="mb-2 flex items-center justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--console-muted)]">Product Timeseries</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--console-muted)]">{t("productTimeseries")}</span>
             <button
               type="button"
               onClick={() => setSelectedProductId(null)}
               className="font-mono text-[11px] text-[var(--console-muted)] hover:text-espresso"
             >
-              ✕ Close
+              ✕ {tc("close")}
             </button>
           </div>
           <ProductSalesChart productId={selectedProductId} />

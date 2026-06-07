@@ -3,16 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Camera, Globe, Video } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { getBranches } from "@repo/api-client";
 import { getOrderUrl } from "@/lib/public-config";
-
-const navLinks = [
-  { href: "/menu", label: "Menu" },
-  { href: "/locations", label: "Locations" },
-  { href: "/blog", label: "Journal" },
-  { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
-];
 
 const socialLinks = [
   { href: "https://instagram.com", icon: Camera, label: "Instagram" },
@@ -21,8 +14,18 @@ const socialLinks = [
 ];
 
 export default function Footer() {
+  const t = useTranslations("footer");
+  const tNav = useTranslations("nav");
   const orderUrl = getOrderUrl();
   const [locationCount, setLocationCount] = useState(0);
+
+  const navLinks = [
+    { href: "/menu", label: tNav("menu") },
+    { href: "/locations", label: tNav("locations") },
+    { href: "/blog", label: tNav("blog") },
+    { href: "/about", label: tNav("about") },
+    { href: "/contact", label: tNav("contact") },
+  ];
 
   useEffect(() => {
     let isMounted = true;
@@ -56,8 +59,7 @@ export default function Footer() {
               <span className="font-display text-[24px] tracking-tight">Bakerio</span>
             </Link>
             <p className="mt-5 max-w-[360px] font-news text-[15px] leading-[1.55] text-cream/70">
-              A bakery rooted in Saigon. Sourdough fermented 48 hours, butter croissants laminated by hand at
-              4&nbsp;a.m., bánh mì on a crust we don&apos;t apologise for.
+              {t("brandDesc")}
             </p>
             <div className="mt-6 flex gap-3">
               {socialLinks.map((s) => (
@@ -77,7 +79,7 @@ export default function Footer() {
 
           {/* Navigation */}
           <div>
-            <h3 className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-honey/70">Explore</h3>
+            <h3 className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-honey/70">{t("explore")}</h3>
             <ul className="space-y-2.5">
               {navLinks.map((link) => (
                 <li key={link.label}>
@@ -91,32 +93,32 @@ export default function Footer() {
 
           {/* Trade */}
           <div>
-            <h3 className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-honey/70">Trade</h3>
+            <h3 className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-honey/70">{t("trade")}</h3>
             <ul className="space-y-2.5 text-[14px] text-cream/80">
-              <li>Wholesale</li>
-              <li>Press</li>
-              <li>Recruiting</li>
-              <li>Privacy</li>
+              <li>{t("wholesale")}</li>
+              <li>{t("press")}</li>
+              <li>{t("recruiting")}</li>
+              <li>{t("privacy")}</li>
             </ul>
           </div>
 
           {/* Hours */}
           <div>
-            <h3 className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-honey/70">Hours · Saigon</h3>
+            <h3 className="mb-4 font-mono text-[10px] uppercase tracking-[0.22em] text-honey/70">{t("hoursSaigon")}</h3>
             <div className="font-display text-[28px] leading-none text-cream">06:00 — 22:00</div>
-            <div className="mt-2 font-editorial text-[14px] text-honey">every day, {locationCount} shops</div>
+            <div className="mt-2 font-editorial text-[14px] text-honey">{t("everyDay", { count: locationCount })}</div>
             <a
               href={orderUrl}
               className="bkr-press mt-5 inline-flex items-center gap-2 rounded-full border border-honey px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-honey"
             >
-              Order online <span>→</span>
+              {t("orderOnline")} <span>→</span>
             </a>
           </div>
         </div>
 
         <div className="mt-14 flex flex-col justify-between gap-3 border-t border-cocoa/40 pt-6 font-mono text-[10.5px] uppercase tracking-[0.16em] text-cream/50 sm:flex-row">
-          <span>© Bakerio mmxxiv–mmxxvi · {locationCount} shops · Saigon</span>
-          <span>10°45′N · 106°40′E</span>
+          <span>{t("copyright", { count: locationCount })}</span>
+          <span>{t("coords")}</span>
         </div>
       </div>
     </footer>

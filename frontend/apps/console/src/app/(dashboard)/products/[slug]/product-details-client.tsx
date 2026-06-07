@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   deleteProductImage,
@@ -34,6 +35,7 @@ interface ProductDetailsPageClientProps {
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClientProps) {
+  const t = useTranslations("products");
   const qc = useQueryClient();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +98,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
       qc.setQueryData(["product", productSlug], updated);
       qc.setQueryData(["product", updated.slug], updated);
       qc.invalidateQueries({ queryKey: ["products"] });
-      toast("Product updated");
+      toast(t("updated"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -111,7 +113,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
         qc.invalidateQueries({ queryKey: ["product-images", product.id] });
       }
       if (fileInputRef.current) fileInputRef.current.value = "";
-      toast(`Successfully uploaded ${data.length} image(s)`);
+      toast(t("uploadedCount", { count: data.length }));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -123,7 +125,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["product-images", product?.id] });
-      toast("Image deleted");
+      toast(t("imageDeleted"));
     },
     onError: (e: Error) => toast(e.message, "error"),
   });
@@ -153,7 +155,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
         <Link
           href="/products"
           className={buttonVariants({ variant: "ghost", size: "icon" })}
-          aria-label="Back to products"
+          aria-label={t("backToProducts")}
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -161,7 +163,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
           <div className="mb-1 flex items-center gap-3">
             <span className="block h-px w-6 bg-golden" />
             <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-              Product Details
+              {t("detailLabel")}
             </span>
           </div>
           <h1
@@ -174,10 +176,10 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
           >
             {product ? (
               <>
-                Manage <span className="font-editorial text-cinnamon">{product.name}</span>
+                {t("manage")} <span className="font-editorial text-cinnamon">{product.name}</span>
               </>
             ) : (
-              "Loading Product..."
+              t("loadingProduct")
             )}
           </h1>
         </div>
@@ -187,19 +189,19 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
         <div className="flex flex-col items-center justify-center gap-4 py-20">
           <Loader2 className="h-8 w-8 animate-spin text-cinnamon" />
           <p className="font-mono text-sm text-console-muted">
-            Loading product details and images...
+            {t("loadingDetails")}
           </p>
         </div>
       ) : !product ? (
         <Card className="p-6 text-center text-sm text-console-muted">
-          Product not found.
+          {t("notFound")}
         </Card>
       ) : (
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-4">
           <div className="space-y-4 lg:col-span-1">
             <Card className="flex flex-col gap-4 border-border bg-white p-5 shadow-sm">
               <h2 className="border-b border-console-line pb-2 font-display text-lg font-semibold text-espresso">
-                Product Information
+                {t("information")}
               </h2>
               <form
                 className="space-y-4"
@@ -209,7 +211,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
                 }}
               >
                 <div>
-                  <Label htmlFor="product-name">Name</Label>
+                  <Label htmlFor="product-name">{t("name")}</Label>
                   <Input
                     id="product-name"
                     value={name}
@@ -218,7 +220,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
                   />
                 </div>
                 <div>
-                  <Label htmlFor="product-price">Price (VND)</Label>
+                  <Label htmlFor="product-price">{t("price")}</Label>
                   <Input
                     id="product-price"
                     type="number"
@@ -228,7 +230,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
                   />
                 </div>
                 <div>
-                  <Label>Category</Label>
+                  <Label>{t("category")}</Label>
                   <CategoryCombobox
                     value={categoryId}
                     onChange={setCategoryId}
@@ -236,24 +238,24 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
                   />
                 </div>
                 <div>
-                  <Label htmlFor="product-status">Status</Label>
+                  <Label htmlFor="product-status">{t("status")}</Label>
                   <Select
                     id="product-status"
                     value={isActive ? "active" : "inactive"}
                     onChange={(event) => setIsActive(event.target.value === "active")}
                   >
-                    <option value="active">Enabled</option>
-                    <option value="inactive">Disabled</option>
+                    <option value="active">{t("enabled")}</option>
+                    <option value="inactive">{t("disabled")}</option>
                   </Select>
                 </div>
                 <div>
-                  <Label>Slug</Label>
+                  <Label>{t("slug")}</Label>
                   <span className="mt-0.5 block font-mono text-xs text-cinnamon">
                     {product.slug}
                   </span>
                 </div>
                 <Button type="submit" className="w-full" disabled={updateMut.isPending}>
-                  {updateMut.isPending ? "Saving..." : "Save Product"}
+                  {updateMut.isPending ? t("saving") : t("saveProduct")}
                 </Button>
               </form>
             </Card>
@@ -296,7 +298,7 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
                 )}
               </div>
               <p className="text-sm font-medium text-espresso">
-                {uploadMut.isPending ? "Uploading your files..." : "Drag and drop your images here"}
+                {uploadMut.isPending ? t("uploadingFiles") : t("dragDropImages")}
               </p>
               {!uploadMut.isPending && (
                 <button
@@ -304,26 +306,26 @@ export function ProductDetailsPageClient({ productSlug }: ProductDetailsPageClie
                   onClick={() => fileInputRef.current?.click()}
                   className="mt-1 cursor-pointer font-semibold text-cinnamon underline hover:text-espresso"
                 >
-                  browse to select files
+                  {t("browseFiles")}
                 </button>
               )}
               <p className="mt-3 font-mono text-[11px] uppercase tracking-wider text-console-muted">
-                Images only (PNG, JPG, WEBP up to 5MB)
+                {t("imageConstraints")}
               </p>
             </div>
 
             <div className="space-y-4">
               <h3 className="flex items-center gap-2 font-display text-lg text-espresso">
-                Uploaded Images
+                {t("uploadedImages")}
                 <span className="font-mono text-xs text-console-muted">({images.length})</span>
               </h3>
 
               {images.length === 0 ? (
                 <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-white p-6 py-12 text-center">
                   <ImageIcon className="mb-2 h-8 w-8 text-console-muted" />
-                  <p className="text-sm font-medium text-espresso">No images uploaded yet</p>
+                  <p className="text-sm font-medium text-espresso">{t("noImages")}</p>
                   <p className="mt-1 text-xs text-console-muted">
-                    Upload product images to showcase them in the store.
+                    {t("noImagesHint")}
                   </p>
                 </div>
               ) : (

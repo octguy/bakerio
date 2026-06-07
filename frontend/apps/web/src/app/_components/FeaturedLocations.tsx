@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 interface Location {
   name: string;
@@ -26,6 +27,7 @@ const DOT_INSET = 28; // px — keeps the first windowed dot clear of the left f
 const DOT_MASK = "linear-gradient(to right, transparent, #000 18%, #000 82%, transparent)";
 
 export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps) {
+  const t = useTranslations("locations");
   const count = featuredLocations.length;
   // Clones on each side keep the peek neighbors filled during wrap transitions
   const lead = Math.min(2, count);
@@ -45,7 +47,7 @@ export function FeaturedLocations({ featuredLocations }: FeaturedLocationsProps)
   if (count === 0) {
     return (
       <div className="rounded-sm border border-crust bg-white p-10 text-center">
-        <p className="font-editorial text-[16px] italic text-caramel">No shops are available right now.</p>
+        <p className="font-editorial text-[16px] italic text-caramel">{t("noShops")}</p>
       </div>
     );
   }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { getBranches, getProducts } from "@repo/api-client";
 import type { Branch, Product } from "@repo/api-client";
 import { posts } from "@/data/posts";
@@ -31,6 +32,7 @@ function formatVND(n: number) {
 }
 
 export default function Home() {
+  const t = useTranslations("home");
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,7 +82,7 @@ export default function Home() {
               <div className="bkr-rise mb-7 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[10.5px] uppercase tracking-[0.22em] text-cinnamon">
-                  No. 011 — Mùa Hè 2026
+                  {t("season")}
                 </span>
               </div>
 
@@ -88,41 +90,40 @@ export default function Home() {
                 className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(64px,11vw,148px)", lineHeight: 0.88, letterSpacing: "-0.025em" }}
               >
-                Every{" "}
+                {t("heroTitle1")}{" "}
                 <br />
-                bite tells{" "}
+                {t("heroTitle2")}{" "}
                 <br />
-                a <span className="font-editorial text-cinnamon">story.</span>
+                {t("heroTitle3")} <span className="font-editorial text-cinnamon">{t("heroTitle4")}</span>
               </h1>
 
               <p className="bkr-rise-2 mt-8 max-w-[460px] font-news text-[18px] leading-[1.5] text-cocoa">
-                A bakery rooted in Saigon. Sourdough fermented 48 hours, butter croissants laminated by
-                hand at 4 a.m., bánh mì on a crust we don&apos;t apologise for.
+                {t("heroSub")}
               </p>
 
               <div className="bkr-rise-3 mt-9 flex flex-wrap gap-3">
                 <Link
                   href="/menu"
-                  aria-label="View Menu"
+                  aria-label={t("theMenu")}
                   className="bkr-press inline-flex items-center gap-2 rounded-full bg-espresso px-6 py-3 text-[12.5px] font-semibold uppercase tracking-[0.08em] text-cream"
                 >
-                  The Menu <span aria-hidden>→</span>
+                  {t("theMenu")} <span aria-hidden>→</span>
                 </Link>
                 <Link
                   href="/locations"
-                  aria-label="Find Locations"
+                  aria-label={t("visitShop")}
                   className="bkr-press inline-flex items-center gap-2 rounded-full border border-espresso px-6 py-3 text-[12.5px] font-semibold uppercase tracking-[0.08em] text-espresso"
                 >
-                  Visit a Shop
+                  {t("visitShop")}
                 </Link>
               </div>
             </div>
 
             <div className="mt-12 grid grid-cols-3 gap-6 border-t border-crust pt-8">
               {[
-                { n: "11", label: "Cửa hàng", sub: "across HCMC" },
-                { n: "06:00", label: "Mở cửa", sub: "every morning" },
-                { n: "48h", label: "Lên men", sub: "sourdough" },
+                { n: "11", label: t("shops"), sub: t("shopsAcross") },
+                { n: "06:00", label: t("openAt"), sub: t("everyMorning") },
+                { n: "48h", label: t("ferment"), sub: t("sourdough") },
               ].map((d) => (
                 <div key={d.label}>
                   <div className="font-display tabular-nums text-[34px] leading-none tracking-tight text-espresso">{d.n}</div>
@@ -137,16 +138,15 @@ export default function Home() {
 
           {/* Right — photographic stack */}
           <div className="relative h-[640px] pt-4">
-            {/* Main bread image */}
             <div className="absolute right-0 top-6 h-[540px] w-[94%] overflow-hidden rounded-sm shadow-[0_30px_60px_-20px_rgba(44,24,16,0.35)]">
-              <Image src={HERO_IMG} alt="A loaf of pain de campagne, golden crust" fill priority className="object-cover" sizes="(max-width: 1024px) 100vw, 55vw" />
+              <Image src={HERO_IMG} alt={t("heroImgAlt")} fill priority className="object-cover" sizes="(max-width: 1024px) 100vw, 55vw" />
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-espresso/50" />
               <div className="absolute bottom-6 left-6 max-w-[280px] text-white">
                 <div className="mb-1.5 font-mono text-[9.5px] uppercase tracking-[0.22em] opacity-70">
-                  FIG. 01 · pain de campagne
+                  {t("heroImgCaption")}
                 </div>
                 <div className="font-editorial text-[18px] leading-tight">
-                  A 48-hour ferment, a 12-minute crust.
+                  {t("heroImgQuote")}
                 </div>
               </div>
             </div>
@@ -156,7 +156,7 @@ export default function Home() {
               className="absolute bottom-6 left-2 hidden h-[280px] w-[220px] overflow-hidden rounded-sm border-[6px] border-white shadow-[0_20px_40px_-10px_rgba(44,24,16,0.4)] md:block"
               style={{ transform: "rotate(-3deg)" }}
             >
-              <Image src={INSET_IMG} alt="Patisserie close-up" fill className="object-cover" sizes="220px" />
+              <Image src={INSET_IMG} alt={t("insetAlt")} fill className="object-cover" sizes="220px" />
             </div>
 
             {/* Floating seal */}
@@ -164,8 +164,8 @@ export default function Home() {
               className="bkr-float absolute right-[-8px] top-20 hidden h-[110px] w-[110px] flex-col items-center justify-center rounded-full bg-cinnamon text-cream shadow-[0_8px_20px_rgba(44,24,16,0.3)] md:flex"
               style={{ ["--rot" as string]: "8deg", transform: "rotate(8deg)" }}
             >
-              <span className="font-script text-[30px] leading-none">fresh</span>
-              <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em]">every dawn</span>
+              <span className="font-script text-[30px] leading-none">{t("fresh")}</span>
+              <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em]">{t("everyDawn")}</span>
             </div>
 
             {/* Price tag */}
@@ -207,14 +207,14 @@ export default function Home() {
               <div className="bkr-rise mb-4 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
-                  § ii — from the counter
+                  {t("productsSection")}
                 </span>
               </div>
               <h2
                 className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(40px,7vw,84px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
               >
-                What we baked <span className="font-editorial text-cinnamon">this morning.</span>
+                {t("productsTitle")} <span className="font-editorial text-cinnamon">{t("productsTitleAccent")}</span>
               </h2>
             </div>
             <div className="hidden flex-col items-end gap-2 md:flex">
@@ -225,7 +225,7 @@ export default function Home() {
                 href="/menu"
                 className="bkr-press inline-flex items-center rounded-full border border-espresso px-4 py-2 font-mono text-[11px] uppercase tracking-[0.16em] text-espresso"
               >
-                View full menu →
+                {t("viewFullMenu")}
               </Link>
             </div>
           </div>
@@ -233,10 +233,10 @@ export default function Home() {
           <FeaturedProducts featuredProducts={featuredProducts} loading={loading} formatVND={formatVND} />
 
           <div className="mt-10 flex items-center justify-between border-t border-crust pt-5 font-mono text-[10.5px] uppercase tracking-[0.16em] text-caramel">
-            <span>↳ {productsList.length} items in season · refreshed daily at 06:00</span>
+            <span>{t("itemsInSeason", { count: productsList.length })}</span>
             <span className="hidden gap-6 md:flex">
-              <span>All / Bread / Pastry / Cake / Coffee</span>
-              <span className="text-espresso">↗ Filter by allergen</span>
+              <span>{t("filterCategories")}</span>
+              <span className="text-espresso">{t("filterAllergen")}</span>
             </span>
           </div>
         </div>
@@ -247,26 +247,25 @@ export default function Home() {
          ────────────────────────────────────────────────────── */}
       <section className="bg-espresso px-6 py-24 text-cream lg:px-14 lg:py-32">
         <div className="mx-auto flex max-w-[880px] items-start gap-9">
-          <div className="font-display text-[120px] leading-[0.6] text-honey">“</div>
+          <div className="font-display text-[120px] leading-[0.6] text-honey">&ldquo;</div>
           <div>
             <p
               className="font-display tracking-tight"
               style={{ fontSize: "clamp(24px,3.6vw,36px)", lineHeight: 1.2, letterSpacing: "-0.01em" }}
             >
-              The trick isn&apos;t the crust, or the crumb, or even the butter. It&apos;s{" "}
-              <span className="font-editorial text-honey">showing up</span> before everyone else, and
-              caring more than the recipe asks you to.
+              {t("quoteText")}{" "}
+              <span className="font-editorial text-honey">{t("quoteHighlight")}</span> {t("quoteEnd")}
             </p>
             <div className="mt-6 flex items-center justify-between">
               <div className="flex items-center gap-3.5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-cinnamon font-display text-[16px] text-cream">L</div>
                 <div>
-                  <div className="font-semibold">Linh Phạm</div>
-                  <div className="font-editorial text-[13px] text-honey">Founder · Head baker</div>
+                  <div className="font-semibold">{t("quoteAuthor")}</div>
+                  <div className="font-editorial text-[13px] text-honey">{t("quoteRole")}</div>
                 </div>
               </div>
               <Link href="/about" className="text-honey hover:underline font-mono text-[12px] uppercase tracking-wider">
-                Our Story →
+                {t("ourStory")}
               </Link>
             </div>
           </div>
@@ -283,22 +282,22 @@ export default function Home() {
               <div className="bkr-rise mb-4 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
-                  § iii — atlas
+                  {t("locationsSection")}
                 </span>
               </div>
               <h2
                 className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(38px,6vw,72px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
               >
-                Eleven shops, <span className="font-editorial text-cinnamon">one city.</span>
+                {t("locationsTitle")} <span className="font-editorial text-cinnamon">{t("locationsTitleAccent")}</span>
               </h2>
             </div>
             <Link
               href="/locations"
-              aria-label="View All Locations"
+              aria-label={t("browseAtlas")}
               className="bkr-press hidden items-center rounded-full border border-espresso px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-espresso md:inline-flex"
             >
-              Browse the atlas →
+              {t("browseAtlas")}
             </Link>
           </div>
 
@@ -316,22 +315,22 @@ export default function Home() {
               <div className="bkr-rise mb-4 flex items-center gap-3">
                 <span className="block h-px w-7 bg-golden" />
                 <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-cinnamon">
-                  The journal · since mmxxiv
+                  {t("journalSection")}
                 </span>
               </div>
               <h2
                 className="bkr-rise-1 font-display tracking-tight text-espresso"
                 style={{ fontSize: "clamp(38px,6vw,72px)", lineHeight: 0.9, letterSpacing: "-0.025em" }}
               >
-                Stories <span className="font-editorial text-cinnamon">from the oven.</span>
+                {t("journalTitle")} <span className="font-editorial text-cinnamon">{t("journalTitleAccent")}</span>
               </h2>
             </div>
             <Link
               href="/blog"
-              aria-label="View All Stories"
+              aria-label={t("browseStories")}
               className="bkr-press hidden items-center rounded-full border border-espresso px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-espresso md:inline-flex"
             >
-              Browse all stories →
+              {t("browseStories")}
             </Link>
           </div>
 

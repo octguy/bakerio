@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { useCartStore } from "@/store/cart";
 import type { Product } from "@repo/api-client";
@@ -26,6 +27,7 @@ function getProductCategoryId(product: Product) {
 }
 
 export function AddToCartSection({ product }: { product: Product }) {
+  const t = useTranslations("menu");
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
   const [quantity, setQuantity] = useState(1);
@@ -57,7 +59,7 @@ export function AddToCartSection({ product }: { product: Product }) {
     <>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-caramel">
-          Quantity
+          {t("quantity")}
         </span>
         <div className="flex min-h-12 items-center rounded-full border-2 border-espresso bg-cream shadow-[5px_5px_0_var(--espresso)]">
           <button
@@ -84,7 +86,7 @@ export function AddToCartSection({ product }: { product: Product }) {
 
       <div className="mb-5 rounded-[1.5rem] border border-crust-deep bg-butter/70 p-4 text-center">
         <span className="font-editorial text-[14px] italic text-caramel">
-          Total:{" "}
+          {t("totalLabel")}:{" "}
         </span>
         <span className="font-display text-2xl text-espresso">
           {formatVND(totalPrice)}
@@ -96,20 +98,20 @@ export function AddToCartSection({ product }: { product: Product }) {
           onClick={handleAdd}
           className="bkr-press flex min-h-14 w-full items-center justify-between rounded-full bg-espresso px-5 py-3 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-cream shadow-[0_16px_30px_-20px_rgba(44,24,16,0.8)]"
         >
-          <span>Add to Cart</span>
+          <span>{t("addToCart")}</span>
           <span aria-hidden="true">→</span>
         </button>
       ) : (
         <div className="space-y-3">
           <div className="rounded-[1.25rem] border border-sage/30 bg-sage/10 p-3 text-center text-sm font-bold text-sage">
-            ✓ Added to cart!
+            ✓ {t("addedToCart")}
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => router.push("/menu")}
               className="min-h-12 flex-1 rounded-full border border-crust-deep bg-white px-3 py-3 text-sm font-bold transition-colors hover:border-cinnamon"
             >
-              Continue Shopping
+              {t("continueShopping")}
             </button>
             <button
               onClick={() => {
@@ -127,7 +129,7 @@ export function AddToCartSection({ product }: { product: Product }) {
               }}
               className="min-h-12 flex-1 rounded-full bg-espresso px-3 py-3 text-sm font-bold text-cream transition-colors hover:bg-cinnamon"
             >
-              View Cart
+              {t("viewCart")}
             </button>
           </div>
         </div>

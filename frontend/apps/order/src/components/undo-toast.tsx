@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useCartStore } from '@/store/cart';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, RotateCcw } from 'lucide-react';
 
 export function UndoToast() {
+  const t = useTranslations("cart");
   const { undoSnapshot, restoreCart, dismissUndo } = useCartStore();
   const [timeLeft, setTimeLeft] = useState(10000);
   const [isHovered, setIsHovered] = useState(false);
@@ -74,9 +76,9 @@ export function UndoToast() {
         />
         
         <div className="flex flex-col">
-          <span className="font-medium text-sm">Cart cleared</span>
+          <span className="font-medium text-sm">{t("cartCleared")}</span>
           <span className="text-xs text-gray-400">
-            {undoSnapshot.items.length} item{undoSnapshot.items.length === 1 ? '' : 's'} removed
+            {t("itemsRemoved", { count: undoSnapshot.items.length })}
           </span>
         </div>
 
@@ -86,13 +88,13 @@ export function UndoToast() {
             className="flex items-center gap-1.5 text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors px-2 py-1 rounded-md hover:bg-white/5"
           >
             <RotateCcw className="w-4 h-4" />
-            Undo
+            {t("undo")}
           </button>
           
           <button
             onClick={dismissUndo}
             className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded-md transition-colors"
-            aria-label="Dismiss"
+            aria-label={t("dismiss")}
           >
             <X className="w-4 h-4" />
           </button>

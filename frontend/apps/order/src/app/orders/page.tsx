@@ -3,24 +3,40 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { getOrders, getOrderStats, getProduct, reorderItems, getBranchNameMap } from "@repo/api-client";
 import type { Order, OrderStatus } from "@repo/api-client";
+import { useTranslations } from "next-intl";
 import { formatVND } from "@/lib/format";
 import { Link } from "next-view-transitions";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useCartStore } from "@/store/cart";
 
-const STATUS_LABEL: Record<OrderStatus, { l: string; c: string; live?: boolean }> = {
-  DRAFT: { l: "Draft", c: "var(--caramel)" },
-  PENDING_PAYMENT: { l: "Pending pay", c: "var(--golden)" },
-  PAID: { l: "Paid", c: "var(--cinnamon)" },
-  CONFIRMED: { l: "Confirmed", c: "var(--cinnamon)" },
-  PREPARING: { l: "In kitchen", c: "var(--cinnamon)", live: true },
-  READY: { l: "Ready", c: "var(--cinnamon)" },
-  OUT_FOR_DELIVERY: { l: "On its way", c: "var(--cinnamon)", live: true },
-  DELIVERED: { l: "Delivered", c: "var(--sage)" },
-  COMPLETED: { l: "Picked up", c: "var(--sage)" },
-  CANCELLED: { l: "Cancelled", c: "var(--sienna)" },
+const STATUS_KEY: Record<OrderStatus, string> = {
+  DRAFT: "statusDraft",
+  PENDING_PAYMENT: "statusPendingPayment",
+  PAID: "statusPaid",
+  CONFIRMED: "statusConfirmed",
+  PREPARING: "statusPreparing",
+  READY: "statusReady",
+  OUT_FOR_DELIVERY: "statusOutForDelivery",
+  DELIVERED: "statusDelivered",
+  COMPLETED: "statusCompleted",
+  CANCELLED: "statusCancelled",
 };
+
+const STATUS_COLOR: Record<OrderStatus, string> = {
+  DRAFT: "var(--caramel)",
+  PENDING_PAYMENT: "var(--golden)",
+  PAID: "var(--cinnamon)",
+  CONFIRMED: "var(--cinnamon)",
+  PREPARING: "var(--cinnamon)",
+  READY: "var(--cinnamon)",
+  OUT_FOR_DELIVERY: "var(--cinnamon)",
+  DELIVERED: "var(--sage)",
+  COMPLETED: "var(--sage)",
+  CANCELLED: "var(--sienna)",
+};
+
+const LIVE_STATUSES: ReadonlySet<OrderStatus> = new Set<OrderStatus>(["PREPARING", "OUT_FOR_DELIVERY"]);
 
 const TERMINAL_STATUSES: ReadonlySet<OrderStatus> = new Set<OrderStatus>([
   "DELIVERED",
@@ -29,7 +45,6 @@ const TERMINAL_STATUSES: ReadonlySet<OrderStatus> = new Set<OrderStatus>([
 ]);
 
 // Order codes look like "BKO-20260602-A3K7QM"; show the human-friendly tail.
-// Falls back to the legacy id format when the backend code is absent.
 function orderCodeTail(order: Pick<Order, "code" | "id">): string {
   if (order.code) {
     const parts = order.code.split("-");
@@ -47,6 +62,7 @@ export default function OrdersPage() {
 }
 
 function OrdersPageInner() {
+  const t = useTranslations("orders");
   const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
   const setBranch = useCartStore((s) => s.setBranch);
@@ -100,7 +116,7 @@ function OrdersPageInner() {
       }
     } catch (err) {
       if (currentFetchId !== fetchCount.current) return;
-      setError("Could not load orders. Please try again.");
+      setError(t("couldNotLoad"));
       if (process.env.NODE_ENV !== "production") {
         console.error("Failed to load orders:", err);
       }
@@ -113,7 +129,7 @@ function OrdersPageInner() {
   };
 
   // Load the global (cached) branch id -> name map once for resolving branch
-  // names on order cards. Cached at the api-client module level across renders.
+  // names on order cards.
   useEffect(() => {
     let cancelled = false;
     getBranchNameMap()
@@ -178,7 +194,7 @@ function OrdersPageInner() {
       });
       router.push("/cart");
     } catch (err) {
-      setError("Could not reorder those items. Please try again.");
+      setError(t("couldNotReorder"));
       if (process.env.NODE_ENV !== "production") {
         console.error("Reorder failed:", err);
       }
@@ -187,19 +203,19 @@ function OrdersPageInner() {
   };
 
   const tabs = [
-    { l: "All", k: "All" as const, count: stats.lifetime },
-    { l: "In progress", k: "In progress" as const, count: stats.inProgress },
-    { l: "Delivered", k: "Delivered" as const, count: stats.delivered },
-    { l: "Cancelled", k: "Cancelled" as const, count: stats.cancelled },
+    { l: t("all"), k: "All" as const, count: stats.lifetime },
+    { l: t("inProgress"), k: "In progress" as const, count: stats.inProgress },
+    { l: t("delivered"), k: "Delivered" as const, count: stats.delivered },
+    { l: t("cancelled"), k: "Cancelled" as const, count: stats.cancelled },
   ];
 
   return (
     <main className="mx-auto max-w-5xl px-6 pt-4 pb-32 md:pb-12">
       {/* Header (Mobile only) */}
       <div className="mb-3 flex items-center justify-between md:hidden">
-        <Link href="/profile" aria-label="Back to profile" className="text-[22px] text-espresso">‹</Link>
-        <div className="font-display text-[16px] leading-none text-espresso">Orders</div>
-        <span className="font-mono text-[11px] tracking-[0.1em] text-caramel">Filter</span>
+        <Link href="/profile" aria-label={t("backToProfile")} className="text-[22px] text-espresso">‹</Link>
+        <div className="font-display text-[16px] leading-none text-espresso">{t("title")}</div>
+        <span className="font-mono text-[11px] tracking-[0.1em] text-caramel">{t("filter")}</span>
       </div>
 
       <div className="mt-2">
@@ -207,10 +223,10 @@ function OrdersPageInner() {
           className="font-display tracking-tight"
           style={{ fontSize: "clamp(32px,9vw,40px)", lineHeight: 0.95, letterSpacing: "-0.02em" }}
         >
-          Your basket, <span className="font-editorial text-cinnamon">over time.</span>
+          {t("heading")} <span className="font-editorial text-cinnamon">{t("headingSuffix")}</span>
         </h1>
         <p className="mt-2 font-editorial text-[14px] italic leading-[1.45] text-caramel">
-          You&apos;ve had {stats.lifetime} orders with us. That&apos;s a lot of bánh mì.
+          {t("lifetimeDesc", { count: stats.lifetime })}
         </p>
       </div>
 
@@ -218,9 +234,9 @@ function OrdersPageInner() {
         <input
           type="text"
           value={searchQuery}
-          aria-label="Search orders"
+          aria-label={t("searchPlaceholder")}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search orders..."
+          placeholder={t("searchPlaceholder")}
           className="w-full rounded-2xl border border-crust bg-white px-4 py-3 font-mono text-[13px] text-espresso placeholder-caramel shadow-sm focus:border-cinnamon focus:outline-none focus:ring-1 focus:ring-cinnamon transition-all"
         />
       </div>
@@ -231,7 +247,7 @@ function OrdersPageInner() {
           const active = activeTab === tab.k;
           return (
             <button
-              key={tab.l}
+              key={tab.k}
               type="button"
               aria-pressed={active}
               onClick={() => setActiveTab(tab.k)}
@@ -253,30 +269,32 @@ function OrdersPageInner() {
             onClick={() => fetchOrdersData(page, searchQuery, activeTab, page > 1)}
             className="ml-3 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-cinnamon"
           >
-            Retry
+            {t("retry")}
           </button>
         </div>
       )}
 
       {loading && page === 1 ? (
         <div className="py-12 text-center font-editorial text-[14px] italic text-caramel">
-          Reading the order book…
+          {t("readingBook")}
         </div>
       ) : orders.length === 0 && !loading ? (
         <div className="rounded-2xl border border-dashed border-crust-deep bg-butter py-10 text-center">
-          <p className="font-editorial text-[14px] italic text-cocoa">No orders to show.</p>
+          <p className="font-editorial text-[14px] italic text-cocoa">{t("noOrders")}</p>
           <Link
             href="/menu"
             className="mt-3 inline-block font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-cinnamon"
           >
-            Start ordering →
+            {t("startOrdering")}
           </Link>
         </div>
       ) : (
         <>
           <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {orders.map((o, index) => {
-              const st = STATUS_LABEL[o.status] ?? { l: o.status, c: "var(--caramel)" };
+              const statusKey = STATUS_KEY[o.status] ?? o.status;
+              const statusColor = STATUS_COLOR[o.status] ?? "var(--caramel)";
+              const isLive = LIVE_STATUSES.has(o.status);
               const displayId = orderCodeTail(o);
               const isTerminal = TERMINAL_STATUSES.has(o.status);
               const isLast = index === orders.length - 1;
@@ -285,13 +303,13 @@ function OrdersPageInner() {
                   key={o.id}
                   ref={isLast ? lastOrderElementRef : null}
                   className={`relative overflow-hidden rounded-2xl bg-white p-4 ${
-                    st.live ? "border-2 border-cinnamon" : "border border-crust"
+                    isLive ? "border-2 border-cinnamon" : "border border-crust"
                   }`}
                 >
-                  {st.live && (
+                  {isLive && (
                     <div className="absolute right-0 top-0 rounded-bl-[10px] bg-cinnamon px-3 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-white">
                       <span className="bkr-pulse mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-white align-middle" aria-hidden="true" />
-                      Live
+                      {t("live")}
                     </div>
                   )}
                   <div className="mb-2">
@@ -301,9 +319,9 @@ function OrdersPageInner() {
                       </span>
                       <span
                         className="ml-auto font-mono text-[9.5px] font-bold uppercase tracking-[0.18em]"
-                        style={{ color: st.c }}
+                        style={{ color: statusColor }}
                       >
-                        {st.l}
+                        {t(statusKey)}
                       </span>
                     </div>
                     <div className="mt-1 font-mono text-[10px] leading-snug tracking-wider text-caramel">
@@ -313,7 +331,7 @@ function OrdersPageInner() {
 
                   <Link
                     href={`/orders/${o.id}`}
-                    aria-label={`View order ${displayId}`}
+                    aria-label={t("viewOrder", { id: displayId })}
                     className="flex items-center gap-3"
                   >
                     <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-butter text-[18px] text-cinnamon" aria-hidden="true">
@@ -337,7 +355,7 @@ function OrdersPageInner() {
                         onClick={() => handleReorder(o.id)}
                         className="font-bold text-cinnamon hover:text-espresso transition-colors"
                       >
-                        Reorder
+                        {t("reorder")}
                       </button>
                     </div>
                   )}
@@ -348,7 +366,7 @@ function OrdersPageInner() {
           {isFetchingMore && (
             <div className="py-6 text-center font-editorial text-[14px] italic text-caramel flex items-center justify-center gap-2">
               <span className="bkr-pulse inline-block h-1.5 w-1.5 rounded-full bg-cinnamon align-middle" aria-hidden="true" />
-              Loading more...
+              {t("loadingMore")}
             </div>
           )}
         </>

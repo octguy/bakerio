@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "next-view-transitions";
 import { useTransitionRouter as useRouter } from "next-view-transitions";
+import { useTranslations } from "next-intl";
 
 interface VerifyEmailFormProps {
   email: string;
@@ -14,6 +15,7 @@ function normalizeOtp(value: string) {
 }
 
 export default function VerifyEmailForm({ email, userId }: VerifyEmailFormProps) {
+  const t = useTranslations("auth");
   const router = useRouter();
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -27,11 +29,11 @@ export default function VerifyEmailForm({ email, userId }: VerifyEmailFormProps)
     setError("");
 
     if (!userId) {
-      setError("Registration details are missing. Please create your account again.");
+      setError(t("registrationMissing"));
       return;
     }
     if (otp.length !== 6) {
-      setError("Enter the 6-digit verification code.");
+      setError(t("enterOtp"));
       return;
     }
 
@@ -42,15 +44,15 @@ export default function VerifyEmailForm({ email, userId }: VerifyEmailFormProps)
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "verify", user_id: userId, otp }),
       });
-      const data = await res.json().catch(() => ({ error: "Unexpected response from server" }));
+      const data = await res.json().catch(() => ({ error: t("unexpectedResponse") }));
       if (!res.ok || data.error || data.verified === false) {
-        setError(data.error ?? "That code did not work. Check the email and try again.");
+        setError(data.error ?? t("codeDidNotWork"));
         return;
       }
       setVerified(true);
       window.setTimeout(() => router.push("/login"), 900);
     } catch {
-      setError("Unable to verify right now. Check your connection and try again.");
+      setError(t("unableToVerify"));
     } finally {
       setLoading(false);
     }
@@ -62,8 +64,8 @@ export default function VerifyEmailForm({ email, userId }: VerifyEmailFormProps)
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-sage/15 font-mono text-[18px] text-sage">
           ✓
         </div>
-        <h2 className="mt-4 font-display text-[28px] tracking-tight text-espresso">Verified.</h2>
-        <p className="mt-2 font-editorial text-[14px] italic text-cocoa">Your account is ready. Taking you to sign in.</p>
+        <h2 className="mt-4 font-display text-[28px] tracking-tight text-espresso">{t("verified")}</h2>
+        <p className="mt-2 font-editorial text-[14px] italic text-cocoa">{t("accountReady")}</p>
       </section>
     );
   }
@@ -72,7 +74,7 @@ export default function VerifyEmailForm({ email, userId }: VerifyEmailFormProps)
     <form onSubmit={handleSubmit} className="mt-7 space-y-4">
       <div>
         <label htmlFor="verify-otp" className="block font-mono text-[9.5px] uppercase tracking-[0.18em] text-caramel">
-          Verification code
+          {t("verificationCode")}
         </label>
         <input
           id="verify-otp"
@@ -96,13 +98,13 @@ export default function VerifyEmailForm({ email, userId }: VerifyEmailFormProps)
         disabled={!canSubmit}
         className="bkr-press inline-flex w-full items-center justify-center rounded-full bg-espresso px-5 py-4 font-mono text-[12px] font-semibold uppercase tracking-[0.08em] text-cream disabled:opacity-50"
       >
-        {loading ? "Verifying..." : "Verify email"}
+        {loading ? t("verifying") : t("verifyEmail")}
       </button>
 
       <p className="text-center font-editorial text-[12.5px] italic text-caramel">
-        Wrong address?{" "}
+        {t("wrongAddress")}{" "}
         <Link href={`/register${email ? `?email=${encodeURIComponent(email)}` : ""}`} className="font-sans font-semibold not-italic text-cinnamon">
-          Register again
+          {t("registerAgain")}
         </Link>
       </p>
     </form>

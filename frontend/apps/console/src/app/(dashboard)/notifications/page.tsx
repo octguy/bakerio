@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useNotifications, useMarkRead, useMarkAllRead, useUnreadCount } from "@/lib/use-notifications";
 import type { Notification, NotificationType } from "@repo/api-client";
 
@@ -13,14 +14,14 @@ const TYPE_ICON: Record<NotificationType, string> = {
   "membership.tier_upgraded": "🏆",
 };
 
-function timeAgo(date: string) {
+function timeAgo(date: string, t: (key: string, values?: Record<string, string | number | Date>) => string) {
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "vừa xong";
-  if (mins < 60) return `${mins} phút trước`;
+  if (mins < 1) return t("justNow");
+  if (mins < 60) return t("minutesAgo", { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} giờ trước`;
-  return `${Math.floor(hrs / 24)} ngày trước`;
+  if (hrs < 24) return t("hoursAgo", { count: hrs });
+  return t("daysAgo", { count: Math.floor(hrs / 24) });
 }
 
 function getLink(n: Notification): string {
@@ -31,6 +32,7 @@ function getLink(n: Notification): string {
 type Filter = "all" | "unread" | "read";
 
 export default function NotificationsPage() {
+  const t = useTranslations("notifications");
   const [filter, setFilter] = useState<Filter>("all");
   const [page, setPage] = useState(1);
   const unreadOpt = filter === "unread" ? true : filter === "read" ? false : undefined;
@@ -44,35 +46,35 @@ export default function NotificationsPage() {
   }
 
   const tabs: { key: Filter; label: string }[] = [
-    { key: "all", label: "Tất cả" },
-    { key: "unread", label: "Chưa đọc" },
-    { key: "read", label: "Đã đọc" },
+    { key: "all", label: t("filterAll") },
+    { key: "unread", label: t("filterUnread") },
+    { key: "read", label: t("filterRead") },
   ];
 
   return (
     <div className="mx-auto max-w-2xl">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="font-display text-lg tracking-tight">Thông báo</h1>
+        <h1 className="font-display text-lg tracking-tight">{t("title")}</h1>
         {unreadCount > 0 && (
           <button
             onClick={() => markAllRead.mutate()}
             className="font-mono text-[10.5px] uppercase tracking-wider text-cinnamon hover:underline"
           >
-            Đánh dấu tất cả đã đọc
+            {t("markAllRead")}
           </button>
         )}
       </div>
 
       <div className="flex gap-1 mb-4">
-        {tabs.map((t) => (
+        {tabs.map((tab) => (
           <button
-            key={t.key}
-            onClick={() => { setFilter(t.key); setPage(1); }}
+            key={tab.key}
+            onClick={() => { setFilter(tab.key); setPage(1); }}
             className={`rounded-full px-3 py-1 font-mono text-[10.5px] uppercase tracking-wider transition-colors ${
-              filter === t.key ? "bg-espresso text-cream" : "bg-white border border-[var(--console-line)] text-[var(--console-muted)] hover:bg-cream"
+              filter === tab.key ? "bg-espresso text-cream" : "bg-white border border-[var(--console-line)] text-[var(--console-muted)] hover:bg-cream"
             }`}
           >
-            {t.label}
+            {tab.label}
           </button>
         ))}
       </div>
@@ -82,7 +84,7 @@ export default function NotificationsPage() {
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-crust border-t-cinnamon" />
         </div>
       ) : !data?.items?.length ? (
-        <p className="py-12 text-center text-[13px] text-[var(--console-muted)]">Không có thông báo nào</p>
+        <p className="py-12 text-center text-[13px] text-[var(--console-muted)]">{t("empty")}</p>
       ) : (
         <>
           <div className="rounded-lg border border-[var(--console-line)] bg-white overflow-hidden">
@@ -97,7 +99,7 @@ export default function NotificationsPage() {
                 <div className="min-w-0 flex-1">
                   <p className={`text-[13px] leading-snug ${!n.read_at ? "font-semibold" : ""}`}>{n.title}</p>
                   {n.body && <p className="mt-0.5 text-[12px] text-[var(--console-muted)] line-clamp-2">{n.body}</p>}
-                  <p className="mt-1 text-[11px] text-[var(--console-muted)]">{timeAgo(n.created_at)}</p>
+                  <p className="mt-1 text-[11px] text-[var(--console-muted)]">{timeAgo(n.created_at, t)}</p>
                 </div>
               </Link>
             ))}

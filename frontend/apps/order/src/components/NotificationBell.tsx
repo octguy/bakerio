@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Bell } from "lucide-react";
 import { Link } from "next-view-transitions";
 import { useUnreadCount, useNotifications, useMarkRead } from "@/hooks/use-notifications";
@@ -15,17 +16,18 @@ const TYPE_ICON: Record<NotificationType, string> = {
   "membership.tier_upgraded": "🏆",
 };
 
-function timeAgo(date: string) {
+function timeAgo(date: string, t: ReturnType<typeof useTranslations<"notifications">>) {
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "vừa xong";
-  if (mins < 60) return `${mins} phút trước`;
+  if (mins < 1) return t("justNow");
+  if (mins < 60) return t("minutesAgo", { count: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} giờ trước`;
-  return `${Math.floor(hrs / 24)} ngày trước`;
+  if (hrs < 24) return t("hoursAgo", { count: hrs });
+  return t("daysAgo", { count: Math.floor(hrs / 24) });
 }
 
 export function NotificationBell() {
+  const t = useTranslations("notifications");
   const { user } = useAuth();
   const { data: count = 0 } = useUnreadCount(!!user);
   const [open, setOpen] = useState(false);
@@ -58,7 +60,7 @@ export function NotificationBell() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        aria-label={`Thông báo${count > 0 ? ` (${count} chưa đọc)` : ""}`}
+        aria-label={count > 0 ? t("bellWithCount", { count }) : t("title")}
         className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-crust bg-white text-espresso"
       >
         <Bell size={16} />
@@ -72,7 +74,7 @@ export function NotificationBell() {
       {open && (
         <div className="absolute right-0 top-11 z-50 w-80 rounded-xl border border-crust bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-crust px-4 py-2.5">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-caramel">Thông báo</span>
+            <span className="font-mono text-[11px] uppercase tracking-wider text-caramel">{t("title")}</span>
             {count > 0 && (
               <span className="rounded-full bg-cinnamon/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-cinnamon">{count}</span>
             )}
@@ -89,12 +91,12 @@ export function NotificationBell() {
                   <span className="text-base shrink-0">{TYPE_ICON[n.type] ?? "🔔"}</span>
                   <div className="min-w-0 flex-1">
                     <p className={`text-[12.5px] leading-snug truncate ${!n.read_at ? "font-semibold" : ""}`}>{n.title}</p>
-                    <p className="mt-0.5 text-[11px] text-caramel">{timeAgo(n.created_at)}</p>
+                    <p className="mt-0.5 text-[11px] text-caramel">{timeAgo(n.created_at, t)}</p>
                   </div>
                 </Link>
               ))
             ) : (
-              <p className="px-4 py-6 text-center text-[12px] text-caramel">Không có thông báo</p>
+              <p className="px-4 py-6 text-center text-[12px] text-caramel">{t("empty")}</p>
             )}
           </div>
           <Link
@@ -102,7 +104,7 @@ export function NotificationBell() {
             onClick={() => setOpen(false)}
             className="block border-t border-crust px-4 py-2.5 text-center font-mono text-[10.5px] uppercase tracking-wider text-cinnamon hover:bg-cream"
           >
-            Xem tất cả →
+            {t("viewAll")} →
           </Link>
         </div>
       )}

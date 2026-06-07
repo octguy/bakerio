@@ -5,34 +5,38 @@ import { ToggleLeft, ToggleRight } from "lucide-react";
 import { useFilterStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { NotificationBell } from "@/components/notification-bell";
+import { useTranslations } from "next-intl";
 
-const SEGMENT_LABEL: Record<string, string> = {
-  "": "Counter",
-  orders: "Orders",
-  kitchen: "Kitchen",
-  products: "Products",
-  categories: "Categories",
-  inventory: "Inventory",
-  branches: "Branches",
-  users: "Staff",
+const SEGMENT_LABEL_KEY: Record<string, string> = {
+  "": "counter",
+  orders: "orders",
+  kitchen: "kitchen",
+  products: "products",
+  categories: "categories",
+  inventory: "inventory",
+  branches: "branches",
+  users: "staff",
 };
 
-const SEGMENT_GROUP: Record<string, string> = {
-  "": "Operations",
-  orders: "Operations",
-  kitchen: "Operations",
-  inventory: "Operations",
-  branches: "Operations",
-  users: "Operations",
-  products: "Catalog",
-  categories: "Catalog",
+const SEGMENT_GROUP_KEY: Record<string, string> = {
+  "": "operations",
+  orders: "operations",
+  kitchen: "operations",
+  inventory: "operations",
+  branches: "operations",
+  users: "operations",
+  products: "catalog",
+  categories: "catalog",
 };
 
 export function ConsoleTopBar() {
   const pathname = usePathname();
+  const t = useTranslations("common");
   const segment = pathname.split("/").filter(Boolean)[0] ?? "";
-  const label = SEGMENT_LABEL[segment] ?? segment;
-  const group = SEGMENT_GROUP[segment] ?? "Bakerio";
+  const labelKey = SEGMENT_LABEL_KEY[segment];
+  const label = labelKey ? t(`topbarSegments.${labelKey}`) : segment;
+  const groupKey = SEGMENT_GROUP_KEY[segment];
+  const group = groupKey ? t(`topbarGroups.${groupKey}`) : "Bakerio";
 
   const today = new Date().toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -57,7 +61,7 @@ export function ConsoleTopBar() {
             <Button
               variant="ghost"
               size="icon"
-              aria-label={onlyActive ? "Show all items" : "Show only active items"}
+              aria-label={onlyActive ? t("showAll") : t("showActiveOnly")}
               onClick={() => setOnlyActive(!onlyActive)}
               className="h-auto w-auto p-0 hover:bg-transparent bg-transparent border-0 shadow-none animate-none"
             >
@@ -68,7 +72,7 @@ export function ConsoleTopBar() {
               )}
             </Button>
             <span className="text-[10px] tracking-wider text-caramel">
-              Active only
+              {t("activeOnly")}
             </span>
           </div>
         </div>
