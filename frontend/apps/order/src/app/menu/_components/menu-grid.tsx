@@ -63,6 +63,37 @@ type MenuProduct = Product & {
 
 const DESKTOP_CART_MEDIA_QUERY = "(min-width: 1024px)";
 
+// Keep these in sync with the product grid's responsive `grid-cols-*` classes.
+const ROWS_PER_PAGE = 2;
+const COLUMN_BREAKPOINTS = [
+  { query: "(min-width: 1024px)", columns: 4 }, // lg
+  { query: "(min-width: 768px)", columns: 3 }, // md
+  { query: "(min-width: 380px)", columns: 2 }, // min-[380px]
+] as const;
+
+function getColumnCount() {
+  if (typeof window === "undefined") return 1;
+  for (const { query, columns } of COLUMN_BREAKPOINTS) {
+    if (window.matchMedia(query).matches) return columns;
+  }
+  return 1;
+}
+
+function useColumnCount() {
+  const [columns, setColumns] = useState(getColumnCount);
+
+  useEffect(() => {
+    const update = () => setColumns(getColumnCount());
+    update();
+    const mqls = COLUMN_BREAKPOINTS.map(({ query }) => window.matchMedia(query));
+    mqls.forEach((mql) => mql.addEventListener("change", update));
+    return () => mqls.forEach((mql) => mql.removeEventListener("change", update));
+  }, []);
+
+  return columns;
+}
+
+
 function getProductCategoryId(product: Product) {
   const menuProduct = product as MenuProduct;
   return menuProduct.category_id ?? menuProduct.category?.id ?? "";
@@ -100,7 +131,7 @@ export function MenuGrid({
   products,
   categories,
   initialPage,
-  pageSize,
+  pageSize: initialPageSize,
 }: {
   products: Product[];
   categories: Category[];
@@ -108,6 +139,8 @@ export function MenuGrid({
   pageSize: number;
 }) {
   const t = useTranslations("menu");
+  const columns = useColumnCount();
+  const pageSize = columns * ROWS_PER_PAGE;
   const [productsPage, setProductsPage] = useState(initialPage);
   const [isPageLoading, setIsPageLoading] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -121,6 +154,7 @@ export function MenuGrid({
   const router = useRouter();
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const [showLeftChevron, setShowLeftChevron] = useState(false);
   const [showRightChevron, setShowRightChevron] = useState(false);
 
@@ -157,7 +191,7 @@ export function MenuGrid({
     categoryId: string,
   ) => {
     setActiveCategory(categoryId);
-    loadPage(1, categoryId);
+    loadPage(1, { category: categoryId });
 
     const button = e.currentTarget;
     const container = scrollRef.current;
@@ -252,21 +286,41 @@ export function MenuGrid({
   const productImages = useProductImages(pageProducts.map((p) => p.id));
   const hasPreviousPage = page > 1;
   const hasNextPage = page < totalPages;
-  const normalizedSearch = search.trim().toLowerCase();
 
-  const loadPage = async (nextPage: number, category = activeCategory) => {
-    if (nextPage < 1 || nextPage > totalPages || (nextPage === page && category === activeCategory)) return;
+  const loadPage = async (
+    nextPage: number,
+    opts: {
+      category?: string;
+      size?: number;
+      search?: string;
+      price?: "all" | "under50k";
+      scroll?: boolean;
+    } = {},
+  ) => {
+    if (nextPage < 1) return;
+    const category = opts.category ?? activeCategory;
+    const size = opts.size ?? pageSize;
+    const searchTerm = (opts.search ?? search).trim();
+    const price = opts.price ?? priceFilter;
     setIsPageLoading(true);
     setPageError(null);
     try {
       const categorySlug = categories.find((cat) => cat.id === category)?.slug ?? category;
       const nextProductsPage = await getProductsPage({
         category: category === "all" ? undefined : categorySlug,
+        q: searchTerm || undefined,
+        // `under50k` means strictly under 50,000; max_price is an inclusive bound.
+        max_price: price === "under50k" ? 49999 : undefined,
         page: nextPage,
-        size: pageSize,
+        size,
       });
       setProductsPage(nextProductsPage);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (opts.scroll !== false) {
+        window.scrollTo({
+          top: (gridRef.current?.getBoundingClientRect().top ?? 0) + window.scrollY - 16,
+          behavior: "smooth",
+        });
+      }
     } catch {
       setPageError(t("couldNotLoadMore"));
     } finally {
@@ -274,25 +328,40 @@ export function MenuGrid({
     }
   };
 
+  // Refetch with the column-derived page size so the grid always shows
+  // ROWS_PER_PAGE rows. Skips the first render (SSR page already loaded) and
+  // re-anchors to the page containing the first currently-visible item when the
+  // breakpoint (and thus page size) changes.
+  const didMountSize = useRef(false);
+  useEffect(() => {
+    if (!didMountSize.current) {
+      didMountSize.current = true;
+      if (pageSize === initialPageSize) return;
+    }
+    const firstItemIndex = (productsPage.page - 1) * productsPage.size;
+    const targetPage = Math.floor(firstItemIndex / pageSize) + 1;
+    loadPage(targetPage, { size: pageSize, scroll: false });
+  }, [pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Push search + price filter to the server so they apply across the whole
+  // catalog, not just the current page. Debounced so typing doesn't fire a
+  // request per keystroke. Skips the initial mount (SSR page already loaded).
+  const didMountFilters = useRef(false);
+  useEffect(() => {
+    if (!didMountFilters.current) {
+      didMountFilters.current = true;
+      return;
+    }
+    const handle = setTimeout(() => {
+      loadPage(1, { search, price: priceFilter, scroll: false });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [search, priceFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Search, category and price filters are applied server-side (see loadPage),
+  // so the current page already contains the right items. Only sort is applied
+  // client-side, ordering the items within the current page.
   const filteredAndSorted = [...pageProducts]
-    .filter((product) => {
-      if (!normalizedSearch) return true;
-      return [
-        product.name,
-        product.slug,
-        getProductCategoryName(product, categories),
-      ].some((value) => value?.toLowerCase().includes(normalizedSearch));
-    })
-    .filter((product) => {
-      if (activeCategory === "all") return true;
-      const category = categories.find((cat) => cat.id === activeCategory);
-      return category ? productMatchesCategory(product, category) : false;
-    })
-    .filter((product) => {
-      if (priceFilter === "all") return true;
-      if (priceFilter === "under50k") return getProductPrice(product) < 50000;
-      return true;
-    })
     .sort((a, b) => {
       if (sortBy === "popular") {
         return ((a as MenuProduct).sort_order || 0) - ((b as MenuProduct).sort_order || 0);
@@ -584,7 +653,7 @@ export function MenuGrid({
         </div>
       )}
 
-      <div className={`grid grid-cols-1 gap-3 pb-16 transition-opacity min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 ${isPageLoading ? "opacity-55" : "opacity-100"}`}>
+      <div ref={gridRef} className={`grid grid-cols-1 gap-3 pb-44 transition-opacity min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 lg:pb-28 ${isPageLoading ? "opacity-55" : "opacity-100"}`}>
         {filteredAndSorted.map((product) => {
           const price = getProductPrice(product);
           const handleAdd = () => {
@@ -608,9 +677,10 @@ export function MenuGrid({
           return (
             <article
               key={product.id}
-              className="group overflow-hidden rounded-[1.65rem] border border-crust-deep bg-white shadow-[0_18px_40px_-34px_rgba(44,24,16,0.85)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_-34px_rgba(44,24,16,0.9)] md:rounded-[2rem]"
+              data-menu-card
+              className="group flex h-[var(--menu-card-h)] flex-col overflow-hidden rounded-[1.65rem] border border-crust-deep bg-white shadow-[0_18px_40px_-34px_rgba(44,24,16,0.85)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_24px_54px_-34px_rgba(44,24,16,0.9)] md:rounded-[2rem]"
             >
-              <div className="relative h-[154px] bg-[radial-gradient(circle_at_30%_20%,var(--cream),var(--butter)_58%,var(--crust-deep))] min-[380px]:h-[122px] sm:h-[146px] md:h-[164px]">
+              <div className="relative h-[150px] flex-shrink-0 bg-[radial-gradient(circle_at_30%_20%,var(--cream),var(--butter)_58%,var(--crust-deep))]">
                 <Link
                   href={`/menu/${product.slug}`}
                   aria-label={`View ${product.name}`}
@@ -648,7 +718,7 @@ export function MenuGrid({
               </div>
               <Link
                 href={`/menu/${product.slug}`}
-                className="block p-4 pt-6 md:p-5 md:pt-7"
+                className="flex flex-1 flex-col p-4 pt-6 md:p-5 md:pt-7"
               >
                 <h3 className="line-clamp-2 font-display text-[18px] leading-[0.98] tracking-tight text-espresso min-[380px]:text-[15px] sm:text-[17px] md:text-[19px]">
                   {product.name}
@@ -656,7 +726,7 @@ export function MenuGrid({
                 <div className="mt-1.5 line-clamp-1 font-editorial text-[12px] text-cinnamon md:text-[13px]">
                   {getProductCategoryName(product, categories) || "Bakerio"}
                 </div>
-                <div className="mt-3 font-display text-[18px] text-espresso md:text-[20px]">
+                <div className="mt-auto pt-3 font-display text-[18px] text-espresso md:text-[20px]">
                   {formatVND(price)}
                 </div>
               </Link>
@@ -678,7 +748,7 @@ export function MenuGrid({
       {totalPages > 1 && (
         <nav
           aria-label="Menu pagination"
-          className="mb-16 flex items-center justify-between gap-3 rounded-[1.5rem] border border-crust-deep bg-white px-4 py-3 shadow-[0_16px_36px_-30px_rgba(44,24,16,0.85)]"
+          className="sticky bottom-24 z-30 mx-auto flex w-full max-w-md items-center justify-between gap-3 rounded-[1.5rem] border border-crust-deep bg-white/95 px-4 py-3 shadow-[0_18px_44px_-18px_rgba(44,24,16,0.6)] backdrop-blur lg:bottom-6"
         >
           <Link
             href="/menu"

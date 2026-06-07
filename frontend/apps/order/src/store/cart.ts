@@ -102,27 +102,54 @@ export const useCartStore = create<CartStore>()(
                  branchId: get().branchId,
                  selectedBranch: get().selectedBranch,
                };
-                const optimisticId = crypto.randomUUID();
-                mutatingSet((state) => ({
-                  items: [...state.items, { ...item, id: optimisticId }],
-                  isCartOpen: true,
-                  ...(!isAuthed() ? { cartIsGuest: true } : {}),
-                }));
-               if (isAuthed()) {
-                 mutatingSet({ syncing: true, cartError: null }, true);
-                 addCartItem(item.product.id, item.quantity)
-                   .then((remoteCart) => mutatingSet({ ...applyRemoteCart(remoteCart), isCartOpen: true }))
-                   .catch((e) =>
-                     mutatingSet({
-                       items: snap.items,
-                       coupon: snap.coupon,
-                       branchId: snap.branchId,
-                       selectedBranch: snap.selectedBranch,
-                       cartError: errorMessage(e),
-                       syncing: false,
-                     }),
-                   );
-               }
+                const existing = get().items.find(
+                  (i) => i.product.id === item.product.id && JSON.stringify(i.choices) === JSON.stringify(item.choices),
+                );
+                if (existing) {
+                  mutatingSet((state) => ({
+                    items: state.items.map((i) =>
+                      i.id === existing.id ? { ...i, quantity: i.quantity + item.quantity } : i,
+                    ),
+                    isCartOpen: true,
+                  }));
+                  if (isAuthed()) {
+                    mutatingSet({ syncing: true, cartError: null }, true);
+                    updateCartItem(existing.id, existing.quantity + item.quantity)
+                      .then((remoteCart) => mutatingSet({ ...applyRemoteCart(remoteCart), isCartOpen: true }))
+                      .catch((e) =>
+                        mutatingSet({
+                          items: snap.items,
+                          coupon: snap.coupon,
+                          branchId: snap.branchId,
+                          selectedBranch: snap.selectedBranch,
+                          cartError: errorMessage(e),
+                          syncing: false,
+                        }),
+                      );
+                  }
+                } else {
+                  const optimisticId = crypto.randomUUID();
+                  mutatingSet((state) => ({
+                    items: [...state.items, { ...item, id: optimisticId }],
+                    isCartOpen: true,
+                    ...(!isAuthed() ? { cartIsGuest: true } : {}),
+                  }));
+                  if (isAuthed()) {
+                    mutatingSet({ syncing: true, cartError: null }, true);
+                    addCartItem(item.product.id, item.quantity)
+                      .then((remoteCart) => mutatingSet({ ...applyRemoteCart(remoteCart), isCartOpen: true }))
+                      .catch((e) =>
+                        mutatingSet({
+                          items: snap.items,
+                          coupon: snap.coupon,
+                          branchId: snap.branchId,
+                          selectedBranch: snap.selectedBranch,
+                          cartError: errorMessage(e),
+                          syncing: false,
+                        }),
+                      );
+                  }
+                }
       };
 
       const removeItem = (id: string) => {

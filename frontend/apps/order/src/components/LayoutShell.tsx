@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useCartStore } from "@/store/cart";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
@@ -12,11 +13,16 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setHydrated(true), []);
+  const pathname = usePathname();
   const isCartOpen = useCartStore((s) => s.isCartOpen);
   const setCartOpen = useCartStore((s) => s.setCartOpen);
   const itemCount = useCartStore((s) =>
     s.items.reduce((sum, item) => sum + item.quantity, 0),
   );
+
+  // Product detail pages: /menu/[slug] (not /menu itself)
+  const isProductPage = pathname.startsWith("/menu/") && pathname !== "/menu";
+  const useOverlay = isProductPage;
 
   return (
     <div className="min-h-screen flex flex-col lg:pl-56">
@@ -33,8 +39,8 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
 
-        {/* Right Sidebar Cart for Desktop */}
-        {hydrated && (
+        {/* Right Sidebar Cart for Desktop — permanent mode (menu grid) */}
+        {hydrated && !useOverlay && (
           <aside
             className={`sticky top-0 z-40 hidden h-screen shrink-0 overflow-x-hidden overflow-y-auto bg-white transition-all duration-300 ease-in-out lg:block ${
               isCartOpen
@@ -48,6 +54,13 @@ export function LayoutShell({ children }: { children: React.ReactNode }) {
           </aside>
         )}
       </div>
+
+      {/* Floating Overlay Cart — product detail pages */}
+      {hydrated && useOverlay && isCartOpen && (
+        <aside className="fixed top-4 right-4 bottom-4 z-50 hidden w-[380px] overflow-y-auto rounded-2xl border border-crust-deep bg-white shadow-2xl lg:block">
+          <SidebarCart />
+        </aside>
+      )}
 
       {/* Mobile and Tablet Bottom Navigation */}
       <BottomNav />

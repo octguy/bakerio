@@ -280,6 +280,8 @@ export async function getProductsPage(opts?: {
   q?: string;
   category?: string;
   active?: boolean;
+  min_price?: number;
+  max_price?: number;
   page?: number;
   size?: number;
 }): Promise<ProductListResponse> {
@@ -287,6 +289,8 @@ export async function getProductsPage(opts?: {
   if (opts?.q) params.set("q", opts.q);
   if (opts?.category) params.set("category", opts.category);
   if (opts?.active != null) params.set("active", String(opts.active));
+  if (opts?.min_price != null) params.set("min_price", String(opts.min_price));
+  if (opts?.max_price != null) params.set("max_price", String(opts.max_price));
   if (opts?.page != null) params.set("page", String(opts.page));
   if (opts?.size != null) params.set("size", String(opts.size));
   const query = params.toString();
@@ -318,6 +322,12 @@ export async function getProductsPage(opts?: {
     }
     if (opts?.active != null) {
       items = items.filter((product) => product.is_active === opts.active);
+    }
+    if (opts?.min_price != null) {
+      items = items.filter((product) => product.price >= opts.min_price!);
+    }
+    if (opts?.max_price != null) {
+      items = items.filter((product) => product.price <= opts.max_price!);
     }
     return {
       items: items.slice(

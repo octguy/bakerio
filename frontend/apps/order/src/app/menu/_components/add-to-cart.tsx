@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useTransitionRouter as useRouter } from "next-view-transitions";
 import { useCartStore } from "@/store/cart";
 import type { Product } from "@repo/api-client";
 import { formatVND } from "@/lib/format";
@@ -14,21 +13,18 @@ type CartProduct = Product & {
   category?: { id?: string };
 };
 
-const DESKTOP_CART_MEDIA_QUERY = "(min-width: 1024px)";
-
 function getProductPrice(product: Product) {
-  const cartProduct = product as CartProduct;
-  return cartProduct.price ?? cartProduct.base_price ?? 0;
+  const p = product as CartProduct;
+  return p.price ?? p.base_price ?? 0;
 }
 
 function getProductCategoryId(product: Product) {
-  const cartProduct = product as CartProduct;
-  return cartProduct.category_id ?? cartProduct.category?.id ?? "";
+  const p = product as CartProduct;
+  return p.category_id ?? p.category?.id ?? "";
 }
 
 export function AddToCartSection({ product }: { product: Product }) {
   const t = useTranslations("menu");
-  const router = useRouter();
   const addItem = useCartStore((s) => s.addItem);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -53,6 +49,7 @@ export function AddToCartSection({ product }: { product: Product }) {
       unitPrice,
     });
     setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
   };
 
   return (
@@ -93,47 +90,17 @@ export function AddToCartSection({ product }: { product: Product }) {
         </span>
       </div>
 
-      {!added ? (
-        <button
-          onClick={handleAdd}
-          className="bkr-press flex min-h-14 w-full items-center justify-between rounded-full bg-espresso px-5 py-3 font-mono text-[11px] font-black uppercase tracking-[0.16em] text-cream shadow-[0_16px_30px_-20px_rgba(44,24,16,0.8)]"
-        >
-          <span>{t("addToCart")}</span>
-          <span aria-hidden="true">→</span>
-        </button>
-      ) : (
-        <div className="space-y-3">
-          <div className="rounded-[1.25rem] border border-sage/30 bg-sage/10 p-3 text-center text-sm font-bold text-sage">
-            ✓ {t("addedToCart")}
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => router.push("/menu")}
-              className="min-h-12 flex-1 rounded-full border border-crust-deep bg-white px-3 py-3 text-sm font-bold transition-colors hover:border-cinnamon"
-            >
-              {t("continueShopping")}
-            </button>
-            <button
-              onClick={() => {
-                if (window.matchMedia(DESKTOP_CART_MEDIA_QUERY).matches) {
-                  const cartState = useCartStore.getState?.();
-                  if (cartState?.setCartOpen) {
-                    cartState.setCartOpen(true);
-                    router.push("/menu");
-                  } else {
-                    router.push("/cart");
-                  }
-                } else {
-                  router.push("/cart");
-                }
-              }}
-              className="min-h-12 flex-1 rounded-full bg-espresso px-3 py-3 text-sm font-bold text-cream transition-colors hover:bg-cinnamon"
-            >
-              {t("viewCart")}
-            </button>
-          </div>
-        </div>
-      )}
+      <button
+        onClick={handleAdd}
+        disabled={added}
+        style={{ viewTransitionName: "none" }}
+        className={`bkr-press flex min-h-14 w-full items-center justify-between rounded-full px-5 py-3 font-mono text-[11px] font-black uppercase tracking-[0.16em] shadow-[0_16px_30px_-20px_rgba(44,24,16,0.8)] transition-colors ${
+          added ? "bg-sage text-white" : "bg-espresso text-cream"
+        }`}
+      >
+        <span>{added ? `✓ ${t("addedToCart")}` : t("addToCart")}</span>
+        <span aria-hidden="true">{added ? "" : "→"}</span>
+      </button>
     </>
   );
 }
