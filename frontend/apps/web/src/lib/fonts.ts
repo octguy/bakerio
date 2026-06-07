@@ -1,4 +1,5 @@
-import { Newsreader, Manrope, JetBrains_Mono, Sacramento } from 'next/font/google';
+import { Newsreader, Manrope, JetBrains_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 
 export const display = Newsreader({
   variable: '--font-display',
@@ -25,11 +26,22 @@ export const sans = Manrope({
 
 export const mono = JetBrains_Mono({
   variable: '--font-mono',
-  subsets: ['latin'],
+  subsets: ['latin', 'vietnamese'],
 });
 
-export const script = Sacramento({
+export const script = localFont({
+  src: '../../public/fonts/FS Playlist Script.ttf',
   variable: '--font-script',
-  weight: '400',
-  subsets: ['latin'],
+  display: 'swap',
+});
+
+export const slab = localFont({
+  src: [
+    { path: '../../public/fonts/JosefinSlab-Regular.ttf', weight: '400', style: 'normal' },
+    { path: '../../public/fonts/JosefinSlab-Italic.ttf', weight: '400', style: 'italic' },
+    { path: '../../public/fonts/JosefinSlab-Light.ttf', weight: '300', style: 'normal' },
+    { path: '../../public/fonts/JosefinSlab-LightItalic.ttf', weight: '300', style: 'italic' },
+  ],
+  variable: '--font-slab',
+  display: 'swap',
 });

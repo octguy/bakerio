@@ -20,8 +20,8 @@ export function LocaleSwitcher() {
           onClick={() => setCookieAndReload(loc)}
           className={`rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.1em] transition-colors ${
             loc === current
-              ? "bg-honey/20 font-bold text-honey"
-              : "text-[var(--console-muted-dark)] hover:text-[var(--console-ink-text)]"
+              ? "bg-cinnamon/15 font-bold text-cinnamon"
+              : "text-espresso/40 hover:text-espresso"
           }`}
         >
           {loc}

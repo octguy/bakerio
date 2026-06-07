@@ -19,7 +19,7 @@ export default function ContactPage() {
   const contactInfo = [
     { icon: MapPin, label: t("address"), value: "42 Lê Lợi, Bến Nghé, Q.1, HCMC" },
     { icon: Phone, label: t("phone"), value: "+84 28 1234 5678" },
-    { icon: Mail, label: t("email"), value: "hello@bakerio.vn" },
+    { icon: Mail, label: t("email"), value: "admin@thinhuit.id.vn" },
     { icon: Clock, label: t("hours"), value: "Every day · 06:00 — 22:00" },
   ];
 
@@ -231,7 +231,7 @@ export default function ContactPage() {
               {t("wholesaleTitle")}
             </div>
             <p className="font-editorial text-[14px] text-cocoa">
-              {t("wholesaleDesc")} <strong className="font-sans not-italic text-cinnamon">trade@bakerio.vn</strong>.
+              {t("wholesaleDesc")} <strong className="font-sans not-italic text-cinnamon">admin@thinhuit.id.vn</strong>.
             </p>
           </div>
         </div>

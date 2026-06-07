@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "picsum.photos" },
       { protocol: "http", hostname: "localhost" },
-      { protocol: "https", hostname: "*.bakerio.vn" },
+      { protocol: "https", hostname: "*.bakerio.thinhuit.id.vn" },
     ],
   },
   env: {

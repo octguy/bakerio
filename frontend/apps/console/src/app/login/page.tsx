@@ -206,7 +206,7 @@ function LoginContent() {
                   </strong>
                   {" "}
                   <span className="font-sans not-italic font-bold text-cinnamon">
-                    order.bakerio.vn ↗
+                    order.bakerio.thinhuit.id.vn ↗
                   </span>
                 </span>
               </div>

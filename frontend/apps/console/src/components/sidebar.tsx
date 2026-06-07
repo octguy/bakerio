@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { LocaleSwitcher } from "./locale-switcher";
 
 interface NavItem {
   href: string;
@@ -182,6 +183,11 @@ function SidebarContent() {
           </div>
         ))}
       </nav>
+
+      {/* Locale */}
+      <div className="mx-3 mb-1 flex justify-center">
+        <LocaleSwitcher />
+      </div>
 
       {/* User */}
       <div className="m-3 flex items-center gap-2.5 rounded-lg bg-[var(--console-ink-text)]/10 px-3 py-2.5">
