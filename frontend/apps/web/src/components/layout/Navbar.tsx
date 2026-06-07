@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { getOrderUrl } from "@/lib/public-config";
 import MobileMenu from "./MobileMenu";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 export default function Navbar() {
   const t = useTranslations("nav");
@@ -75,9 +76,7 @@ export default function Navbar() {
           </nav>
 
           <div className="flex items-center gap-4">
-            <span className="hidden md:inline font-mono text-[10.5px] tracking-[0.12em] transition-colors text-caramel">
-              vi · en
-            </span>
+            <LocaleSwitcher />
             <a
               href={orderUrl}
               className="hidden md:inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors bkr-press bg-espresso text-cream hover:bg-cocoa"

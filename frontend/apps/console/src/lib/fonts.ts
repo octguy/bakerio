@@ -25,7 +25,7 @@ export const sans = Manrope({
 
 export const mono = JetBrains_Mono({
   variable: '--font-mono',
-  subsets: ['latin'],
+  subsets: ['latin', 'vietnamese'],
 });
 
 export const script = Sacramento({

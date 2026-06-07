@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/lib/auth";
 import { LogOut } from "lucide-react";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 
 const navItems = [
   { href: "/menu", key: "menu" as const },
@@ -81,6 +82,11 @@ export function DesktopSidebarNav() {
             </Link>
           );
         })}
+      </div>
+
+      {/* Locale */}
+      <div className="px-4 pb-2 flex justify-center">
+        <LocaleSwitcher />
       </div>
 
       {/* Auth state at the bottom */}

@@ -55,7 +55,7 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto max-w-md px-7 pt-10 pb-24">
-      <span className="block font-script text-[30px] leading-none text-cinnamon">{t("welcomeBack")}</span>
+      <span className="block font-editorial italic text-[28px] leading-none text-cinnamon">{t("welcomeBack")}</span>
       <h1
         className="mt-1.5 font-display tracking-tight text-espresso"
         style={{
