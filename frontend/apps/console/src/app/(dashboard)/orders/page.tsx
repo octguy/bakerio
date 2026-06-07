@@ -6,6 +6,7 @@ import type { Order } from "@repo/api-client";
 import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useTranslations } from "next-intl";
+import { useViewportPageSize } from "@/lib/use-viewport-page-size";
 
 const getBranchCode = (branchId: string) => {
   const branchMap: Record<string, string> = {
@@ -31,8 +32,6 @@ const TERMINAL_STATUSES: Order["status"][] = [
   "COMPLETED",
   "CANCELLED",
 ];
-
-const ORDERS_PAGE_SIZE = 24;
 
 const isTerminalOrder = (status: Order["status"]) =>
   TERMINAL_STATUSES.includes(status);
@@ -61,6 +60,7 @@ export default function OrdersPage() {
   const [totalOrders, setTotalOrders] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const pageRef = useRef(1);
+  const pageSize = useViewportPageSize({ reserved: 300, rowHeight: 180, min: 4 });
 
   const fetchOrders = async (showLoading = false, requestedPage = pageRef.current) => {
     if (showLoading) setLoading(true);
@@ -68,7 +68,7 @@ export default function OrdersPage() {
     try {
       const data = await getOrders({
         page: requestedPage,
-        size: ORDERS_PAGE_SIZE,
+        size: pageSize,
       });
       setOrders(data.items || []);
       pageRef.current = data.page;
@@ -94,7 +94,7 @@ export default function OrdersPage() {
     fetchOrders(true); // eslint-disable-line react-hooks/set-state-in-effect
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [pageSize]);
 
   // Latest orders first.
   const visibleOrders = [...orders].sort(
