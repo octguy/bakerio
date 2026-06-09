@@ -285,14 +285,14 @@ useEffect(() => {
             {totalPages > 1 && (
               <nav
                 aria-label="Menu pagination"
-                className="mt-4 flex items-center justify-between gap-3 border-t border-crust pt-5"
+                className="sticky bottom-5 inset-x-0 mx-auto w-fit max-w-[calc(100vw-2rem)] bg-cream/60 backdrop-blur-md border border-crust rounded-full shadow-md py-2 px-3 flex items-center justify-center gap-2 z-30"
               >
                 {/* First */}
                 <button
                   onClick={() => loadPage(1)}
                   disabled={!hasPreviousPage || isPageLoading}
                   aria-label="First page"
-                  className={`rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                  className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
                     hasPreviousPage
                       ? 'border border-espresso text-espresso hover:bg-espresso hover:text-white'
                       : 'pointer-events-none border border-crust text-caramel opacity-45'
@@ -305,7 +305,7 @@ useEffect(() => {
                   onClick={() => loadPage(page - 1)}
                   disabled={!hasPreviousPage || isPageLoading}
                   aria-label="Previous page"
-                  className={`rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                  className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
                     hasPreviousPage
                       ? 'border border-espresso text-espresso hover:bg-espresso hover:text-white'
                       : 'pointer-events-none border border-crust text-caramel opacity-45'
@@ -337,7 +337,7 @@ useEffect(() => {
                   onClick={() => loadPage(page + 1)}
                   disabled={!hasNextPage || isPageLoading}
                   aria-label="Next page"
-                  className={`rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                  className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
                     hasNextPage
                       ? 'border border-espresso bg-espresso text-white hover:bg-cinnamon'
                       : 'pointer-events-none border border-crust text-caramel opacity-45'
@@ -350,7 +350,7 @@ useEffect(() => {
                   onClick={() => loadPage(totalPages)}
                   disabled={!hasNextPage || isPageLoading}
                   aria-label="Last page"
-                  className={`rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
+                  className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
                     hasNextPage
                       ? 'border border-espresso text-espresso hover:bg-espresso hover:text-white'
                       : 'pointer-events-none border border-crust text-caramel opacity-45'
