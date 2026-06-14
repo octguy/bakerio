@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { cleanupByPrefix } from "./_cleanup";
+import { cleanupByPrefix } from "../helpers/cleanup";
 import { fetchAll } from "../helpers/fetchAll";
 
 const RUN = Date.now();
