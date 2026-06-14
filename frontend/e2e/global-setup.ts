@@ -48,9 +48,8 @@ async function globalSetup() {
     console.log("Go backend and database are healthy and running!");
 
     try {
-      const adminEmail =
-        process.env.E2E_ADMIN_EMAIL || "superadmin@bakerio.com";
-      const adminPassword = process.env.E2E_ADMIN_PASSWORD || "123456";
+const adminEmail = process.env.E2E_ADMIN_EMAIL;
+      const adminPassword = process.env.E2E_ADMIN_PASSWORD;
 
       const loginRes = await requestContext.post(
         "http://localhost:8080/api/v1/auth/login",

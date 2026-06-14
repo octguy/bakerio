@@ -3,7 +3,7 @@ process.env.E2E_CUSTOMER_EMAIL =
 process.env.E2E_CUSTOMER_PASSWORD =
   process.env.E2E_CUSTOMER_PASSWORD || "123456";
 process.env.E2E_ADMIN_EMAIL =
-  process.env.E2E_ADMIN_EMAIL || "superadmin@bakerio.com";
+  process.env.E2E_ADMIN_EMAIL;
 process.env.E2E_ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD || "123456";
 process.env.NEXT_PUBLIC_CONTACT_ENDPOINT =
   process.env.NEXT_PUBLIC_CONTACT_ENDPOINT ||

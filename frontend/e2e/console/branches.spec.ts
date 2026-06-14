@@ -7,8 +7,8 @@ const MARK = `E2E ${RUN}`;
 
 async function adminLogin(page: import("@playwright/test").Page) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill("superadmin@bakerio.com");
-  await page.getByLabel("Password", { exact: true }).fill("123456");
+  await page.getByLabel("Email").fill(process.env.E2E_ADMIN_EMAIL);
+  await page.getByLabel("Password", { exact: true }).fill(process.env.E2E_ADMIN_PASSWORD);
   await page.getByRole("button", { name: "Sign In" }).click();
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 }
@@ -49,7 +49,7 @@ test.describe("Admin — Branches Management", () => {
       .getByRole("dialog")
       .locator("input")
       .nth(1)
-      .fill("100 Phan Xích Long");
+      .fill(`${MARK} Address`);
     await page.getByRole("button", { name: /save/i }).click();
 
     await expect(page.getByText(/branch created|success/i)).toBeVisible({
@@ -77,7 +77,7 @@ test.describe("Admin — Branches Management", () => {
       .getByRole("dialog")
       .locator("input")
       .nth(1)
-      .fill("100 Phan Xích Long");
+      .fill(`${MARK} Address`);
     await page.getByRole("button", { name: /save/i }).click();
 
     await expect(page.getByText(/branch created|success/i)).toBeVisible({

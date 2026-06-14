@@ -53,9 +53,12 @@ test("selecting a branch navigates to menu", async ({ page, request }) => {
   await expect(page).toHaveURL(/\/menu/);
 });
 
-  test("menu page shows products", async ({ page }) => {
+  test("menu page shows products", async ({ page, request }) => {
+  const branchesData = await fetchAll('branch', request);
+  const firstBranchName = branchesData[0]?.name || '';
+
     await page.goto("/");
-    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
+    await page.getByRole("button", { name: new RegExp(firstBranchName) }).click();
     await expect(page).toHaveURL(/\/menu/);
     await expect(page.locator("a[href*='/menu/'] h3").first()).toBeVisible();
   });
@@ -72,9 +75,13 @@ test("selecting a branch navigates to menu", async ({ page, request }) => {
 
   test("full ordering flow: branch → menu → product detail", async ({
     page,
+    request,
   }) => {
+  const branchesData = await fetchAll('branch', request);
+  const firstBranchName = branchesData[0]?.name || '';
+
     await page.goto("/");
-    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
+    await page.getByRole("button", { name: new RegExp(firstBranchName) }).click();
     await expect(page).toHaveURL(/\/menu/);
 
     const productLink = page.locator("a[href*='/menu/']").first();
@@ -85,15 +92,16 @@ test("selecting a branch navigates to menu", async ({ page, request }) => {
 
   test("authenticated customer can add, review, and place an order", async ({
     page,
+    request,
   }) => {
     await loginCustomer(page);
 
     await page.goto("/");
-    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
+    await page.getByRole("button", { name: new RegExp(firstBranchName) }).click();
     await expect(page).toHaveURL(/\/menu/);
 
     const products = await fetchAll('products', request);
-    const product = products.find(p => p.slug === 'traditional-croissant') || products[0];
+    const product = products[0];
     await page.goto(`/menu/${product.slug}`);
     await expect(
       page.getByRole("heading", { name: new RegExp(product.name, 'i') }),

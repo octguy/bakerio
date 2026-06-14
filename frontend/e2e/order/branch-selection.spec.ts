@@ -17,7 +17,7 @@ import { test, expect } from "@playwright/test";
 import { fetchAll } from "../helpers/fetchAll";
 
 test.describe("Branch Selection — Homepage", () => {
-  test("renders the branch selection heading and ordering modes", async ({ page }) => {
+  test("renders the branch selection heading and ordering modes", async ({ page, request }) => {
     await page.goto("/");
 
     await expect(page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i })).toBeVisible();
@@ -26,7 +26,7 @@ test.describe("Branch Selection — Homepage", () => {
     // Assert real branch count and count text
     const branchesData = await fetchAll('branch', request);
     await expect(page.locator("main button")).toHaveCount(branchesData.length);
-    await expect(page.getByText("3 open")).toBeVisible();
+    await expect(page.getByText(`${branchesData.length} open`)).toBeVisible();
   });
 
   // NOTE: The order home page fetches branches in an SSR server component and getBranches()
@@ -39,13 +39,10 @@ test.describe("Branch Selection — Homepage", () => {
     const branchButtons = page.locator("main button");
     await expect(branchButtons).toHaveCount(3);
 
-    const firstBranch = branchButtons.first();
-    // Each card has a heading (name), address text, and region badge
-    await expect(firstBranch.locator("h2")).toBeVisible();
-    await expect(firstBranch.locator("p")).toBeVisible();
-    
-    // Assert backend-provided address
-    await expect(page.getByText("65 Lê Lợi, Quận 1")).toBeVisible();
+const firstBranch = branchesData[0];
+// Each card has a heading (name), address text, and region badge
+await expect(page.getByText(firstBranch.name)).toBeVisible();
+await expect(page.getByText(firstBranch.address)).toBeVisible();
     
     // Assert derived region tag instead of static "Open" text
     await expect(firstBranch.getByText(/Coffee bar|Flagship/).first()).toBeVisible();

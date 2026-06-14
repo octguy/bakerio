@@ -1,13 +1,14 @@
 import { test, expect } from "@playwright/test";
 import { cleanupByPrefix } from "./_cleanup";
+import { fetchAll } from "../helpers/fetchAll";
 
 const RUN = Date.now();
 const MARK = `E2E ${RUN}`;
 
 async function adminLogin(page: import("@playwright/test").Page) {
   await page.goto("/login");
-  await page.getByLabel("Email").fill("superadmin@bakerio.com");
-  await page.getByLabel("Password", { exact: true }).fill("123456");
+  await page.getByLabel("Email").fill(process.env.E2E_ADMIN_EMAIL);
+  await page.getByLabel("Password", { exact: true }).fill(process.env.E2E_ADMIN_PASSWORD);
   await page.getByRole("button", { name: "Sign In" }).click();
   await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 }
@@ -21,16 +22,16 @@ test.afterAll(async () => {
 });
 
 test.describe("Admin — Categories CRUD", () => {
-  test("displays categories in the data table", async ({ page }) => {
+  test("displays categories in the data table", async ({ page, request }) => {
     await page.goto("/categories");
     await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
     const categories = await fetchAll('categories', request);
-    await expect(
-      page.locator("table").getByText(categories.find(c=>c.name==="Cakes")?.name || "Cakes", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.locator("table").getByText(categories.find(c=>c.name==="Pastries")?.name || "Pastries", { exact: true }),
-    ).toBeVisible();
+await expect(
+          page.locator("table").getByText(categories[0]?.name ?? "", { exact: true }),
+        ).toBeVisible();
+await expect(
+          page.locator("table").getByText(categories[1]?.name ?? "", { exact: true }),
+        ).toBeVisible();
   });
 
   test("data table search filters rows and exposes empty state", async ({
@@ -40,9 +41,9 @@ test.describe("Admin — Categories CRUD", () => {
     await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
 
     const search = page.getByLabel("Search categories...");
-    await search.fill("Cakes");
-    await expect(page.locator("tbody")).toContainText("Cakes");
-    await expect(page.locator("tbody")).not.toContainText("Pastries");
+    await search.fill(categories[0]?.name || "");
+    await expect(page.locator("tbody")).toContainText(categories[0]?.name ?? "");
+    await expect(page.locator("tbody")).not.toContainText(categories[1]?.name ?? "");
     await expect(page.getByText("1 row(s)")).toBeVisible();
 
     await search.fill(`missing-${RUN}`);

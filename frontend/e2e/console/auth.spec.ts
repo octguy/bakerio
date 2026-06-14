@@ -3,8 +3,8 @@ import { test, expect } from "@playwright/test";
 test.describe("Admin — Authentication", () => {
   test("login with valid credentials redirects to dashboard", async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel("Email").fill("superadmin@bakerio.com");
-    await page.getByLabel("Password", { exact: true }).fill("123456");
+    await page.getByLabel("Email").fill(process.env.E2E_ADMIN_EMAIL);
+    await page.getByLabel("Password", { exact: true }).fill(process.env.E2E_ADMIN_PASSWORD);
     await page.getByRole("button", { name: "Sign In" }).click();
 
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
@@ -31,8 +31,8 @@ test.describe("Admin — Authentication", () => {
   test("logout redirects to login page", async ({ page }) => {
     // Login first
     await page.goto("/login");
-    await page.getByLabel("Email").fill("superadmin@bakerio.com");
-    await page.getByLabel("Password", { exact: true }).fill("123456");
+    await page.getByLabel("Email").fill(process.env.E2E_ADMIN_EMAIL);
+    await page.getByLabel("Password", { exact: true }).fill(process.env.E2E_ADMIN_PASSWORD);
     await page.getByRole("button", { name: "Sign In" }).click();
     await expect(page).not.toHaveURL(/\/login/, { timeout: 10000 });
 

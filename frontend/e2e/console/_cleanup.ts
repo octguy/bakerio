@@ -4,7 +4,7 @@ export async function apiToken(): Promise<string> {
   const res = await fetch(`${API}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: "superadmin@bakerio.com", password: "123456" }),
+    body: JSON.stringify({ email: process.env.E2E_ADMIN_EMAIL, password: process.env.E2E_ADMIN_PASSWORD }),
   });
   const json = await res.json() as any;
   return json?.data?.access_token;

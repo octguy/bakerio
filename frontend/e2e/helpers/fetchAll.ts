@@ -7,8 +7,8 @@ export async function fetchAll(resource: string, request: APIRequestContext): Pr
   const url = `${base}/${resource}`;
   const tokenRes = await request.post(`${base}/auth/login`, {
     data: {
-      email: process.env.E2E_ADMIN_EMAIL || "superadmin@bakerio.com",
-      password: process.env.E2E_ADMIN_PASSWORD || "123456",
+      email: process.env.E2E_ADMIN_EMAIL,
+      password: process.env.E2E_ADMIN_PASSWORD,
     },
   });
   const tokenJson = await tokenRes.json();
