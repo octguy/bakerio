@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { fetchAll } from "../helpers/fetchAll";
 
 const RUN = Date.now();
 
@@ -25,7 +26,7 @@ test.describe("Admin — Users Management", () => {
   });
 
   // NOTE: backend exposes no deleteUser endpoint (frozen), so created staff cannot be cleaned up; use a unique name/email per run so rows are identifiable and never collide.
-  test("create staff user via dialog form", async ({ page }) => {
+  test("create staff user via dialog form", async ({ page, request }) => {
     await page.goto("/users");
     await expect(page.getByRole("button", { name: /add user/i })).toBeVisible({ timeout: 10000 });
     await page.getByRole("button", { name: /add user/i }).click();
@@ -36,8 +37,10 @@ test.describe("Admin — Users Management", () => {
     await inputs.nth(0).fill(`E2E Staff ${RUN}`);       // Full Name
     await inputs.nth(1).fill(`staff-${RUN}@bakerio.vn`); // Email
     await inputs.nth(2).fill("secure123");           // Password
+    const branchesList = await fetchAll('branch', request);
+    const firstBranch = branchesList[0];
     await dialog.locator("select#create-user-role").selectOption("branch_staff");
-    await dialog.locator("select#create-user-branch").selectOption({ label: "Bakerio Quận 1" });
+    await dialog.locator("select#create-user-branch").selectOption({ label: firstBranch.name });
 
     await page.getByRole("button", { name: /create user/i }).click();
     await expect(page.getByText("User created")).toBeVisible({ timeout: 10000 });

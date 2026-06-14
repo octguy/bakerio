@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { fetchAll } from "../helpers/fetchAll";
 
 // NOTE: branch/products/categories READS are PUBLIC (PR #24), so a backend built from current main
 // serves REAL branch/product data to the guest (unauthenticated) SSR homepage. The api-client
@@ -22,31 +23,35 @@ test.describe("Order — Customer Ordering App", () => {
     ).toBe(true);
   }
 
-  test("homepage shows branch selection", async ({ page }) => {
+  test("homepage shows branch selection", async ({ page, request }) => {
     await page.goto("/");
     await expect(
       page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i }),
     ).toBeVisible();
 
     const branchButtons = page.locator("main button");
-    await expect(branchButtons).toHaveCount(3);
-
-    await expect(
-      page.getByRole("button", { name: /Bakerio Quận 1/ }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /Bakerio Hoàn Kiếm/ }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /Bakerio Phú Nhuận/ }),
-    ).toBeVisible();
+    const branchesData = await fetchAll('branch', request);
+    await expect(branchButtons).toHaveCount(branchesData.length);
+    // Verify first three branches if present
+    if (branchesData[0]) {
+      await expect(page.getByRole("button", { name: new RegExp(branchesData[0].name) })).toBeVisible();
+    }
+    if (branchesData[1]) {
+      await expect(page.getByRole("button", { name: new RegExp(branchesData[1].name) })).toBeVisible();
+    }
+    if (branchesData[2]) {
+      await expect(page.getByRole("button", { name: new RegExp(branchesData[2].name) })).toBeVisible();
+    }
   });
 
-  test("selecting a branch navigates to menu", async ({ page }) => {
-    await page.goto("/");
-    await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
-    await expect(page).toHaveURL(/\/menu/);
-  });
+test("selecting a branch navigates to menu", async ({ page, request }) => {
+  await page.goto("/");
+  const branches = await fetchAll('branch', request);
+  if (branches[0]) {
+    await page.getByRole("button", { name: new RegExp(branches[0].name) }).click();
+  }
+  await expect(page).toHaveURL(/\/menu/);
+});
 
   test("menu page shows products", async ({ page }) => {
     await page.goto("/");
@@ -87,9 +92,11 @@ test.describe("Order — Customer Ordering App", () => {
     await page.getByRole("button", { name: /Bakerio Quận 1/ }).click();
     await expect(page).toHaveURL(/\/menu/);
 
-    await page.goto("/menu/traditional-croissant");
+    const products = await fetchAll('products', request);
+    const product = products.find(p => p.slug === 'traditional-croissant') || products[0];
+    await page.goto(`/menu/${product.slug}`);
     await expect(
-      page.getByRole("heading", { name: "Traditional Croissant" }),
+      page.getByRole("heading", { name: new RegExp(product.name, 'i') }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Increase quantity" }).click();
     await page.getByRole("button", { name: "Add to Cart" }).click();

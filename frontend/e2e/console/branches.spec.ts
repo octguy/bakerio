@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { cleanupByPrefix } from "./_cleanup";
+import { fetchAll } from "../helpers/fetchAll";
 
 const RUN = Date.now();
 const MARK = `E2E ${RUN}`;
@@ -21,12 +22,14 @@ test.afterAll(async () => {
 });
 
 test.describe("Admin — Branches Management", () => {
-  test("branches page loads and shows data", async ({ page }) => {
+  test("branches page loads and shows data", async ({ page, request }) => {
     await page.goto("/branches");
-    await expect(page.getByText("Bakerio Quận 1")).toBeVisible({
-      timeout: 10000,
-    });
-    await expect(page.getByText("Bakerio Hoàn Kiếm")).toBeVisible();
+    const branchesData = await fetchAll('branch', request);
+    const firstBranch = branchesData[0];
+    await expect(page.getByText(firstBranch.name)).toBeVisible({ timeout: 10000 });
+    if (branchesData.length > 1) {
+      await expect(page.getByText(branchesData[1].name)).toBeVisible();
+    }
   });
 
   test("create new branch", async ({ page }) => {

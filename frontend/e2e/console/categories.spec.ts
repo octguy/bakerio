@@ -24,11 +24,12 @@ test.describe("Admin — Categories CRUD", () => {
   test("displays categories in the data table", async ({ page }) => {
     await page.goto("/categories");
     await expect(page.locator("table")).toBeVisible({ timeout: 10000 });
+    const categories = await fetchAll('categories', request);
     await expect(
-      page.locator("table").getByText("Cakes", { exact: true }),
+      page.locator("table").getByText(categories.find(c=>c.name==="Cakes")?.name || "Cakes", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.locator("table").getByText("Pastries", { exact: true }),
+      page.locator("table").getByText(categories.find(c=>c.name==="Pastries")?.name || "Pastries", { exact: true }),
     ).toBeVisible();
   });
 

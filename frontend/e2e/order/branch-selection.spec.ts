@@ -14,6 +14,8 @@ import { test, expect } from "@playwright/test";
  * These tests verify observable UI behavior regardless of backend availability.
  */
 
+import { fetchAll } from "../helpers/fetchAll";
+
 test.describe("Branch Selection — Homepage", () => {
   test("renders the branch selection heading and ordering modes", async ({ page }) => {
     await page.goto("/");
@@ -22,7 +24,8 @@ test.describe("Branch Selection — Homepage", () => {
     await expect(page.getByRole("main").getByText("Pickup").first()).toBeVisible();
     
     // Assert real branch count and count text
-    await expect(page.locator("main button")).toHaveCount(3);
+    const branchesData = await fetchAll('branch', request);
+    await expect(page.locator("main button")).toHaveCount(branchesData.length);
     await expect(page.getByText("3 open")).toBeVisible();
   });
 

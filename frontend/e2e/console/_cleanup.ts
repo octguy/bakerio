@@ -1,4 +1,4 @@
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const API = process.env.DEMO_API_URL || "http://localhost:8080/api/v1";
 
 export async function apiToken(): Promise<string> {
   const res = await fetch(`${API}/auth/login`, {
@@ -11,7 +11,7 @@ export async function apiToken(): Promise<string> {
 }
 
 // Deletes every item whose `name` starts with `prefix`. resource is "branch" or "categories".
-export async function cleanupByPrefix(resource: "branch" | "categories", prefix: string): Promise<void> {
+export async function cleanupByPrefix(resource: "branch" | "categories" | "products" | "vouchers", prefix: string): Promise<void> {
   const token = await apiToken();
   if (!token) return;
   const listRes = await fetch(`${API}/${resource}`, {
