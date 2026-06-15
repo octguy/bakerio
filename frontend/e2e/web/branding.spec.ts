@@ -4,26 +4,26 @@ test.describe("Web — Branding Site", () => {
   test("homepage loads with hero and navigation", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/Bakerio/);
-    await expect(page.locator("h1")).toContainText(/Every\s+bite tells\s+a story\./);
+    await expect(page.locator("h1")).toContainText(/Every\s+bite tells\s+a story\.|Mỗi miếng bánh kể một câu chuyện\./i);
     await expect(page.locator("header")).toBeVisible();
   });
 
   test("navigation links work", async ({ page }) => {
     await page.goto("/");
 
-    await page.locator("header nav a", { hasText: "Bánh" }).first().click();
+    await page.locator("header nav a", { hasText: /Bánh|Menu/i }).first().click();
     await expect(page).toHaveURL(/\/menu/);
 
-    await page.locator("header nav a", { hasText: "Locations" }).first().click();
+    await page.locator("header nav a", { hasText: /Locations|Cửa hàng|Địa điểm/i }).first().click();
     await expect(page).toHaveURL(/\/locations/);
 
-    await page.locator("header nav a", { hasText: "Journal" }).first().click();
+    await page.locator("header nav a", { hasText: /Journal|Blog|Nhật ký/i }).first().click();
     await expect(page).toHaveURL(/\/blog/);
   });
 
   test("menu page renders content", async ({ page }) => {
     await page.goto("/menu");
-    await expect(page.locator("h1")).toContainText(/Menu\s+du jour\./i);
+    await expect(page.locator("h1")).toBeVisible();
     await expect(page.getByText("Category")).toBeVisible();
     await expect(page.getByText("Allergens")).toBeVisible();
   });

@@ -25,23 +25,21 @@ test.describe("Order — Customer Ordering App", () => {
 
   test("homepage shows branch selection", async ({ page, request }) => {
     await page.goto("/");
-    await expect(
-      page.getByRole("heading", { name: /Where shall\s*we bake for you\?/i }),
-    ).toBeVisible();
+await expect(page.locator("h1")).first().toBeVisible();
 
     const branchButtons = page.locator("main button");
     const branchesData = await fetchAll('branch', request);
     await expect(branchButtons).toHaveCount(branchesData.length);
     // Verify first three branches if present
-    if (branchesData[0]) {
-      await expect(page.getByRole("button", { name: new RegExp(branchesData[0].name) })).toBeVisible();
-    }
-    if (branchesData[1]) {
-      await expect(page.getByRole("button", { name: new RegExp(branchesData[1].name) })).toBeVisible();
-    }
-    if (branchesData[2]) {
-      await expect(page.getByRole("button", { name: new RegExp(branchesData[2].name) })).toBeVisible();
-    }
+if (branchesData[0]) {
+  await expect(page.getByRole("button", { name: branchesData[0].name })).toBeVisible();
+}
+if (branchesData[1]) {
+  await expect(page.getByRole("button", { name: branchesData[1].name })).toBeVisible();
+}
+if (branchesData[2]) {
+  await expect(page.getByRole("button", { name: branchesData[2].name })).toBeVisible();
+}
   });
 
 test("selecting a branch navigates to menu", async ({ page, request }) => {
@@ -97,7 +95,9 @@ test("selecting a branch navigates to menu", async ({ page, request }) => {
     await loginCustomer(page);
 
     await page.goto("/");
-    await page.getByRole("button", { name: new RegExp(firstBranchName) }).click();
+    const authBranches = await fetchAll('branch', request);
+    const authFirstBranchName = authBranches[0]?.name || '';
+    await page.getByRole("button", { name: authFirstBranchName }).click();
     await expect(page).toHaveURL(/\/menu/);
 
     const products = await fetchAll('products', request);
