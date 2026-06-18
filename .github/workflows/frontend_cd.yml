@@ -256,7 +256,6 @@ jobs:
             cd /home/deploy/bakerio
             git fetch origin main
             git reset --hard origin/main
-            git clean -fd
             cd deploy
             grep -v '^IMAGE_TAG=' .env.prod > .env.prod.tmp || true
             printf 'IMAGE_TAG=%s\n' '${{ github.sha }}' >> .env.prod.tmp
@@ -272,17 +271,11 @@ jobs:
             sleep 3
             docker compose -f docker-compose.prod.yml --env-file .env.prod logs order console nginx --tail 20
 
-            # Reclaim disk: drop superseded tags for the frontend repos only,
-            # keeping :latest and the just-deployed SHA. Then sweep dangling layers.
-            set -a; . ./.env.prod; set +a
-            KEEP='${{ github.sha }}'
-            for name in bakerio-order bakerio-console; do
-              repo="${DOCKER_USERNAME}/${name}"
-              docker images "$repo" --format '{{.Tag}}' \
-                | grep -vxE "latest|${KEEP}" \
-                | while read -r tag; do docker rmi "$repo:$tag" || true; done
-            done
-            docker image prune -f
+            # Install/refresh the daily image-prune cron (idempotent — replaces any prior line).
+            PRUNE=/home/deploy/bakerio/deploy/prune-images.sh
+            chmod +x "$PRUNE"
+            ( crontab -l 2>/dev/null | grep -vF "$PRUNE"; \
+              echo "0 4 * * * $PRUNE >> /home/deploy/bakerio-prune.log 2>&1" ) | crontab -
 
   verify-apps:
     needs: deploy-apps
