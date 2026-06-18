@@ -96,6 +96,7 @@ jobs:
             cd /home/deploy/bakerio
             git fetch origin main
             git reset --hard origin/main
+            git clean -fd
             cd deploy
             grep -v '^APP_IMAGE_TAG=' .env.prod > .env.prod.tmp || true
             printf 'APP_IMAGE_TAG=%s\n' '${{ github.sha }}' >> .env.prod.tmp
@@ -141,6 +142,16 @@ jobs:
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app
             sleep 3
             docker compose -f docker-compose.prod.yml --env-file .env.prod logs app --tail 10
+
+            # Reclaim disk: drop superseded image tags for the backend repo only,
+            # keeping :latest and the just-deployed SHA. Then sweep dangling layers.
+            set -a; . ./.env.prod; set +a
+            KEEP='${{ github.sha }}'
+            repo="${DOCKER_USERNAME}/bakerio"
+            docker images "$repo" --format '{{.Tag}}' \
+              | grep -vxE "latest|${KEEP}" \
+              | while read -r tag; do docker rmi "$repo:$tag" || true; done
+            docker image prune -f
 
   verify:
     needs: deploy
