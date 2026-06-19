@@ -1,23 +1,33 @@
 import { test, expect } from "@playwright/test";
+import fixture from "../fixtures/content.snapshot.json";
 
 test.describe("Web — Branding Site", () => {
   test("homepage loads with hero and navigation", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle(/Bakerio/);
-    await expect(page.locator("h1")).toContainText(/Every\s+bite tells\s+a story\.|Mỗi miếng bánh kể một câu chuyện\./i);
+    await expect(page).toHaveTitle(new RegExp(fixture.web.pageTitle));
+    await expect(page.locator("h1")).toContainText(fixture.web.heroHeading);
     await expect(page.locator("header")).toBeVisible();
   });
 
   test("navigation links work", async ({ page }) => {
     await page.goto("/");
 
-    await page.locator("header nav a", { hasText: /Bánh|Menu/i }).first().click();
+    await page
+      .locator("header nav a", { hasText: /Bánh|Menu/i })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/menu/);
 
-    await page.locator("header nav a", { hasText: /Locations|Cửa hàng|Địa điểm/i }).first().click();
+    await page
+      .locator("header nav a", { hasText: /Locations|Cửa hàng|Địa điểm/i })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/locations/);
 
-    await page.locator("header nav a", { hasText: /Journal|Blog|Nhật ký/i }).first().click();
+    await page
+      .locator("header nav a", { hasText: /Journal|Blog|Nhật ký/i })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/blog/);
   });
 
@@ -30,27 +40,35 @@ test.describe("Web — Branding Site", () => {
 
   test("locations page renders", async ({ page }) => {
     await page.goto("/locations");
-    await expect(page.locator("h1")).toContainText(/6 shops,\s*one city\./i);
+    await expect(page.locator("h1")).toContainText(
+      fixture.web.locationsHeading,
+    );
     await expect(page.getByText("Hồ Chí Minh City")).toBeVisible();
   });
 
   test("about page renders", async ({ page }) => {
     await page.goto("/about");
-    await expect(page.locator("h1")).toContainText(/We started\s+with one\s+oven\./i);
+    await expect(page.locator("h1")).toContainText(fixture.web.aboutHeading);
     await expect(page.getByText(/Linh and Khoa/i)).toBeVisible();
-    await expect(page.getByText(/established|shops|bakers/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/established|shops|bakers/i).first(),
+    ).toBeVisible();
   });
 
   test("blog page renders post cards", async ({ page }) => {
     await page.goto("/blog");
     await expect(page.locator("h1")).toBeVisible();
-    await expect(page.getByText("The Art of Sourdough").first()).toBeVisible();
+    await expect(
+      page.getByText(fixture.web.firstBlogTitle).first(),
+    ).toBeVisible();
   });
 
   test("blog detail page loads for valid slug", async ({ page }) => {
-    await page.goto("/blog/the-art-of-sourdough");
+    await page.goto(`/blog/${fixture.web.firstBlogSlug}`);
     await expect(page.getByText(/Page Not Found/)).not.toBeVisible();
-    await expect(page.getByText(/sourdough/i).first()).toBeVisible();
+    await expect(
+      page.getByText(fixture.web.firstBlogTitle).first(),
+    ).toBeVisible();
   });
 
   test("contact page form validation and submission", async ({ page }) => {
@@ -94,7 +112,9 @@ test.describe("Web — Branding Site", () => {
     await expect(page.locator("footer")).toBeVisible();
   });
 
-  test("images have alt attributes and are loaded successfully", async ({ page }) => {
+  test("images have alt attributes and are loaded successfully", async ({
+    page,
+  }) => {
     await page.goto("/");
     const images = page.locator("img");
     const count = await images.count();
@@ -106,7 +126,11 @@ test.describe("Web — Branding Site", () => {
       expect(alt).toBeTruthy();
 
       const isLoaded = await img.evaluate((element: HTMLImageElement) => {
-        return element.complete && typeof element.naturalWidth !== 'undefined' && element.naturalWidth > 0;
+        return (
+          element.complete &&
+          typeof element.naturalWidth !== "undefined" &&
+          element.naturalWidth > 0
+        );
       });
       expect(isLoaded).toBe(true);
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useViewportPageSize } from '@/lib/use-viewport-page-size';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
@@ -12,6 +12,7 @@ import {
   type PaginatedResponse,
 } from '@repo/api-client';
 import { getOrderUrl } from '@/lib/public-config';
+import MenuPagination from './MenuPagination';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&q=80';
@@ -86,7 +87,7 @@ export default function MenuContent({
   const viewportPageSizeOptions = useMemo(
     () => ({
       reserved: 420,
-      rowHeight: 280,
+      rowHeight: 300,
       min: Math.max(8, pageSize),
     }),
     [pageSize],
@@ -107,12 +108,14 @@ export default function MenuContent({
     nextPage: number,
     categorySlug = active,
     sizeOverride?: number,
+    q = searchQuery,
   ) => {
     if (nextPage < 1) return;
-    if (totalPages > 0 && categorySlug === active && nextPage > totalPages) return;
+    const isSameFilter = categorySlug === active && q === searchQuery;
+    if (totalPages > 0 && isSameFilter && nextPage > totalPages) return;
     if (
       nextPage === page &&
-      categorySlug === active &&
+      isSameFilter &&
       (sizeOverride == null || sizeOverride === size)
     ) {
       return;
@@ -124,6 +127,7 @@ export default function MenuContent({
         category: categorySlug === 'All' ? undefined : categorySlug,
         page: nextPage,
         size: sizeOverride ?? viewportPageSize,
+        q: q || undefined,
       });
       setProductsPage(next);
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -132,26 +136,39 @@ export default function MenuContent({
     } finally {
       setIsPageLoading(false);
     }
-  }, [active, page, totalPages, size, viewportPageSize, t]);
+  }, [active, page, totalPages, size, viewportPageSize, t, searchQuery]);
+
+  const loadPageRef = useRef(loadPage);
+  const activeRef = useRef(active);
+  const viewportPageSizeRef = useRef(viewportPageSize);
+  const isFirstRef = useRef(true);
+
+  useEffect(() => {
+    loadPageRef.current = loadPage;
+    activeRef.current = active;
+    viewportPageSizeRef.current = viewportPageSize;
+  });
 
   // Refetch first page when viewport size changes
-useEffect(() => {
-  if (viewportPageSize === size) return;
-  const id = window.setTimeout(() => {
-    void loadPage(1, active, viewportPageSize);
-  }, 0);
-  return () => window.clearTimeout(id);
-}, [viewportPageSize, active, size, loadPage]);
+  useEffect(() => {
+    if (viewportPageSize === size) return;
+    const id = window.setTimeout(() => {
+      void loadPage(1, active, viewportPageSize, searchQuery);
+    }, 250);
+    return () => window.clearTimeout(id);
+  }, [viewportPageSize, active, size, loadPage, searchQuery]);
 
-  const filtered = productsList.filter((p) => {
-    const pCategory = categoriesList.find((c) => c.id === p.category_id);
-    const categoryMatch =
-      active === 'All' || pCategory?.slug === active;
-    const searchMatch =
-      !searchQuery ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return categoryMatch && searchMatch;
-  });
+  // Debounce search query changes to fetch page 1 from backend
+  useEffect(() => {
+    if (isFirstRef.current) {
+      isFirstRef.current = false;
+      return;
+    }
+    const id = window.setTimeout(() => {
+      void loadPageRef.current(1, activeRef.current, viewportPageSizeRef.current, searchQuery);
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, [searchQuery]);
 
   return (
     <section className="px-6 pb-24 lg:px-14 bg-cream">
@@ -179,7 +196,7 @@ useEffect(() => {
             <button
               onClick={() => {
                 setActive('All');
-                loadPage(1, 'All');
+                void loadPage(1, 'All', undefined, searchQuery);
               }}
               className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
                 active === 'All'
@@ -202,7 +219,7 @@ useEffect(() => {
                   key={c.id}
                   onClick={() => {
                     setActive(c.slug);
-                    loadPage(1, c.slug);
+                    void loadPage(1, c.slug, undefined, searchQuery);
                   }}
                   className={`mb-1 flex w-full items-center justify-between rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
                     isActive
@@ -241,7 +258,7 @@ useEffect(() => {
                 isPageLoading ? 'opacity-55' : 'opacity-100'
               }`}
             >
-              {filtered.map((p, i) => (
+              {productsList.map((p, i) => (
                 <article
                   key={p.slug}
                   className="bkr-lift flex flex-col overflow-hidden rounded-sm border border-crust bg-white"
@@ -283,82 +300,14 @@ useEffect(() => {
               ))}
             </div>
             {totalPages > 1 && (
-              <nav
-                aria-label="Menu pagination"
-                className="sticky bottom-5 inset-x-0 mx-auto w-fit max-w-[calc(100vw-2rem)] bg-cream/60 backdrop-blur-md border border-crust rounded-full shadow-md py-2 px-3 flex items-center justify-center gap-2 z-30"
-              >
-                {/* First */}
-                <button
-                  onClick={() => loadPage(1)}
-                  disabled={!hasPreviousPage || isPageLoading}
-                  aria-label="First page"
-                  className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                    hasPreviousPage
-                      ? 'border border-espresso text-espresso hover:bg-espresso hover:text-white'
-                      : 'pointer-events-none border border-crust text-caramel opacity-45'
-                  }`}
-                >
-                  First
-                </button>
-                {/* Prev */}
-                <button
-                  onClick={() => loadPage(page - 1)}
-                  disabled={!hasPreviousPage || isPageLoading}
-                  aria-label="Previous page"
-                  className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                    hasPreviousPage
-                      ? 'border border-espresso text-espresso hover:bg-espresso hover:text-white'
-                      : 'pointer-events-none border border-crust text-caramel opacity-45'
-                  }`}
-                >
-                  {t('prev')}
-                </button>
-                {/* Page Input */}
-                <input
-                  type="number"
-                  min={1}
-                  max={totalPages}
-                  value={page}
-                  disabled={isPageLoading}
-                  onChange={(e) => {
-                    const p = Number(e.target.value);
-                    if (!Number.isFinite(p)) return;
-                    const clamped = Math.min(Math.max(p, 1), totalPages);
-                    loadPage(clamped);
-                  }}
-                  className="w-12 text-center border rounded-md px-2 py-1 font-mono text-[10px]"
-                  aria-label="Page number"
-                />
-                <span className="font-editorial text-[13px] italic text-caramel">
-                  of {totalPages}
-                </span>
-                {/* Next */}
-                <button
-                  onClick={() => loadPage(page + 1)}
-                  disabled={!hasNextPage || isPageLoading}
-                  aria-label="Next page"
-                  className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                    hasNextPage
-                      ? 'border border-espresso bg-espresso text-white hover:bg-cinnamon'
-                      : 'pointer-events-none border border-crust text-caramel opacity-45'
-                  }`}
-                >
-                  {t('next')}
-                </button>
-                {/* Last */}
-                <button
-                  onClick={() => loadPage(totalPages)}
-                  disabled={!hasNextPage || isPageLoading}
-                  aria-label="Last page"
-                  className={`rounded-full px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors ${
-                    hasNextPage
-                      ? 'border border-espresso text-espresso hover:bg-espresso hover:text-white'
-                      : 'pointer-events-none border border-crust text-caramel opacity-45'
-                  }`}
-                >
-                  Last
-                </button>
-              </nav>
+              <MenuPagination
+                page={page}
+                totalPages={totalPages}
+                hasPreviousPage={hasPreviousPage}
+                hasNextPage={hasNextPage}
+                isPageLoading={isPageLoading}
+                onGoToPage={(p) => void loadPage(p, active, viewportPageSize, searchQuery)}
+              />
             )}
           </div>
         </div>

@@ -1,0 +1,38 @@
+{
+  "snapshotDate": "2026-06-15",
+  "api": {
+    "branchCount": 10,
+    "firstBranch": {
+      "name": "District 1 — Saigon Square",
+      "address": "23 Le Loi, Quan 1, HCMC",
+      "region": ""
+    },
+    "firstProduct": {
+      "name": "Sourdough Loaf",
+      "slug": "sourdough-loaf"
+    },
+    "firstCategory": {
+      "name": "Breads"
+    }
+  },
+  "web": {
+    "pageTitle": "Bakerio — Every Bite Tells a Story",
+    "heroHeading": "Every bite tells a story.",
+    "locationsHeading": "Shops, one city.",
+    "aboutHeading": "We started with one oven.",
+    "firstBlogTitle": "The Art of Sourdough: 72 Hours of Patience (Part 1)",
+    "firstBlogSlug": "the-art-of-sourdough-0"
+  },
+  "order": {
+    "cartHeadingTemplate": "{n} items, baked fresh",
+    "addToCartConfirmation": "Added to cart!",
+    "viewCartButton": "View Cart",
+    "increaseQtyButton": "Increase quantity",
+    "addToCartButton": "Add to Cart",
+    "payAtCounterButton": "Pay with Pay at counter",
+    "deliveryButton": "Delivery",
+    "deliveryAddressLabel": "Deliver to",
+    "orderPlacedHeading": "Order placed",
+    "trackOrderLink": "Track my order"
+  }
+}

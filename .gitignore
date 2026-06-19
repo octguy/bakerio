@@ -16,7 +16,7 @@
 **/code-reviews
 **/test
 **/.turbo/
-
+**/playwright-report-deployed/
 **/CLAUDE.md
 secrets-template.txt
 .gitnexus

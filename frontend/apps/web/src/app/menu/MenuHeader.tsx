@@ -6,7 +6,7 @@ export default function MenuHeader() {
   const t = useTranslations("menu");
 
   return (
-    <section className="px-6 pt-32 pb-8 lg:px-14 lg:pt-40">
+    <section className="px-6 pt-24 pb-8 lg:px-14 lg:pt-28">
       <div className="mx-auto flex max-w-[1400px] items-end justify-between">
         <div>
           <div className="mb-3 flex items-center gap-3">

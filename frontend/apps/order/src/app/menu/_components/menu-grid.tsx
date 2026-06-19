@@ -142,6 +142,7 @@ export function MenuGrid({
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRef = useRef(false);
   const [showLeftChevron, setShowLeftChevron] = useState(false);
   const [showRightChevron, setShowRightChevron] = useState(false);
 
@@ -302,12 +303,7 @@ export function MenuGrid({
         size,
       });
       setProductsPage(nextProductsPage);
-      if (opts.scroll !== false) {
-        window.scrollTo({
-          top: (gridRef.current?.getBoundingClientRect().top ?? 0) + window.scrollY - 16,
-          behavior: "smooth",
-        });
-      }
+      pendingScrollRef.current = opts.scroll !== false;
     } catch {
       setPageError(t("couldNotLoadMore"));
     } finally {
@@ -345,6 +341,15 @@ export function MenuGrid({
     return () => clearTimeout(handle);
   }, [search, priceFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!pendingScrollRef.current) return;
+    pendingScrollRef.current = false;
+    const id = requestAnimationFrame(() => {
+      gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [productsPage]);
+
   // Search, category and price filters are applied server-side (see loadPage),
   // so the current page already contains the right items. Only sort is applied
   // client-side, ordering the items within the current page.
@@ -369,6 +374,14 @@ export function MenuGrid({
   const placeholderRef = useRef<HTMLDivElement>(null);
   const leftColRef = useRef<HTMLDivElement>(null);
 
+  const updateScrollOffset = () => {
+    const headerHeight = document.querySelector("header")?.offsetHeight ?? 56;
+    const searchSlotHeight = searchSlotRef.current?.offsetHeight ?? 0;
+    document.documentElement.style.setProperty(
+      "--menu-scroll-offset",
+      `${headerHeight + searchSlotHeight + 12}px`
+    );
+  };
 
   useEffect(() => {
     const searchSlot = searchSlotRef.current;
@@ -413,6 +426,8 @@ export function MenuGrid({
           searchSlot.style.zIndex = "";
         }
       }
+
+      updateScrollOffset();
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -436,6 +451,7 @@ export function MenuGrid({
       const rect = leftCol.getBoundingClientRect();
       document.documentElement.style.setProperty("--menu-search-w", `${rect.width}px`);
       document.documentElement.style.setProperty("--menu-search-left", `${rect.left}px`);
+      updateScrollOffset();
     };
     updatePosition();
     const observer = new ResizeObserver(updatePosition);
@@ -640,7 +656,7 @@ export function MenuGrid({
         </div>
       )}
 
-      <div ref={gridRef} className={`grid grid-cols-1 gap-3 pb-44 transition-opacity min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 lg:pb-28 ${isPageLoading ? "opacity-55" : "opacity-100"}`}>
+      <div ref={gridRef} style={{ scrollMarginTop: "var(--menu-scroll-offset, 124px)" }} className={`grid grid-cols-1 gap-3 pb-44 transition-opacity min-[380px]:grid-cols-2 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 lg:pb-28 ${isPageLoading ? "opacity-55" : "opacity-100"}`}>
         {filteredAndSorted.map((product) => {
           const price = getProductPrice(product);
           const handleAdd = () => {
